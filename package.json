@@ -8,13 +8,16 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
-    "dev": "pnpm --filter desktop dev",
+    "dev": "tauri dev",
+    "frontend:dev": "pnpm --filter desktop dev",
     "build": "pnpm --filter desktop build",
     "typecheck": "pnpm --filter desktop typecheck",
     "lint": "pnpm --filter desktop lint",
-    "test": "pnpm --filter desktop test"
+    "test": "pnpm --filter desktop test",
+    "tauri": "tauri"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
     "markdownlint-cli2": "^0.23.0",
     "prettier": "^3.9.4"
   }
