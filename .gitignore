@@ -6,6 +6,8 @@ target/
 
 # Build outputs
 dist/
+/.pages/
+storybook-static/
 
 # Env files
 .env

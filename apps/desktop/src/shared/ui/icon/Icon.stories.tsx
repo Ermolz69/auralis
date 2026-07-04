@@ -1,10 +1,10 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Icon } from './Icon';
 import { Button } from '../button';
 
 const meta = {
-  title: 'UI Kit/Icon',
+  title: 'Shared UI/Icon',
   component: Icon,
   parameters: {
     layout: 'padded',
@@ -13,7 +13,10 @@ const meta = {
   argTypes: {
     name: { control: 'text' },
     size: { control: 'select', options: ['sm', 'md', 'lg'] },
-    color: { control: 'select', options: ['default', 'primary', 'muted', 'danger', 'success', 'warning', 'accent'] },
+    color: {
+      control: 'select',
+      options: ['default', 'primary', 'muted', 'danger', 'success', 'warning', 'accent'],
+    },
   },
 } satisfies Meta<typeof Icon>;
 

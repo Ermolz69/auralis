@@ -1,10 +1,10 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
 import { Button } from '../button';
 
 const meta = {
-  title: 'UI Kit/Card',
+  title: 'Shared UI/Card',
   component: Card,
   parameters: {
     layout: 'padded',

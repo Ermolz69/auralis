@@ -32,7 +32,7 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
       children,
       ...props
     },
-    ref
+    ref,
   ) => {
     const [internalValue, setInternalValue] = useState(defaultValue || '');
     const isControlled = value !== undefined;
@@ -45,14 +45,20 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
 
     return (
       <TabsContext.Provider
-        value={{ value: selectedValue, onValueChange: handleValueChange, orientation, variant, fullWidth }}
+        value={{
+          value: selectedValue,
+          onValueChange: handleValueChange,
+          orientation,
+          variant,
+          fullWidth,
+        }}
       >
         <div ref={ref} className={className} {...props}>
           {children}
         </div>
       </TabsContext.Provider>
     );
-  }
+  },
 );
 Tabs.displayName = 'Tabs';
 
@@ -68,7 +74,9 @@ export const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
       const tabList = target.closest('[role="tablist"]');
       if (!tabList) return;
 
-      const tabs = Array.from(tabList.querySelectorAll('[role="tab"]:not([disabled])')) as HTMLElement[];
+      const tabs = Array.from(
+        tabList.querySelectorAll('[role="tab"]:not([disabled])'),
+      ) as HTMLElement[];
       const index = tabs.indexOf(target);
       if (index === -1) return;
 
@@ -106,7 +114,7 @@ export const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
         {...props}
       />
     );
-  }
+  },
 );
 TabsList.displayName = 'TabsList';
 
@@ -139,7 +147,7 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         {...props}
       />
     );
-  }
+  },
 );
 TabsTrigger.displayName = 'TabsTrigger';
 
@@ -163,6 +171,6 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
         {...props}
       />
     );
-  }
+  },
 );
 TabsContent.displayName = 'TabsContent';

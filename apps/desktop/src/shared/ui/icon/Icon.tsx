@@ -14,7 +14,7 @@ export interface IconProps extends Omit<React.SVGAttributes<SVGSVGElement>, 'col
 export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
   ({ name, size = 'md', color = 'default', className = '', ariaLabel, ...props }, ref) => {
     const LucideIcon = icons[name] as React.ElementType;
-    
+
     if (!LucideIcon) {
       console.warn(`Icon "${name}" does not exist in lucide-react.`);
       return null;
@@ -25,7 +25,7 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
       md: 20,
       lg: 24,
     };
-    
+
     const iconSize = typeof size === 'number' ? size : sizeMap[size] || sizeMap.md;
 
     // We can just set the CSS color property via a class or style, as lucide uses currentColor for stroke
@@ -54,7 +54,7 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
         {...props}
       />
     );
-  }
+  },
 );
 
 Icon.displayName = 'Icon';

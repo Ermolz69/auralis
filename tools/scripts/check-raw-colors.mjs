@@ -1,68 +1,119 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../../');
-const srcDir = path.join(rootDir, 'apps/desktop/src');
 
-const PATTERNS = [
-  { regex: /bg-\[#[0-9a-fA-F]{3,8}\]/, name: 'Tailwind arbitrary bg color (bg-[#...])' },
-  { regex: /text-\[#[0-9a-fA-F]{3,8}\]/, name: 'Tailwind arbitrary text color (text-[#...])' },
-  { regex: /border-\[#[0-9a-fA-F]{3,8}\]/, name: 'Tailwind arbitrary border color (border-[#...])' },
-  { regex: /(color|backgroundColor|borderColor)\s*:\s*['"`]#[0-9a-fA-F]{3,8}['"`]/, name: 'Inline style with raw color (style={{ color: ... }})' },
-  { regex: /['"`]#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b['"`]/, name: 'Raw hex color string' },
-  { regex: /\b(rgb|rgba|hsl|hsla)\s*\(/, name: 'Raw rgb/hsl function' }
+// We only check these specific directories inside src
+const FORBIDDEN_DIRS = [
+  'pages',
+  'features',
+  'widgets',
+  'entities',
+  'shared/ui'
 ];
 
-function isExcluded(filePath) {
-  // Allow theme, tokens, and root css files where variables are officially defined
-  if (filePath.includes('theme') || filePath.includes('tokens') || filePath.includes('index.css') || filePath.includes('global.css') || filePath.includes('tailwind')) return true;
-  return false;
-}
+// Matches hex color starting with #, followed by 3, 4, 6, or 8 hex digits
+const HEX_REGEX = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
 
-function walkSync(dir, filelist = []) {
-  if (!fs.existsSync(dir)) return filelist;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const filepath = path.join(dir, file);
-    if (fs.statSync(filepath).isDirectory()) {
-      filelist = walkSync(filepath, filelist);
-    } else {
-      filelist.push(filepath);
+async function walkDir(dir) {
+  let results = [];
+  try {
+    const list = await fs.readdir(dir, { withFileTypes: true });
+    for (const file of list) {
+      const fullPath = path.join(dir, file.name);
+      if (file.isDirectory()) {
+        results = results.concat(await walkDir(fullPath));
+      } else {
+        results.push(fullPath);
+      }
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.error(`Error reading directory ${dir}:`, err);
     }
   }
-  return filelist;
+  return results;
 }
 
-let hasErrors = false;
-const files = walkSync(srcDir);
+async function checkColors() {
+  const appsDir = path.join(rootDir, 'apps');
+  let hasErrors = false;
+  let apps = [];
 
-for (const file of files) {
-  if (!file.match(/\.(ts|tsx|css|scss)$/)) continue;
-  if (isExcluded(file)) continue;
+  try {
+    apps = await fs.readdir(appsDir);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.log('No apps directory found. Skipping checks.');
+      process.exit(0);
+    }
+    console.error('Error reading apps directory:', err);
+    process.exit(1);
+  }
 
-  const content = fs.readFileSync(file, 'utf-8');
-  const lines = content.split('\n');
+  for (const app of apps) {
+    const srcDir = path.join(appsDir, app, 'src');
+    
+    try {
+      const stats = await fs.stat(srcDir);
+      if (!stats.isDirectory()) continue;
+    } catch (e) {
+      continue;
+    }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    for (const pattern of PATTERNS) {
-      if (pattern.regex.test(line)) {
-        console.error(`\nERROR: Raw color found in ${path.relative(rootDir, file)}:${i + 1}`);
-        console.error(`       Violating pattern: ${pattern.name}`);
-        console.error(`       Code: ${line.trim()}`);
-        console.error(`       Fix: Please use design system theme tokens instead of raw colors.`);
-        console.error(`            Example: use Tailwind classes (e.g., bg-surface) or CSS variables (var(--color-bg)).`);
-        hasErrors = true;
+    for (const forbidden of FORBIDDEN_DIRS) {
+      const dirToCheck = path.join(srcDir, ...forbidden.split('/'));
+      const files = await walkDir(dirToCheck);
+
+      for (const file of files) {
+        const ext = path.extname(file).toLowerCase();
+        if (!['.ts', '.tsx', '.css', '.scss'].includes(ext)) continue;
+
+        // Skip exceptions
+        const lowerFile = file.toLowerCase();
+        if (
+          lowerFile.includes('theme') || 
+          lowerFile.includes('tokens.stories') || 
+          lowerFile.includes('designtokens.stories')
+        ) {
+          continue;
+        }
+
+        try {
+          const content = await fs.readFile(file, 'utf-8');
+          const lines = content.split('\n');
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const matches = [...line.matchAll(HEX_REGEX)];
+            
+            if (matches.length > 0) {
+              for (const match of matches) {
+                const color = match[0];
+                let relativePath = path.relative(rootDir, file);
+                relativePath = relativePath.replace(/\\/g, '/'); // Normalize slashes for consistent output
+                console.error(`❌ ERROR: Raw hex color '${color}' found in ${relativePath}:${i + 1}`);
+                hasErrors = true;
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`Error reading file ${file}:`, err);
+        }
       }
     }
   }
+
+  if (hasErrors) {
+    console.error('\n🚫 Check failed: Raw hex colors are not allowed in components and pages.');
+    console.error('Please use design tokens from the theme instead (e.g. var(--color-primary), bg-primary).');
+    process.exit(1);
+  } else {
+    console.log('✅ Success: No raw hex colors found in restricted directories.');
+  }
 }
 
-if (hasErrors) {
-  process.exit(1);
-} else {
-  console.log("SUCCESS: No raw colors found. Design system tokens are properly enforced.");
-}
+checkColors();

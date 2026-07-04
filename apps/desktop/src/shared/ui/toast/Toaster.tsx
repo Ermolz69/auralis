@@ -42,22 +42,25 @@ const ToastItem = ({ toast: t }: { toast: ToastProps }) => {
 
   return (
     <div
-      className={`pointer-events-auto flex items-start gap-3 rounded-lg border p-4 shadow-lg shadow-black/50 transition-all animate-toast-slide-in ${
+      className={`pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg shadow-black/50 transition-all animate-toast-slide-in ${
         typeStyles[t.type]
       }`}
-      role="alert"
+      role={t.type === 'danger' || t.type === 'warning' ? 'alert' : 'status'}
     >
       <div className="shrink-0 mt-0.5">{typeIcon[t.type]}</div>
       <div className="flex-1 flex flex-col gap-1 min-w-0">
         <h4 className="text-sm font-semibold leading-none">{t.title}</h4>
-        {t.description && <p className="text-sm text-muted break-words line-clamp-3">{t.description}</p>}
+        {t.description && (
+          <p className="text-sm text-muted break-words line-clamp-3">{t.description}</p>
+        )}
       </div>
       <button
         type="button"
+        aria-label="Close toast"
         onClick={() => toast.dismiss(t.id)}
-        className="shrink-0 opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary rounded-sm transition-opacity"
+        className="shrink-0 opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary rounded-md transition-opacity"
       >
-        <Icon name="X" size="sm" ariaLabel="Close toast" />
+        <Icon name="X" size="sm" />
       </button>
     </div>
   );

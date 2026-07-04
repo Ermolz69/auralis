@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import {
   Dialog,
@@ -13,7 +13,7 @@ import { Button } from '../button';
 import { Input } from '../input';
 
 const meta = {
-  title: 'UI Kit/Dialog',
+  title: 'Shared UI/Dialog',
   component: Dialog,
   parameters: {
     layout: 'centered',
@@ -29,7 +29,9 @@ export const BasicDialog: Story = {
     <Dialog trigger={<Button>Open Dialog</Button>}>
       <DialogHeader>
         <DialogTitle>Edit profile</DialogTitle>
-        <DialogDescription>Make changes to your profile here. Click save when you're done.</DialogDescription>
+        <DialogDescription>
+          Make changes to your profile here. Click save when you're done.
+        </DialogDescription>
       </DialogHeader>
       <div className="py-4">
         <p className="text-sm">This is the dialog content body.</p>
@@ -72,7 +74,8 @@ export const DangerConfirmation: Story = {
       <DialogHeader>
         <DialogTitle className="text-danger">Delete Account</DialogTitle>
         <DialogDescription>
-          This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+          This action cannot be undone. This will permanently delete your account and remove your
+          data from our servers.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter>
@@ -97,8 +100,9 @@ export const LongContent: Story = {
       <div className="py-4 max-h-[300px] overflow-y-auto pr-2">
         {Array.from({ length: 10 }).map((_, i) => (
           <p key={i} className="mb-4 text-sm text-muted">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in odio felis. Suspendisse potenti. Vivamus
-            vehicula velit in sagittis hendrerit. Phasellus mattis nisl nec magna vehicula, quis volutpat leo faucibus.
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in odio felis.
+            Suspendisse potenti. Vivamus vehicula velit in sagittis hendrerit. Phasellus mattis nisl
+            nec magna vehicula, quis volutpat leo faucibus.
           </p>
         ))}
       </div>

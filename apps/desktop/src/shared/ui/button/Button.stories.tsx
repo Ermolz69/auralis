@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Button } from './Button';
 
 const meta = {
-  title: 'UI Kit/Button',
+  title: 'Shared UI/Button',
   component: Button,
   parameters: {
     layout: 'centered',
@@ -64,7 +64,9 @@ export const WithIcon: Story = {
   render: () => (
     <div className="flex gap-4">
       <Button leftIcon={<span>✨</span>}>Left Icon</Button>
-      <Button variant="secondary" rightIcon={<span>🚀</span>}>Right Icon</Button>
+      <Button variant="secondary" rightIcon={<span>🚀</span>}>
+        Right Icon
+      </Button>
     </div>
   ),
 };

@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 
 const meta = {
-  title: 'UI Kit/Tabs',
+  title: 'Shared UI/Tabs',
   component: Tabs,
   parameters: {
     layout: 'padded',
@@ -71,11 +71,17 @@ export const TabsWithContent: Story = {
         <TabsTrigger value="general">General</TabsTrigger>
         <TabsTrigger value="advanced">Advanced</TabsTrigger>
       </TabsList>
-      <TabsContent value="general" className="p-4 border border-muted/20 rounded-md mt-4 bg-surface">
+      <TabsContent
+        value="general"
+        className="p-4 border border-muted/20 rounded-md mt-4 bg-surface"
+      >
         <h3 className="text-lg font-medium mb-2">General Settings</h3>
         <p className="text-sm text-muted">Update your main preferences here.</p>
       </TabsContent>
-      <TabsContent value="advanced" className="p-4 border border-muted/20 rounded-md mt-4 bg-surface">
+      <TabsContent
+        value="advanced"
+        className="p-4 border border-muted/20 rounded-md mt-4 bg-surface"
+      >
         <h3 className="text-lg font-medium mb-2">Advanced Settings</h3>
         <p className="text-sm text-muted">Danger zone! Be careful with what you change here.</p>
       </TabsContent>

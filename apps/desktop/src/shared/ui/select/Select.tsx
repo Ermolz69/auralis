@@ -15,22 +15,32 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   (
-    { label, helperText, error = false, options, placeholder, className = '', id, disabled, ...props },
-    ref
+    {
+      label,
+      helperText,
+      error = false,
+      options,
+      placeholder,
+      className = '',
+      id,
+      disabled,
+      ...props
+    },
+    ref,
   ) => {
     const generatedId = useId();
     const selectId = id || generatedId;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
-    
+
     // appearance-none hides the default browser dropdown arrow
     // We add a custom SVG arrow in the wrapper below
     const selectBase =
       'flex w-full items-center bg-surface border rounded-md text-text text-sm transition-all outline-none appearance-none px-3 py-2 pr-10 cursor-pointer';
-    
+
     const selectBorder = error
-      ? 'border-danger focus:ring-1 focus:ring-danger focus:border-danger'
-      : 'border-muted hover:border-muted/80 focus:border-primary focus:ring-1 focus:ring-primary';
+      ? 'border-danger focus:ring-2 focus:ring-danger focus:ring-offset-2 focus:ring-offset-bg focus:border-danger'
+      : 'border-muted hover:border-muted/80 focus:border-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg';
 
     const selectDisabled = disabled ? 'opacity-50 cursor-not-allowed bg-bg' : '';
 
@@ -47,7 +57,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             disabled={disabled}
             className={`${selectBase} ${selectBorder} ${selectDisabled}`}
-            defaultValue={placeholder && !props.value && !props.defaultValue ? "" : props.defaultValue}
+            defaultValue={
+              placeholder && !props.value && !props.defaultValue ? '' : props.defaultValue
+            }
             {...props}
           >
             {placeholder && (
@@ -78,13 +90,11 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </div>
         </div>
         {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>
-            {helperText}
-          </span>
+          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
         )}
       </div>
     );
-  }
+  },
 );
 
 Select.displayName = 'Select';

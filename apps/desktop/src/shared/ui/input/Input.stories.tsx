@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Input } from './Input';
 
 const meta = {
-  title: 'UI Kit/Input',
+  title: 'Shared UI/Input',
   component: Input,
   parameters: {
     layout: 'padded',
@@ -63,14 +63,8 @@ export const Disabled: Story = {
 export const WithIcon: Story = {
   render: () => (
     <div className="flex flex-col gap-4 max-w-sm">
-      <Input
-        placeholder="Search projects..."
-        leftIcon={<span>🔍</span>}
-      />
-      <Input
-        placeholder="https://youtube.com/..."
-        rightIcon={<span>🔗</span>}
-      />
+      <Input placeholder="Search projects..." leftIcon={<span>🔍</span>} />
+      <Input placeholder="https://youtube.com/..." rightIcon={<span>🔗</span>} />
     </div>
   ),
 };

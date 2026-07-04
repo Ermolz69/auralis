@@ -27,3 +27,7 @@ tasks:
   storybook:
     cmds:
       - pnpm --filter desktop build-storybook
+
+  storybook-pages:
+    cmds:
+      - pnpm --filter desktop build-storybook:pages

@@ -8,4 +8,28 @@
     margin: 0;
     padding: 0;
   }
+
+  /* Custom Scrollbar for a premium desktop feel */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-muted);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    opacity: 0.5;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
 }

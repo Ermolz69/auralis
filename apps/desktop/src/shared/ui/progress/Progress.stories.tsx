@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Progress } from './Progress';
 
 const meta = {
-  title: 'UI Kit/Progress',
+  title: 'Shared UI/Progress',
   component: Progress,
   parameters: {
     layout: 'padded',

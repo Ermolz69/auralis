@@ -10,22 +10,22 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     { label, helperText, error = false, resizable = true, className = '', id, disabled, ...props },
-    ref
+    ref,
   ) => {
     const generatedId = useId();
     const textareaId = id || generatedId;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
-    
+
     // The textarea base styles.
     // If error -> border-danger
     // If focused -> ring-primary or border-primary
     const textareaBase =
       'flex w-full bg-surface border rounded-md text-text text-sm transition-all outline-none p-3 placeholder:text-muted';
-    
+
     const textareaBorder = error
-      ? 'border-danger focus:ring-1 focus:ring-danger focus:border-danger'
-      : 'border-muted hover:border-muted/80 focus:border-primary focus:ring-1 focus:ring-primary';
+      ? 'border-danger focus:ring-2 focus:ring-danger focus:ring-offset-2 focus:ring-offset-bg focus:border-danger'
+      : 'border-muted hover:border-muted/80 focus:border-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg';
 
     const textareaDisabled = disabled ? 'opacity-50 cursor-not-allowed bg-bg' : '';
     const resizeClass = resizable ? 'resize-y' : 'resize-none';
@@ -45,13 +45,11 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>
-            {helperText}
-          </span>
+          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
         )}
       </div>
     );
-  }
+  },
 );
 
 Textarea.displayName = 'Textarea';

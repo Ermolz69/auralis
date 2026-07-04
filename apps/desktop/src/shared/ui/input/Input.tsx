@@ -10,23 +10,33 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
-    { label, helperText, error = false, leftIcon, rightIcon, className = '', id, disabled, ...props },
-    ref
+    {
+      label,
+      helperText,
+      error = false,
+      leftIcon,
+      rightIcon,
+      className = '',
+      id,
+      disabled,
+      ...props
+    },
+    ref,
   ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
-    
+
     // The input base wrapper styles.
     // If error -> border-danger
     // If focused -> ring-primary or border-primary
     const inputBase =
       'flex w-full items-center bg-surface border rounded-md text-text text-sm transition-all outline-none';
-    
+
     const inputBorder = error
-      ? 'border-danger focus-within:ring-1 focus-within:ring-danger focus-within:border-danger'
-      : 'border-muted hover:border-muted/80 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary';
+      ? 'border-danger focus-within:ring-2 focus-within:ring-danger focus-within:ring-offset-2 focus-within:ring-offset-bg focus-within:border-danger'
+      : 'border-muted hover:border-muted/80 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-bg';
 
     const inputDisabled = disabled ? 'opacity-50 cursor-not-allowed bg-bg' : '';
 
@@ -59,13 +69,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>
-            {helperText}
-          </span>
+          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
         )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = 'Input';

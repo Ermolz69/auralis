@@ -88,28 +88,54 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
   );
 };
 
-export const DialogHeader = ({ className = '', children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col space-y-1.5 text-center sm:text-left mb-4 ${className}`} {...props}>
+export const DialogHeader = ({
+  className = '',
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={`flex flex-col space-y-1.5 text-center sm:text-left mb-4 ${className}`}
+    {...props}
+  >
     {children}
   </div>
 );
 
-export const DialogFooter = ({ className = '', children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6 ${className}`} {...props}>
+export const DialogFooter = ({
+  className = '',
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6 ${className}`}
+    {...props}
+  >
     {children}
   </div>
 );
 
-export const DialogTitle = ({ className = '', children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => {
+export const DialogTitle = ({
+  className = '',
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) => {
   const ctx = useContext(DialogContext);
   return (
-    <h2 id={ctx?.titleId} className={`text-lg font-semibold leading-none tracking-tight ${className}`} {...props}>
+    <h2
+      id={ctx?.titleId}
+      className={`text-lg font-semibold leading-none tracking-tight ${className}`}
+      {...props}
+    >
       {children}
     </h2>
   );
 };
 
-export const DialogDescription = ({ className = '', children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => {
+export const DialogDescription = ({
+  className = '',
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) => {
   const ctx = useContext(DialogContext);
   return (
     <p id={ctx?.descriptionId} className={`text-sm text-muted ${className}`} {...props}>
@@ -119,16 +145,20 @@ export const DialogDescription = ({ className = '', children, ...props }: React.
 };
 
 // Ready-to-use close button (usually placed top-right)
-export const DialogClose = ({ className = '', ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => {
+export const DialogClose = ({
+  className = '',
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) => {
   const ctx = useContext(DialogContext);
   return (
     <button
       type="button"
+      aria-label="Close dialog"
       onClick={ctx?.handleClose}
-      className={`absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:pointer-events-none ${className}`}
+      className={`absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:pointer-events-none ${className}`}
       {...props}
     >
-      <Icon name="X" size="sm" ariaLabel="Close dialog" />
+      <Icon name="X" size="sm" />
     </button>
   );
 };

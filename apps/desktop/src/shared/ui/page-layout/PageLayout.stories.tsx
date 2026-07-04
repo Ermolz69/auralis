@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import {
   Page,
@@ -18,7 +18,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ca
 import { Icon } from '../icon';
 
 const meta = {
-  title: 'UI Kit/PageLayout',
+  title: 'Shared UI/PageLayout',
   component: Page,
   parameters: {
     layout: 'fullscreen',
@@ -36,7 +36,9 @@ export const BasicPage: Story = {
         <PageHeader>
           <PageHeaderGroup>
             <PageTitle>Settings</PageTitle>
-            <PageDescription>Manage your account settings and set email preferences.</PageDescription>
+            <PageDescription>
+              Manage your account settings and set email preferences.
+            </PageDescription>
           </PageHeaderGroup>
         </PageHeader>
         <PageContent>
@@ -59,7 +61,9 @@ export const PageWithActions: Story = {
             <PageDescription>View and manage your AI dubbing projects.</PageDescription>
           </PageHeaderGroup>
           <PageActions>
-            <Button variant="secondary" leftIcon={<Icon name="Download" size="sm" />}>Export All</Button>
+            <Button variant="secondary" leftIcon={<Icon name="Download" size="sm" />}>
+              Export All
+            </Button>
             <Button leftIcon={<Icon name="Plus" size="sm" />}>New Project</Button>
           </PageActions>
         </PageHeader>
@@ -172,7 +176,10 @@ export const EmptyStatePage: Story = {
             </div>
             <div className="flex flex-col gap-2">
               <h2 className="text-2xl font-bold">No projects yet</h2>
-              <p className="text-muted">Create your first AI dubbing project to get started. It only takes a minute to upload a video or paste a YouTube link.</p>
+              <p className="text-muted">
+                Create your first AI dubbing project to get started. It only takes a minute to
+                upload a video or paste a YouTube link.
+              </p>
             </div>
             <Button leftIcon={<Icon name="Plus" size="sm" />}>Create Project</Button>
           </div>
