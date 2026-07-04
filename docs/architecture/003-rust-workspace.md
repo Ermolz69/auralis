@@ -15,6 +15,7 @@ The backend is organized as a Rust workspace enforcing clean architecture bounda
 
 ## Sidecars & External Processes
 
-Heavy computational tasks are offloaded to external sidecar binaries (e.g., FFmpeg, Python AI runners). 
+Heavy computational tasks are offloaded to external sidecar binaries (e.g., FFmpeg, Python AI runners).
+
 - Sidecars are **never** invoked directly from the frontend.
 - The React UI dispatches a command to the Tauri bootstrap layer, which delegates to the `application` orchestration. The `application` layer then calls the appropriate `adapter` that securely manages the sidecar execution.

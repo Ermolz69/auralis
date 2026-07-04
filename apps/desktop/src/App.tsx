@@ -8,8 +8,8 @@ function App() {
   return (
     <>
       <div className="fixed bottom-4 left-4 z-50">
-        <button 
-          onClick={() => setCurrentView(v => v === 'home' ? 'project' : 'home')}
+        <button
+          onClick={() => setCurrentView((v) => (v === 'home' ? 'project' : 'home'))}
           className="bg-surface text-muted px-3 py-1 text-xs border border-muted rounded opacity-50 hover:opacity-100 transition-opacity cursor-pointer shadow-sm hover:shadow"
         >
           Toggle View (Dev)

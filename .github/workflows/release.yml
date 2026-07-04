@@ -3,7 +3,7 @@ name: Production Release
 on:
   push:
     tags:
-      - "app-v*"
+      - 'app-v*'
 
 permissions:
   contents: write
@@ -106,7 +106,7 @@ jobs:
       # ==========================================
       # OS CODE SIGNING PLACEHOLDERS
       # ==========================================
-      
+
       # - name: Setup Windows Certs
       #   if: matrix.platform == 'windows-latest'
       #   run: echo "Import WINDOWS_CERTIFICATE here"
@@ -128,7 +128,7 @@ jobs:
           # TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Auralis ${{ github.ref_name }}"
-          releaseBody: "Draft release for Auralis. See assets for installers."
+          releaseName: 'Auralis ${{ github.ref_name }}'
+          releaseBody: 'Draft release for Auralis. See assets for installers.'
           releaseDraft: true
           prerelease: false

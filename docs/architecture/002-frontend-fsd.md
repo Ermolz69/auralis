@@ -21,6 +21,7 @@ The frontend application uses **React + Vite** and strictly adheres to the **Fea
 ## Rules for Pages
 
 Pages must remain as thin as possible. They are strictly prohibited from containing:
+
 - Business logic or complex state management.
 - Direct external API calls (these belong in features or entities).
 - Raw UI components (if they can be abstracted into widgets or features).
