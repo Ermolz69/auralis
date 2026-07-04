@@ -1,17 +1,23 @@
 version: '3'
 
 tasks:
-  all:
+  frontend:
     cmds:
-      - task: fe:typecheck
-      - task: fe:lint
-      - task: fe:test
-      - task: rs:fmt
-      - task: rs:clippy
-      - task: rs:test
-      - task: docs:check
-      - task: file-size
+      - task: fsd-boundaries
       - task: color-tokens
+      - task: file-size
+
+  docs:
+    cmds:
+      - pnpm prettier --check "**/*.md"
+
+  global:
+    cmds:
+      - task: format-check
+
+  fsd-boundaries:
+    cmds:
+      - pnpm --filter desktop fsd-boundaries
 
   file-size:
     cmds:
@@ -20,3 +26,11 @@ tasks:
   color-tokens:
     cmds:
       - node tools/scripts/check-raw-colors.mjs
+
+  format-check:
+    cmds:
+      - pnpm prettier --check "**/*.{ts,tsx,css,json,yaml,yml,md}"
+
+  format-write:
+    cmds:
+      - pnpm prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"

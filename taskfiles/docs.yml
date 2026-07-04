@@ -1,5 +1,15 @@
 version: '3'
+
 tasks:
+  all:
+    cmds:
+      - task: check
+      - task: lint
+
   check:
     cmds:
       - node tools/scripts/check-docs.mjs
+
+  lint:
+    cmds:
+      - pnpm markdownlint-cli2 "**/*.md" "#node_modules" "#target" "#dist"

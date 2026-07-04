@@ -1,13 +1,21 @@
 {
-  "name": "auralis-monorepo",
-  "version": "0.1.0",
+  "name": "auralis",
   "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=24 <25",
+    "pnpm": ">=10 <11"
   },
   "scripts": {
-    "dev": "task dev",
-    "build": "task build"
+    "dev": "pnpm --filter desktop dev",
+    "build": "pnpm --filter desktop build",
+    "typecheck": "pnpm --filter desktop typecheck",
+    "lint": "pnpm --filter desktop lint",
+    "test": "pnpm --filter desktop test"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.23.0",
+    "prettier": "^3.9.4"
   }
 }

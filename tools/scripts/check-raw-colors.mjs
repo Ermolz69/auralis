@@ -12,12 +12,13 @@ const PATTERNS = [
   { regex: /text-\[#[0-9a-fA-F]{3,8}\]/, name: 'Tailwind arbitrary text color (text-[#...])' },
   { regex: /border-\[#[0-9a-fA-F]{3,8}\]/, name: 'Tailwind arbitrary border color (border-[#...])' },
   { regex: /(color|backgroundColor|borderColor)\s*:\s*['"`]#[0-9a-fA-F]{3,8}['"`]/, name: 'Inline style with raw color (style={{ color: ... }})' },
-  { regex: /['"`]#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b['"`]/, name: 'Raw hex color string' }
+  { regex: /['"`]#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b['"`]/, name: 'Raw hex color string' },
+  { regex: /\b(rgb|rgba|hsl|hsla)\s*\(/, name: 'Raw rgb/hsl function' }
 ];
 
 function isExcluded(filePath) {
-  // Allow theme and root css files where variables are officially defined
-  if (filePath.includes('theme') || filePath.includes('index.css') || filePath.includes('global.css')) return true;
+  // Allow theme, tokens, and root css files where variables are officially defined
+  if (filePath.includes('theme') || filePath.includes('tokens') || filePath.includes('index.css') || filePath.includes('global.css') || filePath.includes('tailwind')) return true;
   return false;
 }
 

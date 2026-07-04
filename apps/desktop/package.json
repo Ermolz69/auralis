@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "fsd-boundaries": "eslint src/ --ext .ts,.tsx",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,7 +20,11 @@
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/parser": "^8.62.1",
     "@vitejs/plugin-react": "^6.0.3",
+    "eslint": "8.57.0",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^6.0.2",
     "oxlint": "^1.71.0",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",

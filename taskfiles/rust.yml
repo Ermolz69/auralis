@@ -1,6 +1,13 @@
 version: '3'
 
 tasks:
+  all:
+    cmds:
+      - task: fmt
+      - task: clippy
+      - task: check
+      - task: test
+
   fmt:
     cmds:
       - cargo fmt --all -- --check

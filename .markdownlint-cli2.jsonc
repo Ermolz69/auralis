@@ -1,0 +1,24 @@
+{
+  "config": {
+    "default": true,
+    "MD013": {
+      "line_length": 120,
+      "code_blocks": false,
+      "tables": false,
+      "headings": false
+    },
+    "MD040": false,
+    "MD033": false,
+    "MD024": {
+      "siblings_only": true
+    }
+  },
+  "ignores": [
+    "node_modules",
+    "dist",
+    "target",
+    "src-tauri/target",
+    "crates/**/target",
+    "apps/desktop/dist"
+  ]
+}

@@ -1,0 +1,10 @@
+version: '3'
+
+tasks:
+  all:
+    cmds:
+      - task: audit
+
+  audit:
+    cmds:
+      - pnpm audit

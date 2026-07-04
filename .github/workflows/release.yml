@@ -1,0 +1,138 @@
+name: Production Release
+
+on:
+  push:
+    tags:
+      - "app-v*"
+
+permissions:
+  contents: write
+
+env:
+  CI: true
+  NODE_VERSION: 24
+  PNPM_VERSION: 10
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Full Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Setup Task
+        uses: go-task/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run checks
+        run: task check
+
+  release:
+    name: Build & Release ${{ matrix.platform }}
+    needs: check
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - ubuntu-22.04
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            src-tauri -> src-tauri/target
+          cache-on-failure: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ==========================================
+      # OS CODE SIGNING PLACEHOLDERS
+      # ==========================================
+      
+      # - name: Setup Windows Certs
+      #   if: matrix.platform == 'windows-latest'
+      #   run: echo "Import WINDOWS_CERTIFICATE here"
+
+      # - name: Setup macOS Certs
+      #   if: matrix.platform == 'macos-latest'
+      #   run: echo "Import APPLE_CERTIFICATE and keychain here"
+
+      # ==========================================
+      # TAURI BUILD & RELEASE
+      # ==========================================
+
+      - name: Build Tauri app & Draft Release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TAURI UPDATER SIGNING PLACEHOLDERS
+          # TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          # TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Auralis ${{ github.ref_name }}"
+          releaseBody: "Draft release for Auralis. See assets for installers."
+          releaseDraft: true
+          prerelease: false

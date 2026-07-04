@@ -12,6 +12,9 @@ includes:
     aliases: [quality]
   docs:
     taskfile: ./taskfiles/docs.yml
+  sec:
+    taskfile: ./taskfiles/security.yml
+    aliases: [security]
 
 tasks:
   install:
@@ -23,10 +26,48 @@ tasks:
     cmds:
       - pnpm --filter desktop dev
 
+  check:frontend:
+    cmds:
+      - task: fe:all
+
+  check:rust:
+    cmds:
+      - task: rs:all
+
+  check:docs:
+    cmds:
+      - task: docs:all
+
+  check:quality:frontend:
+    cmds:
+      - task: q:frontend
+
+  check:quality:docs:
+    cmds:
+      - task: q:docs
+
+  check:quality:security:
+    cmds:
+      - task: sec:audit
+
+  check:quality:global:
+    cmds:
+      - task: q:global
+
+  check:all:
+    cmds:
+      - task: check:frontend
+      - task: check:rust
+      - task: check:docs
+      - task: check:quality:frontend
+      - task: check:quality:docs
+      - task: check:quality:security
+      - task: check:quality:global
+
   check:
     desc: Run all checks
     cmds:
-      - task: q:all
+      - task: check:all
 
   ci:
     desc: CI entrypoint

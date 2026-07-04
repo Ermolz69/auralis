@@ -1,0 +1,14 @@
+node_modules/
+dist/
+target/
+src-tauri/target/
+crates/**/target/
+apps/desktop/dist/
+
+# generated and lock files
+*.generated.*
+pnpm-lock.yaml
+Cargo.lock
+
+# other
+.DS_Store
