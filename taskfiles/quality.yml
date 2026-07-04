@@ -1,0 +1,22 @@
+version: '3'
+
+tasks:
+  all:
+    cmds:
+      - task: fe:typecheck
+      - task: fe:lint
+      - task: fe:test
+      - task: rs:fmt
+      - task: rs:clippy
+      - task: rs:test
+      - task: docs:check
+      - task: file-size
+      - task: color-tokens
+
+  file-size:
+    cmds:
+      - node tools/scripts/check-file-size.mjs
+
+  color-tokens:
+    cmds:
+      - node tools/scripts/check-raw-colors.mjs

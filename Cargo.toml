@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+  "src-tauri",
+  "crates/app-shell",
+  "crates/application",
+  "crates/domain",
+  "crates/ports",
+  "crates/adapters-tauri",
+  "crates/adapters-storage",
+  "crates/adapters-ytdlp",
+  "crates/adapters-ffmpeg",
+  "crates/adapters-model",
+  "crates/jobs",
+  "crates/common"
+]
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

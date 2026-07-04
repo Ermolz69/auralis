@@ -1,0 +1,11 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    margin: 0;
+    padding: 0;
+  }
+}

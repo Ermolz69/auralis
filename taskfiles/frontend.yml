@@ -1,0 +1,22 @@
+version: '3'
+
+tasks:
+  lint:
+    cmds:
+      - pnpm --filter desktop lint
+
+  typecheck:
+    cmds:
+      - pnpm --filter desktop typecheck
+
+  test:
+    cmds:
+      - pnpm --filter desktop test
+
+  build:
+    cmds:
+      - pnpm --filter desktop build
+
+  storybook:
+    cmds:
+      - pnpm --filter desktop build-storybook

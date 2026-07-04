@@ -1,0 +1,5 @@
+version: '3'
+tasks:
+  check:
+    cmds:
+      - node tools/scripts/check-docs.mjs

@@ -1,0 +1,35 @@
+version: '3'
+
+includes:
+  fe:
+    taskfile: ./taskfiles/frontend.yml
+    aliases: [frontend]
+  rs:
+    taskfile: ./taskfiles/rust.yml
+    aliases: [rust]
+  q:
+    taskfile: ./taskfiles/quality.yml
+    aliases: [quality]
+  docs:
+    taskfile: ./taskfiles/docs.yml
+
+tasks:
+  install:
+    cmds:
+      - pnpm install
+      - cargo fetch
+
+  dev:
+    cmds:
+      - pnpm --filter desktop dev
+
+  check:
+    desc: Run all checks
+    cmds:
+      - task: q:all
+
+  ci:
+    desc: CI entrypoint
+    cmds:
+      - task: install
+      - task: check

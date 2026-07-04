@@ -1,0 +1,4 @@
+# Tauri specific build files
+target/
+gen/
+.tauri/
