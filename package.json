@@ -14,7 +14,9 @@
     "typecheck": "pnpm --filter desktop typecheck",
     "lint": "pnpm --filter desktop lint",
     "test": "pnpm --filter desktop test",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "storybook": "pnpm --filter desktop storybook",
+    "build-storybook": "pnpm --filter desktop build-storybook"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

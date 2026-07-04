@@ -1,0 +1,33 @@
+feat(ui): implement core design system components and Storybook integration
+
+This commit introduces a comprehensive, premium-grade UI Kit for the application, built on top of the established design tokens in `theme.css`. The implementation strictly adheres to the Feature-Sliced Design (FSD) architecture within the `shared/ui` layer.
+
+Detailed changes:
+
+1. Foundation & Tooling:
+   - Configured Storybook for component-driven development and visual testing.
+   - Added architectural documentation for Storybook conventions (`005-storybook-conventions.md`).
+   - Integrated `lucide-react` for standardized icon usage, eliminating inline SVGs.
+   - Updated `tsconfig.app.json` and ESLint rules to support `.stories.tsx` files.
+   - Added custom keyframe animations (`dialog-in`, `toast-slide-in`) and semantic token aliases (`accent`, `success`, `warning`, `danger`) to `theme.css`.
+
+2. Base Form Controls:
+   - `Button`: Multiple variants (primary, secondary, danger, ghost), sizes, and icon support.
+   - `Input` & `Textarea`: Standardized inputs with error states, helper texts, and label integration.
+   - `Select`: Native-feeling custom select with consistent borders and semantic focus rings.
+
+3. Feedback & Data Display:
+   - `Badge`: Status indicators (success, warning, danger, default) for project states.
+   - `Progress`: Progress bars with customizable states and an indeterminate animation for background tasks.
+   - `Icon`: A wrapper around `lucide-react` enforcing consistent sizes and colors.
+
+4. Layout & Containers:
+   - `Card`: Compound layout component (`CardHeader`, `CardTitle`, `CardContent`, etc.) for metrics and settings.
+   - `PageLayout`: Robust structural components (`Page`, `PageContainer`, `PageSidebar`) to eliminate ad-hoc CSS positioning across screens.
+   - `Tabs`: Accessible, keyboard-navigable tabs with controlled and uncontrolled patterns.
+
+5. Overlays & Notifications:
+   - `Dialog`: Accessible modal implementation using native HTML `<dialog>` with backdrop blur, focus trapping, and ESC to close.
+   - `Toast`: Lightweight, event-driven notification system with sliding animations and programmatic API (`toast.success()`, etc.).
+
+All components feature dedicated Storybook files with extensive testing scenarios (states, variants, accessibility) and pass strict TypeScript and ESLint checks.

@@ -2,7 +2,7 @@ module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
   plugins: ['boundaries'],
-  extends: ['plugin:boundaries/recommended'],
+  extends: ['plugin:boundaries/recommended', 'plugin:storybook/recommended'],
   settings: {
     'import/resolver': {
       typescript: {

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "identifier": "com.auralis.app",
   "build": {
-    "beforeDevCommand": "pnpm run dev",
+    "beforeDevCommand": "pnpm run frontend:dev",
     "beforeBuildCommand": "pnpm run build",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../apps/desktop/dist"

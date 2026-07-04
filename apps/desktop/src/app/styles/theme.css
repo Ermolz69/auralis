@@ -4,5 +4,26 @@
   --color-text: #f4f4f5;
   --color-muted: #a1a1aa;
   --color-primary: #7c3aed;
+  --color-accent: #3b82f6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
   --color-danger: #ef4444;
+
+  --animate-progress-indeterminate: progress-indeterminate 1.5s infinite linear;
+  @keyframes progress-indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  --animate-dialog-in: dialog-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  @keyframes dialog-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  --animate-toast-slide-in: toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  @keyframes toast-slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
 }
