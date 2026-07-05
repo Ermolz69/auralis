@@ -1,0 +1,163 @@
+use chrono::{DateTime, Utc};
+
+use crate::dubbing::DubbingPipelineStage;
+use crate::error::DomainError;
+use crate::project::ProjectId;
+
+use super::{JobError, JobId, JobKind, JobProgress, JobStatus};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Job {
+    id: JobId,
+    project_id: ProjectId,
+    kind: JobKind,
+    status: JobStatus,
+    stage: Option<DubbingPipelineStage>,
+    progress: JobProgress,
+    error: Option<JobError>,
+    created_at: DateTime<Utc>,
+    started_at: Option<DateTime<Utc>>,
+    finished_at: Option<DateTime<Utc>>,
+}
+
+impl Job {
+    pub fn new(project_id: ProjectId, kind: JobKind) -> Self {
+        Self {
+            id: JobId::new(),
+            project_id,
+            kind,
+            status: JobStatus::Pending,
+            stage: None,
+            progress: JobProgress::initializing(),
+            error: None,
+            created_at: Utc::now(),
+            started_at: None,
+            finished_at: None,
+        }
+    }
+
+    pub fn id(&self) -> &JobId {
+        &self.id
+    }
+
+    pub fn project_id(&self) -> &ProjectId {
+        &self.project_id
+    }
+
+    pub fn kind(&self) -> &JobKind {
+        &self.kind
+    }
+
+    pub fn status(&self) -> &JobStatus {
+        &self.status
+    }
+
+    pub fn stage(&self) -> Option<&DubbingPipelineStage> {
+        self.stage.as_ref()
+    }
+
+    pub fn progress(&self) -> &JobProgress {
+        &self.progress
+    }
+
+    pub fn error(&self) -> Option<&JobError> {
+        self.error.as_ref()
+    }
+
+    pub fn created_at(&self) -> &DateTime<Utc> {
+        &self.created_at
+    }
+
+    pub fn started_at(&self) -> Option<&DateTime<Utc>> {
+        self.started_at.as_ref()
+    }
+
+    pub fn finished_at(&self) -> Option<&DateTime<Utc>> {
+        self.finished_at.as_ref()
+    }
+
+    pub fn start(&mut self) -> Result<(), DomainError> {
+        if self.status != JobStatus::Pending {
+            return Err(DomainError::InvalidStateTransition {
+                from: format!("{:?}", self.status),
+                to: "Running".to_string(),
+            });
+        }
+
+        self.status = JobStatus::Running;
+        self.started_at = Some(Utc::now());
+        self.progress.message = "Job started".to_string();
+
+        Ok(())
+    }
+
+    pub fn update_progress(&mut self, progress: JobProgress) -> Result<(), DomainError> {
+        if self.status != JobStatus::Running {
+            return Err(DomainError::ValidationError(
+                "Can only update progress of a running job".to_string(),
+            ));
+        }
+
+        progress.validate()?;
+        self.progress = progress;
+
+        Ok(())
+    }
+
+    pub fn update_stage(&mut self, stage: DubbingPipelineStage) -> Result<(), DomainError> {
+        if self.status != JobStatus::Running {
+            return Err(DomainError::ValidationError(
+                "Can only update stage of a running job".to_string(),
+            ));
+        }
+
+        self.stage = Some(stage);
+
+        Ok(())
+    }
+
+    pub fn mark_completed(&mut self) -> Result<(), DomainError> {
+        if self.status != JobStatus::Running {
+            return Err(DomainError::InvalidStateTransition {
+                from: format!("{:?}", self.status),
+                to: "Completed".to_string(),
+            });
+        }
+
+        self.status = JobStatus::Completed;
+        self.progress.percent = 100;
+        self.progress.message = "Job completed successfully".to_string();
+        self.finished_at = Some(Utc::now());
+
+        Ok(())
+    }
+
+    pub fn mark_failed(&mut self, error: JobError) -> Result<(), DomainError> {
+        if matches!(self.status, JobStatus::Completed | JobStatus::Cancelled) {
+            return Err(DomainError::InvalidStateTransition {
+                from: format!("{:?}", self.status),
+                to: "Failed".to_string(),
+            });
+        }
+
+        self.status = JobStatus::Failed;
+        self.error = Some(error);
+        self.finished_at = Some(Utc::now());
+
+        Ok(())
+    }
+
+    pub fn cancel(&mut self) -> Result<(), DomainError> {
+        if matches!(self.status, JobStatus::Completed | JobStatus::Failed) {
+            return Err(DomainError::InvalidStateTransition {
+                from: format!("{:?}", self.status),
+                to: "Cancelled".to_string(),
+            });
+        }
+
+        self.status = JobStatus::Cancelled;
+        self.finished_at = Some(Utc::now());
+
+        Ok(())
+    }
+}

@@ -1,5 +1,5 @@
-#[derive(Debug, Clone)]
-pub struct DubbingConfig {
-    pub target_language: String,
-    pub voice_id: String,
-}
+mod config;
+mod stage;
+
+pub use config::DubbingConfig;
+pub use stage::DubbingPipelineStage;

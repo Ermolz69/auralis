@@ -74,6 +74,24 @@ version = "0.1.0"
 [[package]]
 name = "application"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "domain",
+ "ports",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "async-trait"
+version = "0.1.89"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
 
 [[package]]
 name = "atk"
@@ -356,8 +374,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link 0.2.1",
 ]
 
@@ -677,6 +697,11 @@ dependencies = [
 [[package]]
 name = "domain"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "thiserror 2.0.18",
+ "uuid",
+]
 
 [[package]]
 name = "dpi"
@@ -2229,6 +2254,11 @@ dependencies = [
 [[package]]
 name = "ports"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "domain",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "potential_utf"
@@ -3312,7 +3342,19 @@ dependencies = [
  "mio",
  "pin-project-lite",
  "socket2",
+ "tokio-macros",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "385a6cb71ab9ab790c5fe8d67f1645e6c450a7ce006a33de03daa956cf70a496"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
 ]
 
 [[package]]

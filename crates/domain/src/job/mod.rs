@@ -1,18 +1,18 @@
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct JobId(pub String);
+mod entity;
+mod error;
+mod events;
+mod id;
+mod kind;
+mod progress;
+mod status;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum JobStatus {
-    Pending,
-    Running,
-    Completed,
-    Failed,
-    Cancelled,
-}
+pub use entity::Job;
+pub use error::JobError;
+pub use events::JobEvent;
+pub use id::JobId;
+pub use kind::JobKind;
+pub use progress::JobProgress;
+pub use status::JobStatus;
 
-#[derive(Debug, Clone)]
-pub struct Job {
-    pub id: JobId,
-    pub project_id: crate::project::ProjectId,
-    pub status: JobStatus,
-}
+#[cfg(test)]
+mod tests;
