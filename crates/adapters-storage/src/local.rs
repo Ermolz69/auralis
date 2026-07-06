@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use async_trait::async_trait;
+use std::path::PathBuf;
 
 use domain::media::{Artifact, ArtifactKind};
 use domain::project::ProjectId;
@@ -30,7 +30,12 @@ impl ArtifactStore for LocalArtifactStore {
         extension: &str,
     ) -> Result<PathBuf, PortError> {
         let dir = self.project_dir(project_id).await?;
-        let filename = format!("{:?}_{}.{}", kind, chrono::Utc::now().timestamp_millis(), extension);
+        let filename = format!(
+            "{:?}_{}.{}",
+            kind,
+            chrono::Utc::now().timestamp_millis(),
+            extension
+        );
         Ok(dir.join(filename))
     }
 
@@ -42,13 +47,15 @@ impl ArtifactStore for LocalArtifactStore {
         Ok(())
     }
 
-    async fn resolve_artifact(
-        &self,
-        artifact: &Artifact,
-    ) -> Result<PathBuf, PortError> {
+    async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError> {
         match artifact {
-            Artifact { location: domain::media::ArtifactLocation::LocalPath(path), .. } => Ok(std::path::PathBuf::from(path)),
-            _ => Err(PortError::Unexpected { message: "Artifact is not a local path".to_string() }),
+            Artifact {
+                location: domain::media::ArtifactLocation::LocalPath(path),
+                ..
+            } => Ok(std::path::PathBuf::from(path)),
+            _ => Err(PortError::Unexpected {
+                message: "Artifact is not a local path".to_string(),
+            }),
         }
     }
 
@@ -64,7 +71,9 @@ impl ArtifactStore for LocalArtifactStore {
         Ok(Artifact {
             id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
             kind,
-            location: domain::media::ArtifactLocation::LocalPath(path.to_string_lossy().to_string()),
+            location: domain::media::ArtifactLocation::LocalPath(
+                path.to_string_lossy().to_string(),
+            ),
         })
     }
 }

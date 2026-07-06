@@ -1,11 +1,11 @@
-use thiserror::Error;
 use crate::id::JobId;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum JobError {
     #[error("Job not found: {0}")]
     NotFound(JobId),
-    
+
     #[error("Invalid state transition")]
     InvalidState,
 

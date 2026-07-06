@@ -27,12 +27,12 @@ impl JobProgress {
             ));
         }
 
-        if let (Some(processed), Some(total)) = (self.processed_items, self.total_items) {
-            if processed > total {
-                return Err(DomainError::ValidationError(
-                    "Processed items cannot be greater than total items".to_string(),
-                ));
-            }
+        if let (Some(processed), Some(total)) = (self.processed_items, self.total_items)
+            && processed > total
+        {
+            return Err(DomainError::ValidationError(
+                "Processed items cannot be greater than total items".to_string(),
+            ));
         }
 
         Ok(())

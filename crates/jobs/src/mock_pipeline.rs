@@ -1,8 +1,8 @@
-use std::time::Duration;
 use chrono::Utc;
+use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::cancellation::{CancelHandle, CancellationToken};
+use crate::cancellation::CancelHandle;
 use crate::id::JobId;
 use crate::manager::JobManager;
 use crate::progress::JobProgress;

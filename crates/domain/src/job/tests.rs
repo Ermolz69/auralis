@@ -25,7 +25,10 @@ fn test_job_transitions() {
     assert!(job.update_progress(progress).is_ok());
 
     // Update stage
-    assert!(job.update_stage(DubbingPipelineStage::TranslateTranscript).is_ok());
+    assert!(
+        job.update_stage(DubbingPipelineStage::TranslateTranscript)
+            .is_ok()
+    );
 
     // Complete job
     assert!(job.mark_completed().is_ok());
@@ -44,11 +47,7 @@ fn test_job_failure() {
 
     job.start().unwrap();
 
-    let error = JobError::new(
-        "ERR_DOWNLOAD",
-        "Failed to download media",
-        true,
-    );
+    let error = JobError::new("ERR_DOWNLOAD", "Failed to download media", true);
 
     assert!(job.mark_failed(error).is_ok());
     assert_eq!(job.status(), &JobStatus::Failed);

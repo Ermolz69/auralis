@@ -1,7 +1,7 @@
 use domain::project::{Project, ProjectId};
-use ports::repository::ProjectRepository;
-use jobs::manager::JobManager;
 use jobs::job::Job as JobDto;
+use jobs::manager::JobManager;
+use ports::repository::ProjectRepository;
 
 use crate::error::ApplicationError;
 
@@ -43,7 +43,10 @@ impl<R: ProjectRepository> StartMockPipelineUseCase<R> {
         self.project_repo.save(&project).await?;
 
         // Launch job asynchronously via JobManager
-        let job_id = self.job_manager.start_mock_dubbing_job(project.title().to_string(), Some(project.id().to_string())).await;
+        let job_id = self
+            .job_manager
+            .start_mock_dubbing_job(project.title().to_string(), Some(project.id().to_string()))
+            .await;
         let job = self.job_manager.get_job(&job_id).await.unwrap();
 
         Ok(StartMockPipelineResponse { project, job })
@@ -54,30 +57,34 @@ impl<R: ProjectRepository> StartMockPipelineUseCase<R> {
 mod tests {
     use super::*;
     use adapters_storage::memory::InMemoryProjectRepository;
-    use domain::project::ProjectStatus;
+
     use jobs::status::JobStatus;
 
     #[tokio::test]
     async fn test_start_mock_pipeline_success() {
         let project_repo = InMemoryProjectRepository::new();
         let job_manager = JobManager::new(None);
-        
+
         let mut project = Project::new("Test".to_string());
-        let source = domain::media::MediaSource::RemoteUrl { url: "http://example.com".to_string() };
+        let source = domain::media::MediaSource::RemoteUrl {
+            url: "http://example.com".to_string(),
+        };
         project.import_source(source, None).unwrap();
         project.mark_ready_for_processing().unwrap();
 
         project_repo.create(project.clone()).await.unwrap();
 
         let use_case = StartMockPipelineUseCase::new(project_repo.clone(), job_manager.clone());
-        
+
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
         };
 
         let response = use_case.execute(request).await.unwrap();
-        
+
         // Ensure job is enqueued or running
-        assert!(response.job.status == JobStatus::Queued || response.job.status == JobStatus::Running);
+        assert!(
+            response.job.status == JobStatus::Queued || response.job.status == JobStatus::Running
+        );
     }
 }

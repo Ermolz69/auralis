@@ -52,7 +52,6 @@ impl<R: ProjectRepository, V: VideoSourcePort> ImportVideoSourceUseCase<R, V> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use adapters_storage::memory::InMemoryProjectRepository;
     use adapters_ytdlp::mock::MockVideoSourceAdapter;
     use domain::project::{Project, ProjectStatus};
@@ -66,31 +65,35 @@ mod tests {
         repo.create(project).await.unwrap();
 
         let source_port = MockVideoSourceAdapter::new();
-        let use_case = ImportVideoSourceUseCase::new(Arc::new(repo.clone()), Arc::new(source_port));
+        let use_case = ImportVideoSourceUseCase::new(repo.clone(), source_port);
 
         let request = ImportVideoSourceRequest {
             project_id: project_id.clone(),
-            source: MediaSource::RemoteUrl { url: "https://youtube.com/watch?v=123".to_string() },
+            source: MediaSource::RemoteUrl {
+                url: "https://youtube.com/watch?v=123".to_string(),
+            },
         };
 
         let response = use_case.execute(request).await.unwrap();
-        
+
         assert_eq!(response.project.id(), &project_id);
-        
+
         // Verify it was updated in repo
         let updated = repo.get(&project_id).await.unwrap().unwrap();
-        assert!(updated.media_source().is_some());
+        assert!(updated.source().is_some());
     }
 
     #[tokio::test]
     async fn test_import_source_not_found() {
         let repo = InMemoryProjectRepository::new();
-        let port = MockVideoSourcePort::new();
+        let port = MockVideoSourceAdapter::new();
         let use_case = ImportVideoSourceUseCase::new(repo, port);
-        
+
         let request = ImportVideoSourceRequest {
             project_id: domain::project::ProjectId::new(),
-            source: MediaSource::RemoteUrl { url: "http://example.com/video.mp4".to_string() },
+            source: MediaSource::RemoteUrl {
+                url: "http://example.com/video.mp4".to_string(),
+            },
         };
 
         let err = use_case.execute(request).await.unwrap_err();
@@ -100,21 +103,23 @@ mod tests {
     #[tokio::test]
     async fn test_import_source_validation_fails() {
         let repo = InMemoryProjectRepository::new();
-        let port = MockVideoSourcePort::failing();
-        
+        let port = MockVideoSourceAdapter::failing();
+
         let project = Project::new("Test".to_string());
         repo.create(project.clone()).await.unwrap();
 
         let use_case = ImportVideoSourceUseCase::new(repo.clone(), port);
-        
+
         let request = ImportVideoSourceRequest {
             project_id: project.id().clone(),
-            source: MediaSource::RemoteUrl { url: "http://example.com/video.mp4".to_string() },
+            source: MediaSource::RemoteUrl {
+                url: "http://example.com/video.mp4".to_string(),
+            },
         };
 
         let err = use_case.execute(request).await.unwrap_err();
         assert!(matches!(err, ApplicationError::Port(_)));
-        
+
         // Ensure not saved
         let saved = repo.get(project.id()).await.unwrap().unwrap();
         assert_eq!(*saved.status(), ProjectStatus::Draft);

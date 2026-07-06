@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use std::path::PathBuf;
 
+use crate::error::PortError;
 use domain::media::{Artifact, ArtifactKind};
 use domain::project::ProjectId;
-use crate::error::PortError;
 
 #[async_trait]
 pub trait ArtifactStore: Send + Sync {
@@ -22,10 +22,7 @@ pub trait ArtifactStore: Send + Sync {
         artifact: &Artifact,
     ) -> Result<(), PortError>;
 
-    async fn resolve_artifact(
-        &self,
-        artifact: &Artifact,
-    ) -> Result<PathBuf, PortError>;
+    async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError>;
 
     async fn write_small_artifact(
         &self,

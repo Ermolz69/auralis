@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 
+use domain::dubbing::DubbingConfig;
 use domain::media::{Artifact, SynthesizedSegment};
 use domain::transcript::Transcript;
-use domain::dubbing::DubbingConfig;
 
 use crate::error::PortError;
 

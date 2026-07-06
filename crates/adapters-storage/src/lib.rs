@@ -1,2 +1,2 @@
-pub mod memory;
 pub mod local;
+pub mod memory;

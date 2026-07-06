@@ -1,5 +1,5 @@
 use crate::dubbing::DubbingPipelineStage;
-use crate::job::{Job, JobId, JobProgress, JobError};
+use crate::job::{Job, JobError, JobId, JobProgress};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum JobEvent {

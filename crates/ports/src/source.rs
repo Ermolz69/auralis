@@ -15,10 +15,7 @@ pub struct DownloadMediaRequest {
 pub trait VideoSourcePort: Send + Sync {
     async fn validate_source(&self, source: &MediaSource) -> Result<(), PortError>;
     async fn fetch_metadata(&self, source: &MediaSource) -> Result<MediaMetadata, PortError>;
-    async fn download_media(
-        &self,
-        request: DownloadMediaRequest,
-    ) -> Result<Artifact, PortError>;
+    async fn download_media(&self, request: DownloadMediaRequest) -> Result<Artifact, PortError>;
 }
 
 #[async_trait]

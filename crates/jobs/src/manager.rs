@@ -47,13 +47,15 @@ impl JobManager {
         let jobs = self.jobs.read().await;
         let mut list: Vec<Job> = jobs.values().cloned().collect();
         // Sort by creation time descending (newest first)
-        list.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        list.sort_by_key(|b| std::cmp::Reverse(b.created_at));
         list
     }
 
     pub async fn cancel_job(&self, id: &JobId) -> Result<Job, JobError> {
         let mut jobs = self.jobs.write().await;
-        let job = jobs.get_mut(id).ok_or_else(|| JobError::NotFound(id.clone()))?;
+        let job = jobs
+            .get_mut(id)
+            .ok_or_else(|| JobError::NotFound(id.clone()))?;
 
         match job.status {
             JobStatus::Queued | JobStatus::Running => {
@@ -68,7 +70,7 @@ impl JobManager {
             }
             _ => {}
         }
-        
+
         Ok(job.clone())
     }
 
@@ -77,7 +79,7 @@ impl JobManager {
         jobs.insert(updated_job.id.clone(), updated_job.clone());
         self.emit_job_event(&updated_job);
     }
-    
+
     pub async fn get_job(&self, id: &JobId) -> Option<Job> {
         let jobs = self.jobs.read().await;
         jobs.get(id).cloned()

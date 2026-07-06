@@ -1,16 +1,20 @@
-use std::sync::Arc;
-use tauri::{Emitter, Manager, State};
-use jobs::manager::JobManager;
-use jobs::id::JobId;
-use jobs::job::Job;
-use serde::Serialize;
-use domain::project::Project;
-use application::usecases::project::create::{CreateProjectRequest, CreateProjectUseCase};
-use application::usecases::project::import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase};
-use application::usecases::pipeline::start_mock::{StartMockPipelineRequest, StartMockPipelineUseCase};
 use adapters_storage::memory::InMemoryProjectRepository;
 use adapters_ytdlp::mock::MockVideoSourceAdapter;
+use application::usecases::pipeline::start_mock::{
+    StartMockPipelineRequest, StartMockPipelineUseCase,
+};
+use application::usecases::project::create::{CreateProjectRequest, CreateProjectUseCase};
+use application::usecases::project::import_source::{
+    ImportVideoSourceRequest, ImportVideoSourceUseCase,
+};
 use domain::media::MediaSource;
+use domain::project::Project;
+use jobs::id::JobId;
+use jobs::job::Job;
+use jobs::manager::JobManager;
+use serde::Serialize;
+use std::sync::Arc;
+use tauri::{Emitter, Manager, State};
 
 #[derive(Serialize)]
 pub struct ProjectDto {
@@ -44,19 +48,35 @@ async fn create_project_from_youtube_cmd(
     // 1. Create Project
     let create_use_case = CreateProjectUseCase::new(project_repo.inner().clone());
     let req = CreateProjectRequest { title: url.clone() };
-    let create_res = create_use_case.execute(req).await.map_err(|e| format!("{:?}", e))?;
+    let create_res = create_use_case
+        .execute(req)
+        .await
+        .map_err(|e| format!("{:?}", e))?;
 
     // 2. Import Video Source
     let mock_video_source = MockVideoSourceAdapter::new();
-    let import_use_case = ImportVideoSourceUseCase::new(project_repo.inner().clone(), mock_video_source);
+    let import_use_case =
+        ImportVideoSourceUseCase::new(project_repo.inner().clone(), mock_video_source);
     let source = MediaSource::RemoteUrl { url };
-    let req2 = ImportVideoSourceRequest { project_id: create_res.project.id().clone(), source };
-    let import_res = import_use_case.execute(req2).await.map_err(|e| format!("{:?}", e))?;
+    let req2 = ImportVideoSourceRequest {
+        project_id: create_res.project.id().clone(),
+        source,
+    };
+    let import_res = import_use_case
+        .execute(req2)
+        .await
+        .map_err(|e| format!("{:?}", e))?;
 
     // 3. Start Mock Pipeline
-    let pipeline_use_case = StartMockPipelineUseCase::new(project_repo.inner().clone(), state.inner().clone());
-    let req3 = StartMockPipelineRequest { project_id: import_res.project.id().clone() };
-    let response = pipeline_use_case.execute(req3).await.map_err(|e| format!("{:?}", e))?;
+    let pipeline_use_case =
+        StartMockPipelineUseCase::new(project_repo.inner().clone(), state.inner().clone());
+    let req3 = StartMockPipelineRequest {
+        project_id: import_res.project.id().clone(),
+    };
+    let response = pipeline_use_case
+        .execute(req3)
+        .await
+        .map_err(|e| format!("{:?}", e))?;
 
     Ok(CreateProjectResponse {
         project: ProjectDto::from(&response.project),
@@ -120,7 +140,10 @@ async fn start_mock_dubbing_job_cmd(
     state: State<'_, JobManager>,
 ) -> Result<Job, String> {
     let job_id = state.start_mock_dubbing_job(input, None).await;
-    state.get_job(&job_id).await.ok_or_else(|| "Failed to retrieve job".to_string())
+    state
+        .get_job(&job_id)
+        .await
+        .ok_or_else(|| "Failed to retrieve job".to_string())
 }
 
 #[tauri::command]
@@ -139,21 +162,24 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let app_handle = app.handle().clone();
-            
+
             let app_handle_clone = app_handle.clone();
             let emitter = Arc::new(move |event: jobs::event::JobEvent| {
                 if event.status == jobs::status::JobStatus::Completed {
                     if let Some(project_id) = &event.project_id {
-                        let _ = app_handle_clone.emit("transcript-ready", serde_json::json!({
-                            "projectId": project_id,
-                            "jobId": event.job_id,
-                        }));
+                        let _ = app_handle_clone.emit(
+                            "transcript-ready",
+                            serde_json::json!({
+                                "projectId": project_id,
+                                "jobId": event.job_id,
+                            }),
+                        );
                     }
                 }
                 let _ = app_handle_clone.emit("job-event", event);
             });
             let job_manager = JobManager::new(Some(emitter));
-            
+
             let project_repo = InMemoryProjectRepository::new();
 
             app.manage(job_manager);
@@ -163,7 +189,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             create_project_from_youtube_cmd,
             get_transcript_cmd,
-            run_dubbing_cmd, 
+            run_dubbing_cmd,
             health_check,
             start_mock_dubbing_job_cmd,
             list_jobs_cmd,

@@ -6,11 +6,7 @@ pub struct JobError {
 }
 
 impl JobError {
-    pub fn new(
-        code: impl Into<String>,
-        message: impl Into<String>,
-        recoverable: bool,
-    ) -> Self {
+    pub fn new(code: impl Into<String>, message: impl Into<String>, recoverable: bool) -> Self {
         Self {
             code: code.into(),
             message: message.into(),

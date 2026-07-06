@@ -1,6 +1,6 @@
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use async_trait::async_trait;
 
 use domain::job::{Job, JobId};
 use domain::project::{Project, ProjectId};
@@ -97,11 +97,19 @@ impl JobRepository for InMemoryJobRepository {
 
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Job>, PortError> {
         let lock = self.jobs.lock().unwrap();
-        Ok(lock.values().filter(|j| j.project_id() == project_id).cloned().collect())
+        Ok(lock
+            .values()
+            .filter(|j| j.project_id() == project_id)
+            .cloned()
+            .collect())
     }
 
     async fn list_active(&self) -> Result<Vec<Job>, PortError> {
         let lock = self.jobs.lock().unwrap();
-        Ok(lock.values().filter(|j| j.status() == &domain::job::JobStatus::Running).cloned().collect())
+        Ok(lock
+            .values()
+            .filter(|j| j.status() == &domain::job::JobStatus::Running)
+            .cloned()
+            .collect())
     }
 }

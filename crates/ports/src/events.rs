@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
-use domain::job::JobEvent;
 use crate::error::PortError;
+use domain::job::JobEvent;
 
 #[async_trait]
 pub trait JobEventPublisher: Send + Sync {

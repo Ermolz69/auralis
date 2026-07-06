@@ -7,6 +7,12 @@ use ports::error::PortError;
 
 pub struct MockAsrEngineAdapter;
 
+impl Default for MockAsrEngineAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockAsrEngineAdapter {
     pub fn new() -> Self {
         Self
@@ -48,6 +54,12 @@ impl AsrEnginePort for MockAsrEngineAdapter {
 
 pub struct MockTtsEngineAdapter;
 
+impl Default for MockTtsEngineAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockTtsEngineAdapter {
     pub fn new() -> Self {
         Self
@@ -62,13 +74,17 @@ impl TtsEnginePort for MockTtsEngineAdapter {
     ) -> Result<Vec<SynthesizedSegment>, PortError> {
         let mut segments = Vec::new();
         for segment in request.transcript.segments {
-            let path = request.target_dir.join(format!("mock_tts_{}.wav", segment.id.0));
+            let path = request
+                .target_dir
+                .join(format!("mock_tts_{}.wav", segment.id.0));
             segments.push(SynthesizedSegment {
                 segment_id: segment.id,
                 audio_artifact: Artifact {
                     id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
                     kind: ArtifactKind::GeneratedSpeechSegment,
-                    location: domain::media::ArtifactLocation::LocalPath(path.to_string_lossy().to_string()),
+                    location: domain::media::ArtifactLocation::LocalPath(
+                        path.to_string_lossy().to_string(),
+                    ),
                 },
                 duration_ms: Some(segment.end_ms - segment.start_ms),
             });

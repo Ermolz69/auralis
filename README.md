@@ -14,6 +14,8 @@
 
 ```bash
 task install
+task setup:media-tools
+task media:doctor
 task dev
 task check
 ```

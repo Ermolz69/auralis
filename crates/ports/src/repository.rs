@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 
+use crate::error::PortError;
 use domain::job::{Job, JobId};
 use domain::project::{Project, ProjectId};
-use crate::error::PortError;
 
 #[async_trait]
 pub trait ProjectRepository: Send + Sync {
