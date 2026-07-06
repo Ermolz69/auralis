@@ -125,6 +125,64 @@ impl VideoSourcePort for YtDlpAdapter {
     }
 }
 
+use super::parser::parse_subtitle_tracks;
+use domain::media::{ArtifactKind, ArtifactLocation, SubtitleTrack};
+use ports::source::SubtitleSourcePort;
+
+#[async_trait]
+impl SubtitleSourcePort for YtDlpAdapter {
+    async fn list_subtitles(&self, source: &MediaSource) -> Result<Vec<SubtitleTrack>, PortError> {
+        self.validate_source(source).await?;
+
+        let url = match source {
+            MediaSource::YoutubeUrl { url } => url,
+            MediaSource::RemoteUrl { url } => url,
+            MediaSource::LocalFile { .. } => {
+                return Err(PortError::InvalidSource {
+                    message: "yt-dlp subtitles only support URLs".to_string(),
+                });
+            }
+        };
+
+        let json = run_ytdlp_dump_json(&self.candidates, url, self.timeout_ms).await?;
+        let value: serde_json::Value =
+            serde_json::from_str(&json).map_err(super::error::YtDlpError::ParseFailed)?;
+
+        Ok(parse_subtitle_tracks(&value))
+    }
+
+    async fn download_subtitle(
+        &self,
+        source: &MediaSource,
+        track: &SubtitleTrack,
+        target_path: &std::path::Path,
+    ) -> Result<domain::media::Artifact, PortError> {
+        self.validate_source(source).await?;
+
+        let url = match source {
+            MediaSource::YoutubeUrl { url } => url,
+            MediaSource::RemoteUrl { url } => url,
+            MediaSource::LocalFile { .. } => unreachable!(),
+        };
+
+        let path = super::command::run_ytdlp_download_subtitle(
+            &self.candidates,
+            url,
+            target_path,
+            &track.language,
+            track.format.as_deref().unwrap_or("vtt"),
+            track.is_auto_generated,
+            self.timeout_ms,
+        )
+        .await?;
+
+        Ok(domain::media::Artifact {
+            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            kind: ArtifactKind::OriginalSubtitle,
+            location: ArtifactLocation::LocalPath(path.to_string_lossy().to_string()),
+        })
+    }
+}
 fn build_output_template(filename_hint: Option<&str>) -> String {
     if let Some(hint) = filename_hint {
         let sanitized = sanitize_filename(hint);

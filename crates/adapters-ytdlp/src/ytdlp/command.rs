@@ -137,6 +137,113 @@ pub fn extract_final_filepath_from_stdout(stdout: &str) -> Option<String> {
         .map(|l| l.trim().to_string())
 }
 
+pub async fn run_ytdlp_download_subtitle(
+    candidates: &[PathBuf],
+    url: &str,
+    target_dir: &std::path::Path,
+    language: &str,
+    format: &str,
+    auto_generated: bool,
+    timeout_ms: u64,
+) -> Result<PathBuf, YtDlpError> {
+    tokio::fs::create_dir_all(target_dir).await.map_err(|e| {
+        YtDlpError::CreateDownloadDirFailed {
+            path: target_dir.to_string_lossy().to_string(),
+            source: e,
+        }
+    })?;
+
+    for candidate in candidates {
+        let mut command = Command::new(candidate);
+
+        command
+            .arg("--skip-download")
+            .arg("--no-playlist")
+            .arg("--no-warnings")
+            .arg("--windows-filenames")
+            .arg("--sub-langs")
+            .arg(language)
+            .arg("--sub-format")
+            .arg(format)
+            .arg("-P")
+            .arg(target_dir)
+            .arg("-o")
+            .arg("%(id)s.%(ext)s")
+            .arg(url)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
+
+        if auto_generated {
+            command.arg("--write-auto-sub");
+        } else {
+            command.arg("--write-sub");
+        }
+
+        let child = match command.spawn() {
+            Ok(c) => c,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => {
+                return Err(YtDlpError::SpawnFailed {
+                    candidate: candidate.to_string_lossy().to_string(),
+                    source: e,
+                });
+            }
+        };
+
+        let output =
+            match timeout(Duration::from_millis(timeout_ms), child.wait_with_output()).await {
+                Ok(Ok(out)) => out,
+                Ok(Err(e)) => {
+                    return Err(YtDlpError::SpawnFailed {
+                        candidate: candidate.to_string_lossy().to_string(),
+                        source: e,
+                    });
+                }
+                Err(_) => return Err(YtDlpError::Timeout { timeout_ms }),
+            };
+
+        if !output.status.success() {
+            return Err(YtDlpError::CommandFailed {
+                code: output.status.code(),
+                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            });
+        }
+
+        if let Some(path) = find_downloaded_subtitle(target_dir).await? {
+            return Ok(path);
+        }
+
+        return Err(YtDlpError::MissingDownloadedFilePath);
+    }
+
+    Err(YtDlpError::MissingYtDlp)
+}
+
+#[allow(clippy::collapsible_if)]
+async fn find_downloaded_subtitle(dir: &std::path::Path) -> Result<Option<PathBuf>, YtDlpError> {
+    let mut entries = tokio::fs::read_dir(dir)
+        .await
+        .map_err(|_| YtDlpError::MissingDownloadedFilePath)?;
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                let ext_str = ext.to_string_lossy();
+                if ext_str == "vtt"
+                    || ext_str == "ttml"
+                    || ext_str == "srv1"
+                    || ext_str == "srv2"
+                    || ext_str == "srv3"
+                {
+                    return Ok(Some(path));
+                }
+            }
+        }
+    }
+    Ok(None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

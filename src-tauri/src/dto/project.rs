@@ -40,6 +40,15 @@ pub struct TranscriptDto {
     pub segments: Vec<TranscriptSegmentDto>,
 }
 
+impl From<&domain::transcript::Transcript> for TranscriptDto {
+    fn from(t: &domain::transcript::Transcript) -> Self {
+        Self {
+            language: t.language.clone(),
+            segments: t.segments.iter().map(Into::into).collect(),
+        }
+    }
+}
+
 #[derive(Serialize)]
 pub struct TranscriptSegmentDto {
     pub id: String,
@@ -47,4 +56,16 @@ pub struct TranscriptSegmentDto {
     pub start_ms: u64,
     pub end_ms: u64,
     pub source_text: String,
+}
+
+impl From<&domain::transcript::TranscriptSegment> for TranscriptSegmentDto {
+    fn from(s: &domain::transcript::TranscriptSegment) -> Self {
+        Self {
+            id: s.id.0.to_string(),
+            index: s.index,
+            start_ms: s.start_ms,
+            end_ms: s.end_ms,
+            source_text: s.source_text.clone(),
+        }
+    }
 }

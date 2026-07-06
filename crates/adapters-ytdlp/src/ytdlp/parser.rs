@@ -99,6 +99,47 @@ pub fn parse_ytdlp_metadata(json: &str) -> Result<MediaMetadata, YtDlpError> {
     })
 }
 
+pub fn parse_subtitle_tracks(value: &serde_json::Value) -> Vec<domain::media::SubtitleTrack> {
+    let mut tracks = Vec::new();
+
+    let parse_obj = |obj: &serde_json::Value, auto: bool| -> Vec<domain::media::SubtitleTrack> {
+        let mut t = Vec::new();
+        if let Some(map) = obj.as_object() {
+            for (lang, formats) in map {
+                if let Some(format_list) = formats.as_array() {
+                    for format in format_list {
+                        let ext = format
+                            .get("ext")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let name = format
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+                        t.push(domain::media::SubtitleTrack {
+                            id: format!("{}-{}", lang, ext),
+                            language: lang.clone(),
+                            label: name,
+                            format: Some(ext.to_string()),
+                            is_auto_generated: auto,
+                        });
+                    }
+                }
+            }
+        }
+        t
+    };
+
+    if let Some(subs) = value.get("subtitles") {
+        tracks.extend(parse_obj(subs, false));
+    }
+    if let Some(auto) = value.get("automatic_captions") {
+        tracks.extend(parse_obj(auto, true));
+    }
+
+    tracks
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

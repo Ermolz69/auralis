@@ -102,6 +102,11 @@ impl Project {
         self.updated_at = Utc::now();
     }
 
+    pub fn set_transcript(&mut self, transcript: Transcript) {
+        self.transcript = Some(transcript);
+        self.updated_at = Utc::now();
+    }
+
     // Transitions
     pub fn import_source(
         &mut self,
