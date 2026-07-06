@@ -170,7 +170,7 @@ impl SubtitleSourcePort for YtDlpAdapter {
             url,
             target_path,
             &track.language,
-            track.format.as_deref().unwrap_or("vtt"),
+            "vtt",
             track.is_auto_generated,
             self.timeout_ms,
         )

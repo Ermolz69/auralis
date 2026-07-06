@@ -27,8 +27,8 @@ pub enum YtDlpError {
     #[error("unsupported media source: {message}")]
     UnsupportedSource { message: String },
 
-    #[error("yt-dlp did not report downloaded file path")]
-    MissingDownloadedFilePath,
+    #[error("subtitle file was not found after yt-dlp download")]
+    SubtitleNotFoundAfterDownload,
 
     #[error("downloaded file does not exist: {path}")]
     DownloadedFileMissing { path: String },

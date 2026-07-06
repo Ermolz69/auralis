@@ -58,12 +58,14 @@ impl ImportYoutubeSubtitlesUseCase {
             });
         }
 
+        let is_vtt = |t: &domain::media::SubtitleTrack| t.format.as_deref() == Some("vtt");
+
         // Pick best subtitle track
         let mut best_track = None;
         for lang in &request.preferred_languages {
             if let Some(track) = subtitles
                 .iter()
-                .find(|t| &t.language == lang && !t.is_auto_generated)
+                .find(|t| &t.language == lang && !t.is_auto_generated && is_vtt(t))
             {
                 best_track = Some(track);
                 break;
@@ -74,7 +76,7 @@ impl ImportYoutubeSubtitlesUseCase {
             for lang in &request.preferred_languages {
                 if let Some(track) = subtitles
                     .iter()
-                    .find(|t| &t.language == lang && t.is_auto_generated)
+                    .find(|t| &t.language == lang && t.is_auto_generated && is_vtt(t))
                 {
                     best_track = Some(track);
                     break;
@@ -84,9 +86,9 @@ impl ImportYoutubeSubtitlesUseCase {
 
         if best_track.is_none() {
             // fallback to first available manual subtitle, or auto
-            best_track = subtitles.iter().find(|t| !t.is_auto_generated);
+            best_track = subtitles.iter().find(|t| !t.is_auto_generated && is_vtt(t));
             if best_track.is_none() && request.allow_auto_generated {
-                best_track = subtitles.first();
+                best_track = subtitles.iter().find(|t| is_vtt(t));
             }
         }
 

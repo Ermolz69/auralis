@@ -168,17 +168,19 @@ pub async fn run_ytdlp_download_subtitle(
             .arg("-P")
             .arg(target_dir)
             .arg("-o")
-            .arg("%(id)s.%(ext)s")
-            .arg(url)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .kill_on_drop(true);
+            .arg("%(id)s.%(ext)s");
 
         if auto_generated {
             command.arg("--write-auto-sub");
         } else {
             command.arg("--write-sub");
         }
+
+        command
+            .arg(url)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
 
         let child = match command.spawn() {
             Ok(c) => c,
@@ -210,32 +212,30 @@ pub async fn run_ytdlp_download_subtitle(
             });
         }
 
-        if let Some(path) = find_downloaded_subtitle(target_dir).await? {
+        if let Some(path) = find_downloaded_subtitle(target_dir, format).await? {
             return Ok(path);
         }
 
-        return Err(YtDlpError::MissingDownloadedFilePath);
+        return Err(YtDlpError::SubtitleNotFoundAfterDownload);
     }
 
     Err(YtDlpError::MissingYtDlp)
 }
 
 #[allow(clippy::collapsible_if)]
-async fn find_downloaded_subtitle(dir: &std::path::Path) -> Result<Option<PathBuf>, YtDlpError> {
+async fn find_downloaded_subtitle(
+    dir: &std::path::Path,
+    expected_format: &str,
+) -> Result<Option<PathBuf>, YtDlpError> {
     let mut entries = tokio::fs::read_dir(dir)
         .await
-        .map_err(|_| YtDlpError::MissingDownloadedFilePath)?;
+        .map_err(|_| YtDlpError::SubtitleNotFoundAfterDownload)?;
     while let Ok(Some(entry)) = entries.next_entry().await {
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 let ext_str = ext.to_string_lossy();
-                if ext_str == "vtt"
-                    || ext_str == "ttml"
-                    || ext_str == "srv1"
-                    || ext_str == "srv2"
-                    || ext_str == "srv3"
-                {
+                if ext_str == expected_format {
                     return Ok(Some(path));
                 }
             }
