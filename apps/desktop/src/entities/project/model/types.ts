@@ -1,3 +1,5 @@
+import type { MediaMetadata, MediaSource } from '@/entities/media';
+
 export type ProjectStatus = 'draft' | 'processing' | 'completed' | 'failed';
 
 export interface Project {
@@ -6,6 +8,8 @@ export interface Project {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
+  source?: MediaSource;
+  metadata?: MediaMetadata;
 }
 
 export interface CreateProjectResponse {

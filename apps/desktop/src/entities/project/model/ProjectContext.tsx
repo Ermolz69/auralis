@@ -1,9 +1,12 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { Project } from './types';
 
 interface ProjectContextType {
   projectId: string | null;
   setProjectId: (id: string | null) => void;
+  project: Project | null;
+  setProject: (project: Project | null) => void;
   currentView: 'home' | 'project' | 'settings';
   setCurrentView: (view: 'home' | 'project' | 'settings') => void;
 }
@@ -12,10 +15,11 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [currentView, setCurrentView] = useState<'home' | 'project' | 'settings'>('home');
 
   return (
-    <ProjectContext.Provider value={{ projectId, setProjectId, currentView, setCurrentView }}>
+    <ProjectContext.Provider value={{ projectId, setProjectId, project, setProject, currentView, setCurrentView }}>
       {children}
     </ProjectContext.Provider>
   );
