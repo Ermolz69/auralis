@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@/shared/api/tauri';
 
 export async function healthCheck() {
   return invoke<string>('health_check');

@@ -6,8 +6,13 @@ edition = "2024"
 [dependencies]
 domain = { path = "../domain" }
 ports = { path = "../ports" }
+jobs = { path = "../jobs" }
 thiserror = "2.0.11"
+async-trait = "0.1.89"
 
 [dev-dependencies]
-async-trait = "0.1.89"
+adapters-storage = { path = "../adapters-storage" }
+adapters-ytdlp = { path = "../adapters-ytdlp" }
+adapters-model = { path = "../adapters-model" }
+adapters-ffmpeg = { path = "../adapters-ffmpeg" }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }

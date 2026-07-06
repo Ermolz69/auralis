@@ -38,7 +38,7 @@ impl<R: ProjectRepository> CreateProjectUseCase<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::usecases::test_utils::mocks::InMemoryProjectRepository;
+    use adapters_storage::memory::InMemoryProjectRepository;
     use domain::project::ProjectStatus;
 
     #[tokio::test]

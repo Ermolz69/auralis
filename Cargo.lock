@@ -5,14 +5,33 @@ version = 4
 [[package]]
 name = "adapters-ffmpeg"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "domain",
+ "ports",
+ "uuid",
+]
 
 [[package]]
 name = "adapters-model"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "domain",
+ "ports",
+ "uuid",
+]
 
 [[package]]
 name = "adapters-storage"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "domain",
+ "ports",
+ "uuid",
+]
 
 [[package]]
 name = "adapters-tauri"
@@ -21,6 +40,12 @@ version = "0.1.0"
 [[package]]
 name = "adapters-ytdlp"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "domain",
+ "ports",
+ "uuid",
+]
 
 [[package]]
 name = "adler2"
@@ -75,8 +100,13 @@ version = "0.1.0"
 name = "application"
 version = "0.1.0"
 dependencies = [
+ "adapters-ffmpeg",
+ "adapters-model",
+ "adapters-storage",
+ "adapters-ytdlp",
  "async-trait",
  "domain",
+ "jobs",
  "ports",
  "thiserror 2.0.18",
  "tokio",
@@ -126,12 +156,19 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "auralis-app"
 version = "0.1.0"
 dependencies = [
+ "adapters-ffmpeg",
+ "adapters-model",
+ "adapters-storage",
+ "adapters-ytdlp",
  "application",
  "domain",
+ "jobs",
+ "ports",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
+ "tokio",
 ]
 
 [[package]]
@@ -1621,6 +1658,13 @@ dependencies = [
 [[package]]
 name = "jobs"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+]
 
 [[package]]
 name = "js-sys"

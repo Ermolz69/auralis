@@ -55,3 +55,29 @@ job/
 ```
 
 The domain layer must stay pure. Do not put infrastructure logic, filesystem access, database access, FFmpeg calls, Tauri events, async runners, or UI logic inside domain modules.
+
+## Task Runner Rule
+
+All project commands must be executed through Taskfile tasks.
+
+Agents must not run raw package-manager, Rust, frontend, lint, test, formatting, documentation, security, or CI commands directly when an equivalent `task` command exists.
+
+Use the root `Taskfile.yml` as the single entrypoint for checks and workflows.
+
+Preferred commands:
+
+* `task check` — run the default full project check.
+* `task check:frontend` — run frontend checks.
+* `task check:rust` — run Rust checks.
+* `task check:docs` — run documentation checks.
+* `task check:quality:frontend` — run frontend quality checks.
+* `task check:quality:docs` — run documentation quality checks.
+* `task check:quality:security` — run security checks.
+* `task check:all` — run all checks.
+* `task ci` — run the CI-equivalent workflow.
+
+Do not run commands like `pnpm lint`, `pnpm test`, `cargo test`, `cargo clippy`, `cargo fmt`, or direct script commands unless there is no matching task.
+
+If a needed command does not have a task yet, add a new task to the appropriate Taskfile instead of introducing a raw command into docs, CI, scripts, or agent instructions.
+
+When reporting verification steps, always mention the `task ...` command that was used.

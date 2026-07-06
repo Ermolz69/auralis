@@ -14,3 +14,9 @@ impl Default for ProjectId {
         Self::new()
     }
 }
+
+impl std::fmt::Display for ProjectId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

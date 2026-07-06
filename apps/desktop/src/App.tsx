@@ -1,20 +1,18 @@
-import { useState } from 'react';
 import { HomePage } from './pages/home';
 import { ProjectPage } from './pages/project';
 import { SettingsPage } from './pages/settings';
 import { Button } from './shared/ui/button';
-
-type View = 'home' | 'project' | 'settings';
+import { useProjectContext } from './entities/project';
 
 function App() {
-  const [currentView, setCurrentView] = useState<View>('project');
+  const { currentView, setCurrentView } = useProjectContext();
 
   const cycleView = () => {
-    setCurrentView((v) => {
-      if (v === 'home') return 'project';
-      if (v === 'project') return 'settings';
-      return 'home';
-    });
+    setCurrentView(
+      currentView === 'home' ? 'project' :
+      currentView === 'project' ? 'settings' :
+      'home'
+    );
   };
 
   return (
