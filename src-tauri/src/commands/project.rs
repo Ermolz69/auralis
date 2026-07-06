@@ -1,5 +1,6 @@
 use adapters_storage::memory::InMemoryProjectRepository;
-use adapters_ytdlp::mock::MockVideoSourceAdapter;
+
+use adapters_ytdlp::ytdlp::YtDlpAdapter;
 use application::usecases::pipeline::start_mock::{
     StartMockPipelineRequest, StartMockPipelineUseCase,
 };
@@ -9,9 +10,15 @@ use application::usecases::project::import_source::{
 };
 use domain::media::MediaSource;
 use jobs::manager::JobManager;
-use tauri::{command, State};
+use ports::repository::ProjectRepository;
+use tauri::{command, AppHandle, State};
 
 use crate::dto::project::{CreateProjectResponse, ProjectDto, TranscriptDto, TranscriptSegmentDto};
+
+fn get_ytdlp_adapter(app: &AppHandle) -> YtDlpAdapter {
+    let candidates = crate::media_tools::resolve_ytdlp_candidates(app);
+    YtDlpAdapter::new(candidates)
+}
 
 #[command]
 pub async fn create_project_cmd(
@@ -31,6 +38,7 @@ pub async fn create_project_cmd(
 #[command]
 pub async fn create_project_from_youtube_cmd(
     url: String,
+    app: AppHandle,
     state: State<'_, JobManager>,
     project_repo: State<'_, InMemoryProjectRepository>,
 ) -> Result<CreateProjectResponse, String> {
@@ -41,10 +49,10 @@ pub async fn create_project_from_youtube_cmd(
         .await
         .map_err(|e| format!("{:?}", e))?;
 
-    let mock_video_source = MockVideoSourceAdapter::new();
+    let ytdlp_adapter = get_ytdlp_adapter(&app);
     let import_use_case =
-        ImportVideoSourceUseCase::new(project_repo.inner().clone(), mock_video_source);
-    let source = MediaSource::RemoteUrl { url };
+        ImportVideoSourceUseCase::new(project_repo.inner().clone(), ytdlp_adapter);
+    let source = MediaSource::YoutubeUrl { url: url.clone() };
     let req2 = ImportVideoSourceRequest {
         project_id: create_res.project.id().clone(),
         source,
@@ -54,10 +62,19 @@ pub async fn create_project_from_youtube_cmd(
         .await
         .map_err(|e| format!("{:?}", e))?;
 
+    let mut proj = import_res.project;
+    proj.mark_ready_for_processing()
+        .map_err(|e| format!("{:?}", e))?;
+    project_repo
+        .inner()
+        .save(&proj)
+        .await
+        .map_err(|e| format!("{:?}", e))?;
+
     let pipeline_use_case =
         StartMockPipelineUseCase::new(project_repo.inner().clone(), state.inner().clone());
     let req3 = StartMockPipelineRequest {
-        project_id: import_res.project.id().clone(),
+        project_id: proj.id().clone(),
     };
     let response = pipeline_use_case
         .execute(req3)
