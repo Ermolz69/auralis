@@ -78,10 +78,126 @@ impl VideoSourcePort for YtDlpAdapter {
 
     async fn download_media(
         &self,
-        _request: ports::source::DownloadMediaRequest,
+        request: ports::source::DownloadMediaRequest,
     ) -> Result<domain::media::Artifact, PortError> {
-        Err(PortError::Unsupported {
-            message: "yt-dlp download is not implemented yet".to_string(),
+        self.validate_source(&request.source).await?;
+
+        let url = match &request.source {
+            MediaSource::YoutubeUrl { url } => url,
+            MediaSource::RemoteUrl { url } => url,
+            _ => unreachable!(),
+        };
+
+        if !request.target_dir.exists() {
+            tokio::fs::create_dir_all(&request.target_dir)
+                .await
+                .map_err(|e| super::error::YtDlpError::CreateDownloadDirFailed {
+                    path: request.target_dir.to_string_lossy().to_string(),
+                    source: e,
+                })?;
+        }
+
+        let template = build_output_template(request.filename_hint.as_deref());
+
+        let path = super::command::run_ytdlp_download(
+            &self.candidates,
+            url,
+            &request.target_dir,
+            &template,
+            self.timeout_ms,
+        )
+        .await?;
+
+        if !path.exists() {
+            return Err(super::error::YtDlpError::DownloadedFileMissing {
+                path: path.to_string_lossy().to_string(),
+            }
+            .into());
+        }
+
+        Ok(domain::media::Artifact {
+            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            kind: domain::media::ArtifactKind::DownloadedVideo,
+            location: domain::media::ArtifactLocation::LocalPath(
+                path.to_string_lossy().to_string(),
+            ),
         })
+    }
+}
+
+fn build_output_template(filename_hint: Option<&str>) -> String {
+    if let Some(hint) = filename_hint {
+        let sanitized = sanitize_filename(hint);
+        format!("{}.%(ext)s", sanitized)
+    } else {
+        "%(title).120B [%(id)s].%(ext)s".to_string()
+    }
+}
+
+fn sanitize_filename(name: &str) -> String {
+    name.chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            _ => c,
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::media::ArtifactKind;
+    use std::env;
+    use tokio::fs;
+
+    #[test]
+    fn test_build_output_template_uses_hint() {
+        assert_eq!(
+            build_output_template(Some("My <Video> Name!")),
+            "My _Video_ Name!.%(ext)s"
+        );
+    }
+
+    #[test]
+    fn test_build_output_template_uses_default() {
+        assert_eq!(
+            build_output_template(None),
+            "%(title).120B [%(id)s].%(ext)s"
+        );
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_downloads_public_test_video() {
+        let adapter = YtDlpAdapter::default();
+        let target_dir = env::temp_dir().join(format!("auralis_test_{}", uuid::Uuid::new_v4()));
+        let source = MediaSource::RemoteUrl {
+            url: "https://www.youtube.com/watch?v=jNQXAC9IVRw".to_string(), // "Me at the zoo" - shortest video
+        };
+
+        let request = ports::source::DownloadMediaRequest {
+            source,
+            target_dir: target_dir.clone(),
+            filename_hint: Some("test_video".to_string()),
+        };
+
+        let artifact = adapter
+            .download_media(request)
+            .await
+            .expect("Download failed");
+
+        assert_eq!(artifact.kind, ArtifactKind::DownloadedVideo);
+
+        match artifact.location {
+            domain::media::ArtifactLocation::LocalPath(path_str) => {
+                let path = PathBuf::from(path_str);
+                assert!(path.exists());
+                // Cleanup
+                fs::remove_file(path).await.unwrap();
+            }
+            _ => panic!("Expected LocalPath"),
+        }
+
+        fs::remove_dir_all(target_dir).await.ok();
     }
 }

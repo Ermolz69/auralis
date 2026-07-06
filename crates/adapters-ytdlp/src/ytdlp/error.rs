@@ -26,6 +26,19 @@ pub enum YtDlpError {
 
     #[error("unsupported media source: {message}")]
     UnsupportedSource { message: String },
+
+    #[error("yt-dlp did not report downloaded file path")]
+    MissingDownloadedFilePath,
+
+    #[error("downloaded file does not exist: {path}")]
+    DownloadedFileMissing { path: String },
+
+    #[error("failed to create download directory `{path}`: {source}")]
+    CreateDownloadDirFailed {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
 }
 
 impl From<YtDlpError> for PortError {
