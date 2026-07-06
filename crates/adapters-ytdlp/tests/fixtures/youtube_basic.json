@@ -1,0 +1,11 @@
+{
+    "id": "abc",
+    "duration": 120.5,
+    "width": 1920,
+    "height": 1080,
+    "fps": 60.0,
+    "vcodec": "avc1.640028",
+    "acodec": "mp4a.40.2",
+    "ext": "mp4",
+    "formats": []
+}

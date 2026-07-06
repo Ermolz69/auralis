@@ -5,6 +5,7 @@ use tauri::{Emitter, Manager};
 
 pub mod commands;
 pub mod dto;
+pub mod media_tools;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
