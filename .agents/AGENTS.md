@@ -27,18 +27,18 @@ Apply only the files that make sense for the module. Do not create empty files.
 
 Required rules:
 
-* IDs go into `id.rs`.
-* Main structs/entities go into `entity.rs`.
-* Status enums go into `status.rs`.
-* Type/kind enums go into `kind.rs`.
-* Module-specific errors go into `error.rs`.
-* Progress/state details go into `progress.rs`.
-* Tests go into `tests.rs`.
-* `mod.rs` must not contain large structs, enums, business logic, or tests.
-* `mod.rs` should only contain `mod ...`, `pub use ...`, and minimal module documentation.
-* Do not duplicate types across files.
-* Do not define the same struct, enum, or ID twice.
-* Keep each file focused on one responsibility.
+- IDs go into `id.rs`.
+- Main structs/entities go into `entity.rs`.
+- Status enums go into `status.rs`.
+- Type/kind enums go into `kind.rs`.
+- Module-specific errors go into `error.rs`.
+- Progress/state details go into `progress.rs`.
+- Tests go into `tests.rs`.
+- `mod.rs` must not contain large structs, enums, business logic, or tests.
+- `mod.rs` should only contain `mod ...`, `pub use ...`, and minimal module documentation.
+- Do not duplicate types across files.
+- Do not define the same struct, enum, or ID twice.
+- Keep each file focused on one responsibility.
 
 For example, a `job` module should be split like this:
 
@@ -66,15 +66,15 @@ Use the root `Taskfile.yml` as the single entrypoint for checks and workflows.
 
 Preferred commands:
 
-* `task check` — run the default full project check.
-* `task check:frontend` — run frontend checks.
-* `task check:rust` — run Rust checks.
-* `task check:docs` — run documentation checks.
-* `task check:quality:frontend` — run frontend quality checks.
-* `task check:quality:docs` — run documentation quality checks.
-* `task check:quality:security` — run security checks.
-* `task check:all` — run all checks.
-* `task ci` — run the CI-equivalent workflow.
+- `task check` — run the default full project check.
+- `task check:frontend` — run frontend checks.
+- `task check:rust` — run Rust checks.
+- `task check:docs` — run documentation checks.
+- `task check:quality:frontend` — run frontend quality checks.
+- `task check:quality:docs` — run documentation quality checks.
+- `task check:quality:security` — run security checks.
+- `task check:all` — run all checks.
+- `task ci` — run the CI-equivalent workflow.
 
 Do not run commands like `pnpm lint`, `pnpm test`, `cargo test`, `cargo clippy`, `cargo fmt`, or direct script commands unless there is no matching task.
 

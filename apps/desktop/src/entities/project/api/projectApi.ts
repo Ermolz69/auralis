@@ -1,6 +1,6 @@
 import { invoke } from '@/shared/api/tauri';
 import type { CreateProjectResponse } from '../model/types';
-import type { Job } from '@/entities/job/model/types';
+import type { Job } from '@/entities/job';
 
 /**
  * Enhanced response typing including the Job type

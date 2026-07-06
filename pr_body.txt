@@ -1,0 +1,24 @@
+This Pull Request adds full functionality for importing local video files and expands the user interface following the FSD methodology.
+
+### What was done:
+
+1. **Tauri Plugin Dialog (`tauri-plugin-dialog`)**
+   - Added and configured the plugin to open the system file selection dialog.
+   - Created `capabilities` configurations (`dialog.json`, `default.json`) to set up IPC permissions in Tauri v2 (deny-by-default policy).
+
+2. **Backend (Rust / Tauri)**
+   - Implemented `create_project_cmd` to quickly create an empty project by filename.
+   - Expanded the API layer (DTO) to correctly handle all nested metadata from `ffprobe` (video, audio tracks, general stream info).
+   - Created `FfprobeAdapter` which automatically tries to find the local `ffprobe` binary (including `.exe` for Windows and bundled versions).
+   - Created Use Case `ProbeLocalMediaUseCase` which reads file metadata via `ffprobe` and saves it to the project.
+
+3. **Frontend (React / FSD)**
+   - Created strict typings mapping the backend in `entities/media/model/types.ts`.
+   - Written `useImportLocalMedia` hook for the full import flow: "Select file → Create project → Probe file → Navigate to project page".
+   - Created an "Import local video" button for the home page below the YouTube input.
+   - Added a new **MediaPanel** widget for the project page, displaying detailed info about video format, audio tracks, and all discovered media streams.
+   - Updated `ProjectContext`: it now stores the entire `Project` object, allowing widgets (`ProjectHeader`, `MediaPanel`) to receive data instantly without repeated requests.
+
+### Verification:
+- `task check:rust` passed (including `clippy`, `fmt` and tests).
+- `task check:frontend` passed (`tsc` typing and linting).
