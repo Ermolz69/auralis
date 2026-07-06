@@ -2,6 +2,7 @@ import { ProjectHeader } from '../../../widgets/project-header';
 import { TranscriptEditor } from '../../../widgets/transcript-editor';
 import { JobQueuePanel } from '../../../widgets/job-queue-panel';
 import { ExportPanel } from '../../../widgets/export-panel';
+import { MediaPanel } from '../../../widgets/media-panel';
 import { Page } from '../../../shared/ui/page-layout';
 
 export const ProjectPage = () => {
@@ -13,6 +14,7 @@ export const ProjectPage = () => {
           <TranscriptEditor />
           <ExportPanel />
         </div>
+        <MediaPanel />
         <JobQueuePanel />
       </div>
     </Page>

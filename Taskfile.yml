@@ -15,8 +15,15 @@ includes:
   sec:
     taskfile: ./taskfiles/security.yml
     aliases: [security]
+  media:
+    taskfile: ./taskfiles/media.yml
 
 tasks:
+  setup:media-tools:
+    desc: Alias for media:setup-tools
+    cmds:
+      - task: media:setup-tools
+
   install:
     cmds:
       - pnpm install

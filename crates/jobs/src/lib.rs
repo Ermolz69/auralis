@@ -1,14 +1,12 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
+pub mod cancellation;
+pub mod error;
+pub mod event;
+pub mod id;
+pub mod job;
+pub mod manager;
+pub mod mock_pipeline;
+pub mod progress;
+pub mod stage;
+pub mod status;
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+mod tests;

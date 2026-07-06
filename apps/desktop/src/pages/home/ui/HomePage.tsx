@@ -1,4 +1,5 @@
 import { PasteYoutubeLink } from '../../../features/paste-youtube-link';
+import { ImportLocalMediaButton } from '../../../features/import-local-media';
 import { Page, PageContainer, PageContent } from '../../../shared/ui/page-layout';
 
 export const HomePage = () => {
@@ -10,8 +11,16 @@ export const HomePage = () => {
             Auralis
           </h1>
           <p className="text-muted text-xl">AI-powered video dubbing straight from your desktop.</p>
-          <div className="mt-4 w-full">
+          <div className="mt-4 flex flex-col gap-4 w-full">
             <PasteYoutubeLink />
+            <div className="flex items-center gap-4 w-full">
+              <hr className="flex-1 border-border" />
+              <span className="text-muted-foreground text-sm font-medium uppercase tracking-widest">
+                or
+              </span>
+              <hr className="flex-1 border-border" />
+            </div>
+            <ImportLocalMediaButton />
           </div>
         </PageContent>
       </PageContainer>

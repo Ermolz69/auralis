@@ -1,0 +1,30 @@
+version: '3'
+
+tasks:
+  setup-tools:
+    desc: Show how to install ffprobe for local development
+    cmds:
+      - 'echo "Install FFmpeg/ffprobe and yt-dlp using your system package manager:"'
+      - 'echo "Windows: winget install Gyan.FFmpeg yt-dlp"'
+      - 'echo "macOS: brew install ffmpeg yt-dlp"'
+      - 'echo "Linux: sudo apt install ffmpeg yt-dlp"'
+      - 'echo "Then run: task media:doctor"'
+
+  doctor:
+    desc: Check required media tools (ffprobe, ffmpeg, yt-dlp)
+    cmds:
+      - ffprobe -version
+      - ffmpeg -version
+      - yt-dlp --version
+
+  probe:
+    desc: Probe a media file natively
+    cmds:
+      - cargo run -p adapters-ffmpeg --example probe -- "{{.CLI_ARGS}}"
+
+  test:
+    desc: Run tests for media adapters and usecases
+    cmds:
+      - cargo test -p adapters-ffmpeg
+      - cargo test -p adapters-ytdlp
+      - cargo test -p application -- usecases::project
