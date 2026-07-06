@@ -67,14 +67,15 @@ export const JobQueuePanel = () => {
                   <div className="flex flex-col">
                     <p className="text-sm text-text font-medium">{job.title}</p>
                     <p className="text-xs text-muted capitalize">
-                      {job.status.replace('_', ' ')} {job.stage && `- ${job.stage.replace(/_/g, ' ')}`}
+                      {job.status.replace('_', ' ')}{' '}
+                      {job.stage && `- ${job.stage.replace(/_/g, ' ')}`}
                     </p>
                   </div>
                   {(job.status === 'queued' || job.status === 'running') && (
                     <CancelJobButton jobId={job.id} />
                   )}
                 </div>
-                
+
                 {job.status === 'failed' && job.error ? (
                   <p className="text-xs text-red-400">{job.error}</p>
                 ) : (

@@ -19,7 +19,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [currentView, setCurrentView] = useState<'home' | 'project' | 'settings'>('home');
 
   return (
-    <ProjectContext.Provider value={{ projectId, setProjectId, project, setProject, currentView, setCurrentView }}>
+    <ProjectContext.Provider
+      value={{ projectId, setProjectId, project, setProject, currentView, setCurrentView }}
+    >
       {children}
     </ProjectContext.Provider>
   );

@@ -8,11 +8,11 @@ export function usePasteYoutubeLink() {
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setProjectId, setProject, setCurrentView } = useProjectContext();
-  
+
   // We can return the created project/job if the component needs to redirect or update global state
-  const startProject = async (): Promise<{ project: Project, job: Job } | null> => {
+  const startProject = async (): Promise<{ project: Project; job: Job } | null> => {
     if (!url) return null;
-    
+
     setIsStarting(true);
     setError(null);
     try {

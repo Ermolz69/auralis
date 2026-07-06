@@ -9,6 +9,8 @@ export interface CreateProjectFromYoutubeResponse extends CreateProjectResponse 
   job: Job;
 }
 
-export async function createProjectFromYoutube(url: string): Promise<CreateProjectFromYoutubeResponse> {
+export async function createProjectFromYoutube(
+  url: string,
+): Promise<CreateProjectFromYoutubeResponse> {
   return invoke<CreateProjectFromYoutubeResponse>('create_project_from_youtube_cmd', { url });
 }

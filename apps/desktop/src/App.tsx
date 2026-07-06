@@ -9,9 +9,7 @@ function App() {
 
   const cycleView = () => {
     setCurrentView(
-      currentView === 'home' ? 'project' :
-      currentView === 'project' ? 'settings' :
-      'home'
+      currentView === 'home' ? 'project' : currentView === 'project' ? 'settings' : 'home',
     );
   };
 

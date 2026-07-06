@@ -19,7 +19,7 @@ export function MediaPanel() {
   return (
     <div className="p-4 bg-surface border-l border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0">
       <h3 className="font-semibold mb-4 text-lg">Media</h3>
-      
+
       <div className="space-y-6">
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
@@ -29,13 +29,18 @@ export function MediaPanel() {
           {metadata.width && metadata.height && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Resolution:</span>
-              <span className="font-medium">{metadata.width}×{metadata.height}</span>
+              <span className="font-medium">
+                {metadata.width}×{metadata.height}
+              </span>
             </div>
           )}
           {metadata.video_codec && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Video:</span>
-              <span className="font-medium">{metadata.video_codec}{metadata.fps ? `, ${metadata.fps.toFixed(2)} fps` : ''}</span>
+              <span className="font-medium">
+                {metadata.video_codec}
+                {metadata.fps ? `, ${metadata.fps.toFixed(2)} fps` : ''}
+              </span>
             </div>
           )}
         </div>

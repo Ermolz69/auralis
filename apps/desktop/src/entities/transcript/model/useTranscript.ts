@@ -35,15 +35,12 @@ export function useTranscript(projectId: string | null) {
     let unlisten: (() => void) | undefined;
 
     const setupListener = async () => {
-      unlisten = await listen<{ projectId: string; jobId: string }>(
-        'transcript-ready',
-        (event) => {
-          if (projectId && event.payload.projectId === projectId) {
-            // Re-fetch the transcript because it is ready
-            fetchTranscript(projectId);
-          }
+      unlisten = await listen<{ projectId: string; jobId: string }>('transcript-ready', (event) => {
+        if (projectId && event.payload.projectId === projectId) {
+          // Re-fetch the transcript because it is ready
+          fetchTranscript(projectId);
         }
-      );
+      });
     };
 
     setupListener();

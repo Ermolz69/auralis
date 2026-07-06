@@ -6,7 +6,8 @@ interface MediaSummaryProps {
 }
 
 export function MediaSummary({ metadata }: MediaSummaryProps) {
-  const primaryAudio = metadata.audio_tracks?.find(t => t.is_default) || metadata.audio_tracks?.[0];
+  const primaryAudio =
+    metadata.audio_tracks?.find((t) => t.is_default) || metadata.audio_tracks?.[0];
 
   return (
     <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -14,7 +15,9 @@ export function MediaSummary({ metadata }: MediaSummaryProps) {
       <span>•</span>
       {metadata.width && metadata.height && (
         <>
-          <span>{metadata.width}×{metadata.height}</span>
+          <span>
+            {metadata.width}×{metadata.height}
+          </span>
           <span>•</span>
         </>
       )}
@@ -28,13 +31,19 @@ export function MediaSummary({ metadata }: MediaSummaryProps) {
       {metadata.audio_tracks && metadata.audio_tracks.length > 0 && (
         <>
           <span>•</span>
-          <span>{metadata.audio_tracks.length} audio track{metadata.audio_tracks.length !== 1 ? 's' : ''}</span>
+          <span>
+            {metadata.audio_tracks.length} audio track
+            {metadata.audio_tracks.length !== 1 ? 's' : ''}
+          </span>
         </>
       )}
       {primaryAudio && (
         <>
           <span>•</span>
-          <span>{primaryAudio.codec} / {primaryAudio.channels}ch / {primaryAudio.sample_rate}Hz / {primaryAudio.language || 'unk'}</span>
+          <span>
+            {primaryAudio.codec} / {primaryAudio.channels}ch / {primaryAudio.sample_rate}Hz /{' '}
+            {primaryAudio.language || 'unk'}
+          </span>
         </>
       )}
     </div>

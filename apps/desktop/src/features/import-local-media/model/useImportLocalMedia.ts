@@ -16,10 +16,12 @@ export function useImportLocalMedia() {
       // 1. Open file dialog
       const selected = await open({
         multiple: false,
-        filters: [{
-          name: 'Video',
-          extensions: ['mp4', 'mkv', 'avi', 'mov', 'webm']
-        }]
+        filters: [
+          {
+            name: 'Video',
+            extensions: ['mp4', 'mkv', 'avi', 'mov', 'webm'],
+          },
+        ],
       });
 
       if (!selected || typeof selected !== 'string') {
@@ -41,7 +43,6 @@ export function useImportLocalMedia() {
       setProjectId(updatedProject.id);
       setProject(updatedProject);
       setCurrentView('project');
-
     } catch (err: any) {
       setError(err?.toString() || 'Failed to import local media');
       console.error(err);

@@ -6,9 +6,6 @@ export const probeLocalMedia = async (path: string): Promise<MediaMetadata> => {
   return invoke<MediaMetadata>('probe_local_media_cmd', { path });
 };
 
-export const importLocalMedia = async (
-  projectId: string,
-  path: string
-): Promise<Project> => {
+export const importLocalMedia = async (projectId: string, path: string): Promise<Project> => {
   return invoke<Project>('import_local_media_cmd', { projectId, path });
 };
