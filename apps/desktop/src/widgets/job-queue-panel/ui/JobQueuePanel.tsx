@@ -50,7 +50,7 @@ export const JobQueuePanel = () => {
   }, []);
 
   return (
-    <aside className="w-full h-full bg-surface border-l border-muted p-6 flex flex-col gap-4 overflow-hidden">
+    <aside className="w-96 shrink-0 h-full bg-surface border-l border-muted p-6 flex flex-col gap-4 overflow-hidden">
       <h2 className="text-lg font-semibold text-text shrink-0">Job Queue</h2>
       <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-0">
         {jobs.length === 0 ? (

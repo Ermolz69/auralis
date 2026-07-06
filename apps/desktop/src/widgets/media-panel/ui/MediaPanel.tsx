@@ -12,7 +12,7 @@ export function MediaPanel() {
 
   if (!metadata) {
     return (
-      <div className="p-4 bg-surface border-l border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0">
+      <div className="p-4 bg-surface border-r border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0">
         <h3 className="font-semibold mb-4 text-text flex items-center gap-2">
           <FileVideo className="w-5 h-5 text-muted-foreground" />
           Media Info
@@ -34,7 +34,7 @@ export function MediaPanel() {
   }
 
   return (
-    <div className="p-4 bg-surface border-l border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0 custom-scrollbar">
+    <div className="p-4 bg-surface border-r border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0 custom-scrollbar">
       <h3 className="font-semibold mb-4 text-lg text-text flex items-center gap-2">
         <Film className="w-5 h-5 text-primary" />
         Media Engine
