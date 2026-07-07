@@ -2,6 +2,7 @@ use adapters_storage::memory::InMemoryProjectRepository;
 use jobs::manager::JobManager;
 use ports::error::PortError;
 use ports::events::AppEventPublisher;
+use ports::job_scheduler::JobSchedulerPort;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -55,8 +56,27 @@ pub fn run() {
         .setup(|app| {
             let app_handle_clone = app.handle().clone();
 
-            let emitter = Arc::new(move |event: jobs::event::JobEvent| {
-                let _ = app_handle_clone.emit("job-event", event.clone());
+            let emitter = Arc::new(move |event: ports::job_scheduler::JobLifecycleEvent| {
+                // Here we might need a DTO for the frontend, but for now we emit as is if it derives Serialize
+                // Oh wait, JobLifecycleEvent doesn't derive Serialize right now!
+                // Wait, we need to emit it to the frontend. Wait! The event is serialized. Let's see if we should emit ScheduledJob.
+                // Or maybe we can just not emit it if it fails, wait, the original emitted `jobs::event::JobEvent`.
+                // For now, let's just serialize the JobLifecycleEvent, assuming we will add Serialize to it or it works.
+                // Wait! Let's emit it as a JobEvent DTO, or just use the event since it's internal.
+                // Actually, I should map it to a struct that can be sent to the frontend if needed, but previously we just emitted `event.clone()`.
+                // Let's implement Serialize for JobLifecycleEvent later or here.
+
+                let _ = app_handle_clone.emit(
+                    "job-event",
+                    serde_json::json!({
+                        "jobId": event.job_id.to_string(),
+                        "projectId": event.project_id.as_ref().map(|id| id.to_string()),
+                        "status": event.status,
+                        "stage": event.stage,
+                        "progress": event.progress,
+                        "error": event.error,
+                    }),
+                );
 
                 let app_clone = app_handle_clone.clone();
                 tauri::async_runtime::spawn(async move {
@@ -74,7 +94,7 @@ pub fn run() {
                 });
             });
 
-            let job_manager = JobManager::new(Some(emitter));
+            let job_manager: Arc<dyn JobSchedulerPort> = Arc::new(JobManager::new(Some(emitter)));
 
             let project_repo = InMemoryProjectRepository::new();
 

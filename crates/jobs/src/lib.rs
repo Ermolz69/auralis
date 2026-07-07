@@ -7,6 +7,5 @@ pub mod manager;
 pub mod mock_pipeline;
 pub mod progress;
 pub mod stage;
-pub mod status;
 #[cfg(test)]
 mod tests;

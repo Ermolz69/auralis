@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 domain = { path = "../domain" }
 ports = { path = "../ports" }
-jobs = { path = "../jobs" }
 thiserror = "2.0.11"
 async-trait = "0.1.89"
 
@@ -17,3 +16,4 @@ adapters-model = { path = "../adapters-model" }
 adapters-ffmpeg = { path = "../adapters-ffmpeg" }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 tempfile = "3.10"
+chrono = "0.4.45"

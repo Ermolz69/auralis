@@ -7,14 +7,14 @@ use crate::id::JobId;
 use crate::manager::JobManager;
 use crate::progress::JobProgress;
 use crate::stage::JobStage;
-use crate::status::JobStatus;
+use domain::job::JobStatus;
 
 pub fn run_mock_pipeline(manager: JobManager, job_id: JobId) {
     tokio::spawn(async move {
         let (handle, token) = CancelHandle::new();
         manager.register_cancel_handle(job_id.clone(), handle).await;
 
-        let mut job = match manager.get_job(&job_id).await {
+        let mut job = match manager.get_job_internal(&job_id).await {
             Some(j) => j,
             None => return, // Should not happen
         };

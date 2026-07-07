@@ -4,8 +4,10 @@ use crate::usecases::project::create::{CreateProjectRequest, CreateProjectUseCas
 use crate::usecases::project::import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase};
 use domain::media::MediaSource;
 use domain::project::Project;
+use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::repository::ProjectRepository;
 use ports::source::VideoSourcePort;
+use std::sync::Arc;
 
 pub struct CreateProjectFromYoutubeRequest {
     pub url: String,
@@ -13,24 +15,24 @@ pub struct CreateProjectFromYoutubeRequest {
 
 pub struct CreateProjectFromYoutubeResponse {
     pub project: Project,
-    pub job: jobs::job::Job,
+    pub job: ScheduledJob,
 }
 
 pub struct CreateProjectFromYoutubeUseCase<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
 {
     project_repo: R,
     video_source: V,
-    job_manager: jobs::manager::JobManager,
+    job_scheduler: Arc<dyn JobSchedulerPort>,
 }
 
 impl<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
     CreateProjectFromYoutubeUseCase<R, V>
 {
-    pub fn new(project_repo: R, video_source: V, job_manager: jobs::manager::JobManager) -> Self {
+    pub fn new(project_repo: R, video_source: V, job_scheduler: Arc<dyn JobSchedulerPort>) -> Self {
         Self {
             project_repo,
             video_source,
-            job_manager,
+            job_scheduler,
         }
     }
 
@@ -62,7 +64,7 @@ impl<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
         self.project_repo.save(&proj).await?;
 
         let pipeline_use_case =
-            StartMockPipelineUseCase::new(self.project_repo.clone(), self.job_manager.clone());
+            StartMockPipelineUseCase::new(self.project_repo.clone(), self.job_scheduler.clone());
         let req3 = StartMockPipelineRequest {
             project_id: proj.id().clone(),
         };

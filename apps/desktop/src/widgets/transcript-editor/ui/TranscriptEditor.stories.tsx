@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TranscriptEditor } from './TranscriptEditor';
-import { ProjectContext } from '@/entities/project/model/context';
-import type { ProjectContextType } from '@/entities/project/model/context';
+import { ProjectContext } from '@/entities/project';
+import type { ProjectContextType } from '@/entities/project';
 import type { Project } from '@/shared/api/contracts/project';
 
 const meta = {

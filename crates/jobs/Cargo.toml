@@ -9,3 +9,6 @@ serde = { version = "1.0", features = ["derive"] }
 uuid = { version = "1.23", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0"
+domain = { path = "../domain" }
+ports = { path = "../ports" }
+async-trait = "0.1.89"

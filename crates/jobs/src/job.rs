@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::id::JobId;
 use crate::progress::JobProgress;
 use crate::stage::JobStage;
-use crate::status::JobStatus;
+use domain::job::JobStatus;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +27,7 @@ impl Job {
             id: JobId::new(),
             title,
             project_id,
-            status: JobStatus::Queued,
+            status: JobStatus::Pending,
             stage: None,
             progress: JobProgress::default(),
             error: None,

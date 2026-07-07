@@ -1,6 +1,5 @@
 use crate::dto::media::{MediaMetadataDto, MediaSourceDto};
 use domain::project::{Project, ProjectStatus};
-use jobs::job::Job;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -42,7 +41,7 @@ impl From<&Project> for ProjectDto {
 #[serde(rename_all = "camelCase")]
 pub struct CreateProjectResponse {
     pub project: ProjectDto,
-    pub job: Job,
+    pub job: ports::job_scheduler::ScheduledJob,
 }
 
 #[derive(Serialize)]

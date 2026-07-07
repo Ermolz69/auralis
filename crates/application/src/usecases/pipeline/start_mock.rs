@@ -1,7 +1,7 @@
 use domain::project::{Project, ProjectId};
-use jobs::job::Job as JobDto;
-use jobs::manager::JobManager;
+use ports::job_scheduler::{JobSchedulerPort, ScheduledJob, StartDubbingJobRequest};
 use ports::repository::ProjectRepository;
+use std::sync::Arc;
 
 use crate::error::ApplicationError;
 
@@ -13,19 +13,19 @@ pub struct StartMockPipelineRequest {
 #[derive(Debug)]
 pub struct StartMockPipelineResponse {
     pub project: Project,
-    pub job: JobDto,
+    pub job: ScheduledJob,
 }
 
 pub struct StartMockPipelineUseCase<R: ProjectRepository> {
     project_repo: R,
-    job_manager: JobManager,
+    job_scheduler: Arc<dyn JobSchedulerPort>,
 }
 
 impl<R: ProjectRepository> StartMockPipelineUseCase<R> {
-    pub fn new(project_repo: R, job_manager: JobManager) -> Self {
+    pub fn new(project_repo: R, job_scheduler: Arc<dyn JobSchedulerPort>) -> Self {
         Self {
             project_repo,
-            job_manager,
+            job_scheduler,
         }
     }
 
@@ -42,12 +42,17 @@ impl<R: ProjectRepository> StartMockPipelineUseCase<R> {
         project.mark_processing_started()?;
         self.project_repo.save(&project).await?;
 
-        // Launch job asynchronously via JobManager
-        let job_id = self
-            .job_manager
-            .start_mock_dubbing_job(project.title().to_string(), Some(project.id().to_string()))
-            .await;
-        let job = self.job_manager.get_job(&job_id).await.unwrap();
+        // Launch job asynchronously via JobSchedulerPort
+        let job = self
+            .job_scheduler
+            .start_dubbing_job(StartDubbingJobRequest {
+                project_id: Some(project.id().clone()),
+                title: project.title().to_string(),
+            })
+            .await
+            .map_err(|e| ApplicationError::InvalidOperation {
+                message: format!("Failed to start job: {}", e),
+            })?;
 
         Ok(StartMockPipelineResponse { project, job })
     }
@@ -56,14 +61,14 @@ impl<R: ProjectRepository> StartMockPipelineUseCase<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::MockJobScheduler;
     use adapters_storage::memory::InMemoryProjectRepository;
-
-    use jobs::status::JobStatus;
+    use domain::job::JobStatus;
 
     #[tokio::test]
     async fn test_start_mock_pipeline_success() {
         let project_repo = InMemoryProjectRepository::new();
-        let job_manager = JobManager::new(None);
+        let job_scheduler = Arc::new(MockJobScheduler::new());
 
         let mut project = Project::new("Test".to_string());
         let source = domain::media::MediaSource::RemoteUrl {
@@ -74,7 +79,7 @@ mod tests {
 
         project_repo.create(project.clone()).await.unwrap();
 
-        let use_case = StartMockPipelineUseCase::new(project_repo.clone(), job_manager.clone());
+        let use_case = StartMockPipelineUseCase::new(project_repo.clone(), job_scheduler.clone());
 
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -82,9 +87,9 @@ mod tests {
 
         let response = use_case.execute(request).await.unwrap();
 
-        // Ensure job is enqueued or running
+        // Ensure job is enqueued or pending
         assert!(
-            response.job.status == JobStatus::Queued || response.job.status == JobStatus::Running
+            response.job.status == JobStatus::Pending || response.job.status == JobStatus::Running
         );
     }
 }

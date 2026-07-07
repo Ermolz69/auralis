@@ -2,9 +2,10 @@ use adapters_ffmpeg::ffprobe::FfprobeAdapter;
 use adapters_storage::memory::InMemoryProjectRepository;
 use application::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
 use domain::project::ProjectId;
-use jobs::manager::JobManager;
+use ports::job_scheduler::JobSchedulerPort;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 use tauri::{command, AppHandle, State};
 
 use crate::dto::media::MediaMetadataDto;
@@ -39,7 +40,7 @@ pub async fn import_local_media_cmd(
     path: String,
     app: AppHandle,
     project_repo: State<'_, InMemoryProjectRepository>,
-    job_manager: State<'_, JobManager>,
+    job_scheduler: State<'_, Arc<dyn JobSchedulerPort>>,
 ) -> Result<ProjectDto, String> {
     use application::usecases::media::import_local_media::{
         ImportLocalMediaRequest, ImportLocalMediaUseCase,
@@ -49,7 +50,7 @@ pub async fn import_local_media_cmd(
     let use_case = ImportLocalMediaUseCase::new(
         project_repo.inner().clone(),
         probe,
-        job_manager.inner().clone(),
+        job_scheduler.inner().clone(),
     );
 
     let pid = ProjectId::from_str(&project_id).map_err(|e| e.to_string())?;
