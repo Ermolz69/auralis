@@ -8,6 +8,11 @@
     "devUrl": "http://localhost:5173",
     "frontendDist": "../apps/desktop/dist"
   },
+  "bundle": {
+    "resources": [
+      "binaries/*"
+    ]
+  },
   "app": {
     "windows": [
       {

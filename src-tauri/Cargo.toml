@@ -23,3 +23,4 @@ adapters-ffmpeg = { path = "../crates/adapters-ffmpeg" }
 tokio = { version = "1.0", features = ["rt", "time", "macros", "sync"] }
 tauri-plugin-dialog = "2.7.1"
 async-trait = "0.1.89"
+tauri-plugin-shell = "2.3.5"
