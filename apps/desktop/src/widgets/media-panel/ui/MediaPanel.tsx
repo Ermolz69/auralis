@@ -45,7 +45,10 @@ export function MediaPanel() {
         {warnings.length > 0 && (
           <div className="flex flex-col gap-2">
             {warnings.map((warn, i) => (
-              <div key={i} className="flex items-start gap-2 text-warning text-xs p-3 bg-warning/10 border border-warning/30 rounded-lg shadow-sm">
+              <div
+                key={i}
+                className="flex items-start gap-2 text-warning text-xs p-3 bg-warning/10 border border-warning/30 rounded-lg shadow-sm"
+              >
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span className="leading-snug">{warn}</span>
               </div>
@@ -62,7 +65,10 @@ export function MediaPanel() {
           <div className="space-y-2 bg-muted/10 p-3 rounded-lg border border-muted/50">
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Source</span>
-              <span className="font-medium text-text truncate max-w-[120px]" title={source?.url_or_path}>
+              <span
+                className="font-medium text-text truncate max-w-[120px]"
+                title={source?.url_or_path}
+              >
                 {source?.url_or_path?.split(/[/\\]/).pop() || 'Unknown'}
               </span>
             </div>
@@ -72,7 +78,9 @@ export function MediaPanel() {
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Container</span>
-              <Badge variant="muted" size="sm">{metadata.container?.toUpperCase() || 'UNK'}</Badge>
+              <Badge variant="muted" size="sm">
+                {metadata.container?.toUpperCase() || 'UNK'}
+              </Badge>
             </div>
             {metadata.width && metadata.height && (
               <div className="flex justify-between items-center text-sm">
@@ -86,8 +94,14 @@ export function MediaPanel() {
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Video</span>
                 <div className="flex flex-col items-end">
-                  <span className="font-medium text-text">{metadata.video_codec.toUpperCase()}</span>
-                  {metadata.fps && <span className="text-[10px] text-muted-foreground">{metadata.fps.toFixed(2)} fps</span>}
+                  <span className="font-medium text-text">
+                    {metadata.video_codec.toUpperCase()}
+                  </span>
+                  {metadata.fps && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {metadata.fps.toFixed(2)} fps
+                    </span>
+                  )}
                 </div>
               </div>
             )}

@@ -1,6 +1,13 @@
 import type { MediaMetadata, MediaSource } from '@/entities/media';
 
-export type ProjectStatus = 'draft' | 'processing' | 'completed' | 'failed';
+export type ProjectStatus =
+  | 'draft'
+  | 'source_imported'
+  | 'ready_for_processing'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
 
 export interface Project {
   id: string;

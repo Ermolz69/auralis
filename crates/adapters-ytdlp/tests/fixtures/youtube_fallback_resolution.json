@@ -1,15 +1,15 @@
 {
-    "duration": 5.0,
-    "formats": [
-        {
-            "vcodec": "avc",
-            "width": 640,
-            "height": 360
-        },
-        {
-            "vcodec": "vp9",
-            "width": 1920,
-            "height": 1080
-        }
-    ]
+  "duration": 5.0,
+  "formats": [
+    {
+      "vcodec": "avc",
+      "width": 640,
+      "height": 360
+    },
+    {
+      "vcodec": "vp9",
+      "width": 1920,
+      "height": 1080
+    }
+  ]
 }

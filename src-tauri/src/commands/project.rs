@@ -15,7 +15,7 @@ use tauri::{command, AppHandle, State};
 
 use crate::dto::project::{CreateProjectResponse, ProjectDto, TranscriptDto};
 
-fn get_ytdlp_adapter(app: &AppHandle) -> YtDlpAdapter {
+pub(crate) fn get_ytdlp_adapter(app: &AppHandle) -> YtDlpAdapter {
     let candidates = crate::media_tools::resolve_ytdlp_candidates(app);
     YtDlpAdapter::new(candidates)
 }
@@ -87,14 +87,10 @@ pub async fn create_project_from_youtube_cmd(
     })
 }
 
-use application::usecases::transcript::import_youtube_subtitles::{
-    ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesUseCase,
-};
-
 #[command]
 pub async fn get_transcript_cmd(
     project_id: String,
-    app: AppHandle,
+    _app: AppHandle,
     project_repo: State<'_, InMemoryProjectRepository>,
 ) -> Result<Option<TranscriptDto>, String> {
     let pid: domain::project::ProjectId = project_id
@@ -111,34 +107,9 @@ pub async fn get_transcript_cmd(
         if let Some(transcript) = project.transcript() {
             return Ok(Some(TranscriptDto::from(transcript)));
         }
-    } else {
-        return Ok(None);
     }
 
-    let ytdlp_adapter = get_ytdlp_adapter(&app);
-
-    let target_dir = std::env::temp_dir()
-        .join("auralis")
-        .join("projects")
-        .join(&project_id)
-        .join("subtitles");
-
-    let use_case = ImportYoutubeSubtitlesUseCase::new(
-        std::sync::Arc::new(project_repo.inner().clone()),
-        std::sync::Arc::new(ytdlp_adapter),
-    );
-
-    let response = use_case
-        .execute(ImportYoutubeSubtitlesRequest {
-            project_id: pid,
-            target_dir,
-            preferred_languages: vec!["en".to_string(), "ru".to_string(), "uk".to_string()],
-            allow_auto_generated: true,
-        })
-        .await
-        .map_err(|e| format!("{:?}", e))?;
-
-    Ok(Some(TranscriptDto::from(&response.transcript)))
+    Ok(None)
 }
 
 #[command]
