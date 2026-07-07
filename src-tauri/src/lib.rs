@@ -16,38 +16,70 @@ pub fn run() {
             let emitter = Arc::new(move |event: jobs::event::JobEvent| {
                 let event_status = event.status;
                 let event_job_id = event.job_id.clone();
-                if event_status == jobs::status::JobStatus::Completed
-                    || event_status == jobs::status::JobStatus::Failed
-                {
+
+                if matches!(
+                    event_status,
+                    jobs::status::JobStatus::Completed
+                        | jobs::status::JobStatus::Failed
+                        | jobs::status::JobStatus::Cancelled
+                ) {
                     if let Some(project_id_str) = &event.project_id {
                         let app_clone = app_handle_clone.clone();
                         let pid_str = project_id_str.clone();
-                        let is_success = event_status == jobs::status::JobStatus::Completed;
 
                         tauri::async_runtime::spawn(async move {
-                            use application::usecases::project::handle_job_completed::{
-                                HandleJobCompletedRequest, HandleJobCompletedUseCase,
+                            let project_update_result = match event_status {
+                                jobs::status::JobStatus::Completed
+                                | jobs::status::JobStatus::Failed => {
+                                    use application::usecases::project::handle_job_completed::{
+                                        HandleJobCompletedRequest, HandleJobCompletedUseCase,
+                                    };
+
+                                    let repo = app_clone
+                                        .state::<InMemoryProjectRepository>()
+                                        .inner()
+                                        .clone();
+                                    let ytdlp_adapter =
+                                        crate::commands::project::get_ytdlp_adapter(&app_clone);
+                                    let use_case = HandleJobCompletedUseCase::new(repo, ytdlp_adapter);
+                                    let is_success =
+                                        event_status == jobs::status::JobStatus::Completed;
+
+                                    use_case
+                                        .execute(HandleJobCompletedRequest {
+                                            job_id: event_job_id.to_string(),
+                                            project_id: pid_str.clone(),
+                                            is_success,
+                                            target_dir_base: std::env::temp_dir(),
+                                        })
+                                        .await
+                                        .map(|result| result.transcript_ready)
+                                }
+                                jobs::status::JobStatus::Cancelled => {
+                                    use application::usecases::project::handle_job_cancelled::{
+                                        HandleJobCancelledRequest, HandleJobCancelledUseCase,
+                                    };
+
+                                    let repo = app_clone
+                                        .state::<InMemoryProjectRepository>()
+                                        .inner()
+                                        .clone();
+                                    let use_case = HandleJobCancelledUseCase::new(repo);
+
+                                    use_case
+                                        .execute(HandleJobCancelledRequest {
+                                            job_id: event_job_id.to_string(),
+                                            project_id: pid_str.clone(),
+                                        })
+                                        .await
+                                        .map(|_| false)
+                                        .map_err(|error| error.to_string())
+                                }
+                                _ => Ok(false),
                             };
 
-                            let repo = app_clone
-                                .state::<adapters_storage::memory::InMemoryProjectRepository>()
-                                .inner()
-                                .clone();
-                            let ytdlp_adapter =
-                                crate::commands::project::get_ytdlp_adapter(&app_clone);
-
-                            let use_case = HandleJobCompletedUseCase::new(repo, ytdlp_adapter);
-
-                            if let Ok(result) = use_case
-                                .execute(HandleJobCompletedRequest {
-                                    job_id: event_job_id.to_string(),
-                                    project_id: pid_str.clone(),
-                                    is_success,
-                                    target_dir_base: std::env::temp_dir(),
-                                })
-                                .await
-                            {
-                                if result.transcript_ready {
+                            if let Ok(transcript_ready) = project_update_result {
+                                if transcript_ready {
                                     let _ = app_clone.emit(
                                         "transcript-ready",
                                         serde_json::json!({
@@ -56,6 +88,7 @@ pub fn run() {
                                         }),
                                     );
                                 }
+
                                 let _ = app_clone.emit(
                                     "project-updated",
                                     serde_json::json!({

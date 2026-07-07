@@ -1,5 +1,6 @@
 pub mod create;
 pub mod create_from_youtube;
 pub mod get;
+pub mod handle_job_cancelled;
 pub mod handle_job_completed;
 pub mod import_source;
