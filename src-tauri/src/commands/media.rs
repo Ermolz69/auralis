@@ -1,12 +1,8 @@
 use adapters_ffmpeg::ffprobe::FfprobeAdapter;
 use adapters_storage::memory::InMemoryProjectRepository;
 use application::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
-use application::usecases::pipeline::start_mock::{
-    StartMockPipelineRequest, StartMockPipelineUseCase,
-};
 use domain::project::ProjectId;
 use jobs::manager::JobManager;
-use ports::repository::ProjectRepository;
 use std::path::PathBuf;
 use std::str::FromStr;
 use tauri::{command, AppHandle, State};
@@ -45,41 +41,25 @@ pub async fn import_local_media_cmd(
     project_repo: State<'_, InMemoryProjectRepository>,
     job_manager: State<'_, JobManager>,
 ) -> Result<ProjectDto, String> {
+    use application::usecases::media::import_local_media::{
+        ImportLocalMediaRequest, ImportLocalMediaUseCase,
+    };
+
     let probe = get_ffprobe_adapter(&app);
-    let use_case = ProbeLocalMediaUseCase::new(project_repo.inner().clone(), probe);
+    let use_case = ImportLocalMediaUseCase::new(
+        project_repo.inner().clone(),
+        probe,
+        job_manager.inner().clone(),
+    );
 
     let pid = ProjectId::from_str(&project_id).map_err(|e| e.to_string())?;
 
-    let req = ProbeLocalMediaRequest {
-        project_id: Some(pid.clone()),
+    let req = ImportLocalMediaRequest {
+        project_id: pid,
         path: PathBuf::from(path),
     };
 
-    let res = use_case.execute(req).await.map_err(|e| e.to_string())?;
+    let response = use_case.execute(req).await.map_err(|e| e.to_string())?;
 
-    if let Some(mut proj) = res.project {
-        proj.mark_ready_for_processing()
-            .map_err(|e| e.to_string())?;
-        project_repo
-            .inner()
-            .save(&proj)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        let pipeline_use_case = StartMockPipelineUseCase::new(
-            project_repo.inner().clone(),
-            job_manager.inner().clone(),
-        );
-        let req2 = StartMockPipelineRequest {
-            project_id: pid.clone(),
-        };
-        let pipeline_res = pipeline_use_case
-            .execute(req2)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        Ok((&pipeline_res.project).into())
-    } else {
-        Err("Failed to return project".into())
-    }
+    Ok((&response.project).into())
 }

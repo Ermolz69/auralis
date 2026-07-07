@@ -8,6 +8,7 @@ use ports::media::MediaProbePort;
 use crate::ffprobe::command::run_ffprobe;
 use crate::ffprobe::parser::parse_ffprobe_output;
 
+#[derive(Debug, Clone)]
 pub struct FfprobeAdapter {
     candidates: Vec<PathBuf>,
 }
