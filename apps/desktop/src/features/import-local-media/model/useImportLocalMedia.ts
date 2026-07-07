@@ -4,11 +4,13 @@ import { useProjectContext } from '@/entities/project';
 import { invoke } from '@/shared/api/tauri/invoke';
 import { importLocalMedia } from '@/entities/media';
 
+import { useNavigation } from '@/app/router';
 
 export function useImportLocalMedia() {
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setProjectId, setProject, setCurrentView } = useProjectContext();
+  const { setProjectId, setProject } = useProjectContext();
+  const { setCurrentView } = useNavigation();
 
   const handleImport = async () => {
     setError(null);

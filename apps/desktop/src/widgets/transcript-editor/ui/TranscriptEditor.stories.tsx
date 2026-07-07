@@ -30,8 +30,6 @@ const meta = {
         setProjectId: () => {},
         project: mockProject,
         setProject: () => {},
-        currentView: 'project',
-        setCurrentView: () => {},
       };
 
       return (

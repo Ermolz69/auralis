@@ -2,10 +2,10 @@ import { HomePage } from './pages/home';
 import { ProjectPage } from './pages/project';
 import { SettingsPage } from './pages/settings';
 import { Button } from './shared/ui/button';
-import { useProjectContext } from './entities/project';
+import { useNavigation } from './app/router';
 
 function App() {
-  const { currentView, setCurrentView } = useProjectContext();
+  const { currentView, setCurrentView } = useNavigation();
 
   const cycleView = () => {
     setCurrentView(
