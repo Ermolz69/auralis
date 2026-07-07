@@ -46,7 +46,9 @@ export interface MediaMetadata {
   streams: MediaStream[];
 }
 
+export type MediaSourceKind = 'remoteUrl' | 'youtubeUrl' | 'localFile';
+
 export interface MediaSource {
-  kind: string;
+  kind: MediaSourceKind;
   urlOrPath: string;
 }

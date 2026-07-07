@@ -20,7 +20,7 @@ const meta = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         source: {
-          kind: 'YoutubeUrl',
+          kind: 'youtubeUrl',
           urlOrPath: 'https://youtube.com/watch?v=123',
         },
       };
@@ -57,7 +57,7 @@ export const LocalMediaUnavailable: Story = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       source: {
-        kind: 'LocalFile',
+        kind: 'localFile',
         urlOrPath: '/path/to/local/file.mp4',
       },
     },
