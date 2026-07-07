@@ -7,7 +7,7 @@ use crate::id::JobId;
 use crate::manager::JobManager;
 use crate::progress::JobProgress;
 use crate::stage::JobStage;
-use crate::status::JobStatus;
+use domain::job::JobStatus;
 
 pub fn run_mock_pipeline(manager: JobManager, job_id: JobId) {
     tokio::spawn(async move {

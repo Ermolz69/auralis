@@ -11,6 +11,12 @@ pub struct MockJobScheduler {
     pub jobs: Arc<Mutex<Vec<ScheduledJob>>>,
 }
 
+impl Default for MockJobScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockJobScheduler {
     pub fn new() -> Self {
         Self {

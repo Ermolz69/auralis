@@ -2,7 +2,7 @@ use tokio::time::{Duration, sleep};
 
 use crate::id::JobId;
 use crate::manager::JobManager;
-use crate::status::JobStatus;
+use domain::job::JobStatus;
 
 #[tokio::test]
 async fn test_job_manager_flow() {
@@ -15,7 +15,7 @@ async fn test_job_manager_flow() {
 
     // Should be queued or running
     let job = manager.get_job_internal(&job_id).await.unwrap();
-    assert!(job.status == JobStatus::Queued || job.status == JobStatus::Running);
+    assert!(job.status == JobStatus::Pending || job.status == JobStatus::Running);
 
     // Cancel the job
     let _cancelled_job = manager.cancel_job_internal(&job_id).await.unwrap();
@@ -74,7 +74,7 @@ async fn test_concurrent_updates_and_cancellation() {
     assert!(
         job.status == JobStatus::Cancelled
             || job.status == JobStatus::Running
-            || job.status == JobStatus::Queued
+            || job.status == JobStatus::Pending
             || job.status == JobStatus::Completed
     );
 }

@@ -8,7 +8,7 @@ use chrono::Utc;
 use crate::error::JobError;
 use crate::id::JobId;
 use crate::job::Job;
-use crate::status::JobStatus;
+use domain::job::JobStatus;
 
 use async_trait::async_trait;
 use domain::dubbing::DubbingPipelineStage;
@@ -61,7 +61,7 @@ impl JobManager {
     pub async fn list_jobs_internal(&self) -> Vec<Job> {
         let mut jobs: Vec<Job> = self.jobs.read().await.values().cloned().collect();
         // Sort by creation time, newest first
-        jobs.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        jobs.sort_by_key(|b| std::cmp::Reverse(b.created_at));
         jobs
     }
 
@@ -72,7 +72,7 @@ impl JobManager {
                 .get_mut(job_id)
                 .ok_or_else(|| JobError::NotFound(job_id.clone()))?;
 
-            let should_cancel = matches!(job.status, JobStatus::Queued | JobStatus::Running);
+            let should_cancel = matches!(job.status, JobStatus::Pending | JobStatus::Running);
             if should_cancel {
                 job.status = JobStatus::Cancelled;
                 job.updated_at = Utc::now();
@@ -194,13 +194,7 @@ impl JobManager {
             .and_then(|id| DomainProjectId::from_str(id).ok());
         let domain_id = DomainJobId::from_str(&job.id.0).unwrap_or_default();
 
-        let status = match job.status {
-            JobStatus::Queued => domain::job::JobStatus::Pending,
-            JobStatus::Running => domain::job::JobStatus::Running,
-            JobStatus::Completed => domain::job::JobStatus::Completed,
-            JobStatus::Failed => domain::job::JobStatus::Failed,
-            JobStatus::Cancelled => domain::job::JobStatus::Cancelled,
-        };
+        let status = job.status.clone();
 
         let stage = match &job.stage {
             Some(crate::stage::JobStage::ValidateSource) => {
