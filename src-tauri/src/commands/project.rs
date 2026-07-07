@@ -8,8 +8,9 @@ use application::usecases::project::create_from_youtube::{
 };
 use application::usecases::project::get::{GetProjectRequest, GetProjectUseCase};
 
-use jobs::manager::JobManager;
+use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::ProjectRepository;
+use std::sync::Arc;
 use tauri::{command, AppHandle, State};
 
 use crate::dto::project::{CreateProjectResponse, ProjectDto, TranscriptDto};
@@ -38,7 +39,7 @@ pub async fn create_project_cmd(
 pub async fn create_project_from_youtube_cmd(
     url: String,
     app: AppHandle,
-    state: State<'_, JobManager>,
+    state: State<'_, Arc<dyn JobSchedulerPort>>,
     project_repo: State<'_, InMemoryProjectRepository>,
 ) -> Result<CreateProjectResponse, String> {
     let ytdlp_adapter = get_ytdlp_adapter(&app);

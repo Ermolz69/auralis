@@ -5,8 +5,9 @@ use crate::usecases::project::handle_job_cancelled::{
 use crate::usecases::project::handle_job_completed::{
     HandleJobCompletedRequest, HandleJobCompletedUseCase,
 };
-use jobs::status::JobStatus;
+use domain::job::JobStatus;
 use ports::events::AppEventPublisher;
+use ports::job_scheduler::JobLifecycleEvent;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 
@@ -34,9 +35,9 @@ impl<
         }
     }
 
-    pub async fn execute(&self, event: jobs::event::JobEvent) -> Result<(), ApplicationError> {
+    pub async fn execute(&self, event: JobLifecycleEvent) -> Result<(), ApplicationError> {
         let project_id_str = match event.project_id {
-            Some(pid) => pid,
+            Some(pid) => pid.to_string(),
             None => return Ok(()), // No-op if no project_id
         };
 
@@ -81,7 +82,7 @@ impl<
                     .publish_project_updated(&project_id_str)
                     .await?;
             }
-            JobStatus::Queued | JobStatus::Running => {
+            JobStatus::Running | JobStatus::Pending => {
                 // no-op
             }
         }
@@ -94,10 +95,10 @@ impl<
 mod tests {
     use super::*;
     use async_trait::async_trait;
+    use domain::job::JobId;
+    use domain::job::JobProgress;
     use domain::media::SubtitleTrack;
     use domain::project::{Project, ProjectId};
-    use jobs::id::JobId;
-    use jobs::progress::JobProgress;
     use ports::error::PortError;
     use std::str::FromStr;
     use std::sync::{Arc, Mutex};
@@ -223,14 +224,13 @@ mod tests {
         let publ = MockAppEventPublisher::default();
         let uc = HandleJobEventUseCase::new(repo, MockSubtitleSource, publ.clone());
 
-        for status in [JobStatus::Queued, JobStatus::Running] {
-            let event = jobs::event::JobEvent {
+        for status in [JobStatus::Running, JobStatus::Pending] {
+            let event = JobLifecycleEvent {
                 job_id: JobId::new(),
-                project_id: Some(ProjectId::new().to_string()),
+                project_id: Some(ProjectId::new()),
                 status,
                 stage: None,
-                progress: JobProgress::new(0),
-                message: None,
+                progress: JobProgress::initializing(),
                 error: None,
             };
             uc.execute(event).await.unwrap();
@@ -245,13 +245,12 @@ mod tests {
         let publ = MockAppEventPublisher::default();
         let uc = HandleJobEventUseCase::new(repo, MockSubtitleSource, publ.clone());
 
-        let event = jobs::event::JobEvent {
+        let event = JobLifecycleEvent {
             job_id: JobId::new(),
             project_id: None,
             status: JobStatus::Completed,
             stage: None,
-            progress: JobProgress::new(0),
-            message: None,
+            progress: JobProgress::initializing(),
             error: None,
         };
         uc.execute(event).await.unwrap();
@@ -263,17 +262,16 @@ mod tests {
     async fn test_completed_local_media() {
         let p = create_processing_project();
         let pid_str = p.id().to_string();
-        let repo = MockProjectRepo::new(p);
+        let repo = MockProjectRepo::new(p.clone());
         let publ = MockAppEventPublisher::default();
         let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
 
-        let event = jobs::event::JobEvent {
+        let event = JobLifecycleEvent {
             job_id: JobId::new(),
-            project_id: Some(pid_str.clone()),
+            project_id: Some(p.id().clone()),
             status: JobStatus::Completed,
             stage: None,
-            progress: JobProgress::new(100),
-            message: None,
+            progress: JobProgress::initializing(),
             error: None,
         };
         uc.execute(event).await.unwrap();
@@ -293,17 +291,16 @@ mod tests {
     async fn test_completed_youtube_subtitles_fail() {
         let p = create_processing_youtube_project();
         let pid_str = p.id().to_string();
-        let repo = MockProjectRepo::new(p);
+        let repo = MockProjectRepo::new(p.clone());
         let publ = MockAppEventPublisher::default();
         let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
 
-        let event = jobs::event::JobEvent {
+        let event = JobLifecycleEvent {
             job_id: JobId::new(),
-            project_id: Some(pid_str.clone()),
+            project_id: Some(p.id().clone()),
             status: JobStatus::Completed,
             stage: None,
-            progress: JobProgress::new(100),
-            message: None,
+            progress: JobProgress::initializing(),
             error: None,
         };
         uc.execute(event).await.unwrap();
@@ -324,17 +321,16 @@ mod tests {
     async fn test_failed() {
         let p = create_processing_project();
         let pid_str = p.id().to_string();
-        let repo = MockProjectRepo::new(p);
+        let repo = MockProjectRepo::new(p.clone());
         let publ = MockAppEventPublisher::default();
         let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
 
-        let event = jobs::event::JobEvent {
+        let event = JobLifecycleEvent {
             job_id: JobId::new(),
-            project_id: Some(pid_str.clone()),
+            project_id: Some(p.id().clone()),
             status: JobStatus::Failed,
             stage: None,
-            progress: JobProgress::new(100),
-            message: None,
+            progress: JobProgress::initializing(),
             error: None,
         };
         uc.execute(event).await.unwrap();
@@ -354,17 +350,16 @@ mod tests {
     async fn test_cancelled() {
         let p = create_processing_project();
         let pid_str = p.id().to_string();
-        let repo = MockProjectRepo::new(p);
+        let repo = MockProjectRepo::new(p.clone());
         let publ = MockAppEventPublisher::default();
         let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
 
-        let event = jobs::event::JobEvent {
+        let event = JobLifecycleEvent {
             job_id: JobId::new(),
-            project_id: Some(pid_str.clone()),
+            project_id: Some(p.id().clone()),
             status: JobStatus::Cancelled,
             stage: None,
-            progress: JobProgress::new(100),
-            message: None,
+            progress: JobProgress::initializing(),
             error: None,
         };
         uc.execute(event).await.unwrap();

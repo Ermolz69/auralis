@@ -114,8 +114,8 @@ dependencies = [
  "adapters-storage",
  "adapters-ytdlp",
  "async-trait",
+ "chrono",
  "domain",
- "jobs",
  "ports",
  "tempfile",
  "thiserror 2.0.18",
@@ -748,6 +748,7 @@ name = "domain"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "serde",
  "thiserror 2.0.18",
  "uuid",
 ]
@@ -1681,7 +1682,10 @@ dependencies = [
 name = "jobs"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "chrono",
+ "domain",
+ "ports",
  "serde",
  "thiserror 2.0.18",
  "tokio",
@@ -2329,7 +2333,9 @@ name = "ports"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "domain",
+ "serde",
  "thiserror 2.0.18",
 ]
 

@@ -10,20 +10,20 @@ async fn test_job_manager_flow() {
 
     // Start mock job
     let job_id = manager
-        .start_mock_dubbing_job("Test Job".to_string(), None)
+        .start_mock_dubbing_job_internal("Test Job".to_string(), None)
         .await;
 
     // Should be queued or running
-    let job = manager.get_job(&job_id).await.unwrap();
+    let job = manager.get_job_internal(&job_id).await.unwrap();
     assert!(job.status == JobStatus::Queued || job.status == JobStatus::Running);
 
     // Cancel the job
-    let _cancelled_job = manager.cancel_job(&job_id).await.unwrap();
+    let _cancelled_job = manager.cancel_job_internal(&job_id).await.unwrap();
 
     // Wait a bit to ensure it processes the cancellation
     sleep(Duration::from_millis(600)).await;
 
-    let job = manager.get_job(&job_id).await.unwrap();
+    let job = manager.get_job_internal(&job_id).await.unwrap();
     assert_eq!(job.status, JobStatus::Cancelled);
 }
 
@@ -32,6 +32,6 @@ async fn test_cancel_unknown_job() {
     let manager = JobManager::new(None);
     let fake_id = JobId("fake".to_string());
 
-    let result = manager.cancel_job(&fake_id).await;
+    let result = manager.cancel_job_internal(&fake_id).await;
     assert!(result.is_err());
 }

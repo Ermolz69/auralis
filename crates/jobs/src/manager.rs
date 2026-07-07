@@ -1,22 +1,30 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use chrono::Utc;
 
-use crate::cancellation::CancelHandle;
 use crate::error::JobError;
-use crate::event::JobEvent;
 use crate::id::JobId;
 use crate::job::Job;
 use crate::status::JobStatus;
 
-pub type JobEventEmitter = Arc<dyn Fn(JobEvent) + Send + Sync + 'static>;
+use async_trait::async_trait;
+use domain::dubbing::DubbingPipelineStage;
+use domain::job::JobId as DomainJobId;
+use domain::project::ProjectId as DomainProjectId;
+use ports::job_scheduler::JobLifecycleEvent;
+
+use ports::error::PortError;
+use ports::job_scheduler::{JobSchedulerPort, ScheduledJob, StartDubbingJobRequest};
+
+pub type JobEventEmitter = Arc<dyn Fn(JobLifecycleEvent) + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct JobManager {
     jobs: Arc<RwLock<HashMap<JobId, Job>>>,
-    cancel_handles: Arc<RwLock<HashMap<JobId, CancelHandle>>>,
+    cancel_handles: Arc<RwLock<HashMap<JobId, crate::cancellation::CancelHandle>>>,
     emitter: Option<JobEventEmitter>,
 }
 
@@ -29,14 +37,15 @@ impl JobManager {
         }
     }
 
-    pub async fn start_mock_dubbing_job(&self, title: String, project_id: Option<String>) -> JobId {
+    pub async fn start_mock_dubbing_job_internal(
+        &self,
+        title: String,
+        project_id: Option<String>,
+    ) -> JobId {
         let job = Job::new(title, project_id);
         let job_id = job.id.clone();
 
-        {
-            let mut jobs = self.jobs.write().await;
-            jobs.insert(job_id.clone(), job.clone());
-        }
+        self.jobs.write().await.insert(job_id.clone(), job.clone());
 
         self.emit_job_event(&job);
 
@@ -45,20 +54,23 @@ impl JobManager {
         job_id
     }
 
-    pub async fn list_jobs(&self) -> Vec<Job> {
-        let jobs = self.jobs.read().await;
-        let mut list: Vec<Job> = jobs.values().cloned().collect();
-        // Sort by creation time descending (newest first)
-        list.sort_by_key(|b| std::cmp::Reverse(b.created_at));
-        list
+    pub async fn get_job_internal(&self, job_id: &JobId) -> Option<Job> {
+        self.jobs.read().await.get(job_id).cloned()
     }
 
-    pub async fn cancel_job(&self, id: &JobId) -> Result<Job, JobError> {
+    pub async fn list_jobs_internal(&self) -> Vec<Job> {
+        let mut jobs: Vec<Job> = self.jobs.read().await.values().cloned().collect();
+        // Sort by creation time, newest first
+        jobs.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        jobs
+    }
+
+    pub async fn cancel_job_internal(&self, job_id: &JobId) -> Result<Job, JobError> {
         let (job, should_cancel) = {
             let mut jobs = self.jobs.write().await;
             let job = jobs
-                .get_mut(id)
-                .ok_or_else(|| JobError::NotFound(id.clone()))?;
+                .get_mut(job_id)
+                .ok_or_else(|| JobError::NotFound(job_id.clone()))?;
 
             let should_cancel = matches!(job.status, JobStatus::Queued | JobStatus::Running);
             if should_cancel {
@@ -71,7 +83,7 @@ impl JobManager {
 
         if should_cancel {
             let handles = self.cancel_handles.read().await;
-            if let Some(handle) = handles.get(id) {
+            if let Some(handle) = handles.get(job_id) {
                 handle.cancel();
             }
 
@@ -90,12 +102,11 @@ impl JobManager {
         self.emit_job_event(&updated_job);
     }
 
-    pub async fn get_job(&self, id: &JobId) -> Option<Job> {
-        let jobs = self.jobs.read().await;
-        jobs.get(id).cloned()
-    }
-
-    pub async fn register_cancel_handle(&self, id: JobId, handle: CancelHandle) {
+    pub async fn register_cancel_handle(
+        &self,
+        id: JobId,
+        handle: crate::cancellation::CancelHandle,
+    ) {
         let mut handles = self.cancel_handles.write().await;
         handles.insert(id, handle);
     }
@@ -105,21 +116,149 @@ impl JobManager {
         handles.remove(id);
     }
 
-    fn emit_job_event(&self, job: &Job) {
-        self.emit_event(JobEvent {
-            job_id: job.id.clone(),
-            project_id: job.project_id.clone(),
-            status: job.status,
-            stage: job.stage.clone(),
-            progress: job.progress.clone(),
-            message: None,
-            error: job.error.clone(),
-        });
+    pub async fn update_job_status(&self, job_id: &JobId, status: JobStatus) {
+        let mut jobs = self.jobs.write().await;
+        if let Some(job) = jobs.get_mut(job_id) {
+            job.status = status;
+            job.updated_at = Utc::now();
+            self.emit_job_event(job);
+        }
     }
 
-    fn emit_event(&self, event: JobEvent) {
+    pub async fn update_job_progress(&self, job_id: &JobId, percent: u8) {
+        let mut jobs = self.jobs.write().await;
+        if let Some(job) = jobs.get_mut(job_id) {
+            job.progress.percent = percent;
+            job.updated_at = Utc::now();
+            self.emit_job_event(job);
+        }
+    }
+
+    pub async fn update_job_stage(&self, job_id: &JobId, stage: crate::stage::JobStage) {
+        let mut jobs = self.jobs.write().await;
+        if let Some(job) = jobs.get_mut(job_id) {
+            job.stage = Some(stage);
+            job.updated_at = Utc::now();
+            self.emit_job_event(job);
+        }
+    }
+
+    pub async fn fail_job(&self, job_id: &JobId, error: String) {
+        let mut jobs = self.jobs.write().await;
+        if let Some(job) = jobs.get_mut(job_id) {
+            job.status = JobStatus::Failed;
+            job.error = Some(error);
+            job.updated_at = Utc::now();
+            self.emit_job_event(job);
+        }
+    }
+
+    fn map_job_to_scheduled(job: &Job) -> ScheduledJob {
+        let project_id = job
+            .project_id
+            .as_ref()
+            .and_then(|id| DomainProjectId::from_str(id).ok());
+        let domain_id = DomainJobId::from_str(&job.id.0).unwrap_or_default();
+
+        let status = match job.status {
+            JobStatus::Queued => domain::job::JobStatus::Pending,
+            JobStatus::Running => domain::job::JobStatus::Running,
+            JobStatus::Completed => domain::job::JobStatus::Completed,
+            JobStatus::Failed => domain::job::JobStatus::Failed,
+            JobStatus::Cancelled => domain::job::JobStatus::Cancelled,
+        };
+
+        let stage = match &job.stage {
+            Some(crate::stage::JobStage::ValidateSource) => {
+                Some(DubbingPipelineStage::ValidateSource)
+            }
+            Some(crate::stage::JobStage::FetchMetadata) => {
+                Some(DubbingPipelineStage::FetchMetadata)
+            }
+            Some(crate::stage::JobStage::PrepareMedia) => Some(DubbingPipelineStage::DownloadMedia),
+            Some(crate::stage::JobStage::GenerateTranscript) => {
+                Some(DubbingPipelineStage::ExtractOrGenerateTranscript)
+            }
+            Some(crate::stage::JobStage::Finalize) => Some(DubbingPipelineStage::ExportResult),
+            None => None,
+        };
+
+        let progress = domain::job::JobProgress {
+            percent: job.progress.percent,
+            message: "Mock processing...".to_string(),
+            current_step: None,
+            processed_items: None,
+            total_items: None,
+        };
+
+        ScheduledJob {
+            id: domain_id,
+            project_id,
+            title: job.title.clone(),
+            status,
+            stage,
+            progress,
+            error: job.error.clone(),
+            created_at: job.created_at,
+            updated_at: job.updated_at,
+        }
+    }
+
+    fn emit_job_event(&self, job: &Job) {
+        let scheduled = Self::map_job_to_scheduled(job);
+
+        let event = JobLifecycleEvent {
+            job_id: scheduled.id,
+            project_id: scheduled.project_id,
+            status: scheduled.status,
+            stage: scheduled.stage,
+            progress: scheduled.progress,
+            error: scheduled.error,
+        };
+
         if let Some(emitter) = &self.emitter {
             emitter(event);
         }
+    }
+}
+
+#[async_trait]
+impl JobSchedulerPort for JobManager {
+    async fn start_dubbing_job(
+        &self,
+        request: StartDubbingJobRequest,
+    ) -> Result<ScheduledJob, PortError> {
+        let project_id_str = request.project_id.map(|id| id.to_string());
+        let job_id = self
+            .start_mock_dubbing_job_internal(request.title, project_id_str)
+            .await;
+
+        let job = self.get_job_internal(&job_id).await.unwrap();
+        Ok(Self::map_job_to_scheduled(&job))
+    }
+
+    async fn cancel_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
+        let adapter_id = JobId(job_id.to_string());
+        let job =
+            self.cancel_job_internal(&adapter_id)
+                .await
+                .map_err(|e| PortError::Unexpected {
+                    message: e.to_string(),
+                })?;
+        Ok(Self::map_job_to_scheduled(&job))
+    }
+
+    async fn get_job(&self, job_id: &DomainJobId) -> Result<Option<ScheduledJob>, PortError> {
+        let adapter_id = JobId(job_id.to_string());
+        let job = self.get_job_internal(&adapter_id).await;
+        Ok(job.map(|j| Self::map_job_to_scheduled(&j)))
+    }
+
+    async fn list_jobs(&self) -> Result<Vec<ScheduledJob>, PortError> {
+        let jobs = self.list_jobs_internal().await;
+        Ok(jobs
+            .into_iter()
+            .map(|j| Self::map_job_to_scheduled(&j))
+            .collect())
     }
 }

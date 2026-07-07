@@ -1,6 +1,7 @@
-use jobs::id::JobId;
-use jobs::job::Job;
-use jobs::manager::JobManager;
+use domain::job::JobId;
+use ports::job_scheduler::{JobSchedulerPort, ScheduledJob, StartDubbingJobRequest};
+use std::str::FromStr;
+use std::sync::Arc;
 use tauri::{command, State};
 
 #[command]
@@ -11,22 +12,29 @@ pub async fn health_check() -> Result<String, String> {
 #[command]
 pub async fn start_mock_dubbing_job_cmd(
     input: String,
-    state: State<'_, JobManager>,
-) -> Result<Job, String> {
-    let job_id = state.start_mock_dubbing_job(input, None).await;
+    state: State<'_, Arc<dyn JobSchedulerPort>>,
+) -> Result<ScheduledJob, String> {
     state
-        .get_job(&job_id)
+        .start_dubbing_job(StartDubbingJobRequest {
+            title: input,
+            project_id: None,
+        })
         .await
-        .ok_or_else(|| "Failed to retrieve job".to_string())
+        .map_err(|e| e.to_string())
 }
 
 #[command]
-pub async fn list_jobs_cmd(state: State<'_, JobManager>) -> Result<Vec<Job>, String> {
-    Ok(state.list_jobs().await)
+pub async fn list_jobs_cmd(
+    state: State<'_, Arc<dyn JobSchedulerPort>>,
+) -> Result<Vec<ScheduledJob>, String> {
+    state.list_jobs().await.map_err(|e| e.to_string())
 }
 
 #[command]
-pub async fn cancel_job_cmd(job_id: String, state: State<'_, JobManager>) -> Result<Job, String> {
-    let id = JobId(job_id);
+pub async fn cancel_job_cmd(
+    job_id: String,
+    state: State<'_, Arc<dyn JobSchedulerPort>>,
+) -> Result<ScheduledJob, String> {
+    let id = JobId::from_str(&job_id).map_err(|e| e.to_string())?;
     state.cancel_job(&id).await.map_err(|e| e.to_string())
 }

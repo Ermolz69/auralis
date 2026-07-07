@@ -1,8 +1,8 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use domain::project::{Project, ProjectId};
-use jobs::job::Job as JobDto;
-use jobs::manager::JobManager;
+use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::media::MediaProbePort;
 use ports::repository::ProjectRepository;
 
@@ -19,7 +19,7 @@ pub struct ImportLocalMediaRequest {
 #[derive(Debug)]
 pub struct ImportLocalMediaResponse {
     pub project: Project,
-    pub job: JobDto,
+    pub job: ScheduledJob,
 }
 
 pub struct ImportLocalMediaUseCase<
@@ -28,17 +28,17 @@ pub struct ImportLocalMediaUseCase<
 > {
     project_repo: R,
     media_probe: P,
-    job_manager: JobManager,
+    job_scheduler: Arc<dyn JobSchedulerPort>,
 }
 
 impl<R: ProjectRepository + Clone + 'static, P: MediaProbePort + Clone + 'static>
     ImportLocalMediaUseCase<R, P>
 {
-    pub fn new(project_repo: R, media_probe: P, job_manager: JobManager) -> Self {
+    pub fn new(project_repo: R, media_probe: P, job_scheduler: Arc<dyn JobSchedulerPort>) -> Self {
         Self {
             project_repo,
             media_probe,
-            job_manager,
+            job_scheduler,
         }
     }
 
@@ -66,7 +66,7 @@ impl<R: ProjectRepository + Clone + 'static, P: MediaProbePort + Clone + 'static
         self.project_repo.save(&project).await?;
 
         let pipeline_use_case =
-            StartMockPipelineUseCase::new(self.project_repo.clone(), self.job_manager.clone());
+            StartMockPipelineUseCase::new(self.project_repo.clone(), self.job_scheduler.clone());
 
         let pipeline_req = StartMockPipelineRequest {
             project_id: request.project_id,
@@ -84,10 +84,11 @@ impl<R: ProjectRepository + Clone + 'static, P: MediaProbePort + Clone + 'static
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::MockJobScheduler;
     use adapters_ffmpeg::mock::MockMediaProbeAdapter;
     use adapters_storage::memory::InMemoryProjectRepository;
+    use domain::job::JobStatus;
     use domain::project::ProjectStatus;
-    use jobs::status::JobStatus;
     use std::fs::File;
     use tempfile::tempdir;
 
@@ -95,8 +96,8 @@ mod tests {
     async fn imports_local_media_and_starts_pipeline() {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
-        let job_manager = JobManager::new(None);
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_manager);
+        let job_scheduler = Arc::new(MockJobScheduler::new());
+        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
 
         let project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();
@@ -115,7 +116,7 @@ mod tests {
 
         assert_eq!(*response.project.status(), ProjectStatus::Processing);
         assert!(
-            response.job.status == JobStatus::Queued || response.job.status == JobStatus::Running
+            response.job.status == JobStatus::Pending || response.job.status == JobStatus::Running
         );
 
         let saved = repo.get(&project_id).await.unwrap().unwrap();
@@ -126,8 +127,8 @@ mod tests {
     async fn returns_error_when_project_missing() {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
-        let job_manager = JobManager::new(None);
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_manager);
+        let job_scheduler = Arc::new(MockJobScheduler::new());
+        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
 
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("video.mp4");
@@ -146,8 +147,8 @@ mod tests {
     async fn returns_error_when_file_missing() {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
-        let job_manager = JobManager::new(None);
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_manager);
+        let job_scheduler = Arc::new(MockJobScheduler::new());
+        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
 
         let project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();
@@ -182,8 +183,8 @@ mod tests {
     async fn does_not_start_job_when_probe_fails() {
         let repo = InMemoryProjectRepository::new();
         let probe = FailingProbeAdapter;
-        let job_manager = JobManager::new(None);
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_manager.clone());
+        let job_scheduler = Arc::new(MockJobScheduler::new());
+        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler.clone());
 
         let project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();
@@ -209,8 +210,8 @@ mod tests {
     async fn fails_on_invalid_project_transition() {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
-        let job_manager = JobManager::new(None);
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_manager);
+        let job_scheduler = Arc::new(MockJobScheduler::new());
+        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
 
         let mut project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();
