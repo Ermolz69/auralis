@@ -10,14 +10,16 @@ export const JobQueuePanel = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     let unlisten: (() => void) | undefined;
 
     const setup = async () => {
       try {
         const initialJobs = await listJobs();
+        if (cancelled) return;
         setJobs(initialJobs);
 
-        unlisten = await subscribeJobEvents((event) => {
+        const fn = await subscribeJobEvents((event) => {
           setJobs((current) => {
             const index = current.findIndex((j) => j.id === event.jobId);
             if (index >= 0) {
@@ -37,6 +39,12 @@ export const JobQueuePanel = () => {
             }
           });
         });
+
+        if (cancelled) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
       } catch (e) {
         console.error('Failed to setup JobQueuePanel', e);
       }
@@ -45,6 +53,7 @@ export const JobQueuePanel = () => {
     setup();
 
     return () => {
+      cancelled = true;
       if (unlisten) unlisten();
     };
   }, []);
@@ -77,7 +86,7 @@ export const JobQueuePanel = () => {
                 </div>
 
                 {job.status === 'failed' && job.error ? (
-                  <p className="text-xs text-red-400">{job.error}</p>
+                  <p className="text-xs text-danger">{job.error}</p>
                 ) : (
                   <Progress value={job.progress.percent} />
                 )}

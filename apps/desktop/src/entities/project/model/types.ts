@@ -1,4 +1,5 @@
 import type { MediaMetadata, MediaSource } from '@/entities/media';
+import type { Job } from '@/entities/job';
 
 export type ProjectStatus =
   | 'draft'
@@ -21,5 +22,5 @@ export interface Project {
 
 export interface CreateProjectResponse {
   project: Project;
-  job: any; // Will be properly typed when we import Job
+  job: Job;
 }

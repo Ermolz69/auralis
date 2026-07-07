@@ -184,10 +184,9 @@ fn parse_vtt(content: &str, language: &str) -> Result<Transcript, ApplicationErr
 
             let parts: Vec<&str> = line.split("-->").collect();
             if parts.len() == 2 {
-                if let (Some(s), Some(e)) = (
-                    parse_vtt_time(parts[0].trim()),
-                    parse_vtt_time(parts[1].trim()),
-                ) {
+                let start_str = parts[0].split_whitespace().last().unwrap_or("");
+                let end_str = parts[1].split_whitespace().next().unwrap_or("");
+                if let (Some(s), Some(e)) = (parse_vtt_time(start_str), parse_vtt_time(end_str)) {
                     current_start = Some(s);
                     current_end = Some(e);
                 }
@@ -262,7 +261,7 @@ mod tests {
         let vtt = r#"WEBVTT
 
 1
-00:00:01.000 --> 00:00:04.000
+00:00:01.000 --> 00:00:04.000 align:start position:0%
 Hello <c.colorE5E5E5>world</c>!
 
 00:00:05.500 --> 00:00:07.000

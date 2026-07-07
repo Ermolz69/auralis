@@ -106,7 +106,7 @@ pub fn run() {
             commands::project::create_project_cmd,
             commands::project::create_project_from_youtube_cmd,
             commands::project::get_transcript_cmd,
-            commands::project::run_dubbing_cmd,
+
             commands::jobs::health_check,
             commands::jobs::start_mock_dubbing_job_cmd,
             commands::jobs::list_jobs_cmd,

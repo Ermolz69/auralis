@@ -9,6 +9,7 @@ use ports::source::VideoSourcePort;
 use super::command::run_ytdlp_dump_json;
 use super::parser::parse_ytdlp_metadata;
 
+#[derive(Clone)]
 pub struct YtDlpAdapter {
     candidates: Vec<PathBuf>,
     timeout_ms: u64,

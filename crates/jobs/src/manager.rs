@@ -62,11 +62,9 @@ impl JobManager {
                 let handles = self.cancel_handles.read().await;
                 if let Some(handle) = handles.get(id) {
                     handle.cancel();
-                } else {
-                    // Queued jobs might not have a handle yet
-                    job.status = JobStatus::Cancelled;
-                    self.emit_job_event(job);
                 }
+                job.status = JobStatus::Cancelled;
+                self.emit_job_event(job);
             }
             _ => {}
         }

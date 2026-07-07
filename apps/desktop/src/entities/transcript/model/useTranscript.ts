@@ -32,20 +32,28 @@ export function useTranscript(projectId: string | null) {
 
   // Listen to transcript-ready event
   useEffect(() => {
+    let cancelled = false;
     let unlisten: (() => void) | undefined;
 
     const setupListener = async () => {
-      unlisten = await listen<{ projectId: string; jobId: string }>('transcript-ready', (event) => {
+      const fn = await listen<{ projectId: string; jobId: string }>('transcript-ready', (event) => {
         if (projectId && event.payload.projectId === projectId) {
           // Re-fetch the transcript because it is ready
           fetchTranscript(projectId);
         }
       });
+
+      if (cancelled) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
     };
 
     setupListener();
 
     return () => {
+      cancelled = true;
       if (unlisten) {
         unlisten();
       }

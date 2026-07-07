@@ -154,6 +154,7 @@ pub async fn run_ytdlp_download_subtitle(
     })?;
 
     for candidate in candidates {
+        let run_id = uuid::Uuid::new_v4().to_string();
         let mut command = Command::new(candidate);
 
         command
@@ -168,7 +169,7 @@ pub async fn run_ytdlp_download_subtitle(
             .arg("-P")
             .arg(target_dir)
             .arg("-o")
-            .arg("%(id)s.%(ext)s");
+            .arg(format!("{}.%(ext)s", run_id));
 
         if auto_generated {
             command.arg("--write-auto-sub");
@@ -212,7 +213,7 @@ pub async fn run_ytdlp_download_subtitle(
             });
         }
 
-        if let Some(path) = find_downloaded_subtitle(target_dir, format).await? {
+        if let Some(path) = find_downloaded_subtitle(target_dir, &run_id, format).await? {
             return Ok(path);
         }
 
@@ -225,6 +226,7 @@ pub async fn run_ytdlp_download_subtitle(
 #[allow(clippy::collapsible_if)]
 async fn find_downloaded_subtitle(
     dir: &std::path::Path,
+    run_id: &str,
     expected_format: &str,
 ) -> Result<Option<PathBuf>, YtDlpError> {
     let mut entries = tokio::fs::read_dir(dir)
@@ -233,11 +235,11 @@ async fn find_downloaded_subtitle(
     while let Ok(Some(entry)) = entries.next_entry().await {
         let path = entry.path();
         if path.is_file() {
-            if let Some(ext) = path.extension() {
-                let ext_str = ext.to_string_lossy();
-                if ext_str == expected_format {
-                    return Ok(Some(path));
-                }
+            let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+            if file_name.starts_with(run_id)
+                && file_name.ends_with(&format!(".{}", expected_format))
+            {
+                return Ok(Some(path));
             }
         }
     }
