@@ -5,9 +5,11 @@ import { Icon } from '../../../shared/ui/icon';
 import { listJobs, subscribeJobEvents } from '@/entities/job';
 import type { Job } from '@/entities/job';
 import { CancelJobButton } from '@/features/cancel-job';
+import { useProjectContext } from '@/entities/project';
 
 export const JobQueuePanel = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const { projectId } = useProjectContext();
 
   useEffect(() => {
     let cancelled = false;
@@ -17,9 +19,11 @@ export const JobQueuePanel = () => {
       try {
         const initialJobs = await listJobs();
         if (cancelled) return;
-        setJobs(initialJobs);
+        setJobs(initialJobs.filter((job) => job.projectId === projectId));
 
         const fn = await subscribeJobEvents((event) => {
+          if (event.projectId !== projectId) return;
+
           setJobs((current) => {
             const index = current.findIndex((j) => j.id === event.jobId);
             if (index >= 0) {
@@ -34,7 +38,9 @@ export const JobQueuePanel = () => {
               return newJobs;
             } else {
               // If new job, fetch all to get full details like title
-              listJobs().then(setJobs).catch(console.error);
+              listJobs()
+                .then((allJobs) => setJobs(allJobs.filter((j) => j.projectId === projectId)))
+                .catch(console.error);
               return current;
             }
           });
@@ -56,7 +62,7 @@ export const JobQueuePanel = () => {
       cancelled = true;
       if (unlisten) unlisten();
     };
-  }, []);
+  }, [projectId]);
 
   return (
     <aside className="w-96 shrink-0 h-full bg-surface border-l border-muted p-6 flex flex-col gap-4 overflow-hidden">

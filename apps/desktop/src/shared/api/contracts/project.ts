@@ -16,8 +16,8 @@ export interface Project {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
-  source?: MediaSource;
-  metadata?: MediaMetadata;
+  source: MediaSource | null;
+  metadata: MediaMetadata | null;
 }
 
 export interface CreateProjectResponse {

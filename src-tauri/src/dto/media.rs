@@ -12,15 +12,15 @@ impl From<&MediaSource> for MediaSourceDto {
     fn from(m: &MediaSource) -> Self {
         match m {
             MediaSource::RemoteUrl { url } => Self {
-                kind: "RemoteUrl".to_string(),
+                kind: "remoteUrl".to_string(),
                 url_or_path: url.clone(),
             },
             MediaSource::YoutubeUrl { url } => Self {
-                kind: "YoutubeUrl".to_string(),
+                kind: "youtubeUrl".to_string(),
                 url_or_path: url.clone(),
             },
             MediaSource::LocalFile { path } => Self {
-                kind: "LocalFile".to_string(),
+                kind: "localFile".to_string(),
                 url_or_path: path.clone(),
             },
         }

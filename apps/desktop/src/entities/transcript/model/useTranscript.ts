@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { listen } from '@/shared/api/tauri';
 import { getTranscript } from '../api/transcriptApi';
 import type { Transcript } from './types';
@@ -8,18 +8,30 @@ export function useTranscript(projectId: string | null) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTranscript = async (id: string) => {
+  const activeProjectId = useRef(projectId);
+
+  useEffect(() => {
+    activeProjectId.current = projectId;
+  }, [projectId]);
+
+  const fetchTranscript = useCallback(async (id: string) => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await getTranscript(id);
-      setTranscript(data);
+      if (activeProjectId.current === id) {
+        setTranscript(data);
+      }
     } catch (err: any) {
-      setError(err?.toString() || 'Failed to load transcript');
+      if (activeProjectId.current === id) {
+        setError(err?.toString() || 'Failed to load transcript');
+      }
     } finally {
-      setIsLoading(false);
+      if (activeProjectId.current === id) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, []);
 
   // Initial fetch when project ID changes
   useEffect(() => {
@@ -28,7 +40,7 @@ export function useTranscript(projectId: string | null) {
     } else {
       setTranscript(null);
     }
-  }, [projectId]);
+  }, [projectId, fetchTranscript]);
 
   // Listen to transcript-ready event
   useEffect(() => {
@@ -62,7 +74,7 @@ export function useTranscript(projectId: string | null) {
         unlisten();
       }
     };
-  }, [projectId]);
+  }, [projectId, fetchTranscript]);
 
   return { transcript, isLoading, error, refetch: () => projectId && fetchTranscript(projectId) };
 }

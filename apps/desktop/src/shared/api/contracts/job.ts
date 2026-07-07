@@ -9,6 +9,7 @@ export type JobStage =
 
 export type Job = {
   id: string;
+  projectId: string | null;
   title: string;
   status: JobStatus;
   stage: JobStage | null;
@@ -22,6 +23,7 @@ export type Job = {
 
 export type JobEvent = {
   jobId: string;
+  projectId: string | null;
   status: JobStatus;
   stage: JobStage | null;
   progress: {
