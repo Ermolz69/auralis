@@ -6,8 +6,6 @@ export interface ProjectContextType {
   setProjectId: (id: string | null) => void;
   project: Project | null;
   setProject: (project: Project | null) => void;
-  currentView: 'home' | 'project' | 'settings';
-  setCurrentView: (view: 'home' | 'project' | 'settings') => void;
 }
 
 export const ProjectContext = createContext<ProjectContextType | undefined>(undefined);

@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { createProjectFromYoutube, useProjectContext } from '@/entities/project';
 import type { Job } from '@/entities/job';
 import type { Project } from '@/entities/project';
+import { useNavigation } from '@/app/router';
 
 export function usePasteYoutubeLink() {
   const [url, setUrl] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setProjectId, setProject, setCurrentView } = useProjectContext();
+  const { setProjectId, setProject } = useProjectContext();
+  const { setCurrentView } = useNavigation();
 
   // We can return the created project/job if the component needs to redirect or update global state
   const startProject = async (): Promise<{ project: Project; job: Job } | null> => {

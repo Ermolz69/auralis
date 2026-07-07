@@ -8,7 +8,6 @@ import type { Project } from './types';
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
-  const [currentView, setCurrentView] = useState<'home' | 'project' | 'settings'>('home');
 
   useEffect(() => {
     if (!projectId) return;
@@ -51,7 +50,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   return (
     <ProjectContext.Provider
-      value={{ projectId, setProjectId, project, setProject, currentView, setCurrentView }}
+      value={{ projectId, setProjectId, project, setProject }}
     >
       {children}
     </ProjectContext.Provider>
