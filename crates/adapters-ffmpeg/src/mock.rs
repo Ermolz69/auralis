@@ -5,13 +5,8 @@ use domain::media::{Artifact, ArtifactKind, MediaMetadata};
 use ports::error::PortError;
 use ports::media::{MediaMuxerPort, MediaProbePort};
 
+#[derive(Default, Clone)]
 pub struct MockMediaProbeAdapter;
-
-impl Default for MockMediaProbeAdapter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl MockMediaProbeAdapter {
     pub fn new() -> Self {

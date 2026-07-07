@@ -5,7 +5,7 @@ import { useTranscript } from '@/entities/transcript';
 import { useProjectContext } from '@/entities/project';
 
 export const TranscriptEditor = () => {
-  const { projectId } = useProjectContext();
+  const { projectId, project } = useProjectContext();
   const { transcript, isLoading, error } = useTranscript(projectId);
 
   return (
@@ -32,13 +32,23 @@ export const TranscriptEditor = () => {
               <p className="text-sm text-danger mt-2 max-w-sm">{error}</p>
             </div>
           ) : !transcript || transcript.segments.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-              <p className="text-lg font-medium text-text">Waiting for transcript generation...</p>
-              <p className="text-sm text-muted mt-2 max-w-sm">
-                The mock pipeline is currently running. The transcript will appear here when ready.
-              </p>
-            </div>
+            project?.source?.kind === 'LocalFile' ? (
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
+                <p className="text-lg font-medium text-text">Transcript Unavailable</p>
+                <p className="text-sm text-muted mt-2 max-w-sm">
+                  Automatic transcription for local media is not supported in this version.
+                </p>
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
+                <p className="text-lg font-medium text-text">Waiting for transcript generation...</p>
+                <p className="text-sm text-muted mt-2 max-w-sm">
+                  The mock pipeline is currently running. The transcript will appear here when ready.
+                </p>
+              </div>
+            )
           ) : (
             transcript.segments.map((line, idx) => (
               <p key={idx} className="mb-4 hover:bg-bg p-2 rounded transition-colors">

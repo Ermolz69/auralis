@@ -3,6 +3,18 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TranscriptSegmentId(pub Uuid);
 
+impl TranscriptSegmentId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl Default for TranscriptSegmentId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranscriptSegment {
     pub id: TranscriptSegmentId,

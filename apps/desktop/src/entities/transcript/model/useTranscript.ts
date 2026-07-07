@@ -32,20 +32,32 @@ export function useTranscript(projectId: string | null) {
 
   // Listen to transcript-ready event
   useEffect(() => {
+    let cancelled = false;
     let unlisten: (() => void) | undefined;
 
     const setupListener = async () => {
-      unlisten = await listen<{ projectId: string; jobId: string }>('transcript-ready', (event) => {
-        if (projectId && event.payload.projectId === projectId) {
-          // Re-fetch the transcript because it is ready
-          fetchTranscript(projectId);
+      try {
+        const fn = await listen<{ projectId: string; jobId: string }>('transcript-ready', (event) => {
+          if (projectId && event.payload.projectId === projectId) {
+            // Re-fetch the transcript because it is ready
+            fetchTranscript(projectId);
+          }
+        });
+
+        if (cancelled) {
+          fn();
+        } else {
+          unlisten = fn;
         }
-      });
+      } catch (err) {
+        console.warn('Failed to listen to transcript-ready event (Tauri might not be available):', err);
+      }
     };
 
     setupListener();
 
     return () => {
+      cancelled = true;
       if (unlisten) {
         unlisten();
       }

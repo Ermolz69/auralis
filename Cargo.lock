@@ -48,6 +48,11 @@ dependencies = [
  "async-trait",
  "domain",
  "ports",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "url",
  "uuid",
 ]
 
@@ -166,6 +171,7 @@ dependencies = [
  "adapters-storage",
  "adapters-ytdlp",
  "application",
+ "async-trait",
  "domain",
  "jobs",
  "ports",

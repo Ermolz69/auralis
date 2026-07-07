@@ -10,11 +10,11 @@ export const ProjectPage = () => {
     <Page className="h-screen flex flex-col">
       <ProjectHeader />
       <div className="flex-1 flex overflow-hidden">
+        <MediaPanel />
         <div className="flex-1 flex flex-col min-w-0">
           <TranscriptEditor />
           <ExportPanel />
         </div>
-        <MediaPanel />
         <JobQueuePanel />
       </div>
     </Page>

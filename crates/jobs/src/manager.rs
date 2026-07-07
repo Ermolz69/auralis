@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use chrono::Utc;
+
 use crate::cancellation::CancelHandle;
 use crate::error::JobError;
 use crate::event::JobEvent;
@@ -52,31 +54,39 @@ impl JobManager {
     }
 
     pub async fn cancel_job(&self, id: &JobId) -> Result<Job, JobError> {
-        let mut jobs = self.jobs.write().await;
-        let job = jobs
-            .get_mut(id)
-            .ok_or_else(|| JobError::NotFound(id.clone()))?;
+        let (job, should_cancel) = {
+            let mut jobs = self.jobs.write().await;
+            let job = jobs
+                .get_mut(id)
+                .ok_or_else(|| JobError::NotFound(id.clone()))?;
 
-        match job.status {
-            JobStatus::Queued | JobStatus::Running => {
-                let handles = self.cancel_handles.read().await;
-                if let Some(handle) = handles.get(id) {
-                    handle.cancel();
-                } else {
-                    // Queued jobs might not have a handle yet
-                    job.status = JobStatus::Cancelled;
-                    self.emit_job_event(job);
-                }
+            let should_cancel = matches!(job.status, JobStatus::Queued | JobStatus::Running);
+            if should_cancel {
+                job.status = JobStatus::Cancelled;
+                job.updated_at = Utc::now();
             }
-            _ => {}
+
+            (job.clone(), should_cancel)
+        };
+
+        if should_cancel {
+            let handles = self.cancel_handles.read().await;
+            if let Some(handle) = handles.get(id) {
+                handle.cancel();
+            }
+
+            self.emit_job_event(&job);
         }
 
-        Ok(job.clone())
+        Ok(job)
     }
 
     pub async fn update_job(&self, updated_job: Job) {
-        let mut jobs = self.jobs.write().await;
-        jobs.insert(updated_job.id.clone(), updated_job.clone());
+        {
+            let mut jobs = self.jobs.write().await;
+            jobs.insert(updated_job.id.clone(), updated_job.clone());
+        }
+
         self.emit_job_event(&updated_job);
     }
 

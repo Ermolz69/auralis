@@ -5,7 +5,7 @@ pub enum FfprobeError {
     #[error("Failed to execute ffprobe command: {0}")]
     CommandFailed(#[from] std::io::Error),
 
-    #[error("ffprobe process exited with error status: {0}")]
+    #[error("Invalid or unsupported media file (ffprobe error: {0})")]
     ProcessError(String),
 
     #[error("Failed to parse ffprobe JSON output: {0}")]
@@ -14,7 +14,9 @@ pub enum FfprobeError {
     #[error("Missing expected format data in ffprobe output")]
     MissingFormatData,
 
-    #[error("ffprobe is not installed or not bundled. Run task setup:media-tools")]
+    #[error(
+        "ffprobe is not installed or not bundled. Please ensure ffprobe is available in your system path."
+    )]
     MissingFfprobe,
 }
 

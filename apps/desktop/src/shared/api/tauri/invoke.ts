@@ -1,10 +1,14 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import type { InvokeArgs } from '@tauri-apps/api/core';
+import type { CommandMap } from '../contracts';
 
 /**
  * Type-safe wrapper around Tauri's invoke.
- * Use this to call backend commands with strongly typed return values.
+ * Uses a CommandMap to ensure that command names, arguments, and return types are strongly typed.
  */
-export async function invoke<T>(cmd: string, args?: InvokeArgs): Promise<T> {
-  return tauriInvoke<T>(cmd, args);
+export async function invoke<K extends keyof CommandMap>(
+  cmd: K,
+  ...args: CommandMap[K]['args'] extends undefined ? [] : [CommandMap[K]['args']]
+): Promise<CommandMap[K]['result']> {
+  return tauriInvoke<CommandMap[K]['result']>(cmd, args[0] as InvokeArgs);
 }

@@ -2,6 +2,7 @@ use domain::media::{MediaMetadata, MediaSource};
 use serde::Serialize;
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MediaSourceDto {
     pub kind: String,
     pub url_or_path: String,
@@ -29,6 +30,7 @@ impl From<&MediaSource> for MediaSourceDto {
 use domain::media::stream::{AudioTrackMetadata, MediaStream, VideoStreamMetadata};
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MediaStreamDto {
     pub index: u32,
     pub codec_type: String,
@@ -52,6 +54,7 @@ impl From<&MediaStream> for MediaStreamDto {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VideoStreamMetadataDto {
     pub stream_index: u32,
     pub width: u32,
@@ -75,6 +78,7 @@ impl From<&VideoStreamMetadata> for VideoStreamMetadataDto {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioTrackMetadataDto {
     pub stream_index: u32,
     pub codec: Option<String>,
@@ -102,6 +106,7 @@ impl From<&AudioTrackMetadata> for AudioTrackMetadataDto {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MediaMetadataDto {
     pub duration_ms: u64,
     pub width: Option<u32>,

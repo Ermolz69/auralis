@@ -3,7 +3,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { useProjectContext } from '@/entities/project';
 import { invoke } from '@/shared/api/tauri/invoke';
 import { importLocalMedia } from '@/entities/media';
-import type { Project } from '@/entities/project';
+
 
 export function useImportLocalMedia() {
   const [isImporting, setIsImporting] = useState(false);
@@ -34,7 +34,7 @@ export function useImportLocalMedia() {
       const filename = selected.split(/[/\\]/).pop() || 'Local Video';
 
       // 3. Create a blank project
-      const project = await invoke<Project>('create_project_cmd', { title: filename });
+      const project = await invoke('create_project_cmd', { title: filename });
 
       // 4. Import the media and probe
       const updatedProject = await importLocalMedia(project.id, selected);
