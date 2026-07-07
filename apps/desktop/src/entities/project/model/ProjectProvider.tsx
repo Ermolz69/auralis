@@ -13,27 +13,38 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!projectId) return;
 
+    let cancelled = false;
     let unlisten: (() => void) | undefined;
 
     const setupListener = async () => {
-      const fn = await listen<{ projectId: string }>('project-updated', async (event) => {
-        if (event.payload.projectId === projectId) {
-          try {
-            const updatedProject = await invoke('get_project_cmd', { projectId });
-            if (updatedProject) {
-              setProject(updatedProject);
+      try {
+        const fn = await listen<{ projectId: string }>('project-updated', async (event) => {
+          if (event.payload.projectId === projectId) {
+            try {
+              const updatedProject = await invoke('get_project_cmd', { projectId });
+              if (updatedProject) {
+                setProject(updatedProject);
+              }
+            } catch (e) {
+              console.error('Failed to sync project:', e);
             }
-          } catch (e) {
-            console.error('Failed to sync project:', e);
           }
+        });
+
+        if (cancelled) {
+          fn();
+        } else {
+          unlisten = fn;
         }
-      });
-      unlisten = fn;
+      } catch (err) {
+        console.warn('Failed to listen to project-updated event:', err);
+      }
     };
 
     setupListener();
 
     return () => {
+      cancelled = true;
       if (unlisten) unlisten();
     };
   }, [projectId]);
