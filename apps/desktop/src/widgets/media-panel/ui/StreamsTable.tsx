@@ -37,9 +37,9 @@ export function StreamsTable({ streams }: StreamsTableProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-text">
               <div className="p-1 bg-muted/50 rounded text-muted-foreground">
-                {getStreamIcon(s.codec_type)}
+                {getStreamIcon(s.codecType)}
               </div>
-              <span className="text-sm font-medium capitalize">{s.codec_type} Stream</span>
+              <span className="text-sm font-medium capitalize">{s.codecType} Stream</span>
             </div>
             <span className="text-xs font-medium text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
               #{s.index}
@@ -47,7 +47,7 @@ export function StreamsTable({ streams }: StreamsTableProps) {
           </div>
           <div className="flex flex-col ml-8 text-xs text-muted-foreground">
             <span className="font-medium text-text">
-              {s.codec_name?.toUpperCase()} {s.codec_long_name ? `(${s.codec_long_name})` : ''}
+              {s.codecName?.toUpperCase()} {s.codecLongName ? `(${s.codecLongName})` : ''}
             </span>
             {s.language && <span>Language: {s.language.toUpperCase()}</span>}
           </div>

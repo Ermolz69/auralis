@@ -27,7 +27,7 @@ export const ProjectHeader = () => {
           <MediaSummary metadata={project.metadata} />
         ) : (
           <PageDescription className="!text-sm mt-1">
-            {project?.source?.url_or_path || 'No media source attached'}
+            {project?.source?.urlOrPath || 'No media source attached'}
           </PageDescription>
         )}
       </PageHeaderGroup>

@@ -26,10 +26,10 @@ export function MediaPanel() {
   }
 
   const warnings: string[] = [];
-  if (!metadata.has_video) {
+  if (!metadata.hasVideo) {
     warnings.push('No video stream detected. Audio-only mode.');
   }
-  if (!metadata.has_audio || metadata.audio_tracks.length === 0) {
+  if (!metadata.hasAudio || metadata.audioTracks.length === 0) {
     warnings.push('No audio tracks detected. Dubbing requires audio.');
   }
 
@@ -67,14 +67,14 @@ export function MediaPanel() {
               <span className="text-muted-foreground">Source</span>
               <span
                 className="font-medium text-text truncate max-w-[120px]"
-                title={source?.url_or_path}
+                title={source?.urlOrPath}
               >
-                {source?.url_or_path?.split(/[/\\]/).pop() || 'Unknown'}
+                {source?.urlOrPath?.split(/[/\\]/).pop() || 'Unknown'}
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Duration</span>
-              <span className="font-medium text-text">{formatDuration(metadata.duration_ms)}</span>
+              <span className="font-medium text-text">{formatDuration(metadata.durationMs)}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Container</span>
@@ -90,12 +90,12 @@ export function MediaPanel() {
                 </span>
               </div>
             )}
-            {metadata.video_codec && (
+            {metadata.videoCodec && (
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Video</span>
                 <div className="flex flex-col items-end">
                   <span className="font-medium text-text">
-                    {metadata.video_codec.toUpperCase()}
+                    {metadata.videoCodec.toUpperCase()}
                   </span>
                   {metadata.fps && (
                     <span className="text-[10px] text-muted-foreground">
@@ -111,7 +111,7 @@ export function MediaPanel() {
         {/* Audio Tracks */}
         <div className="space-y-3">
           <h4 className="font-medium text-sm text-foreground/80">Audio Tracks</h4>
-          <AudioTracksList tracks={metadata.audio_tracks || []} />
+          <AudioTracksList tracks={metadata.audioTracks || []} />
         </div>
 
         {/* Streams Table */}

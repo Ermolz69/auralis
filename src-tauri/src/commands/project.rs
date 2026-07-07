@@ -6,6 +6,7 @@ use application::usecases::project::create::{CreateProjectRequest, CreateProject
 use application::usecases::project::create_from_youtube::{
     CreateProjectFromYoutubeRequest, CreateProjectFromYoutubeUseCase,
 };
+use application::usecases::project::get::{GetProjectRequest, GetProjectUseCase};
 
 use jobs::manager::JobManager;
 use ports::repository::ProjectRepository;
@@ -82,4 +83,23 @@ pub async fn get_transcript_cmd(
     }
 
     Ok(None)
+}
+
+#[command]
+pub async fn get_project_cmd(
+    project_id: String,
+    _app: AppHandle,
+    project_repo: State<'_, InMemoryProjectRepository>,
+) -> Result<Option<ProjectDto>, String> {
+    let pid: domain::project::ProjectId = project_id
+        .parse()
+        .map_err(|e| format!("Invalid project id: {}", e))?;
+
+    let use_case = GetProjectUseCase::new(project_repo.inner().clone());
+    let req = GetProjectRequest { project_id: pid };
+
+    match use_case.execute(req).await {
+        Ok(res) => Ok(Some(ProjectDto::from(&res.project))),
+        Err(_) => Ok(None),
+    }
 }

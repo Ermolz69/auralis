@@ -7,11 +7,11 @@ interface MediaSummaryProps {
 
 export function MediaSummary({ metadata }: MediaSummaryProps) {
   const primaryAudio =
-    metadata.audio_tracks?.find((t) => t.is_default) || metadata.audio_tracks?.[0];
+    metadata.audioTracks?.find((t) => t.isDefault) || metadata.audioTracks?.[0];
 
   return (
     <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
-      <span>{formatDuration(metadata.duration_ms)}</span>
+      <span>{formatDuration(metadata.durationMs)}</span>
       <span>•</span>
       {metadata.width && metadata.height && (
         <>
@@ -22,18 +22,18 @@ export function MediaSummary({ metadata }: MediaSummaryProps) {
         </>
       )}
       <span>{metadata.container?.toUpperCase() || 'UNKNOWN'}</span>
-      {metadata.video_codec && (
+      {metadata.videoCodec && (
         <>
           <span>•</span>
-          <span>{metadata.video_codec}</span>
+          <span>{metadata.videoCodec}</span>
         </>
       )}
-      {metadata.audio_tracks && metadata.audio_tracks.length > 0 && (
+      {metadata.audioTracks && metadata.audioTracks.length > 0 && (
         <>
           <span>•</span>
           <span>
-            {metadata.audio_tracks.length} audio track
-            {metadata.audio_tracks.length !== 1 ? 's' : ''}
+            {metadata.audioTracks.length} audio track
+            {metadata.audioTracks.length !== 1 ? 's' : ''}
           </span>
         </>
       )}
@@ -41,7 +41,7 @@ export function MediaSummary({ metadata }: MediaSummaryProps) {
         <>
           <span>•</span>
           <span>
-            {primaryAudio.codec} / {primaryAudio.channels}ch / {primaryAudio.sample_rate}Hz /{' '}
+            {primaryAudio.codec} / {primaryAudio.channels}ch / {primaryAudio.sampleRate}Hz /{' '}
             {primaryAudio.language || 'unk'}
           </span>
         </>

@@ -25,68 +25,43 @@ pub fn run() {
                         let is_success = event_status == jobs::status::JobStatus::Completed;
 
                         tauri::async_runtime::spawn(async move {
-                            use ports::repository::ProjectRepository;
-                            use std::str::FromStr;
+                            use application::usecases::project::handle_job_completed::{
+                                HandleJobCompletedRequest, HandleJobCompletedUseCase,
+                            };
 
                             let repo = app_clone
-                                .state::<adapters_storage::memory::InMemoryProjectRepository>();
-                            if let Ok(pid) = domain::project::ProjectId::from_str(&pid_str) {
-                                if let Ok(Some(mut project)) = repo.get(&pid).await {
-                                    if is_success {
-                                        let is_youtube = matches!(
-                                            project.source(),
-                                            Some(domain::media::MediaSource::YoutubeUrl { .. })
-                                        );
+                                .state::<adapters_storage::memory::InMemoryProjectRepository>()
+                                .inner()
+                                .clone();
+                            let ytdlp_adapter =
+                                crate::commands::project::get_ytdlp_adapter(&app_clone);
 
-                                        if is_youtube {
-                                            // Fetch subtitles first
-                                            use application::usecases::transcript::import_youtube_subtitles::{
-                                                ImportYoutubeSubtitlesRequest,
-                                                ImportYoutubeSubtitlesUseCase,
-                                            };
-                                            let ytdlp_adapter =
-                                                crate::commands::project::get_ytdlp_adapter(&app_clone);
-                                            let target_dir = std::env::temp_dir()
-                                                .join("auralis")
-                                                .join("projects")
-                                                .join(&pid_str)
-                                                .join("subtitles");
-                                            let use_case = ImportYoutubeSubtitlesUseCase::new(
-                                                std::sync::Arc::new(repo.inner().clone()),
-                                                std::sync::Arc::new(ytdlp_adapter),
-                                            );
-                                            let _ = use_case
-                                                .execute(ImportYoutubeSubtitlesRequest {
-                                                    project_id: pid.clone(),
-                                                    target_dir,
-                                                    preferred_languages: vec![
-                                                        "en".to_string(),
-                                                        "ru".to_string(),
-                                                        "uk".to_string(),
-                                                    ],
-                                                    allow_auto_generated: true,
-                                                })
-                                                .await;
-                                            // Re-fetch project to ensure we have the updated version with transcript
-                                            if let Ok(Some(updated_project)) = repo.get(&pid).await {
-                                                project = updated_project;
-                                            }
-                                        }
-                                        let _ = project.mark_completed();
-                                    } else {
-                                        let _ = project.mark_failed();
-                                    }
-                                    let _ = repo.save(&project).await;
-                                    if is_success {
-                                        let _ = app_clone.emit(
-                                            "transcript-ready",
-                                            serde_json::json!({
-                                                "projectId": pid_str,
-                                                "jobId": event_job_id,
-                                            }),
-                                        );
-                                    }
+                            let use_case = HandleJobCompletedUseCase::new(repo, ytdlp_adapter);
+
+                            if let Ok(result) = use_case
+                                .execute(HandleJobCompletedRequest {
+                                    job_id: event_job_id.to_string(),
+                                    project_id: pid_str.clone(),
+                                    is_success,
+                                    target_dir_base: std::env::temp_dir(),
+                                })
+                                .await
+                            {
+                                if result.transcript_ready {
+                                    let _ = app_clone.emit(
+                                        "transcript-ready",
+                                        serde_json::json!({
+                                            "projectId": pid_str,
+                                            "jobId": event_job_id,
+                                        }),
+                                    );
                                 }
+                                let _ = app_clone.emit(
+                                    "project-updated",
+                                    serde_json::json!({
+                                        "projectId": pid_str,
+                                    }),
+                                );
                             }
                         });
                     }
@@ -106,7 +81,7 @@ pub fn run() {
             commands::project::create_project_cmd,
             commands::project::create_project_from_youtube_cmd,
             commands::project::get_transcript_cmd,
-
+            commands::project::get_project_cmd,
             commands::jobs::health_check,
             commands::jobs::start_mock_dubbing_job_cmd,
             commands::jobs::list_jobs_cmd,

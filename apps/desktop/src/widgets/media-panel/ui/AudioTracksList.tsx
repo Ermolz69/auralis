@@ -19,7 +19,7 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
     <div className="flex flex-col gap-2">
       {tracks.map((t, idx) => (
         <div
-          key={t.stream_index}
+          key={t.streamIndex}
           className="flex flex-col gap-1 p-3 bg-surface border border-muted rounded-lg shadow-sm"
         >
           <div className="flex items-center justify-between">
@@ -29,7 +29,7 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
                 Track #{idx} {t.title ? `(${t.title})` : ''}
               </span>
             </div>
-            {t.is_default && (
+            {t.isDefault && (
               <Badge variant="primary" size="sm">
                 Default
               </Badge>
@@ -44,7 +44,7 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
               <Volume2 className="w-3 h-3" /> {t.channels} ch
             </span>
             <span>•</span>
-            <span>{t.sample_rate} Hz</span>
+            <span>{t.sampleRate} Hz</span>
             <span>•</span>
             <span className="uppercase">{t.language || 'UND'}</span>
           </div>

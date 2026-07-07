@@ -1,5 +1,5 @@
 import { invoke } from '@/shared/api/tauri/invoke';
-import type { Project } from '@/entities/project';
+import type { Project } from '@/shared/api/contracts';
 import type { MediaMetadata } from '../model/types';
 
 export const probeLocalMedia = async (path: string): Promise<MediaMetadata> => {
