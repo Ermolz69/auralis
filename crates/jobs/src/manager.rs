@@ -82,9 +82,11 @@ impl JobManager {
         };
 
         if should_cancel {
-            let handles = self.cancel_handles.read().await;
-            if let Some(handle) = handles.get(job_id) {
-                handle.cancel();
+            {
+                let handles = self.cancel_handles.read().await;
+                if let Some(handle) = handles.get(job_id) {
+                    handle.cancel();
+                }
             }
 
             self.emit_job_event(&job);
@@ -117,39 +119,71 @@ impl JobManager {
     }
 
     pub async fn update_job_status(&self, job_id: &JobId, status: JobStatus) {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.get_mut(job_id) {
-            job.status = status;
-            job.updated_at = Utc::now();
-            self.emit_job_event(job);
+        let job_to_emit = {
+            let mut jobs = self.jobs.write().await;
+            if let Some(job) = jobs.get_mut(job_id) {
+                job.status = status;
+                job.updated_at = Utc::now();
+                Some(job.clone())
+            } else {
+                None
+            }
+        };
+
+        if let Some(job) = job_to_emit {
+            self.emit_job_event(&job);
         }
     }
 
     pub async fn update_job_progress(&self, job_id: &JobId, percent: u8) {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.get_mut(job_id) {
-            job.progress.percent = percent;
-            job.updated_at = Utc::now();
-            self.emit_job_event(job);
+        let job_to_emit = {
+            let mut jobs = self.jobs.write().await;
+            if let Some(job) = jobs.get_mut(job_id) {
+                job.progress.percent = percent;
+                job.updated_at = Utc::now();
+                Some(job.clone())
+            } else {
+                None
+            }
+        };
+
+        if let Some(job) = job_to_emit {
+            self.emit_job_event(&job);
         }
     }
 
     pub async fn update_job_stage(&self, job_id: &JobId, stage: crate::stage::JobStage) {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.get_mut(job_id) {
-            job.stage = Some(stage);
-            job.updated_at = Utc::now();
-            self.emit_job_event(job);
+        let job_to_emit = {
+            let mut jobs = self.jobs.write().await;
+            if let Some(job) = jobs.get_mut(job_id) {
+                job.stage = Some(stage);
+                job.updated_at = Utc::now();
+                Some(job.clone())
+            } else {
+                None
+            }
+        };
+
+        if let Some(job) = job_to_emit {
+            self.emit_job_event(&job);
         }
     }
 
     pub async fn fail_job(&self, job_id: &JobId, error: String) {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.get_mut(job_id) {
-            job.status = JobStatus::Failed;
-            job.error = Some(error);
-            job.updated_at = Utc::now();
-            self.emit_job_event(job);
+        let job_to_emit = {
+            let mut jobs = self.jobs.write().await;
+            if let Some(job) = jobs.get_mut(job_id) {
+                job.status = JobStatus::Failed;
+                job.error = Some(error);
+                job.updated_at = Utc::now();
+                Some(job.clone())
+            } else {
+                None
+            }
+        };
+
+        if let Some(job) = job_to_emit {
+            self.emit_job_event(&job);
         }
     }
 
