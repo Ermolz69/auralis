@@ -1,3 +1,4 @@
+import { Button } from '../../../shared/ui/button';
 import { useImportLocalMedia } from '../model/useImportLocalMedia';
 
 export function ImportLocalMediaButton() {
@@ -5,13 +6,15 @@ export function ImportLocalMediaButton() {
 
   return (
     <div className="flex flex-col items-center">
-      <button
+      <Button
         onClick={handleImport}
         disabled={isImporting}
-        className="px-6 py-3 bg-secondary text-secondary-foreground font-medium rounded hover:bg-secondary/90 transition-colors disabled:opacity-50"
+        loading={isImporting}
+        variant="secondary"
+        size="lg"
       >
-        {isImporting ? 'Importing...' : 'Import local video'}
-      </button>
+        Import local video
+      </Button>
       {error && <p className="text-danger text-sm mt-2">{error}</p>}
     </div>
   );
