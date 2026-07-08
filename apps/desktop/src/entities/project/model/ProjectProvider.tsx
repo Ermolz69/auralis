@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@/shared/api/tauri';
+import { isCommandError } from '@/shared/api/contracts';
 import { ProjectContext } from './context';
 import type { Project } from './types';
 
@@ -21,11 +22,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           if (event.payload.projectId === projectId) {
             try {
               const updatedProject = await invoke('get_project_cmd', { projectId });
-              if (updatedProject) {
-                setProject(updatedProject);
-              }
+              setProject(updatedProject);
             } catch (e) {
-              console.error('Failed to sync project:', e);
+              if (isCommandError(e) && e.code === 'NOT_FOUND') {
+                setProject(null);
+                console.warn('Project no longer exists:', e.message);
+              } else {
+                console.error('Failed to sync project:', e);
+              }
             }
           }
         });
@@ -49,9 +53,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [projectId]);
 
   return (
-    <ProjectContext.Provider
-      value={{ projectId, setProjectId, project, setProject }}
-    >
+    <ProjectContext.Provider value={{ projectId, setProjectId, project, setProject }}>
       {children}
     </ProjectContext.Provider>
   );

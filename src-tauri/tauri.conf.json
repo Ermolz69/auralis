@@ -9,9 +9,7 @@
     "frontendDist": "../apps/desktop/dist"
   },
   "bundle": {
-    "resources": [
-      "binaries/*"
-    ]
+    "resources": ["binaries/*"]
   },
   "app": {
     "windows": [

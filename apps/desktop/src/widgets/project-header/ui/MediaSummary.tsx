@@ -6,8 +6,7 @@ interface MediaSummaryProps {
 }
 
 export function MediaSummary({ metadata }: MediaSummaryProps) {
-  const primaryAudio =
-    metadata.audioTracks?.find((t) => t.isDefault) || metadata.audioTracks?.[0];
+  const primaryAudio = metadata.audioTracks?.find((t) => t.isDefault) || metadata.audioTracks?.[0];
 
   return (
     <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
