@@ -12,7 +12,7 @@ export function ImportLocalMediaButton() {
       >
         {isImporting ? 'Importing...' : 'Import local video'}
       </button>
-      {error && <p className="text-destructive text-sm mt-2">{error}</p>}
+      {error && <p className="text-danger text-sm mt-2">{error}</p>}
     </div>
   );
 }

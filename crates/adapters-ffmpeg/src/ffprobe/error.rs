@@ -18,6 +18,15 @@ pub enum FfprobeError {
         "ffprobe is not installed or not bundled. Please ensure ffprobe is available in your system path."
     )]
     MissingFfprobe,
+
+    #[error("Failed to spawn ffprobe candidate '{candidate}': {source}")]
+    SpawnFailed {
+        candidate: String,
+        source: std::io::Error,
+    },
+
+    #[error("ffprobe execution timed out after {timeout_ms}ms")]
+    Timeout { timeout_ms: u64 },
 }
 
 impl From<FfprobeError> for ports::error::PortError {

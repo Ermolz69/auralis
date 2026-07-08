@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './app/styles/index.css';
 import App from './App.tsx';
 import { ProjectProvider } from './entities/project';
-import { NavigationProvider } from './app/router';
+import { NavigationProvider } from './shared/router';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

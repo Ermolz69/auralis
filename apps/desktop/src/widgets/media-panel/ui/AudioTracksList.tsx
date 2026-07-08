@@ -9,7 +9,7 @@ interface AudioTracksListProps {
 export function AudioTracksList({ tracks }: AudioTracksListProps) {
   if (!tracks || tracks.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground p-3 bg-muted/20 rounded-md">
+      <div className="text-sm text-muted p-3 bg-muted/20 rounded-md">
         No audio tracks found
       </div>
     );
@@ -24,7 +24,7 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Headphones className="w-3.5 h-3.5 text-muted-foreground" />
+              <Headphones className="w-3.5 h-3.5 text-muted" />
               <span className="text-sm font-semibold text-text">
                 Track #{idx} {t.title ? `(${t.title})` : ''}
               </span>
@@ -35,7 +35,7 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-muted mt-1 flex-wrap">
             <Badge variant="muted" size="sm">
               {t.codec?.toUpperCase() || 'UNKNOWN'}
             </Badge>

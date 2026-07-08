@@ -11,6 +11,7 @@ use crate::ffprobe::parser::parse_ffprobe_output;
 #[derive(Debug, Clone)]
 pub struct FfprobeAdapter {
     candidates: Vec<PathBuf>,
+    timeout_ms: u64,
 }
 
 impl Default for FfprobeAdapter {
@@ -21,14 +22,22 @@ impl Default for FfprobeAdapter {
 
 impl FfprobeAdapter {
     pub fn new(candidates: Vec<PathBuf>) -> Self {
-        Self { candidates }
+        Self {
+            candidates,
+            timeout_ms: 15_000,
+        }
+    }
+
+    pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = timeout_ms;
+        self
     }
 }
 
 #[async_trait]
 impl MediaProbePort for FfprobeAdapter {
     async fn probe_local_file(&self, path: &Path) -> Result<MediaMetadata, PortError> {
-        let output = run_ffprobe(&self.candidates, path).await?;
+        let output = run_ffprobe(&self.candidates, path, self.timeout_ms).await?;
         let metadata = parse_ffprobe_output(&output)?;
         Ok(metadata)
     }

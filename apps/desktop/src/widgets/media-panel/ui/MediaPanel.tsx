@@ -14,10 +14,10 @@ export function MediaPanel() {
     return (
       <div className="p-4 bg-surface border-r border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0">
         <h3 className="font-semibold mb-4 text-text flex items-center gap-2">
-          <FileVideo className="w-5 h-5 text-muted-foreground" />
+          <FileVideo className="w-5 h-5 text-muted" />
           Media Info
         </h3>
-        <div className="flex flex-col items-center justify-center h-40 text-center space-y-2 text-muted-foreground bg-muted/10 rounded-xl border border-dashed border-muted">
+        <div className="flex flex-col items-center justify-center h-40 text-center space-y-2 text-muted bg-muted/10 rounded-xl border border-dashed border-muted">
           <Info className="w-6 h-6 opacity-50" />
           <p className="text-sm">No metadata available</p>
         </div>
@@ -58,13 +58,13 @@ export function MediaPanel() {
 
         {/* Basic Properties */}
         <div className="space-y-3">
-          <h4 className="font-medium text-sm text-foreground/80 flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-muted-foreground" />
+          <h4 className="font-medium text-sm text-text/80 flex items-center gap-1.5">
+            <Info className="w-4 h-4 text-muted" />
             Properties
           </h4>
           <div className="space-y-2 bg-muted/10 p-3 rounded-lg border border-muted/50">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Source</span>
+              <span className="text-muted">Source</span>
               <span
                 className="font-medium text-text truncate max-w-[120px]"
                 title={source?.urlOrPath}
@@ -73,18 +73,18 @@ export function MediaPanel() {
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Duration</span>
+              <span className="text-muted">Duration</span>
               <span className="font-medium text-text">{formatDuration(metadata.durationMs)}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Container</span>
+              <span className="text-muted">Container</span>
               <Badge variant="muted" size="sm">
                 {metadata.container?.toUpperCase() || 'UNK'}
               </Badge>
             </div>
             {metadata.width && metadata.height && (
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Resolution</span>
+                <span className="text-muted">Resolution</span>
                 <span className="font-medium text-text">
                   {metadata.width}×{metadata.height}
                 </span>
@@ -92,11 +92,11 @@ export function MediaPanel() {
             )}
             {metadata.videoCodec && (
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Video</span>
+                <span className="text-muted">Video</span>
                 <div className="flex flex-col items-end">
                   <span className="font-medium text-text">{metadata.videoCodec.toUpperCase()}</span>
                   {metadata.fps && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[10px] text-muted">
                       {metadata.fps.toFixed(2)} fps
                     </span>
                   )}
@@ -108,13 +108,13 @@ export function MediaPanel() {
 
         {/* Audio Tracks */}
         <div className="space-y-3">
-          <h4 className="font-medium text-sm text-foreground/80">Audio Tracks</h4>
+          <h4 className="font-medium text-sm text-text/80">Audio Tracks</h4>
           <AudioTracksList tracks={metadata.audioTracks || []} />
         </div>
 
         {/* Streams Table */}
         <div className="space-y-3">
-          <h4 className="font-medium text-sm text-foreground/80">Raw Streams</h4>
+          <h4 className="font-medium text-sm text-text/80">Raw Streams</h4>
           <StreamsTable streams={metadata.streams || []} />
         </div>
       </div>

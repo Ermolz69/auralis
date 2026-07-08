@@ -8,7 +8,7 @@ interface StreamsTableProps {
 export function StreamsTable({ streams }: StreamsTableProps) {
   if (!streams || streams.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground p-3 bg-muted/20 rounded-md">
+      <div className="text-sm text-muted p-3 bg-muted/20 rounded-md">
         No streams found
       </div>
     );
@@ -36,16 +36,16 @@ export function StreamsTable({ streams }: StreamsTableProps) {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-text">
-              <div className="p-1 bg-muted/50 rounded text-muted-foreground">
+              <div className="p-1 bg-muted/50 rounded text-muted">
                 {getStreamIcon(s.codecType)}
               </div>
               <span className="text-sm font-medium capitalize">{s.codecType} Stream</span>
             </div>
-            <span className="text-xs font-medium text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+            <span className="text-xs font-medium text-muted bg-muted/30 px-1.5 py-0.5 rounded">
               #{s.index}
             </span>
           </div>
-          <div className="flex flex-col ml-8 text-xs text-muted-foreground">
+          <div className="flex flex-col ml-8 text-xs text-muted">
             <span className="font-medium text-text">
               {s.codecName?.toUpperCase()} {s.codecLongName ? `(${s.codecLongName})` : ''}
             </span>

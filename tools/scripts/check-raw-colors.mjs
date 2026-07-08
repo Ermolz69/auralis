@@ -54,6 +54,31 @@ async function checkColors() {
     process.exit(1);
   }
 
+  let themeTokens = new Set(['transparent', 'current', 'white', 'black']);
+  try {
+    const themePath = path.join(appsDir, 'desktop', 'src', 'app', 'styles', 'theme.css');
+    const themeContent = await fs.readFile(themePath, 'utf-8');
+    const tokenMatches = [...themeContent.matchAll(/--color-([a-zA-Z0-9-]+):/g)];
+    for (const match of tokenMatches) {
+      themeTokens.add(match[1]);
+    }
+  } catch (err) {
+    console.warn('Warning: Could not read theme.css to extract valid tokens.');
+  }
+
+  const HEX_REGEX = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
+  const CLASS_REGEX = /\b(bg|text|border|ring(?:-offset)?|fill|stroke|outline)-([a-zA-Z0-9-]+)(?:\/[0-9]+)?\b/g;
+  
+  const IGNORE_SUFFIXES = new Set([
+    'left', 'center', 'right', 'justify', 'start', 'end',
+    'xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl', '7xl', '8xl', '9xl',
+    'none', 'solid', 'dashed', 'dotted', 'double', 'hidden',
+    '0', '1', '2', '4', '8', 'inset',
+    't', 'r', 'b', 'l', 'x', 'y',
+    't-0', 'r-0', 'b-0', 'l-0', 'x-0', 'y-0',
+    'clip-text', 'gradient-to-r', 'gradient-to-l', 'gradient-to-t', 'gradient-to-b'
+  ]);
+
   for (const app of apps) {
     const srcDir = path.join(appsDir, app, 'src');
     
@@ -72,7 +97,6 @@ async function checkColors() {
         const ext = path.extname(file).toLowerCase();
         if (!['.ts', '.tsx', '.css', '.scss'].includes(ext)) continue;
 
-        // Skip exceptions
         const lowerFile = file.toLowerCase();
         if (
           lowerFile.includes('theme') || 
@@ -88,15 +112,28 @@ async function checkColors() {
           
           for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            const matches = [...line.matchAll(HEX_REGEX)];
             
-            if (matches.length > 0) {
-              for (const match of matches) {
+            const hexMatches = [...line.matchAll(HEX_REGEX)];
+            if (hexMatches.length > 0) {
+              for (const match of hexMatches) {
                 const color = match[0];
-                let relativePath = path.relative(rootDir, file);
-                relativePath = relativePath.replace(/\\/g, '/'); // Normalize slashes for consistent output
+                let relativePath = path.relative(rootDir, file).replace(/\\/g, '/');
                 console.error(`❌ ERROR: Raw hex color '${color}' found in ${relativePath}:${i + 1}`);
                 hasErrors = true;
+              }
+            }
+
+            const classMatches = [...line.matchAll(CLASS_REGEX)];
+            if (classMatches.length > 0) {
+              for (const match of classMatches) {
+                const prefix = match[1];
+                const token = match[2];
+                if (IGNORE_SUFFIXES.has(token)) continue;
+                if (!themeTokens.has(token)) {
+                  let relativePath = path.relative(rootDir, file).replace(/\\/g, '/');
+                  console.error(`❌ ERROR: Undefined design token '${prefix}-${token}' used in ${relativePath}:${i + 1}`);
+                  hasErrors = true;
+                }
               }
             }
           }
@@ -108,11 +145,11 @@ async function checkColors() {
   }
 
   if (hasErrors) {
-    console.error('\n🚫 Check failed: Raw hex colors are not allowed in components and pages.');
-    console.error('Please use design tokens from the theme instead (e.g. var(--color-primary), bg-primary).');
+    console.error('\n🚫 Check failed: Invalid color/token usage found.');
+    console.error('Please use only valid design tokens declared in theme.css.');
     process.exit(1);
   } else {
-    console.log('✅ Success: No raw hex colors found in restricted directories.');
+    console.log('✅ Success: No raw hex colors or undefined tokens found in restricted directories.');
   }
 }
 

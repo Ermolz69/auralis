@@ -14,11 +14,11 @@ export const HomePage = () => {
           <div className="mt-4 flex flex-col gap-4 w-full">
             <PasteYoutubeLink />
             <div className="flex items-center gap-4 w-full">
-              <hr className="flex-1 border-border" />
-              <span className="text-muted-foreground text-sm font-medium uppercase tracking-widest">
+              <hr className="flex-1 border-muted" />
+              <span className="text-muted text-sm font-medium uppercase tracking-widest">
                 or
               </span>
-              <hr className="flex-1 border-border" />
+              <hr className="flex-1 border-muted" />
             </div>
             <ImportLocalMediaButton />
           </div>

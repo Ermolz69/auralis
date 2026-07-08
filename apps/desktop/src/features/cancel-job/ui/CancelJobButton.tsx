@@ -24,7 +24,7 @@ export function CancelJobButton({ jobId, onCancelled, className }: CancelJobButt
 
   return (
     <button
-      className={`px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm disabled:opacity-50 ${className || ''}`}
+      className={`px-3 py-1 bg-danger hover:bg-danger text-white rounded text-sm disabled:opacity-50 ${className || ''}`}
       onClick={handleCancel}
       disabled={isCancelling}
     >
