@@ -64,10 +64,23 @@ impl ArtifactStore for LocalArtifactStore {
         project_id: &ProjectId,
         kind: ArtifactKind,
         filename: &str,
-        _data: &[u8],
+        data: &[u8],
     ) -> Result<Artifact, PortError> {
         let dir = self.project_dir(project_id).await?;
         let path = dir.join(filename);
+
+        tokio::fs::create_dir_all(&dir)
+            .await
+            .map_err(|e| PortError::Io {
+                message: format!("Failed to create directory {:?}: {}", dir, e),
+            })?;
+
+        tokio::fs::write(&path, data)
+            .await
+            .map_err(|e| PortError::Io {
+                message: format!("Failed to write to {:?}: {}", path, e),
+            })?;
+
         Ok(Artifact {
             id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
             kind,
@@ -75,5 +88,38 @@ impl ArtifactStore for LocalArtifactStore {
                 path.to_string_lossy().to_string(),
             ),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_write_small_artifact() {
+        let temp_dir = tempdir().unwrap();
+        let store = LocalArtifactStore::new(temp_dir.path().to_path_buf());
+        let project_id = ProjectId(uuid::Uuid::new_v4());
+
+        let result = store
+            .write_small_artifact(
+                &project_id,
+                ArtifactKind::LogFile,
+                "test_file.txt",
+                b"hello world",
+            )
+            .await;
+
+        assert!(result.is_ok());
+        let artifact = result.unwrap();
+
+        match artifact.location {
+            domain::media::ArtifactLocation::LocalPath(path_str) => {
+                let saved_data = tokio::fs::read(&path_str).await.expect("File should exist");
+                assert_eq!(saved_data, b"hello world");
+            }
+            _ => panic!("Expected LocalPath"),
+        }
     }
 }
