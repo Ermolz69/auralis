@@ -12,6 +12,10 @@ tasks:
     cmds:
       - cargo fmt --all -- --check
 
+  fmt-write:
+    cmds:
+      - cargo fmt --all
+
   clippy:
     cmds:
       - cargo clippy --workspace --all-targets -- -D warnings

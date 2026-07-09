@@ -22,7 +22,7 @@ export interface CommandMap {
   };
   get_project_cmd: {
     args: { projectId: string };
-    result: Project | null;
+    result: Project;
   };
   start_mock_dubbing_job_cmd: {
     args: { input: string };

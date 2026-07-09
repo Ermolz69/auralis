@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { useProjectContext } from '@/entities/project';
-import { invoke } from '@/shared/api/tauri/invoke';
+import { useProjectContext, createProject } from '@/entities/project';
 import { importLocalMedia } from '@/entities/media';
 
-import { useNavigation } from '@/app/router';
+import { useNavigation } from '@/shared/router';
 
 export function useImportLocalMedia() {
   const [isImporting, setIsImporting] = useState(false);
@@ -36,7 +35,7 @@ export function useImportLocalMedia() {
       const filename = selected.split(/[/\\]/).pop() || 'Local Video';
 
       // 3. Create a blank project
-      const project = await invoke('create_project_cmd', { title: filename });
+      const project = await createProject(filename);
 
       // 4. Import the media and probe
       const updatedProject = await importLocalMedia(project.id, selected);

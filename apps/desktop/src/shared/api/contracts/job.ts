@@ -1,11 +1,7 @@
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export type JobStage =
-  | 'validate_source'
-  | 'fetch_metadata'
-  | 'prepare_media'
-  | 'generate_transcript'
-  | 'finalize';
+  'validate_source' | 'fetch_metadata' | 'prepare_media' | 'generate_transcript' | 'finalize';
 
 export type Job = {
   id: string;

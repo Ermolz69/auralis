@@ -7,6 +7,8 @@
   --color-accent: #3b82f6;
   --color-success: #10b981;
   --color-warning: #f59e0b;
+  --color-secondary: #272a35;
+  --color-secondary-foreground: #f4f4f5;
   --color-danger: #ef4444;
 
   --animate-progress-indeterminate: progress-indeterminate 1.5s infinite linear;

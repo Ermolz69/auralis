@@ -43,9 +43,12 @@ export const TranscriptEditor = () => {
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-                <p className="text-lg font-medium text-text">Waiting for transcript generation...</p>
+                <p className="text-lg font-medium text-text">
+                  Waiting for transcript generation...
+                </p>
                 <p className="text-sm text-muted mt-2 max-w-sm">
-                  The mock pipeline is currently running. The transcript will appear here when ready.
+                  The mock pipeline is currently running. The transcript will appear here when
+                  ready.
                 </p>
               </div>
             )

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createProjectFromYoutube, useProjectContext } from '@/entities/project';
 import type { Job } from '@/entities/job';
 import type { Project } from '@/entities/project';
-import { useNavigation } from '@/app/router';
+import { useNavigation } from '@/shared/router';
 
 export function usePasteYoutubeLink() {
   const [url, setUrl] = useState('');

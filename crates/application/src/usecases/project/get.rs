@@ -1,3 +1,4 @@
+use crate::error::ApplicationError;
 use domain::project::{Project, ProjectId};
 use ports::repository::ProjectRepository;
 
@@ -18,13 +19,15 @@ impl<R: ProjectRepository> GetProjectUseCase<R> {
         Self { project_repo }
     }
 
-    pub async fn execute(&self, req: GetProjectRequest) -> Result<GetProjectResponse, String> {
+    pub async fn execute(
+        &self,
+        req: GetProjectRequest,
+    ) -> Result<GetProjectResponse, ApplicationError> {
         let project = self
             .project_repo
             .get(&req.project_id)
-            .await
-            .map_err(|e| format!("{:?}", e))?
-            .ok_or_else(|| "Project not found".to_string())?;
+            .await?
+            .ok_or(ApplicationError::ProjectNotFound(req.project_id))?;
 
         Ok(GetProjectResponse { project })
     }

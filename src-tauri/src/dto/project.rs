@@ -91,13 +91,13 @@ mod tests {
     fn test_empty_project_serialization() {
         let project = Project::new("Empty Test".to_string());
         let dto: ProjectDto = (&project).into();
-        
+
         let json = serde_json::to_string(&dto).unwrap();
-        
+
         // Assert that source and metadata are explicitly null
         assert!(json.contains(r#""source":null"#));
         assert!(json.contains(r#""metadata":null"#));
-        
+
         // Assert the exact structure to avoid regressions
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(parsed.get("source").unwrap().is_null());
