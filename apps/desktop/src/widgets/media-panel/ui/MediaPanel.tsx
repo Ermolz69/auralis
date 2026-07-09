@@ -96,9 +96,7 @@ export function MediaPanel() {
                 <div className="flex flex-col items-end">
                   <span className="font-medium text-text">{metadata.videoCodec.toUpperCase()}</span>
                   {metadata.fps && (
-                    <span className="text-[10px] text-muted">
-                      {metadata.fps.toFixed(2)} fps
-                    </span>
+                    <span className="text-[10px] text-muted">{metadata.fps.toFixed(2)} fps</span>
                   )}
                 </div>
               </div>

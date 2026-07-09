@@ -9,9 +9,7 @@ interface AudioTracksListProps {
 export function AudioTracksList({ tracks }: AudioTracksListProps) {
   if (!tracks || tracks.length === 0) {
     return (
-      <div className="text-sm text-muted p-3 bg-muted/20 rounded-md">
-        No audio tracks found
-      </div>
+      <div className="text-sm text-muted p-3 bg-muted/20 rounded-md">No audio tracks found</div>
     );
   }
 
