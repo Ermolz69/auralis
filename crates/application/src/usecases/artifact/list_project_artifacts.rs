@@ -87,7 +87,15 @@ mod tests {
                 .collect())
         }
 
-        async fn delete(&self, _id: &ArtifactId) -> Result<(), PortError> {
+        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn update_state(
+            &self,
+            _id: &domain::media::ArtifactId,
+            _state: domain::media::ArtifactState,
+            _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
+        ) -> Result<(), PortError> {
             Ok(())
         }
     }

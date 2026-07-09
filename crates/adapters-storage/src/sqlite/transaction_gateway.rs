@@ -153,15 +153,20 @@ impl TransactionGateway for SqliteTransactionGateway {
         for msg in data.outbox_messages {
             let kind = msg.payload.clone();
             let kind_str = match &kind {
-                domain::outbox::OutboxPayload::FinalizeStagedArtifact { .. } => "finalize_staged_artifact",
+                domain::outbox::OutboxPayload::FinalizeStagedArtifact { .. } => {
+                    "finalize_staged_artifact"
+                }
                 domain::outbox::OutboxPayload::DeleteStorageKey { .. } => "delete_storage_key",
-                domain::outbox::OutboxPayload::DeleteProjectArtifactDir { .. } => "delete_project_artifact_dir",
+                domain::outbox::OutboxPayload::DeleteProjectArtifactDir { .. } => {
+                    "delete_project_artifact_dir"
+                }
                 domain::outbox::OutboxPayload::DeleteTempPath { .. } => "delete_temp_path",
             };
-            
-            let payload_json = serde_json::to_string(&msg.payload).map_err(|e| PortError::Unexpected {
-                message: format!("Failed to serialize outbox payload: {}", e),
-            })?;
+
+            let payload_json =
+                serde_json::to_string(&msg.payload).map_err(|e| PortError::Unexpected {
+                    message: format!("Failed to serialize outbox payload: {}", e),
+                })?;
 
             let status_str = match msg.status {
                 domain::outbox::OutboxMessageStatus::Pending => "pending",

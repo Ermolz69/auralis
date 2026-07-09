@@ -183,6 +183,51 @@ impl JobSchedulerPort for JobManager {
         Ok(Self::map_job_to_scheduled(&job))
     }
 
+    async fn enqueue_existing_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
+        // 1. Get from repo
+        let mut job = self
+            .repo
+            .get(job_id)
+            .await?
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Job {}", job_id),
+            })?;
+
+        // 2. Validate status
+        if job.status() != &domain::job::JobStatus::Pending {
+            // If it's already running, we can just return it idly. If it's something else, return error.
+            if job.status() == &domain::job::JobStatus::Running {
+                return Ok(Self::map_job_to_scheduled(&job));
+            }
+            return Err(PortError::Unexpected {
+                message: format!(
+                    "Cannot enqueue job {} with status {:?}",
+                    job_id,
+                    job.status()
+                ),
+            });
+        }
+
+        // 3. Start the job
+        job.start().map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
+
+        // 4. Save
+        self.repo.save(&job).await?;
+
+        // 5. Update in memory map
+        self.jobs.write().await.insert(job_id.clone(), job.clone());
+
+        // 6. Emit event
+        self.emit_job_event(&job);
+
+        // 7. Run background pipeline
+        crate::mock_pipeline::run_mock_pipeline(self.clone(), job_id.clone());
+
+        Ok(Self::map_job_to_scheduled(&job))
+    }
+
     async fn cancel_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
         let job = self
             .cancel_job_internal(job_id)

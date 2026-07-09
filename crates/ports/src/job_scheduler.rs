@@ -35,6 +35,8 @@ pub trait JobSchedulerPort: Send + Sync {
         request: StartDubbingJobRequest,
     ) -> Result<ScheduledJob, PortError>;
 
+    async fn enqueue_existing_job(&self, job_id: &JobId) -> Result<ScheduledJob, PortError>;
+
     async fn cancel_job(&self, job_id: &JobId) -> Result<ScheduledJob, PortError>;
 
     async fn get_job(&self, job_id: &JobId) -> Result<Option<ScheduledJob>, PortError>;

@@ -37,7 +37,12 @@ where
     S: ArtifactStore,
     T: TransactionGateway,
 {
-    pub fn new(project_repo: P, video_source: V, artifact_store: S, transaction_gateway: T) -> Self {
+    pub fn new(
+        project_repo: P,
+        video_source: V,
+        artifact_store: S,
+        transaction_gateway: T,
+    ) -> Self {
         Self {
             project_repo,
             video_source,
@@ -72,9 +77,11 @@ where
             });
         }
 
-        std::fs::create_dir_all(&request.temp_dir).map_err(|e| ApplicationError::InvalidOperation {
+        std::fs::create_dir_all(&request.temp_dir).map_err(|e| {
+            ApplicationError::InvalidOperation {
                 message: format!("Failed to create temp directory: {}", e),
-            })?;
+            }
+        })?;
 
         let download_req = DownloadMediaRequest {
             source: source.clone(),
@@ -129,7 +136,10 @@ where
 
         if let Err(e) = self.transaction_gateway.execute(uow).await {
             // DB failed, we can optionally clean up the staging file
-            let _ = self.artifact_store.delete_storage_key(&staged.staging_key).await;
+            let _ = self
+                .artifact_store
+                .delete_storage_key(&staged.staging_key)
+                .await;
             return Err(ApplicationError::Port(e));
         }
 
@@ -152,22 +162,7 @@ mod tests {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
 
-    #[derive(Clone)]
-    struct MockTransactionGateway {
-        fail_on_execute: Arc<AtomicBool>,
-    }
-
-    #[async_trait]
-    impl TransactionGateway for MockTransactionGateway {
-        async fn execute(&self, _data: UnitOfWorkData) -> Result<(), PortError> {
-            if self.fail_on_execute.load(Ordering::SeqCst) {
-                return Err(PortError::Io {
-                    message: "Simulated transaction error".into(),
-                });
-            }
-            Ok(())
-        }
-    }
+    use crate::test_utils::MockTransactionGateway;
 
     #[derive(Clone)]
     struct MockArtifactStore {
@@ -289,9 +284,7 @@ mod tests {
     async fn test_download_video_success() {
         let repo = InMemoryProjectRepository::new();
         let source_port = MockVideoSourceAdapter::new();
-        let transaction_gateway = MockTransactionGateway {
-            fail_on_execute: Arc::new(AtomicBool::new(false)),
-        };
+        let transaction_gateway = MockTransactionGateway::new();
         let artifact_store = MockArtifactStore {
             fail_on_stage: Arc::new(AtomicBool::new(false)),
             deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
@@ -309,8 +302,12 @@ mod tests {
         let project_id = project.id().clone();
         repo.create(project).await.unwrap();
 
-        let use_case =
-            DownloadYoutubeVideoUseCase::new(repo, source_port, artifact_store, transaction_gateway);
+        let use_case = DownloadYoutubeVideoUseCase::new(
+            repo,
+            source_port,
+            artifact_store,
+            transaction_gateway,
+        );
 
         let _temp_guard = tempfile::tempdir().unwrap();
         let temp_dir = _temp_guard.path().to_path_buf();
@@ -336,9 +333,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(false)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway {
-                fail_on_execute: Arc::new(AtomicBool::new(false)),
-            },
+            MockTransactionGateway::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -375,9 +370,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(false)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway {
-                fail_on_execute: Arc::new(AtomicBool::new(false)),
-            },
+            MockTransactionGateway::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -414,9 +407,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(false)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway {
-                fail_on_execute: Arc::new(AtomicBool::new(false)),
-            },
+            MockTransactionGateway::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -453,9 +444,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(true)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway {
-                fail_on_execute: Arc::new(AtomicBool::new(false)),
-            },
+            MockTransactionGateway::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -495,9 +484,7 @@ mod tests {
             repo,
             MockVideoSourceAdapter::new(),
             artifact_store,
-            MockTransactionGateway {
-                fail_on_execute: Arc::new(AtomicBool::new(true)),
-            },
+            MockTransactionGateway::with_failure(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -512,7 +499,11 @@ mod tests {
         assert!(matches!(err, ApplicationError::Port(_)));
 
         let deleted = deleted_keys.lock().unwrap();
-        assert_eq!(deleted.len(), 1, "Should have deleted the staged artifact key");
+        assert_eq!(
+            deleted.len(),
+            1,
+            "Should have deleted the staged artifact key"
+        );
         assert!(deleted[0].starts_with("staging."));
     }
 }

@@ -19,6 +19,13 @@ pub trait ArtifactIndex: Send + Sync {
     ) -> Result<Vec<Artifact>, PortError>;
 
     async fn delete(&self, id: &ArtifactId) -> Result<(), PortError>;
+
+    async fn update_state(
+        &self,
+        id: &ArtifactId,
+        state: domain::media::ArtifactState,
+        ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
+    ) -> Result<(), PortError>;
 }
 
 use std::sync::Arc;
@@ -50,5 +57,14 @@ where
 
     async fn delete(&self, id: &ArtifactId) -> Result<(), PortError> {
         (**self).delete(id).await
+    }
+
+    async fn update_state(
+        &self,
+        id: &ArtifactId,
+        state: domain::media::ArtifactState,
+        ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
+    ) -> Result<(), PortError> {
+        (**self).update_state(id, state, ready_at).await
     }
 }

@@ -30,7 +30,11 @@ impl UnitOfWorkData {
         self
     }
 
-    pub fn add_artifact(mut self, project_id: domain::project::ProjectId, artifact: Artifact) -> Self {
+    pub fn add_artifact(
+        mut self,
+        project_id: domain::project::ProjectId,
+        artifact: Artifact,
+    ) -> Self {
         self.artifacts_to_add.push((project_id, artifact));
         self
     }

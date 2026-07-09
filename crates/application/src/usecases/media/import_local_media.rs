@@ -1,10 +1,11 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use domain::project::{Project, ProjectId};
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::media::MediaProbePort;
 use ports::repository::ProjectRepository;
+use ports::transaction::TransactionGateway;
 
 use crate::error::ApplicationError;
 use crate::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
@@ -29,16 +30,23 @@ pub struct ImportLocalMediaUseCase<
     project_repo: R,
     media_probe: P,
     job_scheduler: Arc<dyn JobSchedulerPort>,
+    transaction_gateway: Arc<dyn TransactionGateway>,
 }
 
 impl<R: ProjectRepository + Clone + 'static, P: MediaProbePort + Clone + 'static>
     ImportLocalMediaUseCase<R, P>
 {
-    pub fn new(project_repo: R, media_probe: P, job_scheduler: Arc<dyn JobSchedulerPort>) -> Self {
+    pub fn new(
+        project_repo: R,
+        media_probe: P,
+        job_scheduler: Arc<dyn JobSchedulerPort>,
+        transaction_gateway: Arc<dyn TransactionGateway>,
+    ) -> Self {
         Self {
             project_repo,
             media_probe,
             job_scheduler,
+            transaction_gateway,
         }
     }
 
@@ -65,8 +73,11 @@ impl<R: ProjectRepository + Clone + 'static, P: MediaProbePort + Clone + 'static
         project.mark_ready_for_processing()?;
         self.project_repo.save(&project).await?;
 
-        let pipeline_use_case =
-            StartMockPipelineUseCase::new(self.project_repo.clone(), self.job_scheduler.clone());
+        let pipeline_use_case = StartMockPipelineUseCase::new(
+            self.project_repo.clone(),
+            self.job_scheduler.clone(),
+            self.transaction_gateway.clone(),
+        );
 
         let pipeline_req = StartMockPipelineRequest {
             project_id: request.project_id,
@@ -97,7 +108,12 @@ mod tests {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
+        let use_case = ImportLocalMediaUseCase::new(
+            repo.clone(),
+            probe,
+            job_scheduler.clone(),
+            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+        );
 
         let project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();
@@ -128,7 +144,12 @@ mod tests {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
+        let use_case = ImportLocalMediaUseCase::new(
+            repo.clone(),
+            probe,
+            job_scheduler.clone(),
+            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+        );
 
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("video.mp4");
@@ -148,7 +169,12 @@ mod tests {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
+        let use_case = ImportLocalMediaUseCase::new(
+            repo.clone(),
+            probe,
+            job_scheduler.clone(),
+            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+        );
 
         let project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();
@@ -184,7 +210,12 @@ mod tests {
         let repo = InMemoryProjectRepository::new();
         let probe = FailingProbeAdapter;
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler.clone());
+        let use_case = ImportLocalMediaUseCase::new(
+            repo.clone(),
+            probe,
+            job_scheduler.clone(),
+            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+        );
 
         let project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();
@@ -211,7 +242,12 @@ mod tests {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let use_case = ImportLocalMediaUseCase::new(repo.clone(), probe, job_scheduler);
+        let use_case = ImportLocalMediaUseCase::new(
+            repo.clone(),
+            probe,
+            job_scheduler.clone(),
+            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+        );
 
         let mut project = Project::new("Test Probe".to_string());
         let project_id = project.id().clone();

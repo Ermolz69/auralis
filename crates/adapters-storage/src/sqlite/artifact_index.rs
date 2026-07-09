@@ -27,14 +27,17 @@ impl ArtifactIndex for SqliteArtifactIndex {
         sqlx::query(
             r#"
             INSERT INTO artifacts (
-                id, project_id, kind, location_kind, location_value, size_bytes, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 project_id = excluded.project_id,
                 kind = excluded.kind,
                 location_kind = excluded.location_kind,
                 location_value = excluded.location_value,
-                size_bytes = excluded.size_bytes
+                size_bytes = excluded.size_bytes,
+                state = excluded.state,
+                updated_at = excluded.updated_at,
+                ready_at = excluded.ready_at
             "#,
         )
         .bind(values.id)
@@ -43,7 +46,10 @@ impl ArtifactIndex for SqliteArtifactIndex {
         .bind(values.location_kind)
         .bind(values.location_value)
         .bind(values.size_bytes)
+        .bind(values.state)
         .bind(values.created_at)
+        .bind(values.updated_at)
+        .bind(values.ready_at)
         .execute(&self.pool)
         .await
         .map_err(|e| PortError::Unexpected {
@@ -57,7 +63,7 @@ impl ArtifactIndex for SqliteArtifactIndex {
         let row = sqlx::query_as::<_, ArtifactRow>(
             r#"
             SELECT 
-                id, project_id, kind, location_kind, location_value, size_bytes, created_at
+                id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
             FROM artifacts
             WHERE id = ?
             "#,
@@ -76,7 +82,7 @@ impl ArtifactIndex for SqliteArtifactIndex {
         let rows = sqlx::query_as::<_, ArtifactRow>(
             r#"
             SELECT 
-                id, project_id, kind, location_kind, location_value, size_bytes, created_at
+                id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
             FROM artifacts
             WHERE project_id = ?
             ORDER BY created_at ASC
@@ -115,7 +121,7 @@ impl ArtifactIndex for SqliteArtifactIndex {
         let rows = sqlx::query_as::<_, ArtifactRow>(
             r#"
             SELECT 
-                id, project_id, kind, location_kind, location_value, size_bytes, created_at
+                id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
             FROM artifacts
             WHERE project_id = ? AND kind = ?
             ORDER BY created_at ASC
@@ -144,6 +150,46 @@ impl ArtifactIndex for SqliteArtifactIndex {
             .map_err(|e| PortError::Unexpected {
                 message: format!("Failed to delete artifact: {}", e),
             })?;
+        Ok(())
+    }
+
+    async fn update_state(
+        &self,
+        id: &ArtifactId,
+        state: domain::media::ArtifactState,
+        ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
+    ) -> Result<(), PortError> {
+        let state_val = serde_json::to_value(&state).map_err(|e| PortError::Unexpected {
+            message: format!("Failed to serialize artifact state: {}", e),
+        })?;
+
+        let state_str = state_val
+            .as_str()
+            .ok_or_else(|| PortError::Unexpected {
+                message: "Artifact state is not a string".to_string(),
+            })?
+            .to_string();
+
+        let ready_at_str = ready_at.map(|dt| dt.to_rfc3339());
+        let updated_at_str = domain::chrono::Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            UPDATE artifacts
+            SET state = ?, updated_at = ?, ready_at = coalesce(?, ready_at)
+            WHERE id = ?
+            "#,
+        )
+        .bind(state_str)
+        .bind(updated_at_str)
+        .bind(ready_at_str)
+        .bind(id.to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Failed to update artifact state: {}", e),
+        })?;
+
         Ok(())
     }
 }
@@ -314,7 +360,7 @@ mod tests {
         // We can just verify that kind deserialization error is properly mapped to a PortError and not a panic/fallback
         // Let's insert a corrupted `kind`
         sqlx::query(
-            "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, size_bytes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, size_bytes, created_at, updated_at, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(artifact.id.to_string())
         .bind(project.id().to_string())
@@ -323,6 +369,8 @@ mod tests {
         .bind("test-corr")
         .bind(100)
         .bind("2024-01-01T00:00:00Z")
+        .bind("2024-01-01T00:00:00Z")
+        .bind("ready")
         .execute(&pool)
         .await
         .unwrap();

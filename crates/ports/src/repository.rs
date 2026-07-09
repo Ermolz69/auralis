@@ -28,7 +28,8 @@ use domain::outbox::{OutboxMessage, OutboxMessageId};
 #[async_trait]
 pub trait OutboxRepository: Send + Sync {
     async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError>;
-    async fn mark_processing(&self, id: &OutboxMessageId, locked_by: &str) -> Result<(), PortError>;
+    async fn mark_processing(&self, id: &OutboxMessageId, locked_by: &str)
+    -> Result<(), PortError>;
     async fn mark_done(&self, id: &OutboxMessageId) -> Result<(), PortError>;
     async fn mark_failed(&self, id: &OutboxMessageId, error: &str) -> Result<(), PortError>;
 }
@@ -69,7 +70,11 @@ where
         (**self).fetch_pending(limit).await
     }
 
-    async fn mark_processing(&self, id: &OutboxMessageId, locked_by: &str) -> Result<(), PortError> {
+    async fn mark_processing(
+        &self,
+        id: &OutboxMessageId,
+        locked_by: &str,
+    ) -> Result<(), PortError> {
         (**self).mark_processing(id, locked_by).await
     }
 

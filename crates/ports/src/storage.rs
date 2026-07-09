@@ -81,7 +81,9 @@ where
         staging_key: &str,
         final_key: &str,
     ) -> Result<(), PortError> {
-        (**self).finalize_staged_artifact(staging_key, final_key).await
+        (**self)
+            .finalize_staged_artifact(staging_key, final_key)
+            .await
     }
 
     async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError> {

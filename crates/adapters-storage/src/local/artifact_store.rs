@@ -124,7 +124,7 @@ impl ArtifactStore for LocalArtifactStore {
         let artifact_id = ArtifactId::new();
         let final_key = make_storage_key(project_id, &artifact_id, &kind, ext);
         let staging_key = format!(".staging/{}/{}.{}", uuid::Uuid::new_v4(), artifact_id, ext);
-        
+
         let staging_path = self.resolve_storage_key(&staging_key)?;
 
         if let Some(parent) = staging_path.parent() {
@@ -158,7 +158,7 @@ impl ArtifactStore for LocalArtifactStore {
             })?;
 
         let size_bytes = metadata.len();
-        
+
         let artifact = Artifact {
             id: artifact_id,
             kind,
@@ -194,9 +194,14 @@ impl ArtifactStore for LocalArtifactStore {
                 })?;
         }
 
-        tokio::fs::rename(&staging_path, &final_path).await.map_err(|e| PortError::Io {
-            message: format!("Failed to finalize staging {} to {}: {}", staging_key, final_key, e),
-        })?;
+        tokio::fs::rename(&staging_path, &final_path)
+            .await
+            .map_err(|e| PortError::Io {
+                message: format!(
+                    "Failed to finalize staging {} to {}: {}",
+                    staging_key, final_key, e
+                ),
+            })?;
 
         Ok(())
     }

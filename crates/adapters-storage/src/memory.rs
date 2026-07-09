@@ -191,8 +191,25 @@ impl ports::artifact_index::ArtifactIndex for InMemoryArtifactIndex {
     }
 
     async fn delete(&self, id: &domain::media::ArtifactId) -> Result<(), PortError> {
-        let mut lock = self.artifacts.lock().unwrap();
-        lock.retain(|(_, a)| &a.id != id);
+        let mut artifacts = self.artifacts.lock().unwrap();
+        artifacts.retain(|(_, a)| a.id != *id);
+        Ok(())
+    }
+
+    async fn update_state(
+        &self,
+        id: &domain::media::ArtifactId,
+        state: domain::media::ArtifactState,
+        ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
+    ) -> Result<(), PortError> {
+        let mut artifacts = self.artifacts.lock().unwrap();
+        if let Some((_, artifact)) = artifacts.iter_mut().find(|(_, a)| a.id == *id) {
+            artifact.state = state;
+            if let Some(r) = ready_at {
+                artifact.ready_at = Some(r);
+            }
+            artifact.updated_at = domain::chrono::Utc::now();
+        }
         Ok(())
     }
 }

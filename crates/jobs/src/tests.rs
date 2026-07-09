@@ -7,6 +7,7 @@ use tokio::time::{Duration, sleep};
 use crate::manager::JobManager;
 use domain::job::{Job, JobId, JobStatus};
 use ports::error::PortError;
+use ports::job_scheduler::{JobSchedulerPort, ScheduledJob, StartDubbingJobRequest};
 use ports::repository::JobRepository;
 
 pub struct MockJobRepository {
@@ -129,4 +130,70 @@ async fn test_concurrent_updates_and_cancellation() {
             || *job.status() == JobStatus::Pending
             || *job.status() == JobStatus::Completed
     );
+}
+
+#[tokio::test]
+async fn test_enqueue_existing_job_starts_pending_job() {
+    let repo = Arc::new(MockJobRepository::new());
+    let manager = JobManager::new(repo.clone(), None);
+
+    let mut job = Job::new(
+        domain::project::ProjectId::new(),
+        "Pending".to_string(),
+        domain::job::JobKind::Dubbing,
+    );
+    let job_id = job.id().clone();
+    repo.create(job).await.unwrap();
+
+    let scheduled = manager.enqueue_existing_job(&job_id).await.unwrap();
+    assert_eq!(scheduled.status, JobStatus::Running);
+
+    let from_repo = repo.get(&job_id).await.unwrap().unwrap();
+    assert_eq!(*from_repo.status(), JobStatus::Running);
+}
+
+#[tokio::test]
+async fn test_enqueue_existing_job_rejects_missing_job() {
+    let repo = Arc::new(MockJobRepository::new());
+    let manager = JobManager::new(repo, None);
+
+    let result = manager.enqueue_existing_job(&JobId::new()).await;
+    assert!(matches!(result, Err(PortError::NotFound { .. })));
+}
+
+#[tokio::test]
+async fn test_enqueue_existing_job_rejects_completed_job() {
+    let repo = Arc::new(MockJobRepository::new());
+    let manager = JobManager::new(repo.clone(), None);
+
+    let mut job = Job::new(
+        domain::project::ProjectId::new(),
+        "Completed".to_string(),
+        domain::job::JobKind::Dubbing,
+    );
+    job.start().unwrap();
+    job.mark_completed().unwrap();
+    let job_id = job.id().clone();
+    repo.create(job).await.unwrap();
+
+    let result = manager.enqueue_existing_job(&job_id).await;
+    assert!(matches!(result, Err(PortError::Unexpected { .. })));
+}
+
+#[tokio::test]
+async fn test_enqueue_existing_job_is_idempotent_for_already_running_job() {
+    let repo = Arc::new(MockJobRepository::new());
+    let manager = JobManager::new(repo.clone(), None);
+
+    let mut job = Job::new(
+        domain::project::ProjectId::new(),
+        "Running".to_string(),
+        domain::job::JobKind::Dubbing,
+    );
+    job.start().unwrap();
+    let job_id = job.id().clone();
+    repo.create(job).await.unwrap();
+
+    let scheduled = manager.enqueue_existing_job(&job_id).await.unwrap();
+    assert_eq!(scheduled.status, JobStatus::Running);
 }

@@ -45,7 +45,11 @@ where
 
         for message in messages {
             // Lock the message
-            if let Err(e) = self.outbox_repo.mark_processing(&message.id, &worker_id).await {
+            if let Err(_e) = self
+                .outbox_repo
+                .mark_processing(&message.id, &worker_id)
+                .await
+            {
                 // Ignore lock error, maybe another worker took it
                 continue;
             }
@@ -57,7 +61,10 @@ where
                     let _ = self.outbox_repo.mark_done(&message.id).await;
                 }
                 Err(e) => {
-                    let _ = self.outbox_repo.mark_failed(&message.id, &e.to_string()).await;
+                    let _ = self
+                        .outbox_repo
+                        .mark_failed(&message.id, &e.to_string())
+                        .await;
                 }
             }
         }
@@ -78,15 +85,13 @@ where
                     .await?;
 
                 // 2. Update artifact state in index
-                if let Some(mut artifact) = self.artifact_index.get(artifact_id).await? {
-                    artifact.state = ArtifactState::Ready;
-                    artifact.ready_at = Some(domain::chrono::Utc::now());
-                    artifact.updated_at = domain::chrono::Utc::now();
-                    
-                    // We need a method to update artifact in index, or we just add it
-                    // ArtifactIndex::add acts as upsert if PK matches
-                    self.artifact_index.add(&domain::project::ProjectId::default(), &artifact).await?; // Project id is not used for PK in SqliteArtifactIndex add
-                }
+                self.artifact_index
+                    .update_state(
+                        artifact_id,
+                        ArtifactState::Ready,
+                        Some(domain::chrono::Utc::now()),
+                    )
+                    .await?;
             }
             OutboxPayload::DeleteStorageKey { storage_key } => {
                 self.artifact_store.delete_storage_key(storage_key).await?;
@@ -104,7 +109,7 @@ where
 
     pub async fn run_loop(self: Arc<Self>, mut shutdown_rx: tokio::sync::mpsc::Receiver<()>) {
         let mut interval = tokio::time::interval(Duration::from_secs(5));
-        
+
         loop {
             tokio::select! {
                 _ = interval.tick() => {

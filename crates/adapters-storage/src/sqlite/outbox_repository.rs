@@ -1,6 +1,5 @@
 use async_trait::async_trait;
-use sqlx::{Pool, Sqlite, Row};
-use std::sync::Arc;
+use sqlx::{Pool, Row, Sqlite};
 
 use domain::outbox::{OutboxMessage, OutboxMessageId};
 use ports::error::PortError;
@@ -41,8 +40,8 @@ impl OutboxRepository for SqliteOutboxRepository {
             let data: String = row.try_get("data").map_err(|e| PortError::Io {
                 message: format!("Failed to read data column: {}", e),
             })?;
-            let message: OutboxMessage = serde_json::from_str(&data)
-                .map_err(|e| PortError::Io {
+            let message: OutboxMessage =
+                serde_json::from_str(&data).map_err(|e| PortError::Io {
                     message: format!("Failed to deserialize outbox message: {}", e),
                 })?;
             messages.push(message);
@@ -51,7 +50,11 @@ impl OutboxRepository for SqliteOutboxRepository {
         Ok(messages)
     }
 
-    async fn mark_processing(&self, id: &OutboxMessageId, locked_by: &str) -> Result<(), PortError> {
+    async fn mark_processing(
+        &self,
+        id: &OutboxMessageId,
+        locked_by: &str,
+    ) -> Result<(), PortError> {
         let id_str = id.to_string();
         sqlx::query(
             r#"
@@ -124,7 +127,8 @@ impl OutboxRepository for SqliteOutboxRepository {
                 message.status = domain::outbox::OutboxMessageStatus::Pending;
                 // Exponential backoff
                 let delay_seconds = 2_i64.pow(message.attempts as u32) * 60;
-                message.next_attempt_at = domain::chrono::Utc::now() + domain::chrono::Duration::seconds(delay_seconds);
+                message.next_attempt_at =
+                    domain::chrono::Utc::now() + domain::chrono::Duration::seconds(delay_seconds);
             }
 
             let data_str = serde_json::to_string(&message).unwrap();

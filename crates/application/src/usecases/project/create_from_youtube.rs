@@ -63,8 +63,11 @@ impl<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
             })?;
         self.project_repo.save(&proj).await?;
 
-        let pipeline_use_case =
-            StartMockPipelineUseCase::new(self.project_repo.clone(), self.job_scheduler.clone());
+        let pipeline_use_case = StartMockPipelineUseCase::new(
+            self.project_repo.clone(),
+            self.job_scheduler.clone(),
+            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+        );
         let req3 = StartMockPipelineRequest {
             project_id: proj.id().clone(),
         };
