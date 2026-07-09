@@ -1,4 +1,5 @@
 import { PasteYoutubeLink } from '../../../features/paste-youtube-link';
+import { ProjectList } from '../../../features/project-list';
 import { ImportLocalMediaButton } from '../../../features/import-local-media';
 import { Page, PageContainer, PageContent } from '../../../shared/ui/page-layout';
 
@@ -19,6 +20,7 @@ export const HomePage = () => {
               <hr className="flex-1 border-muted" />
             </div>
             <ImportLocalMediaButton />
+            <ProjectList />
           </div>
         </PageContent>
       </PageContainer>

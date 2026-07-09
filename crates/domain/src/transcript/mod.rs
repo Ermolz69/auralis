@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TranscriptSegmentId(pub Uuid);
 
 impl TranscriptSegmentId {
@@ -15,7 +15,7 @@ impl Default for TranscriptSegmentId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TranscriptSegment {
     pub id: TranscriptSegmentId,
     pub index: u32,
@@ -28,7 +28,7 @@ pub struct TranscriptSegment {
     pub confidence: Option<f32>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Transcript {
     pub language: String,
     pub segments: Vec<TranscriptSegment>,

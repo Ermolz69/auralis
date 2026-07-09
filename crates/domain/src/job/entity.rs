@@ -4,7 +4,7 @@ use crate::dubbing::DubbingPipelineStage;
 use crate::error::DomainError;
 use crate::project::ProjectId;
 
-use super::{JobError, JobId, JobKind, JobProgress, JobStatus};
+use super::{JobError, JobId, JobKind, JobProgress, JobSnapshot, JobStatus};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Job {
@@ -159,5 +159,35 @@ impl Job {
         self.finished_at = Some(Utc::now());
 
         Ok(())
+    }
+
+    pub fn to_snapshot(&self) -> JobSnapshot {
+        JobSnapshot {
+            id: self.id.clone(),
+            project_id: self.project_id.clone(),
+            kind: self.kind.clone(),
+            status: self.status.clone(),
+            stage: self.stage.clone(),
+            progress: self.progress.clone(),
+            error: self.error.clone(),
+            created_at: self.created_at,
+            started_at: self.started_at,
+            finished_at: self.finished_at,
+        }
+    }
+
+    pub fn from_snapshot(snapshot: JobSnapshot) -> Self {
+        Self {
+            id: snapshot.id,
+            project_id: snapshot.project_id,
+            kind: snapshot.kind,
+            status: snapshot.status,
+            stage: snapshot.stage,
+            progress: snapshot.progress,
+            error: snapshot.error,
+            created_at: snapshot.created_at,
+            started_at: snapshot.started_at,
+            finished_at: snapshot.finished_at,
+        }
     }
 }

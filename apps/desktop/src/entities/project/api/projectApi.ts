@@ -8,3 +8,7 @@ export async function createProjectFromYoutube(url: string): Promise<CreateProje
 export async function createProject(title: string): Promise<Project> {
   return invoke('create_project_cmd', { title });
 }
+
+export async function listProjects(): Promise<Project[]> {
+  return invoke('list_projects_cmd');
+}

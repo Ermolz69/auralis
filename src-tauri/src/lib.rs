@@ -1,5 +1,7 @@
 use adapters_storage::memory::InMemoryProjectRepository;
+use adapters_storage::sqlite::{SqliteJobRepository, SqliteProjectRepository};
 use jobs::manager::JobManager;
+use ports::repository::JobRepository;
 use ports::error::PortError;
 use ports::events::AppEventPublisher;
 use ports::job_scheduler::JobSchedulerPort;
@@ -9,6 +11,7 @@ use tauri::{AppHandle, Emitter, Manager};
 pub mod commands;
 pub mod dto;
 pub mod media_tools;
+pub mod state;
 
 #[derive(Clone)]
 pub struct TauriAppEventPublisher {
@@ -83,7 +86,7 @@ pub fn run() {
                     use application::usecases::pipeline::handle_job_event::HandleJobEventUseCase;
 
                     let repo = app_clone
-                        .state::<adapters_storage::memory::InMemoryProjectRepository>()
+                        .state::<crate::state::RuntimeProjectRepository>()
                         .inner()
                         .clone();
                     let ytdlp_adapter = crate::commands::project::get_ytdlp_adapter(&app_clone);
@@ -96,7 +99,44 @@ pub fn run() {
 
             let job_manager: Arc<dyn JobSchedulerPort> = Arc::new(JobManager::new(Some(emitter)));
 
-            let project_repo = InMemoryProjectRepository::new();
+            let project_repo: crate::state::RuntimeProjectRepository = if std::env::var(
+                "AURALIS_STORAGE",
+            )
+            .unwrap_or_default()
+                == "in-memory"
+            {
+                println!(
+                    "WARNING: Running with IN-MEMORY storage adapter! Data will be lost on exit."
+                );
+                Arc::new(InMemoryProjectRepository::new())
+            } else {
+                let app_data_dir = app
+                    .path()
+                    .app_data_dir()
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+                std::fs::create_dir_all(&app_data_dir)?;
+
+                let db_path = app_data_dir.join("auralis.sqlite");
+
+                let pool = tauri::async_runtime::block_on(adapters_storage::sqlite::connect_sqlite(db_path))
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+
+                let repo: crate::state::RuntimeProjectRepository = Arc::new(
+                    SqliteProjectRepository::new(pool.clone())
+                );
+
+                let job_repo: Arc<dyn JobRepository> = Arc::new(
+                    SqliteJobRepository::new(pool)
+                );
+
+                let use_case = application::usecases::project::recover_interrupted::RecoverInterruptedProjectsUseCase::new(repo.clone());
+                tauri::async_runtime::block_on(use_case.execute())?;
+
+                let job_use_case = application::usecases::job::recover_interrupted::RecoverInterruptedJobsUseCase::new(job_repo.clone());
+                tauri::async_runtime::block_on(job_use_case.execute())?;
+
+                repo
+            };
 
             app.manage(job_manager);
             app.manage(project_repo);
@@ -107,6 +147,7 @@ pub fn run() {
             commands::project::create_project_from_youtube_cmd,
             commands::project::get_transcript_cmd,
             commands::project::get_project_cmd,
+            commands::project::list_projects_cmd,
             commands::jobs::health_check,
             commands::jobs::start_mock_dubbing_job_cmd,
             commands::jobs::list_jobs_cmd,

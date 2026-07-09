@@ -1,5 +1,5 @@
+use crate::state::RuntimeProjectRepository;
 use adapters_ffmpeg::ffprobe::FfprobeAdapter;
-use adapters_storage::memory::InMemoryProjectRepository;
 use application::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
 use domain::project::ProjectId;
 use ports::job_scheduler::JobSchedulerPort;
@@ -20,7 +20,7 @@ fn get_ffprobe_adapter(app: &AppHandle) -> FfprobeAdapter {
 pub async fn probe_local_media_cmd(
     path: String,
     app: AppHandle,
-    project_repo: State<'_, InMemoryProjectRepository>,
+    project_repo: State<'_, RuntimeProjectRepository>,
 ) -> Result<MediaMetadataDto, String> {
     let probe = get_ffprobe_adapter(&app);
     let use_case = ProbeLocalMediaUseCase::new(project_repo.inner().clone(), probe);
@@ -39,7 +39,7 @@ pub async fn import_local_media_cmd(
     project_id: String,
     path: String,
     app: AppHandle,
-    project_repo: State<'_, InMemoryProjectRepository>,
+    project_repo: State<'_, RuntimeProjectRepository>,
     job_scheduler: State<'_, Arc<dyn JobSchedulerPort>>,
 ) -> Result<ProjectDto, String> {
     use application::usecases::media::import_local_media::{

@@ -1,5 +1,4 @@
-use adapters_storage::memory::InMemoryProjectRepository;
-
+use crate::state::RuntimeProjectRepository;
 use adapters_ytdlp::ytdlp::YtDlpAdapter;
 
 use application::usecases::project::create::{CreateProjectRequest, CreateProjectUseCase};
@@ -23,7 +22,7 @@ pub(crate) fn get_ytdlp_adapter(app: &AppHandle) -> YtDlpAdapter {
 #[command]
 pub async fn create_project_cmd(
     title: String,
-    project_repo: State<'_, InMemoryProjectRepository>,
+    project_repo: State<'_, RuntimeProjectRepository>,
 ) -> Result<ProjectDto, CommandError> {
     let create_use_case = CreateProjectUseCase::new(project_repo.inner().clone());
     let req = CreateProjectRequest { title };
@@ -40,7 +39,7 @@ pub async fn create_project_from_youtube_cmd(
     url: String,
     app: AppHandle,
     state: State<'_, Arc<dyn JobSchedulerPort>>,
-    project_repo: State<'_, InMemoryProjectRepository>,
+    project_repo: State<'_, RuntimeProjectRepository>,
 ) -> Result<CreateProjectResponse, CommandError> {
     let ytdlp_adapter = get_ytdlp_adapter(&app);
     let use_case = CreateProjectFromYoutubeUseCase::new(
@@ -62,7 +61,7 @@ pub async fn create_project_from_youtube_cmd(
 pub async fn get_transcript_cmd(
     project_id: String,
     _app: AppHandle,
-    project_repo: State<'_, InMemoryProjectRepository>,
+    project_repo: State<'_, RuntimeProjectRepository>,
 ) -> Result<Option<TranscriptDto>, CommandError> {
     let pid: domain::project::ProjectId = project_id
         .parse()
@@ -88,7 +87,7 @@ pub async fn get_transcript_cmd(
 pub async fn get_project_cmd(
     project_id: String,
     _app: AppHandle,
-    project_repo: State<'_, InMemoryProjectRepository>,
+    project_repo: State<'_, RuntimeProjectRepository>,
 ) -> Result<ProjectDto, CommandError> {
     let pid: domain::project::ProjectId = project_id
         .parse()
@@ -99,4 +98,17 @@ pub async fn get_project_cmd(
 
     let res = use_case.execute(req).await.map_err(CommandError::from)?;
     Ok(ProjectDto::from(&res.project))
+}
+
+#[command]
+pub async fn list_projects_cmd(
+    project_repo: State<'_, RuntimeProjectRepository>,
+) -> Result<Vec<ProjectDto>, CommandError> {
+    let projects = project_repo
+        .inner()
+        .list()
+        .await
+        .map_err(|e| CommandError::Repository(e.to_string()))?;
+
+    Ok(projects.into_iter().map(|p| ProjectDto::from(&p)).collect())
 }

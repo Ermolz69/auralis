@@ -4,3 +4,4 @@ pub mod get;
 pub mod handle_job_cancelled;
 pub mod handle_job_completed;
 pub mod import_source;
+pub mod recover_interrupted;

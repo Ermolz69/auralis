@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum CodecType {
     Video,
     Audio,
@@ -8,7 +8,7 @@ pub enum CodecType {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MediaStream {
     pub index: u32,
     pub codec_type: CodecType,
@@ -18,7 +18,7 @@ pub struct MediaStream {
     pub duration_ms: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VideoStreamMetadata {
     pub stream_index: u32,
     pub width: u32,
@@ -28,7 +28,7 @@ pub struct VideoStreamMetadata {
     pub pixel_format: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AudioTrackMetadata {
     pub stream_index: u32,
     pub codec: Option<String>,
@@ -40,7 +40,7 @@ pub struct AudioTrackMetadata {
     pub is_default: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SubtitleStreamMetadata {
     pub stream_index: u32,
     pub codec: Option<String>,

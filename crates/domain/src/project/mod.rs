@@ -1,6 +1,8 @@
 mod id;
+pub mod snapshot;
 
 pub use id::ProjectId;
+pub use snapshot::ProjectSnapshot;
 
 use chrono::{DateTime, Utc};
 
@@ -8,10 +10,10 @@ use crate::error::DomainError;
 use crate::media::{Artifact, MediaMetadata, MediaSource};
 use crate::transcript::Transcript;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct LanguageCode(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ProjectStatus {
     Draft,
     SourceImported,
@@ -38,6 +40,38 @@ pub struct Project {
 }
 
 impl Project {
+    pub fn to_snapshot(&self) -> snapshot::ProjectSnapshot {
+        snapshot::ProjectSnapshot {
+            id: self.id.clone(),
+            title: self.title.clone(),
+            status: self.status.clone(),
+            source: self.source.clone(),
+            metadata: self.metadata.clone(),
+            source_language: self.source_language.clone(),
+            target_language: self.target_language.clone(),
+            transcript: self.transcript.clone(),
+            artifacts: self.artifacts.clone(),
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        }
+    }
+
+    pub fn from_snapshot(snapshot: snapshot::ProjectSnapshot) -> Result<Self, DomainError> {
+        Ok(Self {
+            id: snapshot.id,
+            title: snapshot.title,
+            status: snapshot.status,
+            source: snapshot.source,
+            metadata: snapshot.metadata,
+            source_language: snapshot.source_language,
+            target_language: snapshot.target_language,
+            transcript: snapshot.transcript,
+            artifacts: snapshot.artifacts,
+            created_at: snapshot.created_at,
+            updated_at: snapshot.updated_at,
+        })
+    }
+
     pub fn new(title: String) -> Self {
         let now = Utc::now();
         Self {

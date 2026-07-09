@@ -1,10 +1,10 @@
 use crate::transcript::TranscriptSegmentId;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct ArtifactId(pub Uuid);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ArtifactKind {
     SourceVideo,
     DownloadedVideo,
@@ -20,20 +20,20 @@ pub enum ArtifactKind {
     LogFile,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ArtifactLocation {
     LocalPath(String),
     StorageKey(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Artifact {
     pub id: ArtifactId,
     pub kind: ArtifactKind,
     pub location: ArtifactLocation,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SynthesizedSegment {
     pub segment_id: TranscriptSegmentId,
     pub audio_artifact: Artifact,
