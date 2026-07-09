@@ -31,4 +31,8 @@ pub trait ArtifactStore: Send + Sync {
         filename: &str,
         data: &[u8],
     ) -> Result<Artifact, PortError>;
+
+    async fn delete_artifact(&self, artifact: &Artifact) -> Result<(), PortError>;
+
+    async fn delete_project_dir(&self, project_id: &ProjectId) -> Result<(), PortError>;
 }

@@ -1,6 +1,6 @@
+use domain::media::ArtifactId;
 use domain::media::ArtifactKind;
 use domain::project::ProjectId;
-use domain::media::ArtifactId;
 
 pub fn kind_slug(kind: &ArtifactKind) -> &'static str {
     match kind {

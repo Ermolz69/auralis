@@ -17,5 +17,3 @@ pub struct JobSnapshot {
     pub started_at: Option<DateTime<Utc>>,
     pub finished_at: Option<DateTime<Utc>>,
 }
-
-

@@ -99,6 +99,42 @@ impl AppEventPublisher for MockAppEventPublisher {
     }
 }
 
+#[derive(Clone)]
+struct MockArtifactIndex;
+
+#[async_trait]
+impl ports::artifact_index::ArtifactIndex for MockArtifactIndex {
+    async fn add(
+        &self,
+        _project_id: &ProjectId,
+        _artifact: &domain::media::Artifact,
+    ) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn get(
+        &self,
+        _id: &domain::media::ArtifactId,
+    ) -> Result<Option<domain::media::Artifact>, PortError> {
+        Ok(None)
+    }
+    async fn list_by_project(
+        &self,
+        _project_id: &ProjectId,
+    ) -> Result<Vec<domain::media::Artifact>, PortError> {
+        Ok(vec![])
+    }
+    async fn list_by_project_and_kind(
+        &self,
+        _project_id: &ProjectId,
+        _kind: domain::media::ArtifactKind,
+    ) -> Result<Vec<domain::media::Artifact>, PortError> {
+        Ok(vec![])
+    }
+    async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
+        Ok(())
+    }
+}
+
 fn create_processing_project() -> Project {
     let mut p = Project::new("Test".into());
     p.import_source(
@@ -127,7 +163,7 @@ fn create_processing_youtube_project() -> Project {
 async fn test_queued_running_noop() {
     let repo = MockProjectRepo::new(create_processing_project());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(repo, MockSubtitleSource, publ.clone());
+    let uc = HandleJobEventUseCase::new(repo, MockSubtitleSource, publ.clone(), MockArtifactIndex);
 
     for status in [JobStatus::Running, JobStatus::Pending] {
         let event = JobLifecycleEvent {
@@ -148,7 +184,7 @@ async fn test_queued_running_noop() {
 async fn test_no_project_id_noop() {
     let repo = MockProjectRepo::new(create_processing_project());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(repo, MockSubtitleSource, publ.clone());
+    let uc = HandleJobEventUseCase::new(repo, MockSubtitleSource, publ.clone(), MockArtifactIndex);
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -169,7 +205,12 @@ async fn test_completed_local_media() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
+    let uc = HandleJobEventUseCase::new(
+        repo.clone(),
+        MockSubtitleSource,
+        publ.clone(),
+        MockArtifactIndex,
+    );
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -198,7 +239,12 @@ async fn test_completed_youtube_subtitles_fail() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
+    let uc = HandleJobEventUseCase::new(
+        repo.clone(),
+        MockSubtitleSource,
+        publ.clone(),
+        MockArtifactIndex,
+    );
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -228,7 +274,12 @@ async fn test_failed() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
+    let uc = HandleJobEventUseCase::new(
+        repo.clone(),
+        MockSubtitleSource,
+        publ.clone(),
+        MockArtifactIndex,
+    );
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -257,7 +308,12 @@ async fn test_cancelled() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(repo.clone(), MockSubtitleSource, publ.clone());
+    let uc = HandleJobEventUseCase::new(
+        repo.clone(),
+        MockSubtitleSource,
+        publ.clone(),
+        MockArtifactIndex,
+    );
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),

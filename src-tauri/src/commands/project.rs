@@ -5,12 +5,15 @@ use application::usecases::project::create::{CreateProjectRequest, CreateProject
 use application::usecases::project::create_from_youtube::{
     CreateProjectFromYoutubeRequest, CreateProjectFromYoutubeUseCase,
 };
+use application::usecases::project::delete::{DeleteProjectRequest, DeleteProjectUseCase};
 use application::usecases::project::get::{GetProjectRequest, GetProjectUseCase};
 
 use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::ProjectRepository;
 use std::sync::Arc;
 use tauri::{command, AppHandle, State};
+
+use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore};
 
 use crate::dto::error::CommandError;
 use crate::dto::project::{CreateProjectResponse, ProjectDto, TranscriptDto};
@@ -111,4 +114,26 @@ pub async fn list_projects_cmd(
         .map_err(|e| CommandError::Repository(e.to_string()))?;
 
     Ok(projects.into_iter().map(|p| ProjectDto::from(&p)).collect())
+}
+
+#[command]
+pub async fn delete_project_cmd(
+    project_id: String,
+    project_repo: State<'_, RuntimeProjectRepository>,
+    artifact_index: State<'_, RuntimeArtifactIndex>,
+    artifact_store: State<'_, RuntimeArtifactStore>,
+) -> Result<(), CommandError> {
+    let pid: domain::project::ProjectId = project_id
+        .parse()
+        .map_err(|e| CommandError::Validation(format!("Invalid project id: {}", e)))?;
+
+    let use_case = DeleteProjectUseCase::new(
+        project_repo.inner().clone(),
+        artifact_index.inner().clone(),
+        artifact_store.inner().clone(),
+    );
+    let req = DeleteProjectRequest { project_id: pid };
+
+    use_case.execute(req).await.map_err(CommandError::from)?;
+    Ok(())
 }

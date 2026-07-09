@@ -28,8 +28,8 @@ impl ProjectRepository for SqliteProjectRepository {
             INSERT INTO projects (
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
-                artifacts_json, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(values.id)
@@ -40,7 +40,6 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(values.source_language)
         .bind(values.target_language)
         .bind(values.transcript_json)
-        .bind(values.artifacts_json)
         .bind(values.created_at)
         .bind(values.updated_at)
         .execute(&self.pool)
@@ -58,7 +57,7 @@ impl ProjectRepository for SqliteProjectRepository {
             SELECT 
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
-                artifacts_json, created_at, updated_at
+                created_at, updated_at
             FROM projects 
             WHERE id = ?
             "#,
@@ -81,8 +80,8 @@ impl ProjectRepository for SqliteProjectRepository {
             INSERT INTO projects (
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
-                artifacts_json, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 title = excluded.title,
                 status = excluded.status,
@@ -91,7 +90,6 @@ impl ProjectRepository for SqliteProjectRepository {
                 source_language = excluded.source_language,
                 target_language = excluded.target_language,
                 transcript_json = excluded.transcript_json,
-                artifacts_json = excluded.artifacts_json,
                 updated_at = excluded.updated_at
             "#,
         )
@@ -103,7 +101,6 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(values.source_language)
         .bind(values.target_language)
         .bind(values.transcript_json)
-        .bind(values.artifacts_json)
         .bind(values.created_at)
         .bind(values.updated_at)
         .execute(&self.pool)
@@ -121,7 +118,7 @@ impl ProjectRepository for SqliteProjectRepository {
             SELECT 
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
-                artifacts_json, created_at, updated_at
+                created_at, updated_at
             FROM projects 
             ORDER BY updated_at DESC
             "#,

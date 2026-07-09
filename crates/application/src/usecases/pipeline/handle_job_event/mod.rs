@@ -6,6 +6,7 @@ use crate::usecases::project::handle_job_completed::{
     HandleJobCompletedRequest, HandleJobCompletedUseCase,
 };
 use domain::job::JobStatus;
+use ports::artifact_index::ArtifactIndex;
 use ports::events::AppEventPublisher;
 use ports::job_scheduler::JobLifecycleEvent;
 use ports::repository::ProjectRepository;
@@ -15,23 +16,32 @@ pub struct HandleJobEventUseCase<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
     E: AppEventPublisher + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
 > {
     project_repo: R,
     video_source: V,
     app_event_publisher: E,
+    artifact_index: I,
 }
 
 impl<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
     E: AppEventPublisher + Clone + 'static,
-> HandleJobEventUseCase<R, V, E>
+    I: ArtifactIndex + Clone + 'static,
+> HandleJobEventUseCase<R, V, E, I>
 {
-    pub fn new(project_repo: R, video_source: V, app_event_publisher: E) -> Self {
+    pub fn new(
+        project_repo: R,
+        video_source: V,
+        app_event_publisher: E,
+        artifact_index: I,
+    ) -> Self {
         Self {
             project_repo,
             video_source,
             app_event_publisher,
+            artifact_index,
         }
     }
 
@@ -48,6 +58,7 @@ impl<
                 let use_case = HandleJobCompletedUseCase::new(
                     self.project_repo.clone(),
                     self.video_source.clone(),
+                    self.artifact_index.clone(),
                 );
 
                 let result = use_case

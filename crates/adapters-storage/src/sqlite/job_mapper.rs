@@ -1,7 +1,7 @@
-use std::str::FromStr;
 use domain::job::{Job, JobId, JobSnapshot};
 use domain::project::ProjectId;
 use ports::error::PortError;
+use std::str::FromStr;
 
 use super::job_row::JobRow;
 
@@ -16,15 +16,27 @@ pub fn row_to_job(row: JobRow) -> Result<Job, PortError> {
 
     let kind = parse_json(&format!("\"{}\"", row.kind), "kind")?;
     let status = parse_json(&format!("\"{}\"", row.status), "status")?;
-    
-    let stage = row.stage.map(|s| parse_json(&format!("\"{}\"", s), "stage")).transpose()?;
+
+    let stage = row
+        .stage
+        .map(|s| parse_json(&format!("\"{}\"", s), "stage"))
+        .transpose()?;
 
     let progress = parse_json(&row.progress_json, "progress_json")?;
-    let error = row.error_json.map(|s| parse_json(&s, "error_json")).transpose()?;
+    let error = row
+        .error_json
+        .map(|s| parse_json(&s, "error_json"))
+        .transpose()?;
 
     let created_at = parse_datetime(&row.created_at, "created_at")?;
-    let started_at = row.started_at.map(|s| parse_datetime(&s, "started_at")).transpose()?;
-    let finished_at = row.finished_at.map(|s| parse_datetime(&s, "finished_at")).transpose()?;
+    let started_at = row
+        .started_at
+        .map(|s| parse_datetime(&s, "started_at"))
+        .transpose()?;
+    let finished_at = row
+        .finished_at
+        .map(|s| parse_datetime(&s, "finished_at"))
+        .transpose()?;
 
     let snapshot = JobSnapshot {
         id,
@@ -60,10 +72,11 @@ pub fn job_to_row_values(job: &Job) -> Result<JobRow, PortError> {
             .to_string()
     });
 
-    let progress_json = serde_json::to_string(&snapshot.progress).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to serialize progress_json: {}", e),
-    })?;
-    
+    let progress_json =
+        serde_json::to_string(&snapshot.progress).map_err(|e| PortError::Unexpected {
+            message: format!("Failed to serialize progress_json: {}", e),
+        })?;
+
     let error_json = snapshot.error.map(|s| serde_json::to_string(&s).unwrap());
 
     Ok(JobRow {

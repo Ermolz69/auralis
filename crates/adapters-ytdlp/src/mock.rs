@@ -69,11 +69,12 @@ impl VideoSourcePort for MockVideoSourceAdapter {
                 .unwrap_or_else(|| "mock_video.mp4".to_string()),
         );
         Ok(Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::SourceVideo,
             location: domain::media::ArtifactLocation::LocalPath(
                 path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
         })
     }
 }
@@ -112,11 +113,12 @@ impl SubtitleSourcePort for MockSubtitleSourceAdapter {
     ) -> Result<Artifact, PortError> {
         let path = target_path.join(format!("mock_sub_{}.vtt", track.language));
         Ok(Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::OriginalSubtitle,
             location: domain::media::ArtifactLocation::LocalPath(
                 path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
         })
     }
 }

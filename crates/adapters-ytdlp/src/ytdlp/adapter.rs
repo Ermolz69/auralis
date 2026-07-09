@@ -122,6 +122,7 @@ impl VideoSourcePort for YtDlpAdapter {
             location: domain::media::ArtifactLocation::LocalPath(
                 path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
         })
     }
 }
@@ -178,9 +179,10 @@ impl SubtitleSourcePort for YtDlpAdapter {
         .await?;
 
         Ok(domain::media::Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::OriginalSubtitle,
             location: ArtifactLocation::LocalPath(path.to_string_lossy().to_string()),
+            size_bytes: None,
         })
     }
 }

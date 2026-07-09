@@ -7,7 +7,7 @@ pub use snapshot::ProjectSnapshot;
 use chrono::{DateTime, Utc};
 
 use crate::error::DomainError;
-use crate::media::{Artifact, MediaMetadata, MediaSource};
+use crate::media::{MediaMetadata, MediaSource};
 use crate::transcript::Transcript;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -34,7 +34,6 @@ pub struct Project {
     source_language: Option<LanguageCode>,
     target_language: Option<LanguageCode>,
     transcript: Option<Transcript>,
-    artifacts: Vec<Artifact>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -50,7 +49,6 @@ impl Project {
             source_language: self.source_language.clone(),
             target_language: self.target_language.clone(),
             transcript: self.transcript.clone(),
-            artifacts: self.artifacts.clone(),
             created_at: self.created_at,
             updated_at: self.updated_at,
         }
@@ -66,7 +64,6 @@ impl Project {
             source_language: snapshot.source_language,
             target_language: snapshot.target_language,
             transcript: snapshot.transcript,
-            artifacts: snapshot.artifacts,
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
         })
@@ -83,7 +80,6 @@ impl Project {
             source_language: None,
             target_language: None,
             transcript: None,
-            artifacts: Vec::new(),
             created_at: now,
             updated_at: now,
         }
@@ -113,9 +109,6 @@ impl Project {
     }
     pub fn transcript(&self) -> Option<&Transcript> {
         self.transcript.as_ref()
-    }
-    pub fn artifacts(&self) -> &[Artifact] {
-        &self.artifacts
     }
     pub fn created_at(&self) -> DateTime<Utc> {
         self.created_at
@@ -220,11 +213,6 @@ impl Project {
         self.status = ProjectStatus::Cancelled;
         self.updated_at = Utc::now();
         Ok(())
-    }
-
-    pub fn add_artifact(&mut self, artifact: Artifact) {
-        self.artifacts.push(artifact);
-        self.updated_at = Utc::now();
     }
 }
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use domain::project::ProjectId;
 use domain::transcript::{Transcript, TranscriptSegment, TranscriptSegmentId};
+use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 
@@ -22,16 +23,19 @@ pub struct ImportYoutubeSubtitlesResponse {
 pub struct ImportYoutubeSubtitlesUseCase {
     project_repo: Arc<dyn ProjectRepository>,
     subtitle_source: Arc<dyn SubtitleSourcePort>,
+    artifact_index: Arc<dyn ArtifactIndex>,
 }
 
 impl ImportYoutubeSubtitlesUseCase {
     pub fn new(
         project_repo: Arc<dyn ProjectRepository>,
         subtitle_source: Arc<dyn SubtitleSourcePort>,
+        artifact_index: Arc<dyn ArtifactIndex>,
     ) -> Self {
         Self {
             project_repo,
             subtitle_source,
+            artifact_index,
         }
     }
 
@@ -118,9 +122,11 @@ impl ImportYoutubeSubtitlesUseCase {
         let transcript = parse_vtt(&vtt_content, &best_track.language)?;
 
         project.set_transcript(transcript.clone());
-        project.add_artifact(artifact);
 
         self.project_repo.save(&project).await?;
+        self.artifact_index
+            .add(&request.project_id, &artifact)
+            .await?;
 
         Ok(ImportYoutubeSubtitlesResponse { transcript })
     }

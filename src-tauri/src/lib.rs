@@ -1,10 +1,11 @@
-use adapters_storage::memory::InMemoryProjectRepository;
-use adapters_storage::sqlite::{SqliteJobRepository, SqliteProjectRepository};
+use adapters_storage::local::artifact_store::LocalArtifactStore;
+use adapters_storage::memory::{InMemoryArtifactIndex, InMemoryProjectRepository};
+use adapters_storage::sqlite::{SqliteArtifactIndex, SqliteJobRepository, SqliteProjectRepository};
 use jobs::manager::JobManager;
-use ports::repository::JobRepository;
 use ports::error::PortError;
 use ports::events::AppEventPublisher;
 use ports::job_scheduler::JobSchedulerPort;
+use ports::repository::JobRepository;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -89,26 +90,35 @@ pub fn run() {
                         .state::<crate::state::RuntimeProjectRepository>()
                         .inner()
                         .clone();
+                    let idx = app_clone
+                        .state::<crate::state::RuntimeArtifactIndex>()
+                        .inner()
+                        .clone();
                     let ytdlp_adapter = crate::commands::project::get_ytdlp_adapter(&app_clone);
                     let publisher = TauriAppEventPublisher { app: app_clone };
 
-                    let use_case = HandleJobEventUseCase::new(repo, ytdlp_adapter, publisher);
+                    let use_case = HandleJobEventUseCase::new(repo, ytdlp_adapter, publisher, idx);
                     let _ = use_case.execute(event).await;
                 });
             });
 
             let job_manager: Arc<dyn JobSchedulerPort> = Arc::new(JobManager::new(Some(emitter)));
 
-            let project_repo: crate::state::RuntimeProjectRepository = if std::env::var(
-                "AURALIS_STORAGE",
-            )
-            .unwrap_or_default()
-                == "in-memory"
-            {
+            let (project_repo, artifact_index, artifact_store): (
+                crate::state::RuntimeProjectRepository,
+                crate::state::RuntimeArtifactIndex,
+                crate::state::RuntimeArtifactStore,
+            ) = if std::env::var("AURALIS_STORAGE").unwrap_or_default() == "in-memory" {
                 println!(
                     "WARNING: Running with IN-MEMORY storage adapter! Data will be lost on exit."
                 );
-                Arc::new(InMemoryProjectRepository::new())
+                (
+                    Arc::new(InMemoryProjectRepository::new()),
+                    Arc::new(InMemoryArtifactIndex::new()),
+                    Arc::new(LocalArtifactStore::new(
+                        std::env::temp_dir().join("auralis-memory-artifacts"),
+                    )),
+                )
             } else {
                 let app_data_dir = app
                     .path()
@@ -118,16 +128,17 @@ pub fn run() {
 
                 let db_path = app_data_dir.join("auralis.sqlite");
 
-                let pool = tauri::async_runtime::block_on(adapters_storage::sqlite::connect_sqlite(db_path))
-                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+                let pool =
+                    tauri::async_runtime::block_on(adapters_storage::sqlite::connect_sqlite(db_path))
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
 
-                let repo: crate::state::RuntimeProjectRepository = Arc::new(
-                    SqliteProjectRepository::new(pool.clone())
-                );
+                let repo: crate::state::RuntimeProjectRepository =
+                    Arc::new(SqliteProjectRepository::new(pool.clone()));
 
-                let job_repo: Arc<dyn JobRepository> = Arc::new(
-                    SqliteJobRepository::new(pool)
-                );
+                let idx: crate::state::RuntimeArtifactIndex =
+                    Arc::new(SqliteArtifactIndex::new(pool.clone()));
+
+                let job_repo: Arc<dyn JobRepository> = Arc::new(SqliteJobRepository::new(pool));
 
                 let use_case = application::usecases::project::recover_interrupted::RecoverInterruptedProjectsUseCase::new(repo.clone());
                 tauri::async_runtime::block_on(use_case.execute())?;
@@ -135,11 +146,17 @@ pub fn run() {
                 let job_use_case = application::usecases::job::recover_interrupted::RecoverInterruptedJobsUseCase::new(job_repo.clone());
                 tauri::async_runtime::block_on(job_use_case.execute())?;
 
-                repo
+                let store: crate::state::RuntimeArtifactStore = Arc::new(LocalArtifactStore::new(
+                    app_data_dir.join("artifacts"),
+                ));
+
+                (repo, idx, store)
             };
 
             app.manage(job_manager);
             app.manage(project_repo);
+            app.manage(artifact_index);
+            app.manage(artifact_store);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -148,6 +165,9 @@ pub fn run() {
             commands::project::get_transcript_cmd,
             commands::project::get_project_cmd,
             commands::project::list_projects_cmd,
+            commands::project::delete_project_cmd,
+            commands::artifact::list_project_artifacts_cmd,
+            commands::artifact::resolve_artifact_path_cmd,
             commands::jobs::health_check,
             commands::jobs::start_mock_dubbing_job_cmd,
             commands::jobs::list_jobs_cmd,

@@ -1,7 +1,7 @@
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
-use sqlx::SqlitePool;
-use std::path::Path;
 use ports::error::PortError;
+use sqlx::SqlitePool;
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
+use std::path::Path;
 
 pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, PortError> {
     let options = SqliteConnectOptions::new()
@@ -24,6 +24,8 @@ pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, Po
         .map_err(|e| PortError::Unexpected {
             message: format!("Failed to run sqlite migrations: {}", e),
         })?;
+
+    crate::sqlite::migrations_runtime::run_runtime_backfills(&pool).await?;
 
     Ok(pool)
 }

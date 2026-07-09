@@ -10,7 +10,6 @@ pub struct ProjectRow {
     pub source_language: Option<String>,
     pub target_language: Option<String>,
     pub transcript_json: Option<String>,
-    pub artifacts_json: String,
     pub created_at: String,
     pub updated_at: String,
 }

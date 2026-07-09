@@ -113,3 +113,79 @@ impl JobRepository for InMemoryJobRepository {
             .collect())
     }
 }
+
+#[derive(Clone)]
+pub struct InMemoryArtifactIndex {
+    pub artifacts: Arc<Mutex<Vec<(ProjectId, domain::media::Artifact)>>>,
+}
+
+impl InMemoryArtifactIndex {
+    pub fn new() -> Self {
+        Self {
+            artifacts: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+}
+
+impl Default for InMemoryArtifactIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl ports::artifact_index::ArtifactIndex for InMemoryArtifactIndex {
+    async fn add(
+        &self,
+        project_id: &ProjectId,
+        artifact: &domain::media::Artifact,
+    ) -> Result<(), PortError> {
+        let mut lock = self.artifacts.lock().unwrap();
+        // Remove existing with same ID if any
+        lock.retain(|(_, a)| a.id != artifact.id);
+        lock.push((project_id.clone(), artifact.clone()));
+        Ok(())
+    }
+
+    async fn get(
+        &self,
+        id: &domain::media::ArtifactId,
+    ) -> Result<Option<domain::media::Artifact>, PortError> {
+        let lock = self.artifacts.lock().unwrap();
+        Ok(lock
+            .iter()
+            .find(|(_, a)| &a.id == id)
+            .map(|(_, a)| a.clone()))
+    }
+
+    async fn list_by_project(
+        &self,
+        project_id: &ProjectId,
+    ) -> Result<Vec<domain::media::Artifact>, PortError> {
+        let lock = self.artifacts.lock().unwrap();
+        Ok(lock
+            .iter()
+            .filter(|(pid, _)| pid == project_id)
+            .map(|(_, a)| a.clone())
+            .collect())
+    }
+
+    async fn list_by_project_and_kind(
+        &self,
+        project_id: &ProjectId,
+        kind: domain::media::ArtifactKind,
+    ) -> Result<Vec<domain::media::Artifact>, PortError> {
+        let lock = self.artifacts.lock().unwrap();
+        Ok(lock
+            .iter()
+            .filter(|(pid, a)| pid == project_id && a.kind == kind)
+            .map(|(_, a)| a.clone())
+            .collect())
+    }
+
+    async fn delete(&self, id: &domain::media::ArtifactId) -> Result<(), PortError> {
+        let mut lock = self.artifacts.lock().unwrap();
+        lock.retain(|(_, a)| &a.id != id);
+        Ok(())
+    }
+}

@@ -2,6 +2,7 @@ use crate::error::ApplicationError;
 use crate::usecases::transcript::import_youtube_subtitles::{
     ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesUseCase,
 };
+use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 use std::str::FromStr;
@@ -21,18 +22,24 @@ pub struct HandleJobCompletedResult {
 pub struct HandleJobCompletedUseCase<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
 > {
     project_repo: R,
     video_source: V,
+    artifact_index: I,
 }
 
-impl<R: ProjectRepository + Clone + 'static, V: SubtitleSourcePort + Clone + 'static>
-    HandleJobCompletedUseCase<R, V>
+impl<
+    R: ProjectRepository + Clone + 'static,
+    V: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
+> HandleJobCompletedUseCase<R, V, I>
 {
-    pub fn new(project_repo: R, video_source: V) -> Self {
+    pub fn new(project_repo: R, video_source: V, artifact_index: I) -> Self {
         Self {
             project_repo,
             video_source,
+            artifact_index,
         }
     }
 
@@ -71,6 +78,7 @@ impl<R: ProjectRepository + Clone + 'static, V: SubtitleSourcePort + Clone + 'st
                 let import_use_case = ImportYoutubeSubtitlesUseCase::new(
                     Arc::new(self.project_repo.clone()),
                     Arc::new(self.video_source.clone()),
+                    Arc::new(self.artifact_index.clone()),
                 );
 
                 match import_use_case
@@ -208,10 +216,46 @@ mod tests {
         }
     }
 
+    #[derive(Clone)]
+    struct MockArtifactIndex;
+
+    #[async_trait]
+    impl ArtifactIndex for MockArtifactIndex {
+        async fn add(
+            &self,
+            _project_id: &ProjectId,
+            _artifact: &domain::media::Artifact,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn get(
+            &self,
+            _id: &domain::media::ArtifactId,
+        ) -> Result<Option<domain::media::Artifact>, PortError> {
+            Ok(None)
+        }
+        async fn list_by_project(
+            &self,
+            _project_id: &ProjectId,
+        ) -> Result<Vec<domain::media::Artifact>, PortError> {
+            Ok(vec![])
+        }
+        async fn list_by_project_and_kind(
+            &self,
+            _project_id: &ProjectId,
+            _kind: domain::media::ArtifactKind,
+        ) -> Result<Vec<domain::media::Artifact>, PortError> {
+            Ok(vec![])
+        }
+        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
+            Ok(())
+        }
+    }
+
     #[tokio::test]
     async fn test_transition_failure_propagates() {
         let repo = DraftProjectRepo;
-        let use_case = HandleJobCompletedUseCase::new(repo, MockSubtitleSource);
+        let use_case = HandleJobCompletedUseCase::new(repo, MockSubtitleSource, MockArtifactIndex);
 
         let req = HandleJobCompletedRequest {
             job_id: "job-1".into(),
@@ -238,7 +282,7 @@ mod tests {
     #[tokio::test]
     async fn test_save_failure_propagates() {
         let repo = FailingSaveRepo;
-        let use_case = HandleJobCompletedUseCase::new(repo, MockSubtitleSource);
+        let use_case = HandleJobCompletedUseCase::new(repo, MockSubtitleSource, MockArtifactIndex);
 
         let req = HandleJobCompletedRequest {
             job_id: "job-1".into(),

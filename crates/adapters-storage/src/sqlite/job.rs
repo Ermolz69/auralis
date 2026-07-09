@@ -215,9 +215,11 @@ fn row_to_snapshot(row: sqlx::sqlite::SqliteRow) -> Result<JobSnapshot, PortErro
         message: e.to_string(),
     })?;
 
-    let project_id_str: String = row.try_get("project_id").map_err(|e| PortError::Unexpected {
-        message: e.to_string(),
-    })?;
+    let project_id_str: String = row
+        .try_get("project_id")
+        .map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
     let project_id = ProjectId::from_str(&project_id_str).map_err(|e| PortError::Unexpected {
         message: e.to_string(),
     })?;
@@ -231,8 +233,11 @@ fn row_to_snapshot(row: sqlx::sqlite::SqliteRow) -> Result<JobSnapshot, PortErro
     let stage_json: Option<String> = row.try_get("stage").ok().flatten();
     let stage = stage_json.and_then(|s| serde_json::from_str(&s).ok());
 
-    let progress_json: String = row.try_get("progress_json").unwrap_or_else(|_| "{}".to_string());
-    let progress = serde_json::from_str(&progress_json).unwrap_or_else(|_| domain::job::JobProgress::initializing());
+    let progress_json: String = row
+        .try_get("progress_json")
+        .unwrap_or_else(|_| "{}".to_string());
+    let progress = serde_json::from_str(&progress_json)
+        .unwrap_or_else(|_| domain::job::JobProgress::initializing());
 
     let error_json: Option<String> = row.try_get("error_json").ok().flatten();
     let error = error_json.and_then(|s| serde_json::from_str(&s).ok());
@@ -243,10 +248,18 @@ fn row_to_snapshot(row: sqlx::sqlite::SqliteRow) -> Result<JobSnapshot, PortErro
         .unwrap_or_else(|_| chrono::Utc::now());
 
     let started_at_str: Option<String> = row.try_get("started_at").ok().flatten();
-    let started_at = started_at_str.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).map(|dt| dt.with_timezone(&chrono::Utc)).ok());
+    let started_at = started_at_str.and_then(|s| {
+        chrono::DateTime::parse_from_rfc3339(&s)
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .ok()
+    });
 
     let finished_at_str: Option<String> = row.try_get("finished_at").ok().flatten();
-    let finished_at = finished_at_str.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).map(|dt| dt.with_timezone(&chrono::Utc)).ok());
+    let finished_at = finished_at_str.and_then(|s| {
+        chrono::DateTime::parse_from_rfc3339(&s)
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .ok()
+    });
 
     Ok(JobSnapshot {
         id,
