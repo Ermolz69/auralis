@@ -45,12 +45,14 @@ where
 
         for message in messages {
             // Lock the message
-            if let Err(_e) = self
+            let claimed = self
                 .outbox_repo
                 .mark_processing(&message.id, &worker_id)
                 .await
-            {
-                // Ignore lock error, maybe another worker took it
+                .unwrap_or_default();
+
+            if !claimed {
+                // Another worker took it or it was no longer pending
                 continue;
             }
 
