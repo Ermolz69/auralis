@@ -1,6 +1,9 @@
 use crate::state::RuntimeProjectRepository;
 use adapters_ytdlp::ytdlp::YtDlpAdapter;
 
+use application::usecases::pipeline::start_mock::{
+    StartMockPipelineRequest, StartMockPipelineUseCase,
+};
 use application::usecases::project::create::{CreateProjectRequest, CreateProjectUseCase};
 use application::usecases::project::create_from_youtube::{
     CreateProjectFromYoutubeRequest, CreateProjectFromYoutubeUseCase,
@@ -11,9 +14,9 @@ use application::usecases::project::get::{GetProjectRequest, GetProjectUseCase};
 use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::ProjectRepository;
 use std::sync::Arc;
-use tauri::{command, AppHandle, State};
+use tauri::{command, AppHandle, Manager, State};
 
-use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore};
+use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeTransactionGateway};
 
 use crate::dto::error::CommandError;
 use crate::dto::project::{CreateProjectResponse, ProjectDto, TranscriptDto};
@@ -38,17 +41,31 @@ pub async fn create_project_cmd(
 }
 
 #[command]
+#[allow(clippy::too_many_arguments)]
 pub async fn create_project_from_youtube_cmd(
     url: String,
     app: AppHandle,
     state: State<'_, Arc<dyn JobSchedulerPort>>,
     project_repo: State<'_, RuntimeProjectRepository>,
+    transaction_gateway: State<'_, RuntimeTransactionGateway>,
+    artifact_index: State<'_, RuntimeArtifactIndex>,
+    artifact_store: State<'_, RuntimeArtifactStore>,
 ) -> Result<CreateProjectResponse, CommandError> {
     let ytdlp_adapter = get_ytdlp_adapter(&app);
+    let target_dir_base = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+
     let use_case = CreateProjectFromYoutubeUseCase::new(
         project_repo.inner().clone(),
-        ytdlp_adapter,
+        ytdlp_adapter.clone(),
         state.inner().clone(),
+        transaction_gateway.inner().clone(),
+        ytdlp_adapter,
+        artifact_index.inner().clone(),
+        artifact_store.inner().clone(),
+        target_dir_base,
     );
 
     let req = CreateProjectFromYoutubeRequest { url };
@@ -136,4 +153,44 @@ pub async fn delete_project_cmd(
 
     use_case.execute(req).await.map_err(CommandError::from)?;
     Ok(())
+}
+
+#[command]
+#[allow(clippy::too_many_arguments)]
+pub async fn start_project_mock_pipeline_cmd(
+    project_id: String,
+    app: AppHandle,
+    job_scheduler: State<'_, Arc<dyn JobSchedulerPort>>,
+    project_repo: State<'_, RuntimeProjectRepository>,
+    transaction_gateway: State<'_, RuntimeTransactionGateway>,
+    artifact_index: State<'_, RuntimeArtifactIndex>,
+    artifact_store: State<'_, RuntimeArtifactStore>,
+) -> Result<CreateProjectResponse, CommandError> {
+    let pid: domain::project::ProjectId = project_id
+        .parse()
+        .map_err(|e| CommandError::Validation(format!("Invalid project id: {}", e)))?;
+
+    let ytdlp_adapter = get_ytdlp_adapter(&app);
+    let target_dir_base = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+    let use_case = StartMockPipelineUseCase::new(
+        project_repo.inner().clone(),
+        job_scheduler.inner().clone(),
+        transaction_gateway.inner().clone(),
+        ytdlp_adapter,
+        artifact_index.inner().clone(),
+        artifact_store.inner().clone(),
+        target_dir_base,
+    );
+
+    let req = StartMockPipelineRequest { project_id: pid };
+    let response = use_case.execute(req).await.map_err(CommandError::from)?;
+
+    Ok(CreateProjectResponse {
+        project: ProjectDto::from(&response.project),
+        job: response.job,
+    })
 }

@@ -1,10 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use domain::project::{Project, ProjectId};
+use ports::artifact_index::ArtifactIndex;
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::media::MediaProbePort;
 use ports::repository::ProjectRepository;
+use ports::source::SubtitleSourcePort;
+use ports::storage::ArtifactStore;
 use ports::transaction::TransactionGateway;
 
 use crate::error::ApplicationError;
@@ -26,27 +29,48 @@ pub struct ImportLocalMediaResponse {
 pub struct ImportLocalMediaUseCase<
     R: ProjectRepository + Clone + 'static,
     P: MediaProbePort + Clone + 'static,
+    V: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
+    S: ArtifactStore + Clone + 'static,
 > {
     project_repo: R,
     media_probe: P,
     job_scheduler: Arc<dyn JobSchedulerPort>,
     transaction_gateway: Arc<dyn TransactionGateway>,
+    subtitle_source: V,
+    artifact_index: I,
+    artifact_store: S,
+    target_dir_base: std::path::PathBuf,
 }
 
-impl<R: ProjectRepository + Clone + 'static, P: MediaProbePort + Clone + 'static>
-    ImportLocalMediaUseCase<R, P>
+impl<
+    R: ProjectRepository + Clone + 'static,
+    P: MediaProbePort + Clone + 'static,
+    V: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
+    S: ArtifactStore + Clone + 'static,
+> ImportLocalMediaUseCase<R, P, V, I, S>
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         project_repo: R,
         media_probe: P,
         job_scheduler: Arc<dyn JobSchedulerPort>,
         transaction_gateway: Arc<dyn TransactionGateway>,
+        subtitle_source: V,
+        artifact_index: I,
+        artifact_store: S,
+        target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
             project_repo,
             media_probe,
             job_scheduler,
             transaction_gateway,
+            subtitle_source,
+            artifact_index,
+            artifact_store,
+            target_dir_base,
         }
     }
 
@@ -77,6 +101,10 @@ impl<R: ProjectRepository + Clone + 'static, P: MediaProbePort + Clone + 'static
             self.project_repo.clone(),
             self.job_scheduler.clone(),
             self.transaction_gateway.clone(),
+            self.subtitle_source.clone(),
+            self.artifact_index.clone(),
+            self.artifact_store.clone(),
+            self.target_dir_base.clone(),
         );
 
         let pipeline_req = StartMockPipelineRequest {
@@ -98,21 +126,99 @@ mod tests {
     use crate::test_utils::MockJobScheduler;
     use adapters_ffmpeg::mock::MockMediaProbeAdapter;
     use adapters_storage::memory::InMemoryProjectRepository;
+    use async_trait::async_trait;
     use domain::job::JobStatus;
+    use domain::media::SubtitleTrack;
     use domain::project::ProjectStatus;
+    use ports::error::PortError;
     use std::fs::File;
     use tempfile::tempdir;
+
+    #[derive(Clone)]
+    struct MockSubtitleSource;
+
+    #[async_trait]
+    impl SubtitleSourcePort for MockSubtitleSource {
+        async fn list_subtitles(
+            &self,
+            _source: &domain::media::MediaSource,
+        ) -> Result<Vec<SubtitleTrack>, PortError> {
+            Ok(vec![])
+        }
+
+        async fn download_subtitle(
+            &self,
+            _source: &domain::media::MediaSource,
+            _track: &SubtitleTrack,
+            _target_path: &std::path::Path,
+        ) -> Result<domain::media::Artifact, PortError> {
+            Err(PortError::Unsupported {
+                message: "Not implemented".into(),
+            })
+        }
+    }
+
+    #[derive(Clone)]
+    struct MockArtifactIndex;
+
+    #[async_trait]
+    impl ports::artifact_index::ArtifactIndex for MockArtifactIndex {
+        async fn add(
+            &self,
+            _project_id: &domain::project::ProjectId,
+            _artifact: &domain::media::Artifact,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn get(
+            &self,
+            _id: &domain::media::ArtifactId,
+        ) -> Result<Option<domain::media::Artifact>, PortError> {
+            Ok(None)
+        }
+        async fn list_by_project(
+            &self,
+            _project_id: &domain::project::ProjectId,
+        ) -> Result<Vec<domain::media::Artifact>, PortError> {
+            Ok(vec![])
+        }
+        async fn list_by_project_and_kind(
+            &self,
+            _project_id: &domain::project::ProjectId,
+            _kind: domain::media::ArtifactKind,
+        ) -> Result<Vec<domain::media::Artifact>, PortError> {
+            Ok(vec![])
+        }
+        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn update_state(
+            &self,
+            _id: &domain::media::ArtifactId,
+            _state: domain::media::ArtifactState,
+            _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+    }
+
+    use crate::test_utils::MockArtifactStore;
 
     #[tokio::test]
     async fn imports_local_media_and_starts_pipeline() {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
+        let tx_gateway = std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new());
         let use_case = ImportLocalMediaUseCase::new(
             repo.clone(),
             probe,
             job_scheduler.clone(),
-            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            tx_gateway.clone(),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -135,8 +241,9 @@ mod tests {
             response.job.status == JobStatus::Pending || response.job.status == JobStatus::Running
         );
 
-        let saved = repo.get(&project_id).await.unwrap().unwrap();
-        assert_eq!(*saved.status(), ProjectStatus::Processing);
+        let projects_saved = tx_gateway.projects_saved.lock().await;
+        assert_eq!(projects_saved.len(), 1);
+        assert_eq!(*projects_saved[0].status(), ProjectStatus::Processing);
     }
 
     #[tokio::test]
@@ -149,6 +256,10 @@ mod tests {
             probe,
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
 
         let dir = tempdir().unwrap();
@@ -174,6 +285,10 @@ mod tests {
             probe,
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -215,6 +330,10 @@ mod tests {
             probe,
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -247,6 +366,10 @@ mod tests {
             probe,
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
 
         let mut project = Project::new("Test Probe".to_string());

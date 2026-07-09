@@ -1,36 +1,10 @@
 use super::*;
 use async_trait::async_trait;
-use domain::job::JobId;
-use domain::job::JobProgress;
-use domain::media::SubtitleTrack;
+use domain::job::{JobId, JobProgress, JobStatus};
 use domain::project::{Project, ProjectId};
 use ports::error::PortError;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-
-#[derive(Clone)]
-struct MockSubtitleSource;
-
-#[async_trait]
-impl SubtitleSourcePort for MockSubtitleSource {
-    async fn list_subtitles(
-        &self,
-        _source: &domain::media::MediaSource,
-    ) -> Result<Vec<SubtitleTrack>, PortError> {
-        Ok(vec![])
-    }
-
-    async fn download_subtitle(
-        &self,
-        _source: &domain::media::MediaSource,
-        _track: &SubtitleTrack,
-        _target_path: &std::path::Path,
-    ) -> Result<domain::media::Artifact, PortError> {
-        Err(PortError::Unsupported {
-            message: "Not implemented".into(),
-        })
-    }
-}
 
 #[derive(Clone)]
 struct MockProjectRepo {
@@ -99,52 +73,6 @@ impl AppEventPublisher for MockAppEventPublisher {
     }
 }
 
-#[derive(Clone)]
-struct MockArtifactIndex;
-
-#[async_trait]
-impl ports::artifact_index::ArtifactIndex for MockArtifactIndex {
-    async fn add(
-        &self,
-        _project_id: &ProjectId,
-        _artifact: &domain::media::Artifact,
-    ) -> Result<(), PortError> {
-        Ok(())
-    }
-    async fn get(
-        &self,
-        _id: &domain::media::ArtifactId,
-    ) -> Result<Option<domain::media::Artifact>, PortError> {
-        Ok(None)
-    }
-    async fn list_by_project(
-        &self,
-        _project_id: &ProjectId,
-    ) -> Result<Vec<domain::media::Artifact>, PortError> {
-        Ok(vec![])
-    }
-    async fn list_by_project_and_kind(
-        &self,
-        _project_id: &ProjectId,
-        _kind: domain::media::ArtifactKind,
-    ) -> Result<Vec<domain::media::Artifact>, PortError> {
-        Ok(vec![])
-    }
-    async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
-        Ok(())
-    }
-    async fn update_state(
-        &self,
-        _id: &domain::media::ArtifactId,
-        _state: domain::media::ArtifactState,
-        _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
-    ) -> Result<(), PortError> {
-        Ok(())
-    }
-}
-
-use crate::test_utils::MockArtifactStore;
-
 fn create_processing_project() -> Project {
     let mut p = Project::new("Test".into());
     p.import_source(
@@ -173,13 +101,7 @@ fn create_processing_youtube_project() -> Project {
 async fn test_queued_running_noop() {
     let repo = MockProjectRepo::new(create_processing_project());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(
-        repo,
-        MockSubtitleSource,
-        publ.clone(),
-        MockArtifactIndex,
-        MockArtifactStore,
-    );
+    let uc = HandleJobEventUseCase::new(repo, publ.clone());
 
     for status in [JobStatus::Running, JobStatus::Pending] {
         let event = JobLifecycleEvent {
@@ -200,13 +122,7 @@ async fn test_queued_running_noop() {
 async fn test_no_project_id_noop() {
     let repo = MockProjectRepo::new(create_processing_project());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(
-        repo,
-        MockSubtitleSource,
-        publ.clone(),
-        MockArtifactIndex,
-        MockArtifactStore,
-    );
+    let uc = HandleJobEventUseCase::new(repo, publ.clone());
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -227,13 +143,7 @@ async fn test_completed_local_media() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(
-        repo.clone(),
-        MockSubtitleSource,
-        publ.clone(),
-        MockArtifactIndex,
-        MockArtifactStore,
-    );
+    let uc = HandleJobEventUseCase::new(repo.clone(), publ.clone());
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -262,13 +172,7 @@ async fn test_completed_youtube_subtitles_fail() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(
-        repo.clone(),
-        MockSubtitleSource,
-        publ.clone(),
-        MockArtifactIndex,
-        MockArtifactStore,
-    );
+    let uc = HandleJobEventUseCase::new(repo.clone(), publ.clone());
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -288,8 +192,7 @@ async fn test_completed_youtube_subtitles_fail() {
         .await
         .unwrap()
         .unwrap();
-    // Failed because MockSubtitleSource returns err
-    assert_eq!(p2.status(), &domain::project::ProjectStatus::Failed);
+    assert_eq!(p2.status(), &domain::project::ProjectStatus::Completed); // Now it's just marked as completed based on Job status
 }
 
 #[tokio::test]
@@ -298,13 +201,7 @@ async fn test_failed() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(
-        repo.clone(),
-        MockSubtitleSource,
-        publ.clone(),
-        MockArtifactIndex,
-        MockArtifactStore,
-    );
+    let uc = HandleJobEventUseCase::new(repo.clone(), publ.clone());
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),
@@ -333,13 +230,7 @@ async fn test_cancelled() {
     let pid_str = p.id().to_string();
     let repo = MockProjectRepo::new(p.clone());
     let publ = MockAppEventPublisher::default();
-    let uc = HandleJobEventUseCase::new(
-        repo.clone(),
-        MockSubtitleSource,
-        publ.clone(),
-        MockArtifactIndex,
-        MockArtifactStore,
-    );
+    let uc = HandleJobEventUseCase::new(repo.clone(), publ.clone());
 
     let event = JobLifecycleEvent {
         job_id: JobId::new(),

@@ -1,51 +1,24 @@
 use crate::error::ApplicationError;
-use crate::usecases::transcript::import_youtube_subtitles::{
-    ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesUseCase,
-};
-use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
-use ports::source::SubtitleSourcePort;
-use ports::storage::ArtifactStore;
 use std::str::FromStr;
-use std::sync::Arc;
 
 pub struct HandleJobCompletedRequest {
     pub job_id: String,
     pub project_id: String,
     pub is_success: bool,
-    pub target_dir_base: std::path::PathBuf,
 }
 
 pub struct HandleJobCompletedResult {
     pub transcript_ready: bool,
 }
 
-pub struct HandleJobCompletedUseCase<
-    R: ProjectRepository + Clone + 'static,
-    V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
-    S: ArtifactStore + Clone + 'static,
-> {
+pub struct HandleJobCompletedUseCase<R: ProjectRepository + Clone + 'static> {
     project_repo: R,
-    video_source: V,
-    artifact_index: I,
-    artifact_store: S,
 }
 
-impl<
-    R: ProjectRepository + Clone + 'static,
-    V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
-    S: ArtifactStore + Clone + 'static,
-> HandleJobCompletedUseCase<R, V, I, S>
-{
-    pub fn new(project_repo: R, video_source: V, artifact_index: I, artifact_store: S) -> Self {
-        Self {
-            project_repo,
-            video_source,
-            artifact_index,
-            artifact_store,
-        }
+impl<R: ProjectRepository + Clone + 'static> HandleJobCompletedUseCase<R> {
+    pub fn new(project_repo: R) -> Self {
+        Self { project_repo }
     }
 
     pub async fn execute(
@@ -64,57 +37,10 @@ impl<
             .await?
             .ok_or_else(|| ApplicationError::ProjectNotFound(pid.clone()))?;
 
-        let mut transcript_ready = false;
+        let transcript_ready = project.transcript().is_some();
 
         if req.is_success {
-            let is_youtube = matches!(
-                project.source(),
-                Some(domain::media::MediaSource::YoutubeUrl { .. })
-            );
-
-            if is_youtube {
-                let target_dir = req
-                    .target_dir_base
-                    .join("auralis")
-                    .join("projects")
-                    .join(&req.project_id)
-                    .join("subtitles");
-
-                let import_use_case = ImportYoutubeSubtitlesUseCase::new(
-                    Arc::new(self.project_repo.clone()),
-                    Arc::new(self.video_source.clone()),
-                    Arc::new(self.artifact_index.clone()),
-                    Arc::new(self.artifact_store.clone()),
-                );
-
-                match import_use_case
-                    .execute(ImportYoutubeSubtitlesRequest {
-                        project_id: pid.clone(),
-                        target_dir,
-                        preferred_languages: vec![
-                            "en".to_string(),
-                            "ru".to_string(),
-                            "uk".to_string(),
-                        ],
-                        allow_auto_generated: true,
-                    })
-                    .await
-                {
-                    Ok(_) => {
-                        // Re-fetch project to ensure we have the updated version with transcript
-                        if let Ok(Some(updated_project)) = self.project_repo.get(&pid).await {
-                            project = updated_project;
-                        }
-                        transcript_ready = true;
-                        project.mark_completed()?;
-                    }
-                    Err(_) => {
-                        project.mark_failed()?;
-                    }
-                }
-            } else {
-                project.mark_completed()?;
-            }
+            project.mark_completed()?;
         } else {
             project.mark_failed()?;
         }
@@ -131,31 +57,6 @@ mod tests {
     use async_trait::async_trait;
     use domain::project::{Project, ProjectId};
     use ports::error::PortError;
-    use std::path::PathBuf;
-
-    #[derive(Clone)]
-    struct MockSubtitleSource;
-
-    #[async_trait]
-    impl SubtitleSourcePort for MockSubtitleSource {
-        async fn list_subtitles(
-            &self,
-            _source: &domain::media::MediaSource,
-        ) -> Result<Vec<domain::media::SubtitleTrack>, PortError> {
-            Ok(vec![])
-        }
-
-        async fn download_subtitle(
-            &self,
-            _source: &domain::media::MediaSource,
-            _track: &domain::media::SubtitleTrack,
-            _target_path: &std::path::Path,
-        ) -> Result<domain::media::Artifact, PortError> {
-            Err(PortError::Unsupported {
-                message: "Not implemented".into(),
-            })
-        }
-    }
 
     #[derive(Clone)]
     struct FailingSaveRepo;
@@ -222,67 +123,15 @@ mod tests {
         }
     }
 
-    #[derive(Clone)]
-    struct MockArtifactIndex;
-
-    #[async_trait]
-    impl ArtifactIndex for MockArtifactIndex {
-        async fn add(
-            &self,
-            _project_id: &ProjectId,
-            _artifact: &domain::media::Artifact,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn get(
-            &self,
-            _id: &domain::media::ArtifactId,
-        ) -> Result<Option<domain::media::Artifact>, PortError> {
-            Ok(None)
-        }
-        async fn list_by_project(
-            &self,
-            _project_id: &ProjectId,
-        ) -> Result<Vec<domain::media::Artifact>, PortError> {
-            Ok(vec![])
-        }
-        async fn list_by_project_and_kind(
-            &self,
-            _project_id: &ProjectId,
-            _kind: domain::media::ArtifactKind,
-        ) -> Result<Vec<domain::media::Artifact>, PortError> {
-            Ok(vec![])
-        }
-        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn update_state(
-            &self,
-            _id: &domain::media::ArtifactId,
-            _state: domain::media::ArtifactState,
-            _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-    }
-
-    use crate::test_utils::MockArtifactStore;
-
     #[tokio::test]
     async fn test_transition_failure_propagates() {
         let repo = DraftProjectRepo;
-        let use_case = HandleJobCompletedUseCase::new(
-            repo,
-            MockSubtitleSource,
-            MockArtifactIndex,
-            MockArtifactStore,
-        );
+        let use_case = HandleJobCompletedUseCase::new(repo);
 
         let req = HandleJobCompletedRequest {
             job_id: "job-1".into(),
             project_id: ProjectId::new().to_string(),
             is_success: true,
-            target_dir_base: PathBuf::from("/tmp"),
         };
 
         let result = use_case.execute(req).await;
@@ -303,18 +152,12 @@ mod tests {
     #[tokio::test]
     async fn test_save_failure_propagates() {
         let repo = FailingSaveRepo;
-        let use_case = HandleJobCompletedUseCase::new(
-            repo,
-            MockSubtitleSource,
-            MockArtifactIndex,
-            MockArtifactStore,
-        );
+        let use_case = HandleJobCompletedUseCase::new(repo);
 
         let req = HandleJobCompletedRequest {
             job_id: "job-1".into(),
             project_id: ProjectId::new().to_string(),
             is_success: true,
-            target_dir_base: PathBuf::from("/tmp"),
         };
 
         let result = use_case.execute(req).await;

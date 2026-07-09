@@ -7,7 +7,7 @@ use tokio::time::{Duration, sleep};
 use crate::manager::JobManager;
 use domain::job::{Job, JobId, JobStatus};
 use ports::error::PortError;
-use ports::job_scheduler::{JobSchedulerPort, ScheduledJob, StartDubbingJobRequest};
+use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::JobRepository;
 
 pub struct MockJobRepository {
@@ -137,7 +137,7 @@ async fn test_enqueue_existing_job_starts_pending_job() {
     let repo = Arc::new(MockJobRepository::new());
     let manager = JobManager::new(repo.clone(), None);
 
-    let mut job = Job::new(
+    let job = Job::new(
         domain::project::ProjectId::new(),
         "Pending".to_string(),
         domain::job::JobKind::Dubbing,

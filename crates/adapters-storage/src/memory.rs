@@ -213,3 +213,36 @@ impl ports::artifact_index::ArtifactIndex for InMemoryArtifactIndex {
         Ok(())
     }
 }
+
+use ports::transaction::{TransactionGateway, UnitOfWorkData};
+
+#[derive(Clone)]
+pub struct InMemoryTransactionGateway {
+    project_repo: Arc<InMemoryProjectRepository>,
+    job_repo: Arc<InMemoryJobRepository>,
+}
+
+impl InMemoryTransactionGateway {
+    pub fn new(
+        project_repo: Arc<InMemoryProjectRepository>,
+        job_repo: Arc<InMemoryJobRepository>,
+    ) -> Self {
+        Self {
+            project_repo,
+            job_repo,
+        }
+    }
+}
+
+#[async_trait]
+impl TransactionGateway for InMemoryTransactionGateway {
+    async fn execute(&self, data: UnitOfWorkData) -> Result<(), PortError> {
+        for project in data.projects_to_save {
+            self.project_repo.save(&project).await?;
+        }
+        for job in data.jobs_to_save {
+            self.job_repo.save(&job).await?;
+        }
+        Ok(())
+    }
+}

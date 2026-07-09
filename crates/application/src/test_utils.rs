@@ -89,6 +89,55 @@ impl JobSchedulerPort for MockJobScheduler {
         let jobs = self.jobs.lock().await;
         Ok(jobs.clone())
     }
+
+    async fn update_job_stage(
+        &self,
+        job_id: &JobId,
+        stage: domain::dubbing::DubbingPipelineStage,
+        progress: domain::job::JobProgress,
+    ) -> Result<ScheduledJob, PortError> {
+        let mut jobs = self.jobs.lock().await;
+        if let Some(job) = jobs.iter_mut().find(|j| j.id == *job_id) {
+            job.stage = Some(stage.clone());
+            job.progress = progress;
+            job.updated_at = Utc::now();
+            return Ok(job.clone());
+        }
+        Err(PortError::NotFound {
+            resource: format!("Job {}", job_id),
+        })
+    }
+
+    async fn complete_job(&self, job_id: &JobId) -> Result<ScheduledJob, PortError> {
+        let mut jobs = self.jobs.lock().await;
+        if let Some(job) = jobs.iter_mut().find(|j| j.id == *job_id) {
+            job.status = domain::job::JobStatus::Completed;
+            job.updated_at = Utc::now();
+            return Ok(job.clone());
+        }
+        Err(PortError::NotFound {
+            resource: format!("Job {}", job_id),
+        })
+    }
+
+    async fn fail_job(
+        &self,
+        job_id: &JobId,
+        _error_code: String,
+        error_message: String,
+        _retryable: bool,
+    ) -> Result<ScheduledJob, PortError> {
+        let mut jobs = self.jobs.lock().await;
+        if let Some(job) = jobs.iter_mut().find(|j| j.id == *job_id) {
+            job.status = domain::job::JobStatus::Failed;
+            job.error = Some(error_message);
+            job.updated_at = Utc::now();
+            return Ok(job.clone());
+        }
+        Err(PortError::NotFound {
+            resource: format!("Job {}", job_id),
+        })
+    }
 }
 
 use domain::media::{Artifact, ArtifactKind};

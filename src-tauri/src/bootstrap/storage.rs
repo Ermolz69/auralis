@@ -3,6 +3,7 @@ use adapters_storage::local::artifact_store::LocalArtifactStore;
 use adapters_storage::memory::{InMemoryArtifactIndex, InMemoryProjectRepository};
 use adapters_storage::sqlite::{
     SqliteArtifactIndex, SqliteJobRepository, SqliteOutboxRepository, SqliteProjectRepository,
+    SqliteTransactionGateway,
 };
 use ports::repository::JobRepository;
 use std::sync::Arc;
@@ -13,14 +14,22 @@ pub fn setup_storage(
 ) -> Result<(RuntimeServices, Option<SqliteOutboxRepository>), Box<dyn std::error::Error>> {
     if std::env::var("AURALIS_STORAGE").unwrap_or_default() == "in-memory" {
         println!("WARNING: Running with IN-MEMORY storage adapter! Data will be lost on exit.");
+        let project_repo = Arc::new(InMemoryProjectRepository::new());
+        let job_repo = Arc::new(adapters_storage::memory::InMemoryJobRepository::new());
         Ok((
             RuntimeServices {
-                project_repo: Arc::new(InMemoryProjectRepository::new()),
-                job_repo: Arc::new(adapters_storage::memory::InMemoryJobRepository::new()),
+                project_repo: project_repo.clone(),
+                job_repo: job_repo.clone(),
                 artifact_index: Arc::new(InMemoryArtifactIndex::new()),
                 artifact_store: Arc::new(LocalArtifactStore::new(
                     std::env::temp_dir().join("auralis-memory-artifacts"),
                 )),
+                transaction_gateway: Arc::new(
+                    adapters_storage::memory::InMemoryTransactionGateway::new(
+                        project_repo,
+                        job_repo,
+                    ),
+                ),
             },
             None, // No outbox worker in memory mode for now
         ))
@@ -53,7 +62,10 @@ pub fn setup_storage(
         let store: crate::state::RuntimeArtifactStore =
             Arc::new(LocalArtifactStore::new(app_data_dir.join("artifacts")));
 
-        let outbox_repo = SqliteOutboxRepository::new(pool);
+        let outbox_repo = SqliteOutboxRepository::new(pool.clone());
+
+        let tx_gateway: crate::state::RuntimeTransactionGateway =
+            Arc::new(SqliteTransactionGateway::new(pool.clone()));
 
         Ok((
             RuntimeServices {
@@ -61,6 +73,7 @@ pub fn setup_storage(
                 job_repo,
                 artifact_index: idx,
                 artifact_store: store,
+                transaction_gateway: tx_gateway,
             },
             Some(outbox_repo),
         ))

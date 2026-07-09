@@ -4,9 +4,12 @@ use crate::usecases::project::create::{CreateProjectRequest, CreateProjectUseCas
 use crate::usecases::project::import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase};
 use domain::media::MediaSource;
 use domain::project::Project;
+use ports::artifact_index::ArtifactIndex;
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::repository::ProjectRepository;
-use ports::source::VideoSourcePort;
+use ports::source::{SubtitleSourcePort, VideoSourcePort};
+use ports::storage::ArtifactStore;
+use ports::transaction::TransactionGateway;
 use std::sync::Arc;
 
 pub struct CreateProjectFromYoutubeRequest {
@@ -18,21 +21,51 @@ pub struct CreateProjectFromYoutubeResponse {
     pub job: ScheduledJob,
 }
 
-pub struct CreateProjectFromYoutubeUseCase<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
-{
+pub struct CreateProjectFromYoutubeUseCase<
+    R: ProjectRepository + Clone + 'static,
+    V: VideoSourcePort + Clone,
+    SSub: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
+    SStore: ArtifactStore + Clone + 'static,
+> {
     project_repo: R,
     video_source: V,
     job_scheduler: Arc<dyn JobSchedulerPort>,
+    transaction_gateway: Arc<dyn TransactionGateway>,
+    subtitle_source: SSub,
+    artifact_index: I,
+    artifact_store: SStore,
+    target_dir_base: std::path::PathBuf,
 }
 
-impl<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
-    CreateProjectFromYoutubeUseCase<R, V>
+impl<
+    R: ProjectRepository + Clone + 'static,
+    V: VideoSourcePort + Clone,
+    SSub: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
+    SStore: ArtifactStore + Clone + 'static,
+> CreateProjectFromYoutubeUseCase<R, V, SSub, I, SStore>
 {
-    pub fn new(project_repo: R, video_source: V, job_scheduler: Arc<dyn JobSchedulerPort>) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        project_repo: R,
+        video_source: V,
+        job_scheduler: Arc<dyn JobSchedulerPort>,
+        transaction_gateway: Arc<dyn TransactionGateway>,
+        subtitle_source: SSub,
+        artifact_index: I,
+        artifact_store: SStore,
+        target_dir_base: std::path::PathBuf,
+    ) -> Self {
         Self {
             project_repo,
             video_source,
             job_scheduler,
+            transaction_gateway,
+            subtitle_source,
+            artifact_index,
+            artifact_store,
+            target_dir_base,
         }
     }
 
@@ -66,7 +99,11 @@ impl<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
         let pipeline_use_case = StartMockPipelineUseCase::new(
             self.project_repo.clone(),
             self.job_scheduler.clone(),
-            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            self.transaction_gateway.clone(),
+            self.subtitle_source.clone(),
+            self.artifact_index.clone(),
+            self.artifact_store.clone(),
+            self.target_dir_base.clone(),
         );
         let req3 = StartMockPipelineRequest {
             project_id: proj.id().clone(),

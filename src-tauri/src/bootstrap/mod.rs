@@ -30,6 +30,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(services.project_repo);
     app.manage(services.artifact_index);
     app.manage(services.artifact_store);
+    app.manage(services.transaction_gateway);
 
     Ok(())
 }

@@ -5,6 +5,10 @@ export async function createProjectFromYoutube(url: string): Promise<CreateProje
   return invoke('create_project_from_youtube_cmd', { url });
 }
 
+export async function startProjectMockPipeline(projectId: string): Promise<CreateProjectResponse> {
+  return invoke('start_project_mock_pipeline_cmd', { projectId });
+}
+
 export async function createProject(title: string): Promise<Project> {
   return invoke('create_project_cmd', { title });
 }

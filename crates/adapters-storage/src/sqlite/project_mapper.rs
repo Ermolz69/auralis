@@ -58,24 +58,30 @@ pub fn row_to_project(row: ProjectRow) -> Result<Project, PortError> {
 pub fn project_to_row_values(project: &Project) -> Result<ProjectRow, PortError> {
     let snapshot = project.to_snapshot();
 
-    let status = serde_json::to_string(&snapshot.status)
-        .unwrap_or_default()
+    let status = serialize_json(&snapshot.status, "status")?
         .trim_matches('"')
         .to_string();
 
-    let source_json = snapshot.source.map(|s| serde_json::to_string(&s).unwrap());
+    let source_json = snapshot
+        .source
+        .map(|s| serialize_json(&s, "source"))
+        .transpose()?;
     let metadata_json = snapshot
         .metadata
-        .map(|s| serde_json::to_string(&s).unwrap());
+        .map(|s| serialize_json(&s, "metadata"))
+        .transpose()?;
     let source_language = snapshot
         .source_language
-        .map(|s| serde_json::to_string(&s).unwrap());
+        .map(|s| serialize_json(&s, "source_language"))
+        .transpose()?;
     let target_language = snapshot
         .target_language
-        .map(|s| serde_json::to_string(&s).unwrap());
+        .map(|s| serialize_json(&s, "target_language"))
+        .transpose()?;
     let transcript_json = snapshot
         .transcript
-        .map(|s| serde_json::to_string(&s).unwrap());
+        .map(|s| serialize_json(&s, "transcript"))
+        .transpose()?;
 
     Ok(ProjectRow {
         id: snapshot.id.to_string(),
@@ -94,6 +100,12 @@ pub fn project_to_row_values(project: &Project) -> Result<ProjectRow, PortError>
 fn parse_json<T: serde::de::DeserializeOwned>(value: &str, field: &str) -> Result<T, PortError> {
     serde_json::from_str(value).map_err(|e| PortError::Unexpected {
         message: format!("Failed to deserialize field `{}`: {}", field, e),
+    })
+}
+
+fn serialize_json<T: serde::Serialize>(value: &T, field: &str) -> Result<String, PortError> {
+    serde_json::to_string(value).map_err(|e| PortError::Unexpected {
+        message: format!("Failed to serialize field `{}`: {}", field, e),
     })
 }
 

@@ -5,6 +5,10 @@ use ports::transaction::{TransactionGateway, UnitOfWorkData};
 use std::sync::Arc;
 
 use crate::error::ApplicationError;
+use crate::usecases::pipeline::mock_dubbing_pipeline::MockDubbingPipelineRunner;
+use ports::artifact_index::ArtifactIndex;
+use ports::source::SubtitleSourcePort;
+use ports::storage::ArtifactStore;
 
 #[derive(Debug)]
 pub struct StartMockPipelineRequest {
@@ -17,22 +21,45 @@ pub struct StartMockPipelineResponse {
     pub job: ScheduledJob,
 }
 
-pub struct StartMockPipelineUseCase<R: ProjectRepository> {
+pub struct StartMockPipelineUseCase<
+    R: ProjectRepository + Clone + 'static,
+    V: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
+    S: ArtifactStore + Clone + 'static,
+> {
     project_repo: R,
     job_scheduler: Arc<dyn JobSchedulerPort>,
     transaction_gateway: Arc<dyn TransactionGateway>,
+    subtitle_source: V,
+    artifact_index: I,
+    artifact_store: S,
+    target_dir_base: std::path::PathBuf,
 }
 
-impl<R: ProjectRepository> StartMockPipelineUseCase<R> {
+impl<
+    R: ProjectRepository + Clone + 'static,
+    V: SubtitleSourcePort + Clone + 'static,
+    I: ArtifactIndex + Clone + 'static,
+    S: ArtifactStore + Clone + 'static,
+> StartMockPipelineUseCase<R, V, I, S>
+{
     pub fn new(
         project_repo: R,
         job_scheduler: Arc<dyn JobSchedulerPort>,
         transaction_gateway: Arc<dyn TransactionGateway>,
+        subtitle_source: V,
+        artifact_index: I,
+        artifact_store: S,
+        target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
             project_repo,
             job_scheduler,
             transaction_gateway,
+            subtitle_source,
+            artifact_index,
+            artifact_store,
+            target_dir_base,
         }
     }
 
@@ -78,6 +105,18 @@ impl<R: ProjectRepository> StartMockPipelineUseCase<R> {
                 message: format!("Failed to enqueue existing job: {}", e),
             })?;
 
+        // 5. Spawn the mock pipeline runner
+        let runner = MockDubbingPipelineRunner::new(
+            self.job_scheduler.clone(),
+            self.project_repo.clone(),
+            self.subtitle_source.clone(),
+            self.artifact_index.clone(),
+            self.artifact_store.clone(),
+            self.target_dir_base.clone(),
+        );
+
+        runner.spawn(job.id.clone(), request.project_id.clone());
+
         Ok(StartMockPipelineResponse { project, job })
     }
 }
@@ -87,7 +126,79 @@ mod tests {
     use super::*;
     use crate::test_utils::{MockJobScheduler, MockTransactionGateway};
     use adapters_storage::memory::InMemoryProjectRepository;
+    use async_trait::async_trait;
     use domain::job::JobStatus;
+    use ports::error::PortError;
+
+    #[derive(Clone)]
+    struct MockSubtitleSource;
+
+    #[async_trait]
+    impl SubtitleSourcePort for MockSubtitleSource {
+        async fn list_subtitles(
+            &self,
+            _source: &domain::media::MediaSource,
+        ) -> Result<Vec<domain::media::SubtitleTrack>, PortError> {
+            Ok(vec![])
+        }
+
+        async fn download_subtitle(
+            &self,
+            _source: &domain::media::MediaSource,
+            _track: &domain::media::SubtitleTrack,
+            _target_path: &std::path::Path,
+        ) -> Result<domain::media::Artifact, PortError> {
+            Err(PortError::Unsupported {
+                message: "Not implemented".into(),
+            })
+        }
+    }
+
+    #[derive(Clone)]
+    struct MockArtifactIndex;
+
+    #[async_trait]
+    impl ArtifactIndex for MockArtifactIndex {
+        async fn add(
+            &self,
+            _project_id: &ProjectId,
+            _artifact: &domain::media::Artifact,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn get(
+            &self,
+            _id: &domain::media::ArtifactId,
+        ) -> Result<Option<domain::media::Artifact>, PortError> {
+            Ok(None)
+        }
+        async fn list_by_project(
+            &self,
+            _project_id: &ProjectId,
+        ) -> Result<Vec<domain::media::Artifact>, PortError> {
+            Ok(vec![])
+        }
+        async fn list_by_project_and_kind(
+            &self,
+            _project_id: &ProjectId,
+            _kind: domain::media::ArtifactKind,
+        ) -> Result<Vec<domain::media::Artifact>, PortError> {
+            Ok(vec![])
+        }
+        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn update_state(
+            &self,
+            _id: &domain::media::ArtifactId,
+            _state: domain::media::ArtifactState,
+            _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+    }
+
+    use crate::test_utils::MockArtifactStore;
 
     #[tokio::test]
     async fn test_success_saves_project_processing_and_job_pending_running() {
@@ -111,6 +222,10 @@ mod tests {
             project_repo.clone(),
             job_scheduler.clone(),
             tx_gateway.clone(),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -155,6 +270,10 @@ mod tests {
             project_repo.clone(),
             job_scheduler.clone(),
             tx_gateway.clone(),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -184,6 +303,10 @@ mod tests {
             project_repo.clone(),
             job_scheduler.clone(),
             tx_gateway.clone(),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -218,6 +341,10 @@ mod tests {
             project_repo.clone(),
             job_scheduler.clone(),
             tx_gateway.clone(),
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+            std::path::PathBuf::from("/tmp"),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),

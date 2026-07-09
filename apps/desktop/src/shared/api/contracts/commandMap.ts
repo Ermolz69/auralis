@@ -16,6 +16,10 @@ export interface CommandMap {
     args: { url: string };
     result: CreateProjectResponse;
   };
+  start_project_mock_pipeline_cmd: {
+    args: { projectId: string };
+    result: CreateProjectResponse;
+  };
   get_transcript_cmd: {
     args: { projectId: string };
     result: Transcript | null;

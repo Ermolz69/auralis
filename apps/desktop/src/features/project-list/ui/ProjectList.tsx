@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { listProjects, useProjectContext } from '@/entities/project';
+import { listen } from '@/shared/api/tauri';
 import type { Project } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { Card } from '@/shared/ui/card';
@@ -8,23 +9,34 @@ import { Icon } from '@/shared/ui/icon';
 export const ProjectList = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { setProjectId, setProject } = useProjectContext();
   const { setCurrentView } = useNavigation();
 
+  const fetchProjects = useCallback(async () => {
+    const data = await listProjects();
+    setProjects(data);
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
-    const fetchProjects = async () => {
+    fetchProjects();
+
+    let unlistenProject: (() => void) | undefined;
+
+    const setupListeners = async () => {
       try {
-        const data = await listProjects();
-        setProjects(data);
-      } catch (err: any) {
-        setError(err?.toString() || 'Failed to load projects');
-      } finally {
-        setIsLoading(false);
+        unlistenProject = await listen('project-updated', () => fetchProjects());
+      } catch (e) {
+        console.warn('Failed to setup Tauri listeners:', e);
       }
     };
-    fetchProjects();
-  }, []);
+
+    setupListeners();
+
+    return () => {
+      if (unlistenProject) unlistenProject();
+    };
+  }, [fetchProjects]);
 
   const handleOpenProject = (project: Project) => {
     setProjectId(project.id);
@@ -38,9 +50,7 @@ export const ProjectList = () => {
     );
   }
 
-  if (error) {
-    return <div className="text-danger text-sm text-center py-4">{error}</div>;
-  }
+
 
   if (projects.length === 0) {
     return null;

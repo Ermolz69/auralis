@@ -73,18 +73,9 @@ pub fn build_job_event_emitter(
                 .state::<crate::state::RuntimeProjectRepository>()
                 .inner()
                 .clone();
-            let idx = app_clone
-                .state::<crate::state::RuntimeArtifactIndex>()
-                .inner()
-                .clone();
-            let store = app_clone
-                .state::<crate::state::RuntimeArtifactStore>()
-                .inner()
-                .clone();
-            let ytdlp_adapter = crate::commands::project::get_ytdlp_adapter(&app_clone);
             let publisher = TauriAppEventPublisher::new(app_clone);
 
-            let use_case = HandleJobEventUseCase::new(repo, ytdlp_adapter, publisher, idx, store);
+            let use_case = HandleJobEventUseCase::new(repo, publisher);
             let _ = use_case.execute(event).await;
         });
     })

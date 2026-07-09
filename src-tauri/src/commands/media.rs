@@ -1,4 +1,6 @@
-use crate::state::RuntimeProjectRepository;
+use crate::state::{
+    RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository, RuntimeTransactionGateway,
+};
 use adapters_ffmpeg::ffprobe::FfprobeAdapter;
 use application::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
 use domain::project::ProjectId;
@@ -6,7 +8,7 @@ use ports::job_scheduler::JobSchedulerPort;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use tauri::{command, AppHandle, State};
+use tauri::{command, AppHandle, Manager, State};
 
 use crate::dto::media::MediaMetadataDto;
 use crate::dto::project::ProjectDto;
@@ -35,22 +37,37 @@ pub async fn probe_local_media_cmd(
 }
 
 #[command]
+#[allow(clippy::too_many_arguments)]
 pub async fn import_local_media_cmd(
     project_id: String,
     path: String,
     app: AppHandle,
     project_repo: State<'_, RuntimeProjectRepository>,
     job_scheduler: State<'_, Arc<dyn JobSchedulerPort>>,
+    transaction_gateway: State<'_, RuntimeTransactionGateway>,
+    artifact_index: State<'_, RuntimeArtifactIndex>,
+    artifact_store: State<'_, RuntimeArtifactStore>,
 ) -> Result<ProjectDto, String> {
     use application::usecases::media::import_local_media::{
         ImportLocalMediaRequest, ImportLocalMediaUseCase,
     };
 
     let probe = get_ffprobe_adapter(&app);
+    let ytdlp_adapter = crate::commands::project::get_ytdlp_adapter(&app);
+    let target_dir_base = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+
     let use_case = ImportLocalMediaUseCase::new(
         project_repo.inner().clone(),
         probe,
         job_scheduler.inner().clone(),
+        transaction_gateway.inner().clone(),
+        ytdlp_adapter,
+        artifact_index.inner().clone(),
+        artifact_store.inner().clone(),
+        target_dir_base,
     );
 
     let pid = ProjectId::from_str(&project_id).map_err(|e| e.to_string())?;

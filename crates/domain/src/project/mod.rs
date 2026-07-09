@@ -55,6 +55,47 @@ impl Project {
     }
 
     pub fn from_snapshot(snapshot: snapshot::ProjectSnapshot) -> Result<Self, DomainError> {
+        if snapshot.title.trim().is_empty() {
+            return Err(DomainError::ValidationError(
+                "Project title cannot be empty".to_string(),
+            ));
+        }
+
+        if snapshot
+            .source_language
+            .as_ref()
+            .is_some_and(|c| c.0.trim().is_empty())
+        {
+            return Err(DomainError::ValidationError(
+                "source_language cannot be empty".to_string(),
+            ));
+        }
+
+        if snapshot
+            .target_language
+            .as_ref()
+            .is_some_and(|c| c.0.trim().is_empty())
+        {
+            return Err(DomainError::ValidationError(
+                "target_language cannot be empty".to_string(),
+            ));
+        }
+
+        match snapshot.status {
+            ProjectStatus::SourceImported
+            | ProjectStatus::ReadyForProcessing
+            | ProjectStatus::Processing
+            | ProjectStatus::Completed
+                if snapshot.source.is_none() =>
+            {
+                return Err(DomainError::ValidationError(format!(
+                    "Project in status {:?} must have a source",
+                    snapshot.status
+                )));
+            }
+            _ => {}
+        }
+
         Ok(Self {
             id: snapshot.id,
             title: snapshot.title,
@@ -268,5 +309,43 @@ mod tests {
         // Retry (start processing again from failed state)
         assert!(project.mark_processing_started().is_ok());
         assert_eq!(project.status(), &ProjectStatus::Processing);
+    }
+
+    #[test]
+    fn test_from_snapshot_rejects_empty_title() {
+        let mut snapshot = Project::new("Valid Title".to_string()).to_snapshot();
+        snapshot.title = "   ".to_string(); // Empty/whitespace title
+
+        let result = Project::from_snapshot(snapshot);
+        assert!(matches!(result, Err(DomainError::ValidationError(_))));
+    }
+
+    #[test]
+    fn test_from_snapshot_rejects_empty_language_code() {
+        let mut snapshot = Project::new("Valid Title".to_string()).to_snapshot();
+        snapshot.source_language = Some(LanguageCode("   ".to_string()));
+
+        let result = Project::from_snapshot(snapshot);
+        assert!(matches!(result, Err(DomainError::ValidationError(_))));
+    }
+
+    #[test]
+    fn test_from_snapshot_rejects_active_status_without_source() {
+        let mut snapshot = Project::new("Valid Title".to_string()).to_snapshot();
+        snapshot.source = None;
+
+        // Try states that require a source
+        let active_states = vec![
+            ProjectStatus::SourceImported,
+            ProjectStatus::ReadyForProcessing,
+            ProjectStatus::Processing,
+            ProjectStatus::Completed,
+        ];
+
+        for state in active_states {
+            snapshot.status = state;
+            let result = Project::from_snapshot(snapshot.clone());
+            assert!(matches!(result, Err(DomainError::ValidationError(_))));
+        }
     }
 }

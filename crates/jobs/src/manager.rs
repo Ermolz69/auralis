@@ -68,8 +68,6 @@ impl JobManager {
         self.jobs.write().await.insert(job_id.clone(), job.clone());
         self.emit_job_event(&job);
 
-        crate::mock_pipeline::run_mock_pipeline(self.clone(), job_id.clone());
-
         Ok(job_id)
     }
 
@@ -222,9 +220,6 @@ impl JobSchedulerPort for JobManager {
         // 6. Emit event
         self.emit_job_event(&job);
 
-        // 7. Run background pipeline
-        crate::mock_pipeline::run_mock_pipeline(self.clone(), job_id.clone());
-
         Ok(Self::map_job_to_scheduled(&job))
     }
 
@@ -249,5 +244,73 @@ impl JobSchedulerPort for JobManager {
             .into_iter()
             .map(|j| Self::map_job_to_scheduled(&j))
             .collect())
+    }
+
+    async fn update_job_stage(
+        &self,
+        job_id: &DomainJobId,
+        stage: domain::dubbing::DubbingPipelineStage,
+        progress: domain::job::JobProgress,
+    ) -> Result<ScheduledJob, PortError> {
+        let mut job = self
+            .get_job_internal(job_id)
+            .await
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Job {}", job_id),
+            })?;
+
+        if job.status() != &JobStatus::Running {
+            return Err(PortError::Unexpected {
+                message: format!("Cannot update stage for job in status {:?}", job.status()),
+            });
+        }
+
+        job.update_stage(stage).ok();
+        job.update_progress(progress).ok();
+
+        self.update_job(job.clone()).await;
+
+        Ok(Self::map_job_to_scheduled(&job))
+    }
+
+    async fn complete_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
+        let mut job = self
+            .get_job_internal(job_id)
+            .await
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Job {}", job_id),
+            })?;
+
+        job.mark_completed().map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
+
+        self.update_job(job.clone()).await;
+
+        Ok(Self::map_job_to_scheduled(&job))
+    }
+
+    async fn fail_job(
+        &self,
+        job_id: &DomainJobId,
+        code: String,
+        message: String,
+        _retryable: bool,
+    ) -> Result<ScheduledJob, PortError> {
+        let mut job = self
+            .get_job_internal(job_id)
+            .await
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Job {}", job_id),
+            })?;
+
+        job.mark_failed(domain::job::JobError::new(code, message, _retryable))
+            .map_err(|e| PortError::Unexpected {
+                message: e.to_string(),
+            })?;
+
+        self.update_job(job.clone()).await;
+
+        Ok(Self::map_job_to_scheduled(&job))
     }
 }

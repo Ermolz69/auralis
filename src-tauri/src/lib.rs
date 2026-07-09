@@ -19,6 +19,7 @@ pub fn run() {
             commands::project::get_project_cmd,
             commands::project::list_projects_cmd,
             commands::project::delete_project_cmd,
+            commands::project::start_project_mock_pipeline_cmd,
             commands::artifact::list_project_artifacts_cmd,
             commands::artifact::resolve_artifact_path_cmd,
             commands::jobs::health_check,

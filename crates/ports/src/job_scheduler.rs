@@ -42,6 +42,23 @@ pub trait JobSchedulerPort: Send + Sync {
     async fn get_job(&self, job_id: &JobId) -> Result<Option<ScheduledJob>, PortError>;
 
     async fn list_jobs(&self) -> Result<Vec<ScheduledJob>, PortError>;
+
+    async fn update_job_stage(
+        &self,
+        job_id: &JobId,
+        stage: DubbingPipelineStage,
+        progress: JobProgress,
+    ) -> Result<ScheduledJob, PortError>;
+
+    async fn complete_job(&self, job_id: &JobId) -> Result<ScheduledJob, PortError>;
+
+    async fn fail_job(
+        &self,
+        job_id: &JobId,
+        code: String,
+        message: String,
+        retryable: bool,
+    ) -> Result<ScheduledJob, PortError>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
