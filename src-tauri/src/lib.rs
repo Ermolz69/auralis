@@ -94,18 +94,21 @@ pub fn run() {
                         .state::<crate::state::RuntimeArtifactIndex>()
                         .inner()
                         .clone();
+                    let store = app_clone
+                        .state::<crate::state::RuntimeArtifactStore>()
+                        .inner()
+                        .clone();
                     let ytdlp_adapter = crate::commands::project::get_ytdlp_adapter(&app_clone);
                     let publisher = TauriAppEventPublisher { app: app_clone };
 
-                    let use_case = HandleJobEventUseCase::new(repo, ytdlp_adapter, publisher, idx);
+                    let use_case = HandleJobEventUseCase::new(repo, ytdlp_adapter, publisher, idx, store);
                     let _ = use_case.execute(event).await;
                 });
             });
 
-            let job_manager: Arc<dyn JobSchedulerPort> = Arc::new(JobManager::new(Some(emitter)));
-
-            let (project_repo, artifact_index, artifact_store): (
+            let (project_repo, job_repo, artifact_index, artifact_store): (
                 crate::state::RuntimeProjectRepository,
+                Arc<dyn JobRepository>,
                 crate::state::RuntimeArtifactIndex,
                 crate::state::RuntimeArtifactStore,
             ) = if std::env::var("AURALIS_STORAGE").unwrap_or_default() == "in-memory" {
@@ -114,6 +117,7 @@ pub fn run() {
                 );
                 (
                     Arc::new(InMemoryProjectRepository::new()),
+                    Arc::new(adapters_storage::memory::InMemoryJobRepository::new()),
                     Arc::new(InMemoryArtifactIndex::new()),
                     Arc::new(LocalArtifactStore::new(
                         std::env::temp_dir().join("auralis-memory-artifacts"),
@@ -138,7 +142,7 @@ pub fn run() {
                 let idx: crate::state::RuntimeArtifactIndex =
                     Arc::new(SqliteArtifactIndex::new(pool.clone()));
 
-                let job_repo: Arc<dyn JobRepository> = Arc::new(SqliteJobRepository::new(pool));
+                let job_repo: Arc<dyn JobRepository> = Arc::new(SqliteJobRepository::new(pool.clone()));
 
                 let use_case = application::usecases::project::recover_interrupted::RecoverInterruptedProjectsUseCase::new(repo.clone());
                 tauri::async_runtime::block_on(use_case.execute())?;
@@ -150,8 +154,21 @@ pub fn run() {
                     app_data_dir.join("artifacts"),
                 ));
 
-                (repo, idx, store)
+                let outbox_repo = adapters_storage::sqlite::outbox_repository::SqliteOutboxRepository::new(pool.clone());
+                let worker = application::worker::outbox::OutboxWorker::new(outbox_repo, store.clone(), idx.clone());
+                let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
+                tauri::async_runtime::spawn(Arc::new(worker).run_loop(shutdown_rx));
+
+                // We'll probably need to manage shutdown_tx somewhere to gracefully shutdown, 
+                // but for now it's fine.
+
+                (repo, job_repo, idx, store)
             };
+
+            let manager_impl = JobManager::new(job_repo.clone(), Some(emitter));
+            tauri::async_runtime::block_on(manager_impl.load_recent_jobs(100)).ok();
+
+            let job_manager: Arc<dyn JobSchedulerPort> = Arc::new(manager_impl);
 
             app.manage(job_manager);
             app.manage(project_repo);

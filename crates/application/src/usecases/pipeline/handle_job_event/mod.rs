@@ -11,17 +11,20 @@ use ports::events::AppEventPublisher;
 use ports::job_scheduler::JobLifecycleEvent;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
+use ports::storage::ArtifactStore;
 
 pub struct HandleJobEventUseCase<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
     E: AppEventPublisher + Clone + 'static,
     I: ArtifactIndex + Clone + 'static,
+    S: ArtifactStore + Clone + 'static,
 > {
     project_repo: R,
     video_source: V,
     app_event_publisher: E,
     artifact_index: I,
+    artifact_store: S,
 }
 
 impl<
@@ -29,19 +32,22 @@ impl<
     V: SubtitleSourcePort + Clone + 'static,
     E: AppEventPublisher + Clone + 'static,
     I: ArtifactIndex + Clone + 'static,
-> HandleJobEventUseCase<R, V, E, I>
+    S: ArtifactStore + Clone + 'static,
+> HandleJobEventUseCase<R, V, E, I, S>
 {
     pub fn new(
         project_repo: R,
         video_source: V,
         app_event_publisher: E,
         artifact_index: I,
+        artifact_store: S,
     ) -> Self {
         Self {
             project_repo,
             video_source,
             app_event_publisher,
             artifact_index,
+            artifact_store,
         }
     }
 
@@ -59,6 +65,7 @@ impl<
                     self.project_repo.clone(),
                     self.video_source.clone(),
                     self.artifact_index.clone(),
+                    self.artifact_store.clone(),
                 );
 
                 let result = use_case

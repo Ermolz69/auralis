@@ -6,6 +6,7 @@ use domain::transcript::{Transcript, TranscriptSegment, TranscriptSegmentId};
 use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
+use ports::storage::ArtifactStore;
 
 use crate::error::ApplicationError;
 
@@ -24,6 +25,7 @@ pub struct ImportYoutubeSubtitlesUseCase {
     project_repo: Arc<dyn ProjectRepository>,
     subtitle_source: Arc<dyn SubtitleSourcePort>,
     artifact_index: Arc<dyn ArtifactIndex>,
+    artifact_store: Arc<dyn ArtifactStore>,
 }
 
 impl ImportYoutubeSubtitlesUseCase {
@@ -31,11 +33,13 @@ impl ImportYoutubeSubtitlesUseCase {
         project_repo: Arc<dyn ProjectRepository>,
         subtitle_source: Arc<dyn SubtitleSourcePort>,
         artifact_index: Arc<dyn ArtifactIndex>,
+        artifact_store: Arc<dyn ArtifactStore>,
     ) -> Self {
         Self {
             project_repo,
             subtitle_source,
             artifact_index,
+            artifact_store,
         }
     }
 
@@ -121,12 +125,30 @@ impl ImportYoutubeSubtitlesUseCase {
 
         let transcript = parse_vtt(&vtt_content, &best_track.language)?;
 
-        project.set_transcript(transcript.clone());
-
-        self.project_repo.save(&project).await?;
-        self.artifact_index
-            .add(&request.project_id, &artifact)
+        let managed_artifact = self
+            .artifact_store
+            .write_small_artifact(
+                &request.project_id,
+                domain::media::ArtifactKind::OriginalSubtitle,
+                "subtitles.vtt",
+                vtt_content.as_bytes(),
+            )
             .await?;
+
+        if let Err(e) = self
+            .artifact_index
+            .add(&request.project_id, &managed_artifact)
+            .await
+        {
+            let _ = self.artifact_store.delete_artifact(&managed_artifact).await;
+            return Err(e.into());
+        }
+
+        project.set_transcript(transcript.clone());
+        self.project_repo.save(&project).await?;
+
+        // Best effort cleanup of temp file
+        let _ = std::fs::remove_file(&vtt_path);
 
         Ok(ImportYoutubeSubtitlesResponse { transcript })
     }

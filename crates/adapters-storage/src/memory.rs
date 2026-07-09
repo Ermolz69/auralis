@@ -112,6 +112,13 @@ impl JobRepository for InMemoryJobRepository {
             .cloned()
             .collect())
     }
+
+    async fn list_recent(&self, limit: usize) -> Result<Vec<Job>, PortError> {
+        let lock = self.jobs.lock().unwrap();
+        let mut jobs: Vec<Job> = lock.values().cloned().collect();
+        jobs.sort_by_key(|b| std::cmp::Reverse(*b.created_at()));
+        Ok(jobs.into_iter().take(limit).collect())
+    }
 }
 
 #[derive(Clone)]

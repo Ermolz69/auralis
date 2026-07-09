@@ -27,19 +27,21 @@ impl JobRepository for SqliteJobRepository {
         sqlx::query(
             r#"
             INSERT INTO jobs (
-                id, project_id, kind, status, stage, progress_json, error_json,
-                created_at, started_at, finished_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, project_id, title, kind, status, stage, progress_json, error_json,
+                created_at, updated_at, started_at, finished_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(values.id)
         .bind(values.project_id)
+        .bind(values.title)
         .bind(values.kind)
         .bind(values.status)
         .bind(values.stage)
         .bind(values.progress_json)
         .bind(values.error_json)
         .bind(values.created_at)
+        .bind(values.updated_at)
         .bind(values.started_at)
         .bind(values.finished_at)
         .execute(&self.pool)
@@ -54,8 +56,8 @@ impl JobRepository for SqliteJobRepository {
     async fn get(&self, id: &JobId) -> Result<Option<Job>, PortError> {
         let row = sqlx::query_as::<_, JobRow>(
             r#"
-            SELECT id, project_id, kind, status, stage, progress_json, error_json,
-                   created_at, started_at, finished_at
+            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+                   created_at, updated_at, started_at, finished_at
             FROM jobs
             WHERE id = ?
             "#,
@@ -76,28 +78,32 @@ impl JobRepository for SqliteJobRepository {
         sqlx::query(
             r#"
             INSERT INTO jobs (
-                id, project_id, kind, status, stage, progress_json, error_json,
-                created_at, started_at, finished_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, project_id, title, kind, status, stage, progress_json, error_json,
+                created_at, updated_at, started_at, finished_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 project_id = excluded.project_id,
+                title = excluded.title,
                 kind = excluded.kind,
                 status = excluded.status,
                 stage = excluded.stage,
                 progress_json = excluded.progress_json,
                 error_json = excluded.error_json,
+                updated_at = excluded.updated_at,
                 started_at = excluded.started_at,
                 finished_at = excluded.finished_at
             "#,
         )
         .bind(values.id)
         .bind(values.project_id)
+        .bind(values.title)
         .bind(values.kind)
         .bind(values.status)
         .bind(values.stage)
         .bind(values.progress_json)
         .bind(values.error_json)
         .bind(values.created_at)
+        .bind(values.updated_at)
         .bind(values.started_at)
         .bind(values.finished_at)
         .execute(&self.pool)
@@ -112,8 +118,8 @@ impl JobRepository for SqliteJobRepository {
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Job>, PortError> {
         let rows = sqlx::query_as::<_, JobRow>(
             r#"
-            SELECT id, project_id, kind, status, stage, progress_json, error_json,
-                   created_at, started_at, finished_at
+            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+                   created_at, updated_at, started_at, finished_at
             FROM jobs
             WHERE project_id = ?
             ORDER BY created_at DESC
@@ -132,8 +138,8 @@ impl JobRepository for SqliteJobRepository {
     async fn list_active(&self) -> Result<Vec<Job>, PortError> {
         let rows = sqlx::query_as::<_, JobRow>(
             r#"
-            SELECT id, project_id, kind, status, stage, progress_json, error_json,
-                   created_at, started_at, finished_at
+            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+                   created_at, updated_at, started_at, finished_at
             FROM jobs
             WHERE status IN ('pending', 'running', 'Pending', 'Running')
             ORDER BY created_at ASC
@@ -143,6 +149,26 @@ impl JobRepository for SqliteJobRepository {
         .await
         .map_err(|e| PortError::Unexpected {
             message: format!("Failed to list active jobs: {}", e),
+        })?;
+
+        rows.into_iter().map(row_to_job).collect()
+    }
+
+    async fn list_recent(&self, limit: usize) -> Result<Vec<Job>, PortError> {
+        let rows = sqlx::query_as::<_, JobRow>(
+            r#"
+            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+                   created_at, updated_at, started_at, finished_at
+            FROM jobs
+            ORDER BY created_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Failed to list recent jobs: {}", e),
         })?;
 
         rows.into_iter().map(row_to_job).collect()

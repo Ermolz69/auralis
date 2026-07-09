@@ -99,12 +99,20 @@ mod tests {
             kind: ArtifactKind::ExtractedAudio,
             location: ArtifactLocation::LocalPath("/test.wav".into()),
             size_bytes: Some(100),
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         };
         let artifact2 = Artifact {
             id: ArtifactId::new(),
             kind: ArtifactKind::OriginalSubtitle,
             location: ArtifactLocation::LocalPath("/test.vtt".into()),
             size_bytes: Some(100),
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         };
 
         let index = MockArtifactIndex {
@@ -130,12 +138,20 @@ mod tests {
             kind: ArtifactKind::ExtractedAudio,
             location: ArtifactLocation::LocalPath("/test.wav".into()),
             size_bytes: Some(100),
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         };
         let artifact2 = Artifact {
             id: ArtifactId::new(),
             kind: ArtifactKind::OriginalSubtitle,
             location: ArtifactLocation::LocalPath("/test.vtt".into()),
             size_bytes: Some(100),
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         };
 
         let index = MockArtifactIndex {

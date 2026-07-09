@@ -20,8 +20,18 @@ pub trait JobRepository: Send + Sync {
     async fn save(&self, job: &Job) -> Result<(), PortError>;
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Job>, PortError>;
     async fn list_active(&self) -> Result<Vec<Job>, PortError>;
+    async fn list_recent(&self, limit: usize) -> Result<Vec<Job>, PortError>;
 }
 
+use domain::outbox::{OutboxMessage, OutboxMessageId};
+
+#[async_trait]
+pub trait OutboxRepository: Send + Sync {
+    async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError>;
+    async fn mark_processing(&self, id: &OutboxMessageId, locked_by: &str) -> Result<(), PortError>;
+    async fn mark_done(&self, id: &OutboxMessageId) -> Result<(), PortError>;
+    async fn mark_failed(&self, id: &OutboxMessageId, error: &str) -> Result<(), PortError>;
+}
 use std::sync::Arc;
 
 #[async_trait]
@@ -47,5 +57,27 @@ where
 
     async fn delete(&self, id: &ProjectId) -> Result<(), PortError> {
         (**self).delete(id).await
+    }
+}
+
+#[async_trait]
+impl<T> OutboxRepository for Arc<T>
+where
+    T: OutboxRepository + ?Sized,
+{
+    async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError> {
+        (**self).fetch_pending(limit).await
+    }
+
+    async fn mark_processing(&self, id: &OutboxMessageId, locked_by: &str) -> Result<(), PortError> {
+        (**self).mark_processing(id, locked_by).await
+    }
+
+    async fn mark_done(&self, id: &OutboxMessageId) -> Result<(), PortError> {
+        (**self).mark_done(id).await
+    }
+
+    async fn mark_failed(&self, id: &OutboxMessageId, error: &str) -> Result<(), PortError> {
+        (**self).mark_failed(id, error).await
     }
 }

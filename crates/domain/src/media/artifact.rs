@@ -59,11 +59,23 @@ pub enum ArtifactLocation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ArtifactState {
+    PendingFinalize,
+    Ready,
+    Deleting,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Artifact {
     pub id: ArtifactId,
     pub kind: ArtifactKind,
     pub location: ArtifactLocation,
     pub size_bytes: Option<u64>,
+    pub state: ArtifactState,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub ready_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

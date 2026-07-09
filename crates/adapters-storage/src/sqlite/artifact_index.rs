@@ -181,6 +181,10 @@ mod tests {
             kind,
             location: ArtifactLocation::StorageKey(format!("test-key-{}.txt", seed)),
             size_bytes: Some(100),
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         }
     }
 

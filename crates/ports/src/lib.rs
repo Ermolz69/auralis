@@ -8,6 +8,7 @@ pub mod media;
 pub mod repository;
 pub mod source;
 pub mod storage;
+pub mod transaction;
 
 pub use control::*;
 pub use engine::*;

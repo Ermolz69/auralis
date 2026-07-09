@@ -41,12 +41,14 @@ pub fn row_to_job(row: JobRow) -> Result<Job, PortError> {
     let snapshot = JobSnapshot {
         id,
         project_id,
+        title: row.title,
         kind,
         status,
         stage,
         progress,
         error,
         created_at,
+        updated_at: parse_datetime(&row.updated_at, "updated_at")?,
         started_at,
         finished_at,
     };
@@ -82,12 +84,14 @@ pub fn job_to_row_values(job: &Job) -> Result<JobRow, PortError> {
     Ok(JobRow {
         id: snapshot.id.to_string(),
         project_id: snapshot.project_id.to_string(),
+        title: snapshot.title,
         kind,
         status,
         stage,
         progress_json,
         error_json,
         created_at: snapshot.created_at.to_rfc3339(),
+        updated_at: snapshot.updated_at.to_rfc3339(),
         started_at: snapshot.started_at.map(|d| d.to_rfc3339()),
         finished_at: snapshot.finished_at.map(|d| d.to_rfc3339()),
     })

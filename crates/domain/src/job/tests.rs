@@ -5,7 +5,7 @@ use crate::project::ProjectId;
 #[test]
 fn test_job_transitions() {
     let project_id = ProjectId::new();
-    let mut job = Job::new(project_id, JobKind::Dubbing);
+    let mut job = Job::new(project_id, "Test Job".to_string(), JobKind::Dubbing);
 
     assert_eq!(job.status(), &JobStatus::Pending);
 
@@ -43,7 +43,7 @@ fn test_job_transitions() {
 #[test]
 fn test_job_failure() {
     let project_id = ProjectId::new();
-    let mut job = Job::new(project_id, JobKind::Dubbing);
+    let mut job = Job::new(project_id, "Test Job".to_string(), JobKind::Dubbing);
 
     job.start().unwrap();
 

@@ -46,39 +46,6 @@ impl LocalArtifactStore {
 
 #[async_trait]
 impl ArtifactStore for LocalArtifactStore {
-    async fn project_dir(&self, project_id: &ProjectId) -> Result<PathBuf, PortError> {
-        let path = self.base_dir.join(project_id.to_string());
-        Ok(path)
-    }
-
-    async fn reserve_artifact_path(
-        &self,
-        project_id: &ProjectId,
-        kind: ArtifactKind,
-        extension: &str,
-    ) -> Result<PathBuf, PortError> {
-        let artifact_id = ArtifactId::new();
-        let storage_key = make_storage_key(project_id, &artifact_id, &kind, extension);
-        self.resolve_storage_key(&storage_key)
-    }
-
-    async fn register_artifact(
-        &self,
-        _project_id: &ProjectId,
-        _artifact: &Artifact,
-    ) -> Result<(), PortError> {
-        Ok(())
-    }
-
-    async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError> {
-        match &artifact.location {
-            domain::media::ArtifactLocation::LocalPath(path) => {
-                self.resolve_legacy_local_path(path)
-            }
-            domain::media::ArtifactLocation::StorageKey(key) => self.resolve_storage_key(key),
-        }
-    }
-
     async fn write_small_artifact(
         &self,
         project_id: &ProjectId,
@@ -114,25 +81,148 @@ impl ArtifactStore for LocalArtifactStore {
             kind,
             location: domain::media::ArtifactLocation::StorageKey(storage_key),
             size_bytes: Some(data.len() as u64),
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         })
+    }
+
+    async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError> {
+        match &artifact.location {
+            domain::media::ArtifactLocation::LocalPath(path) => {
+                self.resolve_legacy_local_path(path)
+            }
+            domain::media::ArtifactLocation::StorageKey(key) => self.resolve_storage_key(key),
+        }
+    }
+    async fn stage_external_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        source_path: &std::path::Path,
+        filename_hint: Option<&str>,
+    ) -> Result<ports::storage::StagedArtifact, PortError> {
+        if !tokio::fs::try_exists(source_path).await.unwrap_or(false) {
+            return Err(PortError::Io {
+                message: format!("Source path {:?} does not exist", source_path),
+            });
+        }
+
+        let ext = if let Some(hint) = filename_hint {
+            std::path::Path::new(hint)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("bin")
+        } else {
+            source_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("bin")
+        };
+
+        let artifact_id = ArtifactId::new();
+        let final_key = make_storage_key(project_id, &artifact_id, &kind, ext);
+        let staging_key = format!(".staging/{}/{}.{}", uuid::Uuid::new_v4(), artifact_id, ext);
+        
+        let staging_path = self.resolve_storage_key(&staging_key)?;
+
+        if let Some(parent) = staging_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| PortError::Io {
+                    message: format!("Failed to create directory {:?}: {}", parent, e),
+                })?;
+        }
+
+        // Try rename first
+        if let Err(e) = tokio::fs::rename(source_path, &staging_path).await {
+            // Rename failed, try copy + remove
+            tokio::fs::copy(source_path, &staging_path)
+                .await
+                .map_err(|copy_err| PortError::Io {
+                    message: format!(
+                        "Failed to copy to {:?}: rename err: {}, copy err: {}",
+                        staging_path, e, copy_err
+                    ),
+                })?;
+
+            // Remove source best-effort
+            let _ = tokio::fs::remove_file(source_path).await;
+        }
+
+        let metadata = tokio::fs::metadata(&staging_path)
+            .await
+            .map_err(|e| PortError::Io {
+                message: format!("Failed to read metadata of {:?}: {}", staging_path, e),
+            })?;
+
+        let size_bytes = metadata.len();
+        
+        let artifact = Artifact {
+            id: artifact_id,
+            kind,
+            location: domain::media::ArtifactLocation::StorageKey(final_key.clone()),
+            size_bytes: Some(size_bytes),
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: None,
+        };
+
+        Ok(ports::storage::StagedArtifact {
+            artifact,
+            staging_key,
+            final_key,
+            size_bytes,
+        })
+    }
+
+    async fn finalize_staged_artifact(
+        &self,
+        staging_key: &str,
+        final_key: &str,
+    ) -> Result<(), PortError> {
+        let staging_path = self.resolve_storage_key(staging_key)?;
+        let final_path = self.resolve_storage_key(final_key)?;
+
+        if let Some(parent) = final_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| PortError::Io {
+                    message: format!("Failed to create directory {:?}: {}", parent, e),
+                })?;
+        }
+
+        tokio::fs::rename(&staging_path, &final_path).await.map_err(|e| PortError::Io {
+            message: format!("Failed to finalize staging {} to {}: {}", staging_key, final_key, e),
+        })?;
+
+        Ok(())
+    }
+
+    async fn delete_storage_key(&self, storage_key: &str) -> Result<(), PortError> {
+        let path = self.resolve_storage_key(storage_key)?;
+        if tokio::fs::try_exists(&path).await.unwrap_or(false) {
+            tokio::fs::remove_file(&path)
+                .await
+                .map_err(|e| PortError::Io {
+                    message: format!("Failed to delete file {:?}: {}", path, e),
+                })?;
+        }
+        Ok(())
     }
 
     async fn delete_artifact(&self, artifact: &Artifact) -> Result<(), PortError> {
         if let domain::media::ArtifactLocation::StorageKey(key) = &artifact.location {
-            let path = self.resolve_storage_key(key)?;
-            if tokio::fs::try_exists(&path).await.unwrap_or(false) {
-                tokio::fs::remove_file(&path)
-                    .await
-                    .map_err(|e| PortError::Io {
-                        message: format!("Failed to delete artifact file {:?}: {}", path, e),
-                    })?;
-            }
+            self.delete_storage_key(key).await?;
         }
         Ok(())
     }
 
     async fn delete_project_dir(&self, project_id: &ProjectId) -> Result<(), PortError> {
-        let path = self.project_dir(project_id).await?;
+        // ... (we'll implement this below)
+        let path = self.base_dir.join(project_id.to_string());
         if tokio::fs::try_exists(&path).await.unwrap_or(false) {
             tokio::fs::remove_dir_all(&path)
                 .await
@@ -197,6 +287,10 @@ mod tests {
             kind: ArtifactKind::LogFile,
             location: domain::media::ArtifactLocation::LocalPath("/tmp/legacy.log".to_string()),
             size_bytes: None,
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         };
         let legacy_path = store.resolve_artifact(&legacy_artifact).await.unwrap();
         assert_eq!(legacy_path, std::path::PathBuf::from("/tmp/legacy.log"));

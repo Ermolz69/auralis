@@ -5,6 +5,7 @@ use crate::usecases::transcript::import_youtube_subtitles::{
 use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
+use ports::storage::ArtifactStore;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -23,23 +24,27 @@ pub struct HandleJobCompletedUseCase<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
     I: ArtifactIndex + Clone + 'static,
+    S: ArtifactStore + Clone + 'static,
 > {
     project_repo: R,
     video_source: V,
     artifact_index: I,
+    artifact_store: S,
 }
 
 impl<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
     I: ArtifactIndex + Clone + 'static,
-> HandleJobCompletedUseCase<R, V, I>
+    S: ArtifactStore + Clone + 'static,
+> HandleJobCompletedUseCase<R, V, I, S>
 {
-    pub fn new(project_repo: R, video_source: V, artifact_index: I) -> Self {
+    pub fn new(project_repo: R, video_source: V, artifact_index: I, artifact_store: S) -> Self {
         Self {
             project_repo,
             video_source,
             artifact_index,
+            artifact_store,
         }
     }
 
@@ -79,6 +84,7 @@ impl<
                     Arc::new(self.project_repo.clone()),
                     Arc::new(self.video_source.clone()),
                     Arc::new(self.artifact_index.clone()),
+                    Arc::new(self.artifact_store.clone()),
                 );
 
                 match import_use_case
@@ -252,10 +258,98 @@ mod tests {
         }
     }
 
+    #[derive(Clone)]
+    struct MockArtifactStore;
+
+    #[async_trait]
+    impl ArtifactStore for MockArtifactStore {
+        async fn project_dir(&self, _project_id: &ProjectId) -> Result<PathBuf, PortError> {
+            Ok(PathBuf::from("/tmp"))
+        }
+
+        async fn reserve_artifact_path(
+            &self,
+            _project_id: &ProjectId,
+            _kind: domain::media::ArtifactKind,
+            _extension: &str,
+        ) -> Result<PathBuf, PortError> {
+            Ok(PathBuf::from("/tmp/artifact"))
+        }
+
+        async fn register_artifact(
+            &self,
+            _project_id: &ProjectId,
+            _artifact: &domain::media::Artifact,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+
+        async fn resolve_artifact(
+            &self,
+            _artifact: &domain::media::Artifact,
+        ) -> Result<PathBuf, PortError> {
+            Ok(PathBuf::from("/tmp/artifact"))
+        }
+
+        async fn write_small_artifact(
+            &self,
+            _project_id: &ProjectId,
+            _kind: domain::media::ArtifactKind,
+            _filename: &str,
+            _data: &[u8],
+        ) -> Result<domain::media::Artifact, PortError> {
+            Ok(domain::media::Artifact {
+                id: domain::media::ArtifactId::new(),
+                kind: domain::media::ArtifactKind::OriginalSubtitle,
+                location: domain::media::ArtifactLocation::StorageKey("test".to_string()),
+                size_bytes: Some(10),
+                state: domain::media::ArtifactState::Ready,
+                created_at: domain::chrono::Utc::now(),
+                updated_at: domain::chrono::Utc::now(),
+                ready_at: Some(domain::chrono::Utc::now()),
+            })
+        }
+
+        async fn import_artifact(
+            &self,
+            _project_id: &ProjectId,
+            _kind: domain::media::ArtifactKind,
+            _source_path: &std::path::Path,
+            _filename_hint: Option<&str>,
+        ) -> Result<domain::media::Artifact, PortError> {
+            Ok(domain::media::Artifact {
+                id: domain::media::ArtifactId::new(),
+                kind: domain::media::ArtifactKind::DownloadedVideo,
+                location: domain::media::ArtifactLocation::StorageKey("test_video.mp4".to_string()),
+                size_bytes: Some(1024),
+                state: domain::media::ArtifactState::Ready,
+                created_at: domain::chrono::Utc::now(),
+                updated_at: domain::chrono::Utc::now(),
+                ready_at: Some(domain::chrono::Utc::now()),
+            })
+        }
+
+        async fn delete_artifact(
+            &self,
+            _artifact: &domain::media::Artifact,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+
+        async fn delete_project_dir(&self, _project_id: &ProjectId) -> Result<(), PortError> {
+            Ok(())
+        }
+    }
+
     #[tokio::test]
     async fn test_transition_failure_propagates() {
         let repo = DraftProjectRepo;
-        let use_case = HandleJobCompletedUseCase::new(repo, MockSubtitleSource, MockArtifactIndex);
+        let use_case = HandleJobCompletedUseCase::new(
+            repo,
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+        );
 
         let req = HandleJobCompletedRequest {
             job_id: "job-1".into(),
@@ -282,7 +376,12 @@ mod tests {
     #[tokio::test]
     async fn test_save_failure_propagates() {
         let repo = FailingSaveRepo;
-        let use_case = HandleJobCompletedUseCase::new(repo, MockSubtitleSource, MockArtifactIndex);
+        let use_case = HandleJobCompletedUseCase::new(
+            repo,
+            MockSubtitleSource,
+            MockArtifactIndex,
+            MockArtifactStore,
+        );
 
         let req = HandleJobCompletedRequest {
             job_id: "job-1".into(),

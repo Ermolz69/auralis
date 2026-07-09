@@ -10,27 +10,32 @@ use super::{JobError, JobId, JobKind, JobProgress, JobSnapshot, JobStatus};
 pub struct Job {
     id: JobId,
     project_id: ProjectId,
+    title: String,
     kind: JobKind,
     status: JobStatus,
     stage: Option<DubbingPipelineStage>,
     progress: JobProgress,
     error: Option<JobError>,
     created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
     started_at: Option<DateTime<Utc>>,
     finished_at: Option<DateTime<Utc>>,
 }
 
 impl Job {
-    pub fn new(project_id: ProjectId, kind: JobKind) -> Self {
+    pub fn new(project_id: ProjectId, title: String, kind: JobKind) -> Self {
+        let now = Utc::now();
         Self {
             id: JobId::new(),
             project_id,
+            title,
             kind,
             status: JobStatus::Pending,
             stage: None,
             progress: JobProgress::initializing(),
             error: None,
-            created_at: Utc::now(),
+            created_at: now,
+            updated_at: now,
             started_at: None,
             finished_at: None,
         }
@@ -42,6 +47,10 @@ impl Job {
 
     pub fn project_id(&self) -> &ProjectId {
         &self.project_id
+    }
+
+    pub fn title(&self) -> &str {
+        &self.title
     }
 
     pub fn kind(&self) -> &JobKind {
@@ -68,6 +77,10 @@ impl Job {
         &self.created_at
     }
 
+    pub fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+
     pub fn started_at(&self) -> Option<&DateTime<Utc>> {
         self.started_at.as_ref()
     }
@@ -84,8 +97,10 @@ impl Job {
             });
         }
 
+        let now = Utc::now();
         self.status = JobStatus::Running;
-        self.started_at = Some(Utc::now());
+        self.started_at = Some(now);
+        self.updated_at = now;
         self.progress.message = "Job started".to_string();
 
         Ok(())
@@ -100,6 +115,7 @@ impl Job {
 
         progress.validate()?;
         self.progress = progress;
+        self.updated_at = Utc::now();
 
         Ok(())
     }
@@ -112,6 +128,7 @@ impl Job {
         }
 
         self.stage = Some(stage);
+        self.updated_at = Utc::now();
 
         Ok(())
     }
@@ -124,10 +141,12 @@ impl Job {
             });
         }
 
+        let now = Utc::now();
         self.status = JobStatus::Completed;
         self.progress.percent = 100;
         self.progress.message = "Job completed successfully".to_string();
-        self.finished_at = Some(Utc::now());
+        self.finished_at = Some(now);
+        self.updated_at = now;
 
         Ok(())
     }
@@ -140,9 +159,11 @@ impl Job {
             });
         }
 
+        let now = Utc::now();
         self.status = JobStatus::Failed;
         self.error = Some(error);
-        self.finished_at = Some(Utc::now());
+        self.finished_at = Some(now);
+        self.updated_at = now;
 
         Ok(())
     }
@@ -155,8 +176,10 @@ impl Job {
             });
         }
 
+        let now = Utc::now();
         self.status = JobStatus::Cancelled;
-        self.finished_at = Some(Utc::now());
+        self.finished_at = Some(now);
+        self.updated_at = now;
 
         Ok(())
     }
@@ -165,12 +188,14 @@ impl Job {
         JobSnapshot {
             id: self.id.clone(),
             project_id: self.project_id.clone(),
+            title: self.title.clone(),
             kind: self.kind.clone(),
             status: self.status.clone(),
             stage: self.stage.clone(),
             progress: self.progress.clone(),
             error: self.error.clone(),
             created_at: self.created_at,
+            updated_at: self.updated_at,
             started_at: self.started_at,
             finished_at: self.finished_at,
         }
@@ -180,12 +205,14 @@ impl Job {
         Self {
             id: snapshot.id,
             project_id: snapshot.project_id,
+            title: snapshot.title,
             kind: snapshot.kind,
             status: snapshot.status,
             stage: snapshot.stage,
             progress: snapshot.progress,
             error: snapshot.error,
             created_at: snapshot.created_at,
+            updated_at: snapshot.updated_at,
             started_at: snapshot.started_at,
             finished_at: snapshot.finished_at,
         }
