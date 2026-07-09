@@ -1,31 +1,29 @@
 use std::sync::Arc;
 
 use crate::error::ApplicationError;
+use domain::media::ArtifactLocation;
+use domain::outbox::{OutboxMessage, OutboxPayload};
 use domain::project::ProjectId;
 use ports::artifact_index::ArtifactIndex;
-use ports::repository::ProjectRepository;
-use ports::storage::ArtifactStore;
+use ports::transaction::{TransactionGateway, UnitOfWorkData};
 
 pub struct DeleteProjectRequest {
     pub project_id: ProjectId,
 }
 
 pub struct DeleteProjectUseCase {
-    project_repo: Arc<dyn ProjectRepository>,
     artifact_index: Arc<dyn ArtifactIndex>,
-    artifact_store: Arc<dyn ArtifactStore>,
+    transaction_gateway: Arc<dyn TransactionGateway>,
 }
 
 impl DeleteProjectUseCase {
     pub fn new(
-        project_repo: Arc<dyn ProjectRepository>,
         artifact_index: Arc<dyn ArtifactIndex>,
-        artifact_store: Arc<dyn ArtifactStore>,
+        transaction_gateway: Arc<dyn TransactionGateway>,
     ) -> Self {
         Self {
-            project_repo,
             artifact_index,
-            artifact_store,
+            transaction_gateway,
         }
     }
 
@@ -35,28 +33,34 @@ impl DeleteProjectUseCase {
         // 1. List all artifacts for the project
         let artifacts = self.artifact_index.list_by_project(project_id).await?;
 
-        // 2. Delete physical files
+        // 2. Prepare UnitOfWorkData
+        let mut uow = UnitOfWorkData::new();
+
+        // 3. For each StorageKey artifact, schedule deletion
         for artifact in artifacts {
-            if let Err(e) = self.artifact_store.delete_artifact(&artifact).await {
-                // We should probably log this but continue deleting other artifacts
-                eprintln!(
-                    "WARNING: Failed to delete artifact {} for project {}: {}",
-                    artifact.id, project_id, e
-                );
+            if let ArtifactLocation::StorageKey(storage_key) = artifact.location {
+                uow = uow.add_outbox_message(OutboxMessage::new(OutboxPayload::DeleteStorageKey {
+                    storage_key,
+                }));
             }
         }
 
-        // Delete the project directory itself
-        if let Err(e) = self.artifact_store.delete_project_dir(project_id).await {
-            eprintln!(
-                "WARNING: Failed to delete project directory for project {}: {}",
-                project_id, e
-            );
-        }
+        // 4. Schedule project directory deletion
+        uow = uow.add_outbox_message(OutboxMessage::new(
+            OutboxPayload::DeleteProjectArtifactDir {
+                project_id: project_id.clone(),
+            },
+        ));
 
-        // 3. Delete the project via ProjectRepository
-        // 4. SQLite CASCADE will delete artifact rows in the index automatically
-        self.project_repo.delete(project_id).await?;
+        // 5. Delete project (this will cascade delete artifacts via SQLite)
+        uow = uow.delete_project(project_id.clone());
+
+        // 6. Execute transaction
+        self.transaction_gateway.execute(uow).await.map_err(|e| {
+            ApplicationError::InvalidOperation {
+                message: format!("Failed to delete project: {}", e),
+            }
+        })?;
 
         Ok(())
     }

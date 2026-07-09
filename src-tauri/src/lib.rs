@@ -1,7 +1,6 @@
 pub mod bootstrap;
 pub mod commands;
 pub mod dto;
-pub mod media_tools;
 pub mod state;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,10 +21,10 @@ pub fn run() {
             commands::project::start_project_mock_pipeline_cmd,
             commands::artifact::list_project_artifacts_cmd,
             commands::artifact::resolve_artifact_path_cmd,
-            commands::jobs::health_check,
-            commands::jobs::start_mock_dubbing_job_cmd,
-            commands::jobs::list_jobs_cmd,
-            commands::jobs::cancel_job_cmd,
+            commands::job::health_check,
+            commands::job::start_mock_dubbing_job_cmd,
+            commands::job::list_jobs_cmd,
+            commands::job::cancel_job_cmd,
             commands::media::probe_local_media_cmd,
             commands::media::import_local_media_cmd
         ])

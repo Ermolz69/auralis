@@ -202,9 +202,10 @@ use ports::transaction::{TransactionGateway, UnitOfWorkData};
 
 #[derive(Clone)]
 pub struct MockTransactionGateway {
-    pub should_fail: bool,
-    pub projects_saved: Arc<Mutex<Vec<domain::project::Project>>>,
     pub jobs_saved: Arc<Mutex<Vec<domain::job::Job>>>,
+    pub projects_saved: Arc<Mutex<Vec<domain::project::Project>>>,
+    pub projects_deleted: Arc<Mutex<Vec<domain::project::ProjectId>>>,
+    pub should_fail: bool,
 }
 
 impl Default for MockTransactionGateway {
@@ -216,17 +217,19 @@ impl Default for MockTransactionGateway {
 impl MockTransactionGateway {
     pub fn new() -> Self {
         Self {
-            should_fail: false,
-            projects_saved: Arc::new(Mutex::new(Vec::new())),
             jobs_saved: Arc::new(Mutex::new(Vec::new())),
+            projects_saved: Arc::new(Mutex::new(Vec::new())),
+            projects_deleted: Arc::new(Mutex::new(Vec::new())),
+            should_fail: false,
         }
     }
 
     pub fn with_failure() -> Self {
         Self {
-            should_fail: true,
-            projects_saved: Arc::new(Mutex::new(Vec::new())),
             jobs_saved: Arc::new(Mutex::new(Vec::new())),
+            projects_saved: Arc::new(Mutex::new(Vec::new())),
+            projects_deleted: Arc::new(Mutex::new(Vec::new())),
+            should_fail: true,
         }
     }
 }
@@ -245,6 +248,9 @@ impl TransactionGateway for MockTransactionGateway {
 
         let mut jobs = self.jobs_saved.lock().await;
         jobs.extend(data.jobs_to_save);
+
+        let mut deleted = self.projects_deleted.lock().await;
+        deleted.extend(data.projects_to_delete);
 
         Ok(())
     }

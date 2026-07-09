@@ -1,4 +1,4 @@
 pub mod artifact;
-pub mod jobs;
+pub mod job;
 pub mod media;
 pub mod project;

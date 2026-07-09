@@ -126,13 +126,9 @@ where
             final_key: staged.final_key.clone(),
         });
 
-        let uow = UnitOfWorkData {
-            projects_to_save: vec![],
-            jobs_to_save: vec![],
-            artifacts_to_add: vec![(request.project_id.clone(), staged.artifact)],
-            artifacts_to_delete: vec![],
-            outbox_messages: vec![outbox_msg],
-        };
+        let uow = UnitOfWorkData::new()
+            .add_artifact(request.project_id.clone(), staged.artifact)
+            .add_outbox_message(outbox_msg);
 
         if let Err(e) = self.transaction_gateway.execute(uow).await {
             // DB failed, we can optionally clean up the staging file

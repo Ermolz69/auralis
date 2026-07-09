@@ -1,6 +1,8 @@
 pub mod events;
+pub mod media_tools;
 pub mod services;
 pub mod storage;
+pub mod usecases;
 pub mod workers;
 
 use tauri::{App, Manager};
@@ -26,11 +28,21 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let job_manager = services::build_job_scheduler(services.job_repo.clone(), emitter);
 
     // 4. Register State
-    app.manage(job_manager);
-    app.manage(services.project_repo);
-    app.manage(services.artifact_index);
-    app.manage(services.artifact_store);
-    app.manage(services.transaction_gateway);
+    app.manage(job_manager.clone());
+    app.manage(services.project_repo.clone());
+    app.manage(services.artifact_index.clone());
+    app.manage(services.artifact_store.clone());
+    app.manage(services.transaction_gateway.clone());
+
+    // 5. Build and register AppUseCases
+    usecases::setup_usecases(
+        app.handle(),
+        services.project_repo,
+        services.artifact_index,
+        services.artifact_store,
+        services.transaction_gateway,
+        job_manager,
+    );
 
     Ok(())
 }

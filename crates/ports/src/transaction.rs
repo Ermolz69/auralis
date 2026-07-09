@@ -13,6 +13,7 @@ pub struct UnitOfWorkData {
     pub artifacts_to_add: Vec<(domain::project::ProjectId, Artifact)>,
     pub artifacts_to_delete: Vec<ArtifactId>,
     pub outbox_messages: Vec<OutboxMessage>,
+    pub projects_to_delete: Vec<domain::project::ProjectId>,
 }
 
 impl UnitOfWorkData {
@@ -46,6 +47,11 @@ impl UnitOfWorkData {
 
     pub fn add_outbox_message(mut self, message: OutboxMessage) -> Self {
         self.outbox_messages.push(message);
+        self
+    }
+
+    pub fn delete_project(mut self, project_id: domain::project::ProjectId) -> Self {
+        self.projects_to_delete.push(project_id);
         self
     }
 }

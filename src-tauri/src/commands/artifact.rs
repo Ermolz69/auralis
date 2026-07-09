@@ -1,17 +1,17 @@
+use crate::bootstrap::usecases::AppUseCases;
 use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore};
-use application::usecases::artifact::list_project_artifacts::{
-    ListProjectArtifactsRequest, ListProjectArtifactsUseCase,
-};
+use application::usecases::artifact::list_project_artifacts::ListProjectArtifactsRequest;
 use domain::media::{Artifact, ArtifactId, ArtifactKind};
 use domain::project::ProjectId;
 use std::str::FromStr;
+use std::sync::Arc;
 use tauri::State;
 
 #[tauri::command]
 pub async fn list_project_artifacts_cmd(
     project_id: String,
     kind: Option<String>,
-    artifact_index: State<'_, RuntimeArtifactIndex>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<Artifact>, String> {
     let parsed_project_id = ProjectId::from_str(&project_id).map_err(|e| e.to_string())?;
 
@@ -24,9 +24,8 @@ pub async fn list_project_artifacts_cmd(
         None => None,
     };
 
-    let use_case = ListProjectArtifactsUseCase::new(artifact_index.inner().clone());
-
-    use_case
+    usecases
+        .list_project_artifacts
         .execute(ListProjectArtifactsRequest {
             project_id: parsed_project_id,
             kind: parsed_kind,

@@ -1,38 +1,26 @@
+use crate::bootstrap::usecases::AppUseCases;
 use crate::state::RuntimeProjectRepository;
-use adapters_ytdlp::ytdlp::YtDlpAdapter;
 
-use application::usecases::pipeline::start_mock::{
-    StartMockPipelineRequest, StartMockPipelineUseCase,
-};
-use application::usecases::project::create::{CreateProjectRequest, CreateProjectUseCase};
-use application::usecases::project::create_from_youtube::{
-    CreateProjectFromYoutubeRequest, CreateProjectFromYoutubeUseCase,
-};
-use application::usecases::project::delete::{DeleteProjectRequest, DeleteProjectUseCase};
-use application::usecases::project::get::{GetProjectRequest, GetProjectUseCase};
+use application::usecases::pipeline::start_mock::StartMockPipelineRequest;
+use application::usecases::project::create::CreateProjectRequest;
+use application::usecases::project::create_from_youtube::CreateProjectFromYoutubeRequest;
+use application::usecases::project::delete::DeleteProjectRequest;
+use application::usecases::project::get::GetProjectRequest;
 
-use ports::job_scheduler::JobSchedulerPort;
-use ports::repository::ProjectRepository;
 use std::sync::Arc;
-use tauri::{command, AppHandle, Manager, State};
-
-use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeTransactionGateway};
+use tauri::{command, State};
 
 use crate::dto::error::CommandError;
 use crate::dto::project::{CreateProjectResponse, ProjectDto, TranscriptDto};
-pub(crate) fn get_ytdlp_adapter(app: &AppHandle) -> YtDlpAdapter {
-    let candidates = crate::media_tools::resolve_ytdlp_candidates(app);
-    YtDlpAdapter::new(candidates)
-}
 
 #[command]
 pub async fn create_project_cmd(
     title: String,
-    project_repo: State<'_, RuntimeProjectRepository>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectDto, CommandError> {
-    let create_use_case = CreateProjectUseCase::new(project_repo.inner().clone());
     let req = CreateProjectRequest { title };
-    let create_res = create_use_case
+    let create_res = usecases
+        .create_project
         .execute(req)
         .await
         .map_err(CommandError::from)?;
@@ -41,35 +29,16 @@ pub async fn create_project_cmd(
 }
 
 #[command]
-#[allow(clippy::too_many_arguments)]
 pub async fn create_project_from_youtube_cmd(
     url: String,
-    app: AppHandle,
-    state: State<'_, Arc<dyn JobSchedulerPort>>,
-    project_repo: State<'_, RuntimeProjectRepository>,
-    transaction_gateway: State<'_, RuntimeTransactionGateway>,
-    artifact_index: State<'_, RuntimeArtifactIndex>,
-    artifact_store: State<'_, RuntimeArtifactStore>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<CreateProjectResponse, CommandError> {
-    let ytdlp_adapter = get_ytdlp_adapter(&app);
-    let target_dir_base = app
-        .path()
-        .app_data_dir()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."));
-
-    let use_case = CreateProjectFromYoutubeUseCase::new(
-        project_repo.inner().clone(),
-        ytdlp_adapter.clone(),
-        state.inner().clone(),
-        transaction_gateway.inner().clone(),
-        ytdlp_adapter,
-        artifact_index.inner().clone(),
-        artifact_store.inner().clone(),
-        target_dir_base,
-    );
-
     let req = CreateProjectFromYoutubeRequest { url };
-    let response = use_case.execute(req).await.map_err(CommandError::from)?;
+    let response = usecases
+        .create_project_from_youtube
+        .execute(req)
+        .await
+        .map_err(CommandError::from)?;
 
     Ok(CreateProjectResponse {
         project: ProjectDto::from(&response.project),
@@ -80,7 +49,6 @@ pub async fn create_project_from_youtube_cmd(
 #[command]
 pub async fn get_transcript_cmd(
     project_id: String,
-    _app: AppHandle,
     project_repo: State<'_, RuntimeProjectRepository>,
 ) -> Result<Option<TranscriptDto>, CommandError> {
     let pid: domain::project::ProjectId = project_id
@@ -106,17 +74,18 @@ pub async fn get_transcript_cmd(
 #[command]
 pub async fn get_project_cmd(
     project_id: String,
-    _app: AppHandle,
-    project_repo: State<'_, RuntimeProjectRepository>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectDto, CommandError> {
     let pid: domain::project::ProjectId = project_id
         .parse()
         .map_err(|e| CommandError::Validation(format!("Invalid project id: {}", e)))?;
 
-    let use_case = GetProjectUseCase::new(project_repo.inner().clone());
     let req = GetProjectRequest { project_id: pid };
-
-    let res = use_case.execute(req).await.map_err(CommandError::from)?;
+    let res = usecases
+        .get_project
+        .execute(req)
+        .await
+        .map_err(CommandError::from)?;
     Ok(ProjectDto::from(&res.project))
 }
 
@@ -136,58 +105,36 @@ pub async fn list_projects_cmd(
 #[command]
 pub async fn delete_project_cmd(
     project_id: String,
-    project_repo: State<'_, RuntimeProjectRepository>,
-    artifact_index: State<'_, RuntimeArtifactIndex>,
-    artifact_store: State<'_, RuntimeArtifactStore>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<(), CommandError> {
     let pid: domain::project::ProjectId = project_id
         .parse()
         .map_err(|e| CommandError::Validation(format!("Invalid project id: {}", e)))?;
 
-    let use_case = DeleteProjectUseCase::new(
-        project_repo.inner().clone(),
-        artifact_index.inner().clone(),
-        artifact_store.inner().clone(),
-    );
     let req = DeleteProjectRequest { project_id: pid };
-
-    use_case.execute(req).await.map_err(CommandError::from)?;
+    usecases
+        .delete_project
+        .execute(req)
+        .await
+        .map_err(CommandError::from)?;
     Ok(())
 }
 
 #[command]
-#[allow(clippy::too_many_arguments)]
 pub async fn start_project_mock_pipeline_cmd(
     project_id: String,
-    app: AppHandle,
-    job_scheduler: State<'_, Arc<dyn JobSchedulerPort>>,
-    project_repo: State<'_, RuntimeProjectRepository>,
-    transaction_gateway: State<'_, RuntimeTransactionGateway>,
-    artifact_index: State<'_, RuntimeArtifactIndex>,
-    artifact_store: State<'_, RuntimeArtifactStore>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<CreateProjectResponse, CommandError> {
     let pid: domain::project::ProjectId = project_id
         .parse()
         .map_err(|e| CommandError::Validation(format!("Invalid project id: {}", e)))?;
 
-    let ytdlp_adapter = get_ytdlp_adapter(&app);
-    let target_dir_base = app
-        .path()
-        .app_data_dir()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."));
-
-    let use_case = StartMockPipelineUseCase::new(
-        project_repo.inner().clone(),
-        job_scheduler.inner().clone(),
-        transaction_gateway.inner().clone(),
-        ytdlp_adapter,
-        artifact_index.inner().clone(),
-        artifact_store.inner().clone(),
-        target_dir_base,
-    );
-
     let req = StartMockPipelineRequest { project_id: pid };
-    let response = use_case.execute(req).await.map_err(CommandError::from)?;
+    let response = usecases
+        .start_mock_pipeline
+        .execute(req)
+        .await
+        .map_err(CommandError::from)?;
 
     Ok(CreateProjectResponse {
         project: ProjectDto::from(&response.project),

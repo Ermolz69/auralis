@@ -202,6 +202,17 @@ impl TransactionGateway for SqliteTransactionGateway {
             })?;
         }
 
+        // Process projects_to_delete
+        for project_id in data.projects_to_delete {
+            sqlx::query("DELETE FROM projects WHERE id = ?")
+                .bind(project_id.to_string())
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| PortError::Unexpected {
+                    message: format!("Failed to delete project in tx: {}", e),
+                })?;
+        }
+
         tx.commit().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to commit transaction: {}", e),
         })?;

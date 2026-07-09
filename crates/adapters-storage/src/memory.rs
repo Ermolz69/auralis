@@ -243,6 +243,9 @@ impl TransactionGateway for InMemoryTransactionGateway {
         for job in data.jobs_to_save {
             self.job_repo.save(&job).await?;
         }
+        for project_id in data.projects_to_delete {
+            self.project_repo.delete(&project_id).await?;
+        }
         Ok(())
     }
 }

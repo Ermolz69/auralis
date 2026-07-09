@@ -65,7 +65,7 @@ impl ArtifactIndex for SqliteArtifactIndex {
             SELECT 
                 id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
             FROM artifacts
-            WHERE id = ?
+            WHERE id = ? AND state = 'ready'
             "#,
         )
         .bind(id.to_string())
@@ -84,7 +84,7 @@ impl ArtifactIndex for SqliteArtifactIndex {
             SELECT 
                 id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
             FROM artifacts
-            WHERE project_id = ?
+            WHERE project_id = ? AND state = 'ready'
             ORDER BY created_at ASC
             "#,
         )
@@ -123,7 +123,7 @@ impl ArtifactIndex for SqliteArtifactIndex {
             SELECT 
                 id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
             FROM artifacts
-            WHERE project_id = ? AND kind = ?
+            WHERE project_id = ? AND kind = ? AND state = 'ready'
             ORDER BY created_at ASC
             "#,
         )
