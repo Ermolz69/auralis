@@ -199,7 +199,7 @@ impl ArtifactStore for MockArtifactStore {
 }
 
 use ports::transaction::{
-    CommitJobUpdate, CommitMediaDownload, CommitProjectDelete, CommitTranscriptImport,
+    CommitJobUpdate, CommitStagedArtifactWrite, CommitProjectDelete, CommitTranscriptImport,
     StorageUnitOfWork,
 };
 
@@ -253,9 +253,9 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_media_download(
+    async fn commit_staged_artifact_write(
         &self,
-        _command: CommitMediaDownload,
+        _command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError> {
         if self.should_fail {
             return Err(PortError::Unexpected {

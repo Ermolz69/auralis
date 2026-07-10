@@ -19,6 +19,6 @@ pub fn build_job_scheduler(
     emitter: Arc<dyn Fn(JobLifecycleEvent) + Send + Sync>,
 ) -> Arc<dyn JobSchedulerPort> {
     let manager_impl = JobManager::new(job_repo, Some(emitter));
-    tauri::async_runtime::block_on(manager_impl.load_recent_jobs(100)).ok();
+    tauri::async_runtime::block_on(manager_impl.load_recent_jobs(100)).expect("Failed to load recent jobs");
     Arc::new(manager_impl)
 }

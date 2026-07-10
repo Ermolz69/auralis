@@ -7,7 +7,7 @@ use domain::outbox::{OutboxMessage, OutboxPayload};
 use domain::project::Project;
 use ports::error::PortError;
 use ports::transaction::{
-    CommitJobUpdate, CommitMediaDownload, CommitProjectDelete, CommitTranscriptImport,
+    CommitJobUpdate, CommitStagedArtifactWrite, CommitProjectDelete, CommitTranscriptImport,
     StorageUnitOfWork,
 };
 
@@ -232,9 +232,9 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_media_download(
+    async fn commit_staged_artifact_write(
         &self,
-        command: CommitMediaDownload,
+        command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError> {
         let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to begin transaction: {}", e),

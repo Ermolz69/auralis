@@ -14,7 +14,7 @@ pub struct CommitTranscriptImport {
     pub temp_path_to_delete: Option<PathBuf>,
 }
 
-pub struct CommitMediaDownload {
+pub struct CommitStagedArtifactWrite {
     pub project_id: ProjectId,
     pub artifact: Artifact,
     pub staging_key: String,
@@ -38,9 +38,9 @@ pub trait StorageUnitOfWork: Send + Sync {
         command: CommitTranscriptImport,
     ) -> Result<(), PortError>;
 
-    async fn commit_media_download(
+    async fn commit_staged_artifact_write(
         &self,
-        command: CommitMediaDownload,
+        command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError>;
 
     async fn commit_project_delete(
@@ -63,11 +63,11 @@ impl<T: ?Sized + StorageUnitOfWork> StorageUnitOfWork for std::sync::Arc<T> {
         (**self).commit_transcript_import(command).await
     }
 
-    async fn commit_media_download(
+    async fn commit_staged_artifact_write(
         &self,
-        command: CommitMediaDownload,
+        command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError> {
-        (**self).commit_media_download(command).await
+        (**self).commit_staged_artifact_write(command).await
     }
 
     async fn commit_project_delete(

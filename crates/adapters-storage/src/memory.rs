@@ -218,7 +218,7 @@ impl ports::artifact_index::ArtifactIndex for InMemoryArtifactIndex {
 
 
 
-use ports::transaction::{StorageUnitOfWork, CommitTranscriptImport, CommitMediaDownload, CommitProjectDelete, CommitJobUpdate};
+use ports::transaction::{StorageUnitOfWork, CommitTranscriptImport, CommitStagedArtifactWrite, CommitProjectDelete, CommitJobUpdate};
 
 #[derive(Clone)]
 pub struct InMemoryStorageUnitOfWork {
@@ -245,7 +245,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_media_download(&self, command: CommitMediaDownload) -> Result<(), PortError> {
+    async fn commit_staged_artifact_write(&self, command: CommitStagedArtifactWrite) -> Result<(), PortError> {
         Ok(())
     }
 

@@ -59,10 +59,11 @@ async fn test_job_manager_flow() {
     let repo = Arc::new(MockJobRepository::new());
     let manager = JobManager::new(repo, None);
 
-    let job_id = manager
-        .start_mock_dubbing_job_internal("Test Job".to_string(), None)
+    let job = manager
+        .start_mock_dubbing_job_internal("Test Job".to_string(), Some(domain::project::ProjectId::new().to_string()))
         .await
         .unwrap();
+    let job_id = job.id().clone();
 
     let job = manager.get_job_internal(&job_id).await.unwrap();
     assert!(*job.status() == JobStatus::Pending || *job.status() == JobStatus::Running);
@@ -89,10 +90,11 @@ async fn test_cancel_unknown_job() {
 async fn test_concurrent_updates_and_cancellation() {
     let repo = Arc::new(MockJobRepository::new());
     let manager = JobManager::new(repo, None);
-    let job_id = manager
-        .start_mock_dubbing_job_internal("Concurrent Test".to_string(), None)
+    let job = manager
+        .start_mock_dubbing_job_internal("Concurrent Test".to_string(), Some(domain::project::ProjectId::new().to_string()))
         .await
         .unwrap();
+    let job_id = job.id().clone();
 
     let manager_clone = manager.clone();
     let id_clone = job_id.clone();

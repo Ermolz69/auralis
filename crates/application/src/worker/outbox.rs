@@ -118,6 +118,10 @@ where
                     if let Err(e) = self.process_pending_messages(10).await {
                         eprintln!("OutboxWorker error: {}", e);
                     }
+                    // Run staging janitor
+                    if let Err(e) = self.artifact_store.cleanup_stale_staging(Duration::from_secs(24 * 3600)).await {
+                        eprintln!("OutboxWorker staging janitor error: {}", e);
+                    }
                 }
                 _ = shutdown_rx.recv() => {
                     println!("OutboxWorker shutting down...");

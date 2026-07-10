@@ -127,7 +127,7 @@ impl ImportYoutubeSubtitlesUseCase {
 
         let staged = self
             .artifact_store
-            .stage_external_file(
+            .stage_owned_temp_file(
                 &request.project_id,
                 domain::media::ArtifactKind::OriginalSubtitle,
                 &vtt_path,

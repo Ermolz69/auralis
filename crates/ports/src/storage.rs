@@ -22,7 +22,15 @@ pub trait ArtifactStore: Send + Sync {
         data: &[u8],
     ) -> Result<Artifact, PortError>;
 
-    async fn stage_external_file(
+    async fn stage_owned_temp_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        source_path: &std::path::Path,
+        filename_hint: Option<&str>,
+    ) -> Result<StagedArtifact, PortError>;
+
+    async fn import_external_file(
         &self,
         project_id: &ProjectId,
         kind: ArtifactKind,
@@ -43,6 +51,7 @@ pub trait ArtifactStore: Send + Sync {
     async fn delete_artifact(&self, artifact: &Artifact) -> Result<(), PortError>;
 
     async fn delete_project_dir(&self, project_id: &ProjectId) -> Result<(), PortError>;
+    async fn cleanup_stale_staging(&self, max_age: std::time::Duration) -> Result<(), PortError>;
 }
 
 use std::sync::Arc;
@@ -64,7 +73,7 @@ where
             .await
     }
 
-    async fn stage_external_file(
+    async fn stage_owned_temp_file(
         &self,
         project_id: &ProjectId,
         kind: ArtifactKind,
@@ -72,7 +81,19 @@ where
         filename_hint: Option<&str>,
     ) -> Result<StagedArtifact, PortError> {
         (**self)
-            .stage_external_file(project_id, kind, source_path, filename_hint)
+            .stage_owned_temp_file(project_id, kind, source_path, filename_hint)
+            .await
+    }
+
+    async fn import_external_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        source_path: &std::path::Path,
+        filename_hint: Option<&str>,
+    ) -> Result<StagedArtifact, PortError> {
+        (**self)
+            .import_external_file(project_id, kind, source_path, filename_hint)
             .await
     }
 
@@ -96,6 +117,10 @@ where
 
     async fn delete_artifact(&self, artifact: &Artifact) -> Result<(), PortError> {
         (**self).delete_artifact(artifact).await
+    }
+
+    async fn cleanup_stale_staging(&self, max_age: std::time::Duration) -> Result<(), PortError> {
+        (**self).cleanup_stale_staging(max_age).await
     }
 
     async fn delete_project_dir(&self, project_id: &ProjectId) -> Result<(), PortError> {

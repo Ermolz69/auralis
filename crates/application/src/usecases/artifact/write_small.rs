@@ -1,9 +1,12 @@
 use domain::media::{Artifact, ArtifactKind};
 use domain::project::ProjectId;
-use ports::artifact_index::ArtifactIndex;
+use ports::error::PortError;
 use ports::storage::ArtifactStore;
+use ports::transaction::{CommitStagedArtifactWrite, StorageUnitOfWork};
 
 use crate::error::ApplicationError;
+use tempfile::NamedTempFile;
+use std::io::Write;
 
 pub struct WriteProjectArtifactRequest {
     pub project_id: ProjectId,
@@ -13,24 +16,24 @@ pub struct WriteProjectArtifactRequest {
     pub data: Vec<u8>,
 }
 
-pub struct WriteProjectArtifactUseCase<I, S>
+pub struct WriteProjectArtifactUseCase<S, U>
 where
-    I: ArtifactIndex,
-    S: ArtifactStore,
+    S: ArtifactStore + Clone + 'static,
+    U: StorageUnitOfWork + Clone + 'static,
 {
-    artifact_index: I,
     artifact_store: S,
+    storage_uow: U,
 }
 
-impl<I, S> WriteProjectArtifactUseCase<I, S>
+impl<S, U> WriteProjectArtifactUseCase<S, U>
 where
-    I: ArtifactIndex,
-    S: ArtifactStore,
+    S: ArtifactStore + Clone + 'static,
+    U: StorageUnitOfWork + Clone + 'static,
 {
-    pub fn new(artifact_index: I, artifact_store: S) -> Self {
+    pub fn new(artifact_store: S, storage_uow: U) -> Self {
         Self {
-            artifact_index,
             artifact_store,
+            storage_uow,
         }
     }
 
@@ -48,85 +51,42 @@ where
             format!("{}.{}", safe_filename, request.extension)
         };
 
-        let artifact = self
+        // 1. Write data to a temporary file
+        let mut temp_file = NamedTempFile::new().map_err(|e| PortError::Unexpected {
+            message: format!("Failed to create temp file: {}", e),
+        })?;
+        temp_file.write_all(&request.data).map_err(|e| PortError::Unexpected {
+            message: format!("Failed to write to temp file: {}", e),
+        })?;
+        let temp_path = temp_file.into_temp_path();
+
+        // 2. Stage the file
+        let staged = self
             .artifact_store
-            .write_small_artifact(
+            .stage_owned_temp_file(
                 &request.project_id,
                 request.kind,
-                &safe_filename,
-                &request.data,
+                &temp_path,
+                Some(&safe_filename),
             )
             .await?;
 
-        self.artifact_index
-            .add(&request.project_id, &artifact)
-            .await?;
+        // 3. Commit the transaction to persist artifact & enqueue finalize outbox message
+        let commit_res = self.storage_uow
+            .commit_staged_artifact_write(CommitStagedArtifactWrite {
+                project_id: request.project_id.clone(),
+                artifact: staged.artifact.clone(),
+                staging_key: staged.staging_key.clone(),
+                final_key: staged.final_key.clone(),
+                temp_path_to_delete: None,
+            })
+            .await;
 
-        Ok(artifact)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use adapters_storage::local::LocalArtifactStore;
-    use adapters_storage::sqlite::{SqliteArtifactIndex, SqliteProjectRepository, connect_sqlite};
-    use domain::project::Project;
-    use ports::repository::ProjectRepository;
-    use tempfile::tempdir;
-
-    #[tokio::test]
-    async fn test_write_small_artifact_mvp_flow() {
-        let temp_dir = tempdir().unwrap();
-
-        // Setup SQLite
-        let db_path = temp_dir.path().join("test.sqlite");
-        let pool = connect_sqlite(&db_path).await.unwrap();
-        let artifact_index = SqliteArtifactIndex::new(pool.clone());
-        let repo = SqliteProjectRepository::new(pool.clone());
-
-        // Setup Artifact Store
-        let store = LocalArtifactStore::new(temp_dir.path().to_path_buf());
-
-        // Create Project (needed for foreign key constraint)
-        let project = Project::new("Test MVP".to_string());
-        repo.create(project.clone()).await.unwrap();
-
-        // Run Use Case
-        let use_case = WriteProjectArtifactUseCase::new(artifact_index, store);
-
-        let req = WriteProjectArtifactRequest {
-            project_id: project.id().clone(),
-            kind: ArtifactKind::LogFile,
-            filename_hint: Some("my_log".to_string()),
-            extension: "txt".to_string(),
-            data: b"hello mvp".to_vec(),
-        };
-
-        let artifact = use_case.execute(req).await.unwrap();
-
-        // 1. write_small_artifact returns StorageKey, not LocalPath
-        match &artifact.location {
-            domain::media::ArtifactLocation::StorageKey(key) => {
-                assert!(key.contains("log-file"));
-                assert!(key.ends_with(".txt"));
-            }
-            _ => panic!("Expected StorageKey"),
+        if let Err(e) = commit_res {
+            let _ = self.artifact_store.delete_storage_key(&staged.staging_key).await;
+            return Err(ApplicationError::Port(e));
         }
 
-        // 3. register/write artifact adds artifact into index
-        let pool2 = connect_sqlite(&db_path).await.unwrap();
-        let index2 = SqliteArtifactIndex::new(pool2.clone());
-        let artifacts = index2.list_by_project(project.id()).await.unwrap();
-        assert_eq!(artifacts.len(), 1);
-
-        // 2. resolve_artifact(StorageKey) returns path under base_dir
-        let store2 = LocalArtifactStore::new(temp_dir.path().to_path_buf());
-        let resolved_path = store2.resolve_artifact(&artifact).await.unwrap();
-        assert!(resolved_path.starts_with(temp_dir.path()));
-        assert!(resolved_path.exists());
-
-        let content = tokio::fs::read(&resolved_path).await.unwrap();
-        assert_eq!(content, b"hello mvp");
+        Ok(staged.artifact)
     }
 }

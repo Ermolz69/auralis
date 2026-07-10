@@ -5,7 +5,7 @@ use domain::project::ProjectId;
 use ports::repository::ProjectRepository;
 use ports::source::{DownloadMediaRequest, VideoSourcePort};
 use ports::storage::ArtifactStore;
-use ports::transaction::{CommitMediaDownload, StorageUnitOfWork};
+use ports::transaction::{CommitStagedArtifactWrite, StorageUnitOfWork};
 
 use crate::error::ApplicationError;
 
@@ -103,7 +103,7 @@ where
         // 2. Stage artifact in the ArtifactStore
         let staged = match self
             .artifact_store
-            .stage_external_file(
+            .stage_owned_temp_file(
                 &request.project_id,
                 ArtifactKind::DownloadedVideo,
                 &temp_path,
@@ -119,7 +119,7 @@ where
         };
 
         // 3. Atomically persist to DB and write outbox message
-        let commit_cmd = CommitMediaDownload {
+        let commit_cmd = CommitStagedArtifactWrite {
             project_id: request.project_id.clone(),
             artifact: staged.artifact,
             staging_key: staged.staging_key.clone(),
@@ -127,7 +127,7 @@ where
             temp_path_to_delete: Some(temp_path),
         };
 
-        if let Err(e) = self.storage_uow.commit_media_download(commit_cmd).await {
+        if let Err(e) = self.storage_uow.commit_staged_artifact_write(commit_cmd).await {
             // DB failed, we can optionally clean up the staging file
             let _ = self
                 .artifact_store
@@ -172,7 +172,7 @@ mod tests {
             unimplemented!()
         }
 
-        async fn stage_external_file(
+        async fn stage_owned_temp_file(
             &self,
             _project_id: &ProjectId,
             _kind: ArtifactKind,

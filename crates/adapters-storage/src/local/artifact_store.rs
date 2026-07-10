@@ -17,25 +17,102 @@ impl LocalArtifactStore {
         Self { base_dir }
     }
 
+        async fn ensure_safe_parent(&self, path: &std::path::Path) -> Result<(), PortError> {
+        if let Some(parent) = path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| PortError::Io {
+                    message: format!("Failed to create directory {:?}: {}", parent, e),
+                })?;
+
+            let canon_parent = parent.canonicalize().map_err(|e| PortError::Io {
+                message: format!("Failed to canonicalize parent {:?}: {}", parent, e),
+            })?;
+
+            let canon_base = self.base_dir.canonicalize().unwrap_or_else(|_| self.base_dir.clone());
+            if !canon_parent.starts_with(&canon_base) {
+                return Err(PortError::Unexpected {
+                    message: format!("Parent path {:?} escapes base directory {:?}", parent, self.base_dir),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    pub fn verify_path_under_base_dir(&self, path: &std::path::Path) -> Result<(), PortError> {
+        let mut current = path.to_path_buf();
+        while !current.exists() {
+            if let Some(parent) = current.parent() {
+                current = parent.to_path_buf();
+            } else {
+                break;
+            }
+        }
+
+        let canon_current = current.canonicalize().map_err(|e| PortError::Io {
+            message: format!("Failed to canonicalize path {:?}: {}", current, e),
+        })?;
+        
+        let canon_base = self.base_dir.canonicalize().unwrap_or_else(|_| self.base_dir.clone());
+
+        if !canon_current.starts_with(&canon_base) {
+            return Err(PortError::Unexpected {
+                message: format!("Path {:?} escapes base directory {:?}", path, self.base_dir),
+            });
+        }
+        Ok(())
+    }
+
     pub fn resolve_storage_key(&self, key: &str) -> Result<PathBuf, PortError> {
         let key_path = PathBuf::from(key);
 
-        if key_path.is_absolute() {
-            return Err(PortError::Unexpected {
-                message: "StorageKey must be relative".into(),
-            });
-        }
-
         if key_path
             .components()
-            .any(|c| matches!(c, std::path::Component::ParentDir))
+            .any(|c| matches!(
+                c,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+            ))
         {
             return Err(PortError::Unexpected {
-                message: "StorageKey must not contain parent directory traversal".into(),
+                message: "StorageKey must be a clean relative path".into(),
             });
         }
 
-        Ok(self.base_dir.join(key_path))
+        let full_path = self.base_dir.join(key_path);
+        self.verify_path_under_base_dir(&full_path)?;
+        
+        Ok(full_path)
+    }
+
+        pub async fn cleanup_stale_staging(&self, max_age: std::time::Duration) -> Result<(), PortError> {
+        let staging_dir = self.base_dir.join(".staging");
+        if !tokio::fs::try_exists(&staging_dir).await.unwrap_or(false) {
+            return Ok(());
+        }
+
+        let mut entries = tokio::fs::read_dir(&staging_dir).await.map_err(|e| PortError::Io {
+            message: format!("Failed to read .staging directory: {}", e),
+        })?;
+
+        let now = std::time::SystemTime::now();
+
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Ok(metadata) = entry.metadata().await {
+                    if let Ok(modified) = metadata.modified() {
+                        if let Ok(age) = now.duration_since(modified) {
+                            if age > max_age {
+                                let _ = tokio::fs::remove_dir_all(&path).await;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn resolve_legacy_local_path(&self, path: &str) -> Result<PathBuf, PortError> {
@@ -62,13 +139,7 @@ impl ArtifactStore for LocalArtifactStore {
         let storage_key = make_storage_key(project_id, &artifact_id, &kind, ext);
         let path = self.resolve_storage_key(&storage_key)?;
 
-        if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| PortError::Io {
-                    message: format!("Failed to create directory {:?}: {}", parent, e),
-                })?;
-        }
+        self.ensure_safe_parent(&path).await?;
 
         tokio::fs::write(&path, data)
             .await
@@ -98,14 +169,17 @@ impl ArtifactStore for LocalArtifactStore {
             domain::media::ArtifactLocation::StorageKey(key) => self.resolve_storage_key(key),
         }
     }
-    async fn stage_external_file(
+    async fn stage_owned_temp_file(
         &self,
         project_id: &ProjectId,
         kind: ArtifactKind,
         source_path: &std::path::Path,
         filename_hint: Option<&str>,
     ) -> Result<ports::storage::StagedArtifact, PortError> {
-        if !tokio::fs::try_exists(source_path).await.unwrap_or(false) {
+        let source_exists = tokio::fs::try_exists(source_path).await.map_err(|e| PortError::Io {
+            message: format!("Failed to check if source path {:?} exists: {}", source_path, e),
+        })?;
+        if !source_exists {
             return Err(PortError::Io {
                 message: format!("Source path {:?} does not exist", source_path),
             });
@@ -129,13 +203,7 @@ impl ArtifactStore for LocalArtifactStore {
 
         let staging_path = self.resolve_storage_key(&staging_key)?;
 
-        if let Some(parent) = staging_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| PortError::Io {
-                    message: format!("Failed to create directory {:?}: {}", parent, e),
-                })?;
-        }
+        self.ensure_safe_parent(&staging_path).await?;
 
         // Try rename first
         if let Err(e) = tokio::fs::rename(source_path, &staging_path).await {
@@ -180,6 +248,79 @@ impl ArtifactStore for LocalArtifactStore {
         })
     }
 
+    async fn import_external_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        source_path: &std::path::Path,
+        filename_hint: Option<&str>,
+    ) -> Result<ports::storage::StagedArtifact, PortError> {
+        let source_exists = tokio::fs::try_exists(source_path).await.map_err(|e| PortError::Io {
+            message: format!("Failed to check if source path {:?} exists: {}", source_path, e),
+        })?;
+        if !source_exists {
+            return Err(PortError::Io {
+                message: format!("Source path {:?} does not exist", source_path),
+            });
+        }
+
+        let ext = if let Some(hint) = filename_hint {
+            std::path::Path::new(hint)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("bin")
+        } else {
+            source_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("bin")
+        };
+
+        let artifact_id = ArtifactId::new();
+        let final_key = make_storage_key(project_id, &artifact_id, &kind, ext);
+        let staging_key = format!(".staging/{}/{}.{}", uuid::Uuid::new_v4(), artifact_id, ext);
+
+        let staging_path = self.resolve_storage_key(&staging_key)?;
+
+        self.ensure_safe_parent(&staging_path).await?;
+
+        // Only copy, do not move or remove original
+        tokio::fs::copy(source_path, &staging_path)
+            .await
+            .map_err(|copy_err| PortError::Io {
+                message: format!(
+                    "Failed to copy from {:?} to {:?}: {}",
+                    source_path, staging_path, copy_err
+                ),
+            })?;
+
+        let metadata = tokio::fs::metadata(&staging_path)
+            .await
+            .map_err(|e| PortError::Io {
+                message: format!("Failed to read metadata of {:?}: {}", staging_path, e),
+            })?;
+
+        let size_bytes = metadata.len();
+
+        let artifact = Artifact {
+            id: artifact_id,
+            kind,
+            location: domain::media::ArtifactLocation::StorageKey(final_key.clone()),
+            size_bytes: Some(size_bytes),
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: None,
+        };
+
+        Ok(ports::storage::StagedArtifact {
+            artifact,
+            staging_key,
+            final_key,
+            size_bytes,
+        })
+    }
+
     async fn finalize_staged_artifact(
         &self,
         staging_key: &str,
@@ -188,12 +329,16 @@ impl ArtifactStore for LocalArtifactStore {
         let staging_path = self.resolve_storage_key(staging_key)?;
         let final_path = self.resolve_storage_key(final_key)?;
 
-        let final_exists = tokio::fs::try_exists(&final_path).await.unwrap_or(false);
+        let final_exists = tokio::fs::try_exists(&final_path).await.map_err(|e| PortError::Io {
+            message: format!("Failed to check if final path {:?} exists: {}", final_path, e),
+        })?;
         if final_exists {
             return Ok(());
         }
 
-        let staging_exists = tokio::fs::try_exists(&staging_path).await.unwrap_or(false);
+        let staging_exists = tokio::fs::try_exists(&staging_path).await.map_err(|e| PortError::Io {
+            message: format!("Failed to check if staging path {:?} exists: {}", staging_path, e),
+        })?;
         if !staging_exists {
             return Err(PortError::Io {
                 message: format!(
@@ -203,13 +348,7 @@ impl ArtifactStore for LocalArtifactStore {
             });
         }
 
-        if let Some(parent) = final_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| PortError::Io {
-                    message: format!("Failed to create directory {:?}: {}", parent, e),
-                })?;
-        }
+        self.ensure_safe_parent(&final_path).await?;
 
         tokio::fs::rename(&staging_path, &final_path)
             .await
@@ -225,7 +364,10 @@ impl ArtifactStore for LocalArtifactStore {
 
     async fn delete_storage_key(&self, storage_key: &str) -> Result<(), PortError> {
         let path = self.resolve_storage_key(storage_key)?;
-        if tokio::fs::try_exists(&path).await.unwrap_or(false) {
+        let exists = tokio::fs::try_exists(&path).await.map_err(|e| PortError::Io {
+            message: format!("Failed to check if storage key path {:?} exists: {}", path, e),
+        })?;
+        if exists {
             tokio::fs::remove_file(&path)
                 .await
                 .map_err(|e| PortError::Io {
@@ -243,14 +385,45 @@ impl ArtifactStore for LocalArtifactStore {
     }
 
     async fn delete_project_dir(&self, project_id: &ProjectId) -> Result<(), PortError> {
-        // ... (we'll implement this below)
         let path = self.base_dir.join(project_id.to_string());
-        if tokio::fs::try_exists(&path).await.unwrap_or(false) {
+        let exists = tokio::fs::try_exists(&path).await.map_err(|e| PortError::Io {
+            message: format!("Failed to check if project directory {:?} exists: {}", path, e),
+        })?;
+        if exists {
             tokio::fs::remove_dir_all(&path)
                 .await
                 .map_err(|e| PortError::Io {
                     message: format!("Failed to delete project directory {:?}: {}", path, e),
                 })?;
+        }
+        Ok(())
+    }
+
+    async fn cleanup_stale_staging(&self, max_age: std::time::Duration) -> Result<(), PortError> {
+        let staging_dir = self.base_dir.join(".staging");
+        if !tokio::fs::try_exists(&staging_dir).await.unwrap_or(false) {
+            return Ok(());
+        }
+
+        let mut entries = tokio::fs::read_dir(&staging_dir).await.map_err(|e| PortError::Io {
+            message: format!("Failed to read .staging directory: {}", e),
+        })?;
+
+        let now = std::time::SystemTime::now();
+
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Ok(metadata) = entry.metadata().await {
+                    if let Ok(modified) = metadata.modified() {
+                        if let Ok(age) = now.duration_since(modified) {
+                            if age > max_age {
+                                let _ = tokio::fs::remove_dir_all(&path).await;
+                            }
+                        }
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -319,7 +492,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_stage_external_file_creates_pending_artifact() {
+    async fn test_stage_owned_temp_file_creates_pending_artifact() {
         let temp_dir = tempdir().unwrap();
         let store = LocalArtifactStore::new(temp_dir.path().to_path_buf());
         let project_id = ProjectId(uuid::Uuid::new_v4());

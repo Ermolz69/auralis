@@ -42,20 +42,18 @@ impl JobManager {
         Ok(())
     }
 
-    async fn persist_job_best_effort(&self, job: &Job, context: &str) {
-        if let Err(e) = self.repo.save(job).await {
-            eprintln!("WARNING: Failed to persist job during {}: {}", context, e);
-        }
-    }
-
     pub async fn start_mock_dubbing_job_internal(
         &self,
         title: String,
         project_id_str: Option<String>,
-    ) -> Result<DomainJobId, PortError> {
-        let project_id = project_id_str
-            .and_then(|id| DomainProjectId::from_str(&id).ok())
-            .unwrap_or_default();
+    ) -> Result<Job, PortError> {
+        let id_str = project_id_str.ok_or_else(|| PortError::Unexpected {
+            message: "Missing project_id for mock dubbing job".to_string(),
+        })?;
+
+        let project_id = DomainProjectId::from_str(&id_str).map_err(|e| PortError::Unexpected {
+            message: format!("Invalid project_id {}: {}", id_str, e),
+        })?;
 
         let mut job = Job::new(project_id, title, JobKind::Dubbing);
         job.start().map_err(|e| PortError::Unexpected {
@@ -68,56 +66,80 @@ impl JobManager {
         self.jobs.write().await.insert(job_id.clone(), job.clone());
         self.emit_job_event(&job);
 
-        Ok(job_id)
+        Ok(job)
     }
 
     pub async fn get_job_internal(&self, job_id: &DomainJobId) -> Option<Job> {
-        self.jobs.read().await.get(job_id).cloned()
+        if let Some(job) = self.jobs.read().await.get(job_id) {
+            return Some(job.clone());
+        }
+        
+        if let Ok(Some(job)) = self.repo.get(job_id).await {
+            self.jobs.write().await.insert(job_id.clone(), job.clone());
+            return Some(job);
+        }
+        
+        None
     }
 
     pub async fn list_jobs_internal(&self) -> Vec<Job> {
-        let mut jobs: Vec<Job> = self.jobs.read().await.values().cloned().collect();
+        let mut jobs = match self.repo.list_recent(100).await {
+            Ok(j) => j,
+            Err(e) => {
+                eprintln!("WARNING: Failed to list recent jobs from repo: {}", e);
+                // Fallback to cache
+                self.jobs.read().await.values().cloned().collect()
+            }
+        };
+
+        // Merge active jobs from cache if any aren't returned by list_recent
+        let cache = self.jobs.read().await;
+        for (id, active_job) in cache.iter() {
+            if matches!(active_job.status(), domain::job::JobStatus::Pending | domain::job::JobStatus::Running) {
+                if !jobs.iter().any(|j| j.id() == id) {
+                    jobs.push(active_job.clone());
+                } else {
+                    // Update the repo version with the more up-to-date cache version (e.g. progress updates)
+                    if let Some(existing) = jobs.iter_mut().find(|j| j.id() == id) {
+                        *existing = active_job.clone();
+                    }
+                }
+            }
+        }
+
         jobs.sort_by_key(|b| std::cmp::Reverse(*b.created_at()));
         jobs
     }
 
-    pub async fn cancel_job_internal(&self, job_id: &DomainJobId) -> Result<Job, JobError> {
-        let (job, should_cancel) = {
-            let mut jobs = self.jobs.write().await;
-            let job = jobs.get_mut(job_id).ok_or_else(|| {
-                JobError::new("not_found", format!("Job {} not found", job_id), false)
-            })?;
+    pub async fn cancel_job_internal(&self, job_id: &DomainJobId) -> Result<Job, PortError> {
+        let mut job = self.get_job_internal(job_id).await.ok_or_else(|| {
+            PortError::NotFound { resource: format!("Job {}", job_id) }
+        })?;
 
-            let should_cancel = matches!(job.status(), JobStatus::Pending | JobStatus::Running);
-            if should_cancel {
-                job.cancel().ok();
-            }
-
-            (job.clone(), should_cancel)
-        };
-
+        let should_cancel = matches!(job.status(), JobStatus::Pending | JobStatus::Running);
         if should_cancel {
+            job.cancel().ok();
+
             {
                 let handles = self.cancel_handles.read().await;
                 if let Some(handle) = handles.get(job_id) {
                     handle.cancel();
                 }
             }
-            self.persist_job_best_effort(&job, "cancel_job").await;
-            self.emit_job_event(&job);
+            self.update_job(job.clone()).await?;
         }
 
         Ok(job)
     }
 
-    pub async fn update_job(&self, updated_job: Job) {
+    pub async fn update_job(&self, updated_job: Job) -> Result<(), PortError> {
+        self.repo.save(&updated_job).await?;
         {
             let mut jobs = self.jobs.write().await;
             jobs.insert(updated_job.id().clone(), updated_job.clone());
         }
-        self.persist_job_best_effort(&updated_job, "update_job")
-            .await;
         self.emit_job_event(&updated_job);
+        Ok(())
     }
 
     pub async fn register_cancel_handle(
@@ -173,11 +195,10 @@ impl JobSchedulerPort for JobManager {
         request: StartDubbingJobRequest,
     ) -> Result<ScheduledJob, PortError> {
         let project_id_str = request.project_id.map(|id| id.to_string());
-        let job_id = self
+        let job = self
             .start_mock_dubbing_job_internal(request.title, project_id_str)
             .await?;
 
-        let job = self.get_job_internal(&job_id).await.unwrap();
         Ok(Self::map_job_to_scheduled(&job))
     }
 
@@ -224,12 +245,7 @@ impl JobSchedulerPort for JobManager {
     }
 
     async fn cancel_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
-        let job = self
-            .cancel_job_internal(job_id)
-            .await
-            .map_err(|e| PortError::Unexpected {
-                message: e.to_string(),
-            })?;
+        let job = self.cancel_job_internal(job_id).await?;
         Ok(Self::map_job_to_scheduled(&job))
     }
 
@@ -268,7 +284,7 @@ impl JobSchedulerPort for JobManager {
         job.update_stage(stage).ok();
         job.update_progress(progress).ok();
 
-        self.update_job(job.clone()).await;
+        self.update_job(job.clone()).await?;
 
         Ok(Self::map_job_to_scheduled(&job))
     }
@@ -285,7 +301,7 @@ impl JobSchedulerPort for JobManager {
             message: e.to_string(),
         })?;
 
-        self.update_job(job.clone()).await;
+        self.update_job(job.clone()).await?;
 
         Ok(Self::map_job_to_scheduled(&job))
     }
@@ -309,7 +325,7 @@ impl JobSchedulerPort for JobManager {
                 message: e.to_string(),
             })?;
 
-        self.update_job(job.clone()).await;
+        self.update_job(job.clone()).await?;
 
         Ok(Self::map_job_to_scheduled(&job))
     }
