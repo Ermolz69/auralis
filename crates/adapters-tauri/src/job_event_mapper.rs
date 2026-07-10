@@ -58,3 +58,84 @@ impl JobEventDtoMapper {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::dubbing::DubbingPipelineStage;
+    use domain::job::{JobId, JobProgress, JobStatus};
+    use domain::project::ProjectId;
+    use serde_json::json;
+
+    #[test]
+    fn test_dto_serialization_contract() {
+        let event = JobLifecycleEvent {
+            job_id: JobId::new(),
+            project_id: Some(ProjectId::new()),
+            status: JobStatus::Running,
+            stage: Some(DubbingPipelineStage::DownloadMedia),
+            progress: JobProgress {
+                percent: 50,
+                message: "Downloading".to_string(),
+                current_step: Some("video.mp4".to_string()),
+                processed_items: Some(1),
+                total_items: Some(2),
+            },
+            error: None,
+        };
+
+        let dto = JobEventDtoMapper::map(&event);
+        let serialized = serde_json::to_value(&dto).unwrap();
+
+        assert_eq!(
+            serialized,
+            json!({
+                "jobId": event.job_id.to_string(),
+                "projectId": event.project_id.unwrap().to_string(),
+                "status": "running",
+                "stage": "downloadMedia",
+                "progress": {
+                    "percent": 50,
+                    "message": "Downloading",
+                    "currentStep": "video.mp4",
+                    "processedItems": 1,
+                    "totalItems": 2
+                },
+                "error": null
+            })
+        );
+    }
+
+    #[test]
+    fn test_dto_serialization_none_handling() {
+        let event = JobLifecycleEvent {
+            job_id: JobId::new(),
+            project_id: None,
+            status: JobStatus::Pending,
+            stage: None,
+            progress: JobProgress::initializing(),
+            error: Some("Fail".to_string()),
+        };
+
+        let dto = JobEventDtoMapper::map(&event);
+        let serialized = serde_json::to_value(&dto).unwrap();
+
+        assert_eq!(
+            serialized,
+            json!({
+                "jobId": event.job_id.to_string(),
+                "projectId": null,
+                "status": "pending",
+                "stage": null,
+                "progress": {
+                    "percent": 0,
+                    "message": "Initializing...",
+                    "currentStep": null,
+                    "processedItems": null,
+                    "totalItems": null
+                },
+                "error": "Fail"
+            })
+        );
+    }
+}

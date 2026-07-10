@@ -1,11 +1,12 @@
 use crate::bootstrap::usecases::AppUseCases;
-use crate::state::RuntimeProjectRepository;
 
 use application::usecases::pipeline::start_mock::StartMockPipelineRequest;
 use application::usecases::project::create::CreateProjectRequest;
 use application::usecases::project::create_from_youtube::CreateProjectFromYoutubeRequest;
 use application::usecases::project::delete::DeleteProjectRequest;
 use application::usecases::project::get::GetProjectRequest;
+use application::usecases::project::list::ListProjectsRequest;
+use application::usecases::transcript::get::GetTranscriptRequest;
 
 use std::sync::Arc;
 use tauri::{command, State};
@@ -49,25 +50,23 @@ pub async fn create_project_from_youtube_cmd(
 #[command]
 pub async fn get_transcript_cmd(
     project_id: String,
-    project_repo: State<'_, RuntimeProjectRepository>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Option<TranscriptDto>, CommandError> {
     let pid: domain::project::ProjectId = project_id
         .parse()
         .map_err(|e| CommandError::Validation(format!("Invalid project id: {}", e)))?;
 
-    let project = project_repo
-        .inner()
-        .get(&pid)
+    let req = GetTranscriptRequest { project_id: pid };
+    let res = usecases
+        .get_transcript
+        .execute(req)
         .await
-        .map_err(|e| CommandError::Repository(e.to_string()))?;
+        .map_err(CommandError::from)?;
 
-    if let Some(project) = project {
-        if let Some(transcript) = project.transcript() {
-            return Ok(Some(TranscriptDto::from(transcript)));
-        }
-        Ok(None)
+    if let Some(transcript) = res.transcript {
+        Ok(Some(TranscriptDto::from(&transcript)))
     } else {
-        Err(CommandError::NotFound("Project not found".into()))
+        Ok(None)
     }
 }
 
@@ -91,15 +90,20 @@ pub async fn get_project_cmd(
 
 #[command]
 pub async fn list_projects_cmd(
-    project_repo: State<'_, RuntimeProjectRepository>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<ProjectDto>, CommandError> {
-    let projects = project_repo
-        .inner()
-        .list()
+    let req = ListProjectsRequest {};
+    let res = usecases
+        .list_projects
+        .execute(req)
         .await
-        .map_err(|e| CommandError::Repository(e.to_string()))?;
+        .map_err(CommandError::from)?;
 
-    Ok(projects.into_iter().map(|p| ProjectDto::from(&p)).collect())
+    Ok(res
+        .projects
+        .into_iter()
+        .map(|p| ProjectDto::from(&p))
+        .collect())
 }
 
 #[command]

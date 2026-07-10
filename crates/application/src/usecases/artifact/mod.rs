@@ -1,4 +1,5 @@
 pub mod list_project_artifacts;
+pub mod resolve_path;
 pub mod write_small;
 
 pub use list_project_artifacts::{ListProjectArtifactsRequest, ListProjectArtifactsUseCase};

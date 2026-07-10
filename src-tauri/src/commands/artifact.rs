@@ -1,6 +1,6 @@
 use crate::bootstrap::usecases::AppUseCases;
-use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore};
 use application::usecases::artifact::list_project_artifacts::ListProjectArtifactsRequest;
+use application::usecases::artifact::resolve_path::ResolveArtifactPathRequest;
 use domain::media::{Artifact, ArtifactId, ArtifactKind};
 use domain::project::ProjectId;
 use std::str::FromStr;
@@ -37,26 +37,17 @@ pub async fn list_project_artifacts_cmd(
 #[tauri::command]
 pub async fn resolve_artifact_path_cmd(
     artifact_id: String,
-    artifact_index: State<'_, RuntimeArtifactIndex>,
-    artifact_store: State<'_, RuntimeArtifactStore>,
+    usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<String, String> {
     let id = ArtifactId::from_str(&artifact_id).map_err(|e| e.to_string())?;
 
-    let artifact = artifact_index
-        .get(&id)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Artifact not found".to_string())?;
+    let req = ResolveArtifactPathRequest { artifact_id: id };
 
-    if let domain::media::ArtifactLocation::LocalPath(_) = artifact.location {
-        return Err("Legacy external artifacts cannot be exposed to UI".to_string());
-    }
-
-    let path = artifact_store
-        .resolve_artifact(&artifact)
+    let res = usecases
+        .resolve_artifact_path
+        .execute(req)
         .await
         .map_err(|e| e.to_string())?;
 
-    // Only returning a safe absolute path that the UI can use e.g., with tauri convertFileSrc
-    Ok(path.to_string_lossy().into_owned())
+    Ok(res.absolute_path.to_string_lossy().into_owned())
 }

@@ -38,11 +38,6 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         services::build_job_scheduler(services.job_repo.clone(), event_bridge.emitter());
 
     // 4. Register State
-    app.manage(job_manager.clone());
-    app.manage(services.project_repo.clone());
-    app.manage(services.artifact_index.clone());
-    app.manage(services.artifact_store.clone());
-    app.manage(services.storage_uow.clone());
     app.manage(event_bridge.shutdown_handle());
 
     // 5. Build and register AppUseCases

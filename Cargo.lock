@@ -51,6 +51,7 @@ dependencies = [
  "domain",
  "ports",
  "serde",
+ "serde_json",
  "tauri",
  "tokio",
 ]
@@ -203,6 +204,7 @@ dependencies = [
  "adapters-ytdlp",
  "application",
  "async-trait",
+ "chrono",
  "domain",
  "jobs",
  "ports",
