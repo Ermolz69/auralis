@@ -20,6 +20,7 @@ adapters-storage = { path = "../crates/adapters-storage" }
 adapters-ytdlp = { path = "../crates/adapters-ytdlp" }
 adapters-model = { path = "../crates/adapters-model" }
 adapters-ffmpeg = { path = "../crates/adapters-ffmpeg" }
+adapters-tauri = { path = "../crates/adapters-tauri" }
 tokio = { version = "1.0", features = ["rt", "time", "macros", "sync"] }
 tauri-plugin-dialog = "2.7.1"
 async-trait = "0.1.89"

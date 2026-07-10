@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tauri = { version = "2.0.0", features = [] }
+serde = { version = "1.0", features = ["derive"] }
+application = { path = "../application" }
+domain = { path = "../domain" }
+ports = { path = "../ports" }
+async-trait = "0.1.89"
+tokio = { version = "1", features = ["sync"] }
