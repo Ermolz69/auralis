@@ -11,7 +11,7 @@ use ports::transaction::{
     StorageUnitOfWork,
 };
 
-use super::artifact_mapper::artifact_to_row_values;
+use super::artifact_index::mapper::artifact_to_row_values;
 use super::job_mapper::job_to_row_values;
 use super::project_mapper::project_to_row_values;
 

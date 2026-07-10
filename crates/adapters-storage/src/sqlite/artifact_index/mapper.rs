@@ -3,7 +3,7 @@ use domain::project::ProjectId;
 use ports::error::PortError;
 use std::str::FromStr;
 
-use super::artifact_row::ArtifactRow;
+use super::row::ArtifactRow;
 
 pub fn artifact_to_row_values(
     project_id: &ProjectId,
