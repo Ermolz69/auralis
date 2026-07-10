@@ -4,6 +4,7 @@ use ports::error::PortError;
 use std::str::FromStr;
 
 use super::row::ArtifactRow;
+use super::serialization::{artifact_kind_to_db, artifact_state_to_db};
 
 pub fn artifact_to_row_values(
     project_id: &ProjectId,
@@ -14,27 +15,8 @@ pub fn artifact_to_row_values(
         ArtifactLocation::StorageKey(key) => ("StorageKey".to_string(), key.clone()),
     };
 
-    let kind_val = serde_json::to_value(&artifact.kind).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to serialize artifact kind: {}", e),
-    })?;
-
-    let kind = kind_val
-        .as_str()
-        .ok_or_else(|| PortError::Unexpected {
-            message: "Artifact kind is not a string".to_string(),
-        })?
-        .to_string();
-
-    let state_val = serde_json::to_value(&artifact.state).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to serialize artifact state: {}", e),
-    })?;
-
-    let state = state_val
-        .as_str()
-        .ok_or_else(|| PortError::Unexpected {
-            message: "Artifact state is not a string".to_string(),
-        })?
-        .to_string();
+    let kind = artifact_kind_to_db(&artifact.kind)?;
+    let state = artifact_state_to_db(&artifact.state)?;
 
     Ok(ArtifactRow {
         id: artifact.id.to_string(),
@@ -78,17 +60,27 @@ pub fn row_to_artifact(row: ArtifactRow) -> Result<Artifact, PortError> {
         })?;
 
     let created_at = chrono::DateTime::parse_from_rfc3339(&row.created_at)
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-        .unwrap_or_else(|_| chrono::Utc::now());
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Invalid created_at date {}: {}", row.created_at, e),
+        })?
+        .with_timezone(&chrono::Utc);
 
     let updated_at = chrono::DateTime::parse_from_rfc3339(&row.updated_at)
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-        .unwrap_or_else(|_| chrono::Utc::now());
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Invalid updated_at date {}: {}", row.updated_at, e),
+        })?
+        .with_timezone(&chrono::Utc);
 
     let ready_at = row
         .ready_at
-        .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
-        .map(|dt| dt.with_timezone(&chrono::Utc));
+        .map(|s| {
+            chrono::DateTime::parse_from_rfc3339(&s)
+                .map_err(|e| PortError::Unexpected {
+                    message: format!("Invalid ready_at date {}: {}", s, e),
+                })
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+        })
+        .transpose()?;
 
     Ok(Artifact {
         id,
