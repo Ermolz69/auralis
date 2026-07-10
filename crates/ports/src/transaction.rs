@@ -1,62 +1,55 @@
 use async_trait::async_trait;
+use std::path::PathBuf;
 
 use crate::error::PortError;
 use domain::job::Job;
-use domain::media::{Artifact, ArtifactId};
-use domain::outbox::OutboxMessage;
-use domain::project::Project;
+use domain::media::Artifact;
+use domain::project::{Project, ProjectId};
 
-#[derive(Default, Debug, Clone)]
-pub struct UnitOfWorkData {
-    pub jobs_to_save: Vec<Job>,
-    pub projects_to_save: Vec<Project>,
-    pub artifacts_to_add: Vec<(domain::project::ProjectId, Artifact)>,
-    pub artifacts_to_delete: Vec<ArtifactId>,
-    pub outbox_messages: Vec<OutboxMessage>,
-    pub projects_to_delete: Vec<domain::project::ProjectId>,
+pub struct CommitTranscriptImport {
+    pub project: Project,
+    pub artifact: Artifact,
+    pub staging_key: String,
+    pub final_key: String,
+    pub temp_path_to_delete: Option<PathBuf>,
 }
 
-impl UnitOfWorkData {
-    pub fn new() -> Self {
-        Self::default()
-    }
+pub struct CommitMediaDownload {
+    pub project_id: ProjectId,
+    pub artifact: Artifact,
+    pub staging_key: String,
+    pub final_key: String,
+    pub temp_path_to_delete: Option<PathBuf>,
+}
 
-    pub fn save_job(mut self, job: Job) -> Self {
-        self.jobs_to_save.push(job);
-        self
-    }
+pub struct CommitProjectDelete {
+    pub project_id: ProjectId,
+    pub artifacts: Vec<Artifact>,
+}
 
-    pub fn save_project(mut self, project: Project) -> Self {
-        self.projects_to_save.push(project);
-        self
-    }
-
-    pub fn add_artifact(
-        mut self,
-        project_id: domain::project::ProjectId,
-        artifact: Artifact,
-    ) -> Self {
-        self.artifacts_to_add.push((project_id, artifact));
-        self
-    }
-
-    pub fn delete_artifact(mut self, artifact_id: ArtifactId) -> Self {
-        self.artifacts_to_delete.push(artifact_id);
-        self
-    }
-
-    pub fn add_outbox_message(mut self, message: OutboxMessage) -> Self {
-        self.outbox_messages.push(message);
-        self
-    }
-
-    pub fn delete_project(mut self, project_id: domain::project::ProjectId) -> Self {
-        self.projects_to_delete.push(project_id);
-        self
-    }
+pub struct CommitJobUpdate {
+    pub job: Job,
 }
 
 #[async_trait]
-pub trait TransactionGateway: Send + Sync {
-    async fn execute(&self, data: UnitOfWorkData) -> Result<(), PortError>;
+pub trait StorageUnitOfWork: Send + Sync {
+    async fn commit_transcript_import(
+        &self,
+        command: CommitTranscriptImport,
+    ) -> Result<(), PortError>;
+
+    async fn commit_media_download(
+        &self,
+        command: CommitMediaDownload,
+    ) -> Result<(), PortError>;
+
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<(), PortError>;
+
+    async fn commit_job_update(
+        &self,
+        command: CommitJobUpdate,
+    ) -> Result<(), PortError>;
 }

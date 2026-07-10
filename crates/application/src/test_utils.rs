@@ -198,23 +198,26 @@ impl ArtifactStore for MockArtifactStore {
     }
 }
 
-use ports::transaction::{TransactionGateway, UnitOfWorkData};
+use ports::transaction::{
+    CommitJobUpdate, CommitMediaDownload, CommitProjectDelete, CommitTranscriptImport,
+    StorageUnitOfWork,
+};
 
 #[derive(Clone)]
-pub struct MockTransactionGateway {
+pub struct MockStorageUnitOfWork {
     pub jobs_saved: Arc<Mutex<Vec<domain::job::Job>>>,
     pub projects_saved: Arc<Mutex<Vec<domain::project::Project>>>,
     pub projects_deleted: Arc<Mutex<Vec<domain::project::ProjectId>>>,
     pub should_fail: bool,
 }
 
-impl Default for MockTransactionGateway {
+impl Default for MockStorageUnitOfWork {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MockTransactionGateway {
+impl MockStorageUnitOfWork {
     pub fn new() -> Self {
         Self {
             jobs_saved: Arc::new(Mutex::new(Vec::new())),
@@ -235,23 +238,58 @@ impl MockTransactionGateway {
 }
 
 #[async_trait]
-impl TransactionGateway for MockTransactionGateway {
-    async fn execute(&self, data: UnitOfWorkData) -> Result<(), PortError> {
+impl StorageUnitOfWork for MockStorageUnitOfWork {
+    async fn commit_transcript_import(
+        &self,
+        command: CommitTranscriptImport,
+    ) -> Result<(), PortError> {
         if self.should_fail {
             return Err(PortError::Unexpected {
                 message: "Mock transaction failure".to_string(),
             });
         }
-
         let mut projects = self.projects_saved.lock().await;
-        projects.extend(data.projects_to_save);
+        projects.push(command.project);
+        Ok(())
+    }
 
-        let mut jobs = self.jobs_saved.lock().await;
-        jobs.extend(data.jobs_to_save);
+    async fn commit_media_download(
+        &self,
+        _command: CommitMediaDownload,
+    ) -> Result<(), PortError> {
+        if self.should_fail {
+            return Err(PortError::Unexpected {
+                message: "Mock transaction failure".to_string(),
+            });
+        }
+        Ok(())
+    }
 
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<(), PortError> {
+        if self.should_fail {
+            return Err(PortError::Unexpected {
+                message: "Mock transaction failure".to_string(),
+            });
+        }
         let mut deleted = self.projects_deleted.lock().await;
-        deleted.extend(data.projects_to_delete);
+        deleted.push(command.project_id);
+        Ok(())
+    }
 
+    async fn commit_job_update(
+        &self,
+        command: CommitJobUpdate,
+    ) -> Result<(), PortError> {
+        if self.should_fail {
+            return Err(PortError::Unexpected {
+                message: "Mock transaction failure".to_string(),
+            });
+        }
+        let mut jobs = self.jobs_saved.lock().await;
+        jobs.push(command.job);
         Ok(())
     }
 }

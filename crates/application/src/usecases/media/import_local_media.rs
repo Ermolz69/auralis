@@ -8,7 +8,7 @@ use ports::media::MediaProbePort;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 use ports::storage::ArtifactStore;
-use ports::transaction::TransactionGateway;
+use ports::transaction::StorageUnitOfWork;
 
 use crate::error::ApplicationError;
 use crate::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
@@ -36,7 +36,7 @@ pub struct ImportLocalMediaUseCase<
     project_repo: R,
     media_probe: P,
     job_scheduler: Arc<dyn JobSchedulerPort>,
-    transaction_gateway: Arc<dyn TransactionGateway>,
+    storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: V,
     artifact_index: I,
     artifact_store: S,
@@ -56,7 +56,7 @@ impl<
         project_repo: R,
         media_probe: P,
         job_scheduler: Arc<dyn JobSchedulerPort>,
-        transaction_gateway: Arc<dyn TransactionGateway>,
+        storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: V,
         artifact_index: I,
         artifact_store: S,
@@ -66,7 +66,7 @@ impl<
             project_repo,
             media_probe,
             job_scheduler,
-            transaction_gateway,
+            storage_uow,
             subtitle_source,
             artifact_index,
             artifact_store,
@@ -100,10 +100,9 @@ impl<
         let pipeline_use_case = StartMockPipelineUseCase::new(
             self.project_repo.clone(),
             self.job_scheduler.clone(),
-            self.transaction_gateway.clone(),
+            self.storage_uow.clone(),
             self.subtitle_source.clone(),
-            self.artifact_index.clone(),
-            self.artifact_store.clone(),
+                        self.artifact_store.clone(),
             self.target_dir_base.clone(),
         );
 
@@ -209,15 +208,14 @@ mod tests {
         let repo = InMemoryProjectRepository::new();
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let tx_gateway = std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new());
+        let tx_gateway = std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new());
         let use_case = ImportLocalMediaUseCase::new(
             repo.clone(),
             probe,
             job_scheduler.clone(),
             tx_gateway.clone(),
             MockSubtitleSource,
-            MockArtifactIndex,
-            MockArtifactStore,
+                        MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -255,10 +253,9 @@ mod tests {
             repo.clone(),
             probe,
             job_scheduler.clone(),
-            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactIndex,
-            MockArtifactStore,
+                        MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -284,10 +281,9 @@ mod tests {
             repo.clone(),
             probe,
             job_scheduler.clone(),
-            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactIndex,
-            MockArtifactStore,
+                        MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -329,10 +325,9 @@ mod tests {
             repo.clone(),
             probe,
             job_scheduler.clone(),
-            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactIndex,
-            MockArtifactStore,
+                        MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -365,10 +360,9 @@ mod tests {
             repo.clone(),
             probe,
             job_scheduler.clone(),
-            std::sync::Arc::new(crate::test_utils::MockTransactionGateway::new()),
+            std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactIndex,
-            MockArtifactStore,
+                        MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 

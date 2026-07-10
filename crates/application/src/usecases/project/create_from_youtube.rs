@@ -9,7 +9,7 @@ use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::repository::ProjectRepository;
 use ports::source::{SubtitleSourcePort, VideoSourcePort};
 use ports::storage::ArtifactStore;
-use ports::transaction::TransactionGateway;
+use ports::transaction::StorageUnitOfWork;
 use std::sync::Arc;
 
 pub struct CreateProjectFromYoutubeRequest {
@@ -31,7 +31,7 @@ pub struct CreateProjectFromYoutubeUseCase<
     project_repo: R,
     video_source: V,
     job_scheduler: Arc<dyn JobSchedulerPort>,
-    transaction_gateway: Arc<dyn TransactionGateway>,
+    storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: SSub,
     artifact_index: I,
     artifact_store: SStore,
@@ -51,7 +51,7 @@ impl<
         project_repo: R,
         video_source: V,
         job_scheduler: Arc<dyn JobSchedulerPort>,
-        transaction_gateway: Arc<dyn TransactionGateway>,
+        storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: SSub,
         artifact_index: I,
         artifact_store: SStore,
@@ -61,7 +61,7 @@ impl<
             project_repo,
             video_source,
             job_scheduler,
-            transaction_gateway,
+            storage_uow,
             subtitle_source,
             artifact_index,
             artifact_store,
@@ -99,10 +99,9 @@ impl<
         let pipeline_use_case = StartMockPipelineUseCase::new(
             self.project_repo.clone(),
             self.job_scheduler.clone(),
-            self.transaction_gateway.clone(),
+            self.storage_uow.clone(),
             self.subtitle_source.clone(),
-            self.artifact_index.clone(),
-            self.artifact_store.clone(),
+                        self.artifact_store.clone(),
             self.target_dir_base.clone(),
         );
         let req3 = StartMockPipelineRequest {

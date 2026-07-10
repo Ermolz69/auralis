@@ -1,12 +1,11 @@
 use std::path::PathBuf;
 
 use domain::media::ArtifactKind;
-use domain::outbox::models::{OutboxMessage, OutboxPayload};
 use domain::project::ProjectId;
 use ports::repository::ProjectRepository;
 use ports::source::{DownloadMediaRequest, VideoSourcePort};
 use ports::storage::ArtifactStore;
-use ports::transaction::{TransactionGateway, UnitOfWorkData};
+use ports::transaction::{CommitMediaDownload, StorageUnitOfWork};
 
 use crate::error::ApplicationError;
 
@@ -22,12 +21,12 @@ where
     P: ProjectRepository,
     V: VideoSourcePort,
     S: ArtifactStore,
-    T: TransactionGateway,
+    T: StorageUnitOfWork,
 {
     project_repo: P,
     video_source: V,
     artifact_store: S,
-    transaction_gateway: T,
+    storage_uow: T,
 }
 
 impl<P, V, S, T> DownloadYoutubeVideoUseCase<P, V, S, T>
@@ -35,19 +34,19 @@ where
     P: ProjectRepository,
     V: VideoSourcePort,
     S: ArtifactStore,
-    T: TransactionGateway,
+    T: StorageUnitOfWork,
 {
     pub fn new(
         project_repo: P,
         video_source: V,
         artifact_store: S,
-        transaction_gateway: T,
+        storage_uow: T,
     ) -> Self {
         Self {
             project_repo,
             video_source,
             artifact_store,
-            transaction_gateway,
+            storage_uow,
         }
     }
 
@@ -120,17 +119,15 @@ where
         };
 
         // 3. Atomically persist to DB and write outbox message
-        let outbox_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
-            artifact_id: staged.artifact.id.clone(),
+        let commit_cmd = CommitMediaDownload {
+            project_id: request.project_id.clone(),
+            artifact: staged.artifact,
             staging_key: staged.staging_key.clone(),
             final_key: staged.final_key.clone(),
-        });
+            temp_path_to_delete: Some(temp_path),
+        };
 
-        let uow = UnitOfWorkData::new()
-            .add_artifact(request.project_id.clone(), staged.artifact)
-            .add_outbox_message(outbox_msg);
-
-        if let Err(e) = self.transaction_gateway.execute(uow).await {
+        if let Err(e) = self.storage_uow.commit_media_download(commit_cmd).await {
             // DB failed, we can optionally clean up the staging file
             let _ = self
                 .artifact_store
@@ -138,9 +135,6 @@ where
                 .await;
             return Err(ApplicationError::Port(e));
         }
-
-        // Cleanup temp file just in case it was copied and not renamed
-        let _ = std::fs::remove_file(&temp_path);
 
         Ok(())
     }
@@ -158,7 +152,7 @@ mod tests {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
 
-    use crate::test_utils::MockTransactionGateway;
+    use crate::test_utils::MockStorageUnitOfWork;
 
     #[derive(Clone)]
     struct MockArtifactStore {
@@ -280,7 +274,7 @@ mod tests {
     async fn test_download_video_success() {
         let repo = InMemoryProjectRepository::new();
         let source_port = MockVideoSourceAdapter::new();
-        let transaction_gateway = MockTransactionGateway::new();
+        let transaction_gateway = MockStorageUnitOfWork::new();
         let artifact_store = MockArtifactStore {
             fail_on_stage: Arc::new(AtomicBool::new(false)),
             deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
@@ -302,7 +296,7 @@ mod tests {
             repo,
             source_port,
             artifact_store,
-            transaction_gateway,
+            storage_uow,
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -329,7 +323,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(false)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway::new(),
+            MockStorageUnitOfWork::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -366,7 +360,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(false)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway::new(),
+            MockStorageUnitOfWork::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -403,7 +397,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(false)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway::new(),
+            MockStorageUnitOfWork::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -440,7 +434,7 @@ mod tests {
                 fail_on_stage: Arc::new(AtomicBool::new(true)),
                 deleted_keys: Arc::new(std::sync::Mutex::new(vec![])),
             },
-            MockTransactionGateway::new(),
+            MockStorageUnitOfWork::new(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();
@@ -480,7 +474,7 @@ mod tests {
             repo,
             MockVideoSourceAdapter::new(),
             artifact_store,
-            MockTransactionGateway::with_failure(),
+            MockStorageUnitOfWork::with_failure(),
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();

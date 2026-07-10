@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use domain::project::ProjectId;
 use domain::transcript::{Transcript, TranscriptSegment, TranscriptSegmentId};
-use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 use ports::storage::ArtifactStore;
+use ports::transaction::{CommitTranscriptImport, StorageUnitOfWork};
 
 use crate::error::ApplicationError;
 
@@ -24,22 +24,22 @@ pub struct ImportYoutubeSubtitlesResponse {
 pub struct ImportYoutubeSubtitlesUseCase {
     project_repo: Arc<dyn ProjectRepository>,
     subtitle_source: Arc<dyn SubtitleSourcePort>,
-    artifact_index: Arc<dyn ArtifactIndex>,
     artifact_store: Arc<dyn ArtifactStore>,
+    storage_uow: Arc<dyn StorageUnitOfWork>,
 }
 
 impl ImportYoutubeSubtitlesUseCase {
     pub fn new(
         project_repo: Arc<dyn ProjectRepository>,
         subtitle_source: Arc<dyn SubtitleSourcePort>,
-        artifact_index: Arc<dyn ArtifactIndex>,
         artifact_store: Arc<dyn ArtifactStore>,
+        storage_uow: Arc<dyn StorageUnitOfWork>,
     ) -> Self {
         Self {
             project_repo,
             subtitle_source,
-            artifact_index,
             artifact_store,
+            storage_uow,
         }
     }
 
@@ -125,30 +125,27 @@ impl ImportYoutubeSubtitlesUseCase {
 
         let transcript = parse_vtt(&vtt_content, &best_track.language)?;
 
-        let managed_artifact = self
+        let staged = self
             .artifact_store
-            .write_small_artifact(
+            .stage_external_file(
                 &request.project_id,
                 domain::media::ArtifactKind::OriginalSubtitle,
-                "subtitles.vtt",
-                vtt_content.as_bytes(),
+                &vtt_path,
+                Some("subtitles.vtt"),
             )
             .await?;
 
-        if let Err(e) = self
-            .artifact_index
-            .add(&request.project_id, &managed_artifact)
-            .await
-        {
-            let _ = self.artifact_store.delete_artifact(&managed_artifact).await;
-            return Err(e.into());
-        }
-
         project.set_transcript(transcript.clone());
-        self.project_repo.save(&project).await?;
 
-        // Best effort cleanup of temp file
-        let _ = std::fs::remove_file(&vtt_path);
+        self.storage_uow
+            .commit_transcript_import(CommitTranscriptImport {
+                project,
+                artifact: staged.artifact,
+                staging_key: staged.staging_key,
+                final_key: staged.final_key,
+                temp_path_to_delete: Some(vtt_path),
+            })
+            .await?;
 
         Ok(ImportYoutubeSubtitlesResponse { transcript })
     }

@@ -1,12 +1,11 @@
 use domain::project::{Project, ProjectId};
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::repository::ProjectRepository;
-use ports::transaction::{TransactionGateway, UnitOfWorkData};
+use ports::transaction::{CommitJobUpdate, StorageUnitOfWork};
 use std::sync::Arc;
 
 use crate::error::ApplicationError;
 use crate::usecases::pipeline::mock_dubbing_pipeline::MockDubbingPipelineRunner;
-use ports::artifact_index::ArtifactIndex;
 use ports::source::SubtitleSourcePort;
 use ports::storage::ArtifactStore;
 
@@ -24,14 +23,12 @@ pub struct StartMockPipelineResponse {
 pub struct StartMockPipelineUseCase<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
 > {
     project_repo: R,
     job_scheduler: Arc<dyn JobSchedulerPort>,
-    transaction_gateway: Arc<dyn TransactionGateway>,
+    storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: V,
-    artifact_index: I,
     artifact_store: S,
     target_dir_base: std::path::PathBuf,
 }
@@ -39,25 +36,24 @@ pub struct StartMockPipelineUseCase<
 impl<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
-> StartMockPipelineUseCase<R, V, I, S>
+> StartMockPipelineUseCase<R, V, S>
 {
     pub fn new(
         project_repo: R,
         job_scheduler: Arc<dyn JobSchedulerPort>,
-        transaction_gateway: Arc<dyn TransactionGateway>,
+        storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: V,
-        artifact_index: I,
+        
         artifact_store: S,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
             project_repo,
             job_scheduler,
-            transaction_gateway,
+            storage_uow,
             subtitle_source,
-            artifact_index,
+            
             artifact_store,
             target_dir_base,
         }
@@ -85,14 +81,13 @@ impl<
 
         let job_id = job.id().clone();
 
-        // 3. Atomically persist Project and Job changes
-        let uow = UnitOfWorkData::new()
-            .save_project(project.clone())
-            .save_job(job);
+        // 3. Persist Project and Job changes
+        self.project_repo.save(&project).await?;
 
-        self.transaction_gateway.execute(uow).await.map_err(|e| {
+        let commit_cmd = CommitJobUpdate { job: job.clone() };
+        self.storage_uow.commit_job_update(commit_cmd).await.map_err(|e| {
             ApplicationError::InvalidOperation {
-                message: format!("Failed to commit transaction: {}", e),
+                message: format!("Failed to commit job update: {}", e),
             }
         })?;
 
@@ -110,7 +105,6 @@ impl<
             self.job_scheduler.clone(),
             self.project_repo.clone(),
             self.subtitle_source.clone(),
-            self.artifact_index.clone(),
             self.artifact_store.clone(),
             self.target_dir_base.clone(),
         );
@@ -124,7 +118,7 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{MockJobScheduler, MockTransactionGateway};
+    use crate::test_utils::{MockJobScheduler, MockStorageUnitOfWork};
     use adapters_storage::memory::InMemoryProjectRepository;
     use async_trait::async_trait;
     use domain::job::JobStatus;
@@ -204,7 +198,7 @@ mod tests {
     async fn test_success_saves_project_processing_and_job_pending_running() {
         let project_repo = InMemoryProjectRepository::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let tx_gateway = Arc::new(MockTransactionGateway::new());
+        let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
         let mut project = Project::new("Test".to_string());
         project
@@ -252,7 +246,7 @@ mod tests {
     async fn test_transaction_failure_does_not_enqueue_job() {
         let project_repo = InMemoryProjectRepository::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let tx_gateway = Arc::new(MockTransactionGateway::with_failure()); // Will fail
+        let tx_gateway = Arc::new(MockStorageUnitOfWork::with_failure()); // Will fail
 
         let mut project = Project::new("Test".to_string());
         project
@@ -294,7 +288,7 @@ mod tests {
     async fn test_cannot_start_from_draft() {
         let project_repo = InMemoryProjectRepository::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let tx_gateway = Arc::new(MockTransactionGateway::new());
+        let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
         let project = Project::new("Test".to_string());
         project_repo.create(project.clone()).await.unwrap();
@@ -320,7 +314,7 @@ mod tests {
     async fn test_cannot_start_from_completed() {
         let project_repo = InMemoryProjectRepository::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
-        let tx_gateway = Arc::new(MockTransactionGateway::new());
+        let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
         let mut project = Project::new("Test".to_string());
         // Forcibly set to Completed is difficult without proper transitions, but we can try to do:

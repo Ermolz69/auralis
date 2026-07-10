@@ -12,11 +12,11 @@ pub mod outbox_row;
 pub mod project_mapper;
 pub mod project_repository;
 pub mod project_row;
-pub mod transaction_gateway;
+pub mod unit_of_work;
 
 pub use artifact_index::SqliteArtifactIndex;
 pub use connection::connect_sqlite;
 pub use job_repository::SqliteJobRepository;
 pub use outbox_repository::SqliteOutboxRepository;
 pub use project_repository::SqliteProjectRepository;
-pub use transaction_gateway::SqliteTransactionGateway;
+pub use unit_of_work::SqliteStorageUnitOfWork;

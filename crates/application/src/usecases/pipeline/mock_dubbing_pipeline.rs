@@ -4,24 +4,24 @@ use crate::usecases::transcript::import_youtube_subtitles::{
 use domain::dubbing::DubbingPipelineStage;
 use domain::job::{JobId, JobProgress, JobStatus};
 use domain::project::ProjectId;
-use ports::artifact_index::ArtifactIndex;
 use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 use ports::storage::ArtifactStore;
+use ports::transaction::StorageUnitOfWork;
 use std::sync::Arc;
 use tokio::time::{Duration, sleep};
 
 pub struct MockDubbingPipelineRunner<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
+    T: StorageUnitOfWork + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
 > {
     job_scheduler: Arc<dyn JobSchedulerPort>,
     project_repo: R,
     subtitle_source: V,
-    artifact_index: I,
+    storage_uow: T,
     artifact_store: S,
     target_dir_base: std::path::PathBuf,
 }
@@ -29,15 +29,15 @@ pub struct MockDubbingPipelineRunner<
 impl<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
+    T: StorageUnitOfWork + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
-> MockDubbingPipelineRunner<R, V, I, S>
+> MockDubbingPipelineRunner<R, V, T, S>
 {
     pub fn new(
         job_scheduler: Arc<dyn JobSchedulerPort>,
         project_repo: R,
         subtitle_source: V,
-        artifact_index: I,
+        storage_uow: T,
         artifact_store: S,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
@@ -45,7 +45,7 @@ impl<
             job_scheduler,
             project_repo,
             subtitle_source,
-            artifact_index,
+            storage_uow,
             artifact_store,
             target_dir_base,
         }
@@ -121,8 +121,8 @@ impl<
         let import_use_case = ImportYoutubeSubtitlesUseCase::new(
             Arc::new(self.project_repo.clone()),
             Arc::new(self.subtitle_source.clone()),
-            Arc::new(self.artifact_index.clone()),
             Arc::new(self.artifact_store.clone()),
+            Arc::new(self.storage_uow.clone()),
         );
 
         match import_use_case
