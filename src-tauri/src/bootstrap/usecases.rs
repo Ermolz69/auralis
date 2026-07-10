@@ -3,7 +3,7 @@ use tauri::AppHandle;
 use tauri::Manager;
 
 use crate::state::{
-    RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository, RuntimeTransactionGateway,
+    RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository, RuntimeStorageUnitOfWork,
 };
 use adapters_ffmpeg::ffprobe::FfprobeAdapter;
 use adapters_ytdlp::ytdlp::YtDlpAdapter;
@@ -24,7 +24,6 @@ pub struct AppUseCases {
         RuntimeProjectRepository,
         FfprobeAdapter,
         YtDlpAdapter,
-        RuntimeArtifactIndex,
         RuntimeArtifactStore,
     >,
     pub create_project: CreateProjectUseCase<RuntimeProjectRepository>,
@@ -32,7 +31,6 @@ pub struct AppUseCases {
         RuntimeProjectRepository,
         YtDlpAdapter,
         YtDlpAdapter,
-        RuntimeArtifactIndex,
         RuntimeArtifactStore,
     >,
     pub get_project: GetProjectUseCase<RuntimeProjectRepository>,
@@ -40,7 +38,6 @@ pub struct AppUseCases {
     pub start_mock_pipeline: StartMockPipelineUseCase<
         RuntimeProjectRepository,
         YtDlpAdapter,
-        RuntimeArtifactIndex,
         RuntimeArtifactStore,
     >,
 }
@@ -50,7 +47,7 @@ pub fn setup_usecases(
     project_repo: RuntimeProjectRepository,
     artifact_index: RuntimeArtifactIndex,
     artifact_store: RuntimeArtifactStore,
-    transaction_gateway: RuntimeTransactionGateway,
+    storage_uow: RuntimeStorageUnitOfWork,
     job_scheduler: Arc<dyn JobSchedulerPort>,
 ) {
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
@@ -71,9 +68,8 @@ pub fn setup_usecases(
             project_repo.clone(),
             probe.clone(),
             job_scheduler.clone(),
-            transaction_gateway.clone(),
+            storage_uow.clone(),
             ytdlp_adapter.clone(),
-            artifact_index.clone(),
             artifact_store.clone(),
             target_dir_base.clone(),
         ),
@@ -82,23 +78,21 @@ pub fn setup_usecases(
             project_repo.clone(),
             ytdlp_adapter.clone(),
             job_scheduler.clone(),
-            transaction_gateway.clone(),
+            storage_uow.clone(),
             ytdlp_adapter.clone(),
-            artifact_index.clone(),
             artifact_store.clone(),
             target_dir_base.clone(),
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         delete_project: DeleteProjectUseCase::new(
             artifact_index.clone(),
-            transaction_gateway.clone(),
+            storage_uow.clone(),
         ),
         start_mock_pipeline: StartMockPipelineUseCase::new(
             project_repo.clone(),
             job_scheduler.clone(),
-            transaction_gateway.clone(),
+            storage_uow.clone(),
             ytdlp_adapter.clone(),
-            artifact_index.clone(),
             artifact_store.clone(),
             target_dir_base.clone(),
         ),

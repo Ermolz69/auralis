@@ -90,8 +90,10 @@ impl ArtifactStore for LocalArtifactStore {
 
     async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError> {
         match &artifact.location {
-            domain::media::ArtifactLocation::LocalPath(path) => {
-                self.resolve_legacy_local_path(path)
+            domain::media::ArtifactLocation::LocalPath(_) => {
+                Err(PortError::Unsupported {
+                    message: "Legacy external artifacts cannot be resolved through general resolve_artifact. Use a migration service.".to_string(),
+                })
             }
             domain::media::ArtifactLocation::StorageKey(key) => self.resolve_storage_key(key),
         }

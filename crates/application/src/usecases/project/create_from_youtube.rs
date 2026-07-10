@@ -25,7 +25,6 @@ pub struct CreateProjectFromYoutubeUseCase<
     R: ProjectRepository + Clone + 'static,
     V: VideoSourcePort + Clone,
     SSub: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
     SStore: ArtifactStore + Clone + 'static,
 > {
     project_repo: R,
@@ -33,7 +32,6 @@ pub struct CreateProjectFromYoutubeUseCase<
     job_scheduler: Arc<dyn JobSchedulerPort>,
     storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: SSub,
-    artifact_index: I,
     artifact_store: SStore,
     target_dir_base: std::path::PathBuf,
 }
@@ -42,9 +40,8 @@ impl<
     R: ProjectRepository + Clone + 'static,
     V: VideoSourcePort + Clone,
     SSub: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
     SStore: ArtifactStore + Clone + 'static,
-> CreateProjectFromYoutubeUseCase<R, V, SSub, I, SStore>
+> CreateProjectFromYoutubeUseCase<R, V, SSub,  SStore>
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -53,8 +50,7 @@ impl<
         job_scheduler: Arc<dyn JobSchedulerPort>,
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: SSub,
-        artifact_index: I,
-        artifact_store: SStore,
+            artifact_store: SStore,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
@@ -63,8 +59,7 @@ impl<
             job_scheduler,
             storage_uow,
             subtitle_source,
-            artifact_index,
-            artifact_store,
+                        artifact_store,
             target_dir_base,
         }
     }

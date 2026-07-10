@@ -53,3 +53,34 @@ pub trait StorageUnitOfWork: Send + Sync {
         command: CommitJobUpdate,
     ) -> Result<(), PortError>;
 }
+
+#[async_trait]
+impl<T: ?Sized + StorageUnitOfWork> StorageUnitOfWork for std::sync::Arc<T> {
+    async fn commit_transcript_import(
+        &self,
+        command: CommitTranscriptImport,
+    ) -> Result<(), PortError> {
+        (**self).commit_transcript_import(command).await
+    }
+
+    async fn commit_media_download(
+        &self,
+        command: CommitMediaDownload,
+    ) -> Result<(), PortError> {
+        (**self).commit_media_download(command).await
+    }
+
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<(), PortError> {
+        (**self).commit_project_delete(command).await
+    }
+
+    async fn commit_job_update(
+        &self,
+        command: CommitJobUpdate,
+    ) -> Result<(), PortError> {
+        (**self).commit_job_update(command).await
+    }
+}

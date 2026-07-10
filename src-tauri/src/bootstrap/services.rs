@@ -1,5 +1,5 @@
 use crate::state::{
-    RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository, RuntimeTransactionGateway,
+    RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository, RuntimeStorageUnitOfWork,
 };
 use jobs::manager::JobManager;
 use ports::job_scheduler::{JobLifecycleEvent, JobSchedulerPort};
@@ -11,7 +11,7 @@ pub struct RuntimeServices {
     pub job_repo: Arc<dyn JobRepository>,
     pub artifact_index: RuntimeArtifactIndex,
     pub artifact_store: RuntimeArtifactStore,
-    pub transaction_gateway: RuntimeTransactionGateway,
+    pub storage_uow: RuntimeStorageUnitOfWork,
 }
 
 pub fn build_job_scheduler(

@@ -217,3 +217,45 @@ impl ports::artifact_index::ArtifactIndex for InMemoryArtifactIndex {
 
 
 
+
+use ports::transaction::{StorageUnitOfWork, CommitTranscriptImport, CommitMediaDownload, CommitProjectDelete, CommitJobUpdate};
+
+#[derive(Clone)]
+pub struct InMemoryStorageUnitOfWork {
+    project_repo: Arc<InMemoryProjectRepository>,
+    job_repo: Arc<InMemoryJobRepository>,
+}
+
+impl InMemoryStorageUnitOfWork {
+    pub fn new(
+        project_repo: Arc<InMemoryProjectRepository>,
+        job_repo: Arc<InMemoryJobRepository>,
+    ) -> Self {
+        Self {
+            project_repo,
+            job_repo,
+        }
+    }
+}
+
+#[async_trait]
+impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
+    async fn commit_transcript_import(&self, command: CommitTranscriptImport) -> Result<(), PortError> {
+        self.project_repo.save(&command.project).await?;
+        Ok(())
+    }
+
+    async fn commit_media_download(&self, command: CommitMediaDownload) -> Result<(), PortError> {
+        Ok(())
+    }
+
+    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
+        self.project_repo.delete(&command.project_id).await?;
+        Ok(())
+    }
+
+    async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
+        self.job_repo.save(&command.job).await?;
+        Ok(())
+    }
+}

@@ -30,7 +30,6 @@ pub struct ImportLocalMediaUseCase<
     R: ProjectRepository + Clone + 'static,
     P: MediaProbePort + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
 > {
     project_repo: R,
@@ -38,7 +37,6 @@ pub struct ImportLocalMediaUseCase<
     job_scheduler: Arc<dyn JobSchedulerPort>,
     storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: V,
-    artifact_index: I,
     artifact_store: S,
     target_dir_base: std::path::PathBuf,
 }
@@ -47,9 +45,8 @@ impl<
     R: ProjectRepository + Clone + 'static,
     P: MediaProbePort + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
-    I: ArtifactIndex + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
-> ImportLocalMediaUseCase<R, P, V, I, S>
+> ImportLocalMediaUseCase<R, P, V,  S>
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -58,8 +55,7 @@ impl<
         job_scheduler: Arc<dyn JobSchedulerPort>,
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: V,
-        artifact_index: I,
-        artifact_store: S,
+            artifact_store: S,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
@@ -68,8 +64,7 @@ impl<
             job_scheduler,
             storage_uow,
             subtitle_source,
-            artifact_index,
-            artifact_store,
+                        artifact_store,
             target_dir_base,
         }
     }

@@ -32,7 +32,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(services.project_repo.clone());
     app.manage(services.artifact_index.clone());
     app.manage(services.artifact_store.clone());
-    app.manage(services.transaction_gateway.clone());
+    app.manage(services.storage_uow.clone());
 
     // 5. Build and register AppUseCases
     usecases::setup_usecases(
@@ -40,7 +40,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         services.project_repo,
         services.artifact_index,
         services.artifact_store,
-        services.transaction_gateway,
+        services.storage_uow,
         job_manager,
     );
 

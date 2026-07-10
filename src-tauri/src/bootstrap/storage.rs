@@ -3,7 +3,7 @@ use adapters_storage::local::artifact_store::LocalArtifactStore;
 use adapters_storage::memory::{InMemoryArtifactIndex, InMemoryProjectRepository};
 use adapters_storage::sqlite::{
     SqliteArtifactIndex, SqliteJobRepository, SqliteOutboxRepository, SqliteProjectRepository,
-    SqliteTransactionGateway,
+    SqliteStorageUnitOfWork,
 };
 use ports::repository::JobRepository;
 use std::sync::Arc;
@@ -24,8 +24,8 @@ pub fn setup_storage(
                 artifact_store: Arc::new(LocalArtifactStore::new(
                     std::env::temp_dir().join("auralis-memory-artifacts"),
                 )),
-                transaction_gateway: Arc::new(
-                    adapters_storage::memory::InMemoryTransactionGateway::new(
+                storage_uow: Arc::new(
+                    adapters_storage::memory::InMemoryStorageUnitOfWork::new(
                         project_repo,
                         job_repo,
                     ),
@@ -64,8 +64,8 @@ pub fn setup_storage(
 
         let outbox_repo = SqliteOutboxRepository::new(pool.clone());
 
-        let tx_gateway: crate::state::RuntimeTransactionGateway =
-            Arc::new(SqliteTransactionGateway::new(pool.clone()));
+        let tx_gateway: crate::state::RuntimeStorageUnitOfWork =
+            Arc::new(SqliteStorageUnitOfWork::new(pool.clone()));
 
         Ok((
             RuntimeServices {
@@ -73,7 +73,7 @@ pub fn setup_storage(
                 job_repo,
                 artifact_index: idx,
                 artifact_store: store,
-                transaction_gateway: tx_gateway,
+                storage_uow: tx_gateway,
             },
             Some(outbox_repo),
         ))

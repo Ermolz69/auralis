@@ -48,6 +48,10 @@ pub async fn resolve_artifact_path_cmd(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Artifact not found".to_string())?;
 
+    if let domain::media::ArtifactLocation::LocalPath(_) = artifact.location {
+        return Err("Legacy external artifacts cannot be exposed to UI".to_string());
+    }
+
     let path = artifact_store
         .resolve_artifact(&artifact)
         .await

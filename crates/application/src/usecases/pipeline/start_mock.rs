@@ -105,6 +105,7 @@ impl<
             self.job_scheduler.clone(),
             self.project_repo.clone(),
             self.subtitle_source.clone(),
+            self.storage_uow.clone(),
             self.artifact_store.clone(),
             self.target_dir_base.clone(),
         );
