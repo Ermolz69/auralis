@@ -4,7 +4,6 @@ use crate::usecases::project::create::{CreateProjectRequest, CreateProjectUseCas
 use crate::usecases::project::import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase};
 use domain::media::MediaSource;
 use domain::project::Project;
-use ports::artifact_index::ArtifactIndex;
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::repository::ProjectRepository;
 use ports::source::{SubtitleSourcePort, VideoSourcePort};
@@ -41,7 +40,7 @@ impl<
     V: VideoSourcePort + Clone,
     SSub: SubtitleSourcePort + Clone + 'static,
     SStore: ArtifactStore + Clone + 'static,
-> CreateProjectFromYoutubeUseCase<R, V, SSub,  SStore>
+> CreateProjectFromYoutubeUseCase<R, V, SSub, SStore>
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -50,7 +49,7 @@ impl<
         job_scheduler: Arc<dyn JobSchedulerPort>,
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: SSub,
-            artifact_store: SStore,
+        artifact_store: SStore,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
@@ -59,7 +58,7 @@ impl<
             job_scheduler,
             storage_uow,
             subtitle_source,
-                        artifact_store,
+            artifact_store,
             target_dir_base,
         }
     }
@@ -96,7 +95,7 @@ impl<
             self.job_scheduler.clone(),
             self.storage_uow.clone(),
             self.subtitle_source.clone(),
-                        self.artifact_store.clone(),
+            self.artifact_store.clone(),
             self.target_dir_base.clone(),
         );
         let req3 = StartMockPipelineRequest {

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use domain::job::{Job, JobError, JobId as DomainJobId, JobKind, JobStatus};
+use domain::job::{Job, JobId as DomainJobId, JobKind, JobStatus};
 use domain::project::ProjectId as DomainProjectId;
 
 use async_trait::async_trait;
@@ -73,12 +73,12 @@ impl JobManager {
         if let Some(job) = self.jobs.read().await.get(job_id) {
             return Some(job.clone());
         }
-        
+
         if let Ok(Some(job)) = self.repo.get(job_id).await {
             self.jobs.write().await.insert(job_id.clone(), job.clone());
             return Some(job);
         }
-        
+
         None
     }
 
@@ -95,7 +95,10 @@ impl JobManager {
         // Merge active jobs from cache if any aren't returned by list_recent
         let cache = self.jobs.read().await;
         for (id, active_job) in cache.iter() {
-            if matches!(active_job.status(), domain::job::JobStatus::Pending | domain::job::JobStatus::Running) {
+            if matches!(
+                active_job.status(),
+                domain::job::JobStatus::Pending | domain::job::JobStatus::Running
+            ) {
                 if !jobs.iter().any(|j| j.id() == id) {
                     jobs.push(active_job.clone());
                 } else {
@@ -112,9 +115,12 @@ impl JobManager {
     }
 
     pub async fn cancel_job_internal(&self, job_id: &DomainJobId) -> Result<Job, PortError> {
-        let mut job = self.get_job_internal(job_id).await.ok_or_else(|| {
-            PortError::NotFound { resource: format!("Job {}", job_id) }
-        })?;
+        let mut job = self
+            .get_job_internal(job_id)
+            .await
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Job {}", job_id),
+            })?;
 
         let should_cancel = matches!(job.status(), JobStatus::Pending | JobStatus::Running);
         if should_cancel {

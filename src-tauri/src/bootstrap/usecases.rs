@@ -35,11 +35,8 @@ pub struct AppUseCases {
     >,
     pub get_project: GetProjectUseCase<RuntimeProjectRepository>,
     pub delete_project: DeleteProjectUseCase,
-    pub start_mock_pipeline: StartMockPipelineUseCase<
-        RuntimeProjectRepository,
-        YtDlpAdapter,
-        RuntimeArtifactStore,
-    >,
+    pub start_mock_pipeline:
+        StartMockPipelineUseCase<RuntimeProjectRepository, YtDlpAdapter, RuntimeArtifactStore>,
 }
 
 pub fn setup_usecases(
@@ -84,10 +81,7 @@ pub fn setup_usecases(
             target_dir_base.clone(),
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
-        delete_project: DeleteProjectUseCase::new(
-            artifact_index.clone(),
-            storage_uow.clone(),
-        ),
+        delete_project: DeleteProjectUseCase::new(artifact_index.clone(), storage_uow.clone()),
         start_mock_pipeline: StartMockPipelineUseCase::new(
             project_repo.clone(),
             job_scheduler.clone(),

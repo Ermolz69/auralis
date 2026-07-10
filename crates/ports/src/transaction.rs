@@ -43,15 +43,9 @@ pub trait StorageUnitOfWork: Send + Sync {
         command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError>;
 
-    async fn commit_project_delete(
-        &self,
-        command: CommitProjectDelete,
-    ) -> Result<(), PortError>;
+    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError>;
 
-    async fn commit_job_update(
-        &self,
-        command: CommitJobUpdate,
-    ) -> Result<(), PortError>;
+    async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError>;
 }
 
 #[async_trait]
@@ -70,17 +64,11 @@ impl<T: ?Sized + StorageUnitOfWork> StorageUnitOfWork for std::sync::Arc<T> {
         (**self).commit_staged_artifact_write(command).await
     }
 
-    async fn commit_project_delete(
-        &self,
-        command: CommitProjectDelete,
-    ) -> Result<(), PortError> {
+    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
         (**self).commit_project_delete(command).await
     }
 
-    async fn commit_job_update(
-        &self,
-        command: CommitJobUpdate,
-    ) -> Result<(), PortError> {
+    async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
         (**self).commit_job_update(command).await
     }
 }

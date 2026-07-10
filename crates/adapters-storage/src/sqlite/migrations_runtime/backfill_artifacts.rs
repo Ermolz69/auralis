@@ -1,4 +1,4 @@
-use domain::media::{Artifact, ArtifactLocation};
+use domain::media::ArtifactLocation;
 use ports::error::PortError;
 use sqlx::{Row, SqlitePool};
 
@@ -15,7 +15,16 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
         let project_id: String = row.get("id");
         let artifacts_json: String = row.get("artifacts_json");
 
-        let artifacts: Vec<Artifact> = match serde_json::from_str(&artifacts_json) {
+        #[derive(serde::Deserialize)]
+        struct LegacyArtifact {
+            id: domain::media::ArtifactId,
+            kind: domain::media::ArtifactKind,
+            location: domain::media::ArtifactLocation,
+            size_bytes: Option<u64>,
+            created_at: Option<chrono::DateTime<chrono::Utc>>,
+        }
+
+        let artifacts: Vec<LegacyArtifact> = match serde_json::from_str(&artifacts_json) {
             Ok(a) => a,
             Err(e) => {
                 println!(
@@ -37,13 +46,19 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
                 ArtifactLocation::StorageKey(k) => ("StorageKey".to_string(), k.clone()),
             };
 
-            let created_at = chrono::Utc::now().to_rfc3339();
+            let created_at = artifact
+                .created_at
+                .unwrap_or_else(chrono::Utc::now)
+                .to_rfc3339();
+            let updated_at = created_at.clone();
+            let ready_at = created_at.clone();
+            let state = "ready".to_string();
 
             sqlx::query(
                 r#"
                 INSERT OR IGNORE INTO artifacts (
-                    id, project_id, kind, location_kind, location_value, size_bytes, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 "#,
             )
             .bind(artifact.id.to_string())
@@ -52,7 +67,10 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
             .bind(location_kind)
             .bind(location_value)
             .bind(artifact.size_bytes.map(|s| s as i64))
+            .bind(state)
             .bind(created_at)
+            .bind(updated_at)
+            .bind(ready_at)
             .execute(pool)
             .await
             .map_err(|e| PortError::Unexpected {

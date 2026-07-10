@@ -5,8 +5,8 @@ use ports::storage::ArtifactStore;
 use ports::transaction::{CommitStagedArtifactWrite, StorageUnitOfWork};
 
 use crate::error::ApplicationError;
-use tempfile::NamedTempFile;
 use std::io::Write;
+use tempfile::NamedTempFile;
 
 pub struct WriteProjectArtifactRequest {
     pub project_id: ProjectId,
@@ -55,9 +55,11 @@ where
         let mut temp_file = NamedTempFile::new().map_err(|e| PortError::Unexpected {
             message: format!("Failed to create temp file: {}", e),
         })?;
-        temp_file.write_all(&request.data).map_err(|e| PortError::Unexpected {
-            message: format!("Failed to write to temp file: {}", e),
-        })?;
+        temp_file
+            .write_all(&request.data)
+            .map_err(|e| PortError::Unexpected {
+                message: format!("Failed to write to temp file: {}", e),
+            })?;
         let temp_path = temp_file.into_temp_path();
 
         // 2. Stage the file
@@ -72,7 +74,8 @@ where
             .await?;
 
         // 3. Commit the transaction to persist artifact & enqueue finalize outbox message
-        let commit_res = self.storage_uow
+        let commit_res = self
+            .storage_uow
             .commit_staged_artifact_write(CommitStagedArtifactWrite {
                 project_id: request.project_id.clone(),
                 artifact: staged.artifact.clone(),
@@ -83,7 +86,10 @@ where
             .await;
 
         if let Err(e) = commit_res {
-            let _ = self.artifact_store.delete_storage_key(&staged.staging_key).await;
+            let _ = self
+                .artifact_store
+                .delete_storage_key(&staged.staging_key)
+                .await;
             return Err(ApplicationError::Port(e));
         }
 

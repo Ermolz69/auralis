@@ -10,6 +10,8 @@ pub trait ArtifactIndex: Send + Sync {
 
     async fn get(&self, id: &ArtifactId) -> Result<Option<Artifact>, PortError>;
 
+    async fn check_exists(&self, id: &ArtifactId) -> Result<bool, PortError>;
+
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Artifact>, PortError>;
 
     async fn list_by_project_and_kind(
@@ -41,6 +43,10 @@ where
 
     async fn get(&self, id: &ArtifactId) -> Result<Option<Artifact>, PortError> {
         (**self).get(id).await
+    }
+
+    async fn check_exists(&self, id: &ArtifactId) -> Result<bool, PortError> {
+        (**self).check_exists(id).await
     }
 
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Artifact>, PortError> {

@@ -7,7 +7,7 @@ use domain::outbox::{OutboxMessage, OutboxPayload};
 use domain::project::Project;
 use ports::error::PortError;
 use ports::transaction::{
-    CommitJobUpdate, CommitStagedArtifactWrite, CommitProjectDelete, CommitTranscriptImport,
+    CommitJobUpdate, CommitProjectDelete, CommitStagedArtifactWrite, CommitTranscriptImport,
     StorageUnitOfWork,
 };
 
@@ -209,7 +209,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         })?;
 
         save_project(&mut tx, &command.project).await?;
-        save_artifact(&mut tx, &command.project.id(), &command.artifact).await?;
+        save_artifact(&mut tx, command.project.id(), &command.artifact).await?;
 
         let finalize_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
             artifact_id: command.artifact.id.clone(),
@@ -263,10 +263,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_project_delete(
-        &self,
-        command: CommitProjectDelete,
-    ) -> Result<(), PortError> {
+    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
         let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to begin transaction: {}", e),
         })?;
@@ -301,10 +298,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_job_update(
-        &self,
-        command: CommitJobUpdate,
-    ) -> Result<(), PortError> {
+    async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
         let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to begin transaction: {}", e),
         })?;

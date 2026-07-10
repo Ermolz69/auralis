@@ -16,20 +16,23 @@ pub fn setup_storage(
         println!("WARNING: Running with IN-MEMORY storage adapter! Data will be lost on exit.");
         let project_repo = Arc::new(InMemoryProjectRepository::new());
         let job_repo = Arc::new(adapters_storage::memory::InMemoryJobRepository::new());
+        let artifact_index = Arc::new(InMemoryArtifactIndex::new());
+        let artifact_store = Arc::new(LocalArtifactStore::new(
+            std::env::temp_dir().join("auralis-memory-artifacts"),
+        ));
+
         Ok((
             RuntimeServices {
                 project_repo: project_repo.clone(),
                 job_repo: job_repo.clone(),
-                artifact_index: Arc::new(InMemoryArtifactIndex::new()),
-                artifact_store: Arc::new(LocalArtifactStore::new(
-                    std::env::temp_dir().join("auralis-memory-artifacts"),
+                artifact_index: artifact_index.clone(),
+                artifact_store: artifact_store.clone(),
+                storage_uow: Arc::new(adapters_storage::memory::InMemoryStorageUnitOfWork::new(
+                    project_repo,
+                    job_repo,
+                    artifact_index,
+                    artifact_store,
                 )),
-                storage_uow: Arc::new(
-                    adapters_storage::memory::InMemoryStorageUnitOfWork::new(
-                        project_repo,
-                        job_repo,
-                    ),
-                ),
             },
             None, // No outbox worker in memory mode for now
         ))
@@ -59,8 +62,10 @@ pub fn setup_storage(
             );
         tauri::async_runtime::block_on(job_use_case.execute())?;
 
+        let artifacts_dir = app_data_dir.join("artifacts");
+        std::fs::create_dir_all(&artifacts_dir)?;
         let store: crate::state::RuntimeArtifactStore =
-            Arc::new(LocalArtifactStore::new(app_data_dir.join("artifacts")));
+            Arc::new(LocalArtifactStore::new(artifacts_dir));
 
         let outbox_repo = SqliteOutboxRepository::new(pool.clone());
 

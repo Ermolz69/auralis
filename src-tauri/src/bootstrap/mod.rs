@@ -17,11 +17,12 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let (services, outbox_repo_opt) = storage::setup_storage(app)?;
 
     if let Some(outbox_repo) = outbox_repo_opt {
-        workers::spawn_outbox_worker(
+        let outbox_shutdown = workers::spawn_outbox_worker(
             outbox_repo,
             services.artifact_store.clone(),
             services.artifact_index.clone(),
         );
+        app.manage(outbox_shutdown);
     }
 
     // 3. Build Job Scheduler

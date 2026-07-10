@@ -44,7 +44,7 @@ impl<
         job_scheduler: Arc<dyn JobSchedulerPort>,
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: V,
-        
+
         artifact_store: S,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
@@ -53,7 +53,7 @@ impl<
             job_scheduler,
             storage_uow,
             subtitle_source,
-            
+
             artifact_store,
             target_dir_base,
         }
@@ -85,11 +85,12 @@ impl<
         self.project_repo.save(&project).await?;
 
         let commit_cmd = CommitJobUpdate { job: job.clone() };
-        self.storage_uow.commit_job_update(commit_cmd).await.map_err(|e| {
-            ApplicationError::InvalidOperation {
+        self.storage_uow
+            .commit_job_update(commit_cmd)
+            .await
+            .map_err(|e| ApplicationError::InvalidOperation {
                 message: format!("Failed to commit job update: {}", e),
-            }
-        })?;
+            })?;
 
         // 4. Enqueue the persisted job for asynchronous processing
         let job = self
@@ -123,6 +124,7 @@ mod tests {
     use adapters_storage::memory::InMemoryProjectRepository;
     use async_trait::async_trait;
     use domain::job::JobStatus;
+
     use ports::error::PortError;
 
     #[derive(Clone)]
@@ -146,50 +148,6 @@ mod tests {
             Err(PortError::Unsupported {
                 message: "Not implemented".into(),
             })
-        }
-    }
-
-    #[derive(Clone)]
-    struct MockArtifactIndex;
-
-    #[async_trait]
-    impl ArtifactIndex for MockArtifactIndex {
-        async fn add(
-            &self,
-            _project_id: &ProjectId,
-            _artifact: &domain::media::Artifact,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn get(
-            &self,
-            _id: &domain::media::ArtifactId,
-        ) -> Result<Option<domain::media::Artifact>, PortError> {
-            Ok(None)
-        }
-        async fn list_by_project(
-            &self,
-            _project_id: &ProjectId,
-        ) -> Result<Vec<domain::media::Artifact>, PortError> {
-            Ok(vec![])
-        }
-        async fn list_by_project_and_kind(
-            &self,
-            _project_id: &ProjectId,
-            _kind: domain::media::ArtifactKind,
-        ) -> Result<Vec<domain::media::Artifact>, PortError> {
-            Ok(vec![])
-        }
-        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn update_state(
-            &self,
-            _id: &domain::media::ArtifactId,
-            _state: domain::media::ArtifactState,
-            _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
-        ) -> Result<(), PortError> {
-            Ok(())
         }
     }
 
@@ -218,7 +176,6 @@ mod tests {
             job_scheduler.clone(),
             tx_gateway.clone(),
             MockSubtitleSource,
-            MockArtifactIndex,
             MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
@@ -230,11 +187,10 @@ mod tests {
 
         assert_eq!(response.job.status, JobStatus::Running); // MockJobScheduler sets to Running
 
-        // Verify transaction gateway received the save project and save job
-        let projects_saved = tx_gateway.projects_saved.lock().await;
-        assert_eq!(projects_saved.len(), 1);
+        // Verify project_repo received the saved project
+        let saved_project = project_repo.get(project.id()).await.unwrap().unwrap();
         assert_eq!(
-            projects_saved[0].status(),
+            saved_project.status(),
             &domain::project::ProjectStatus::Processing
         );
 
@@ -266,7 +222,6 @@ mod tests {
             job_scheduler.clone(),
             tx_gateway.clone(),
             MockSubtitleSource,
-            MockArtifactIndex,
             MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
@@ -299,7 +254,6 @@ mod tests {
             job_scheduler.clone(),
             tx_gateway.clone(),
             MockSubtitleSource,
-            MockArtifactIndex,
             MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
@@ -337,7 +291,6 @@ mod tests {
             job_scheduler.clone(),
             tx_gateway.clone(),
             MockSubtitleSource,
-            MockArtifactIndex,
             MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );

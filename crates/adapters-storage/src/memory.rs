@@ -159,10 +159,16 @@ impl ports::artifact_index::ArtifactIndex for InMemoryArtifactIndex {
         id: &domain::media::ArtifactId,
     ) -> Result<Option<domain::media::Artifact>, PortError> {
         let lock = self.artifacts.lock().unwrap();
-        Ok(lock
+        let artifact = lock
             .iter()
-            .find(|(_, a)| &a.id == id)
-            .map(|(_, a)| a.clone()))
+            .find(|(_, a)| a.id == *id && a.state == domain::media::ArtifactState::Ready)
+            .map(|(_, a)| a.clone());
+        Ok(artifact)
+    }
+
+    async fn check_exists(&self, id: &domain::media::ArtifactId) -> Result<bool, PortError> {
+        let lock = self.artifacts.lock().unwrap();
+        Ok(lock.iter().any(|(_, a)| &a.id == id))
     }
 
     async fn list_by_project(
@@ -214,38 +220,61 @@ impl ports::artifact_index::ArtifactIndex for InMemoryArtifactIndex {
     }
 }
 
-
-
-
-
-use ports::transaction::{StorageUnitOfWork, CommitTranscriptImport, CommitStagedArtifactWrite, CommitProjectDelete, CommitJobUpdate};
+use ports::transaction::{
+    CommitJobUpdate, CommitProjectDelete, CommitStagedArtifactWrite, CommitTranscriptImport,
+    StorageUnitOfWork,
+};
 
 #[derive(Clone)]
 pub struct InMemoryStorageUnitOfWork {
     project_repo: Arc<InMemoryProjectRepository>,
     job_repo: Arc<InMemoryJobRepository>,
+    artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
+    artifact_store: Arc<dyn ports::storage::ArtifactStore>,
 }
 
 impl InMemoryStorageUnitOfWork {
     pub fn new(
         project_repo: Arc<InMemoryProjectRepository>,
         job_repo: Arc<InMemoryJobRepository>,
+        artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
+        artifact_store: Arc<dyn ports::storage::ArtifactStore>,
     ) -> Self {
         Self {
             project_repo,
             job_repo,
+            artifact_index,
+            artifact_store,
         }
     }
 }
 
 #[async_trait]
 impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
-    async fn commit_transcript_import(&self, command: CommitTranscriptImport) -> Result<(), PortError> {
+    async fn commit_transcript_import(
+        &self,
+        command: CommitTranscriptImport,
+    ) -> Result<(), PortError> {
         self.project_repo.save(&command.project).await?;
         Ok(())
     }
 
-    async fn commit_staged_artifact_write(&self, command: CommitStagedArtifactWrite) -> Result<(), PortError> {
+    async fn commit_staged_artifact_write(
+        &self,
+        command: CommitStagedArtifactWrite,
+    ) -> Result<(), PortError> {
+        // Synchronously finalize artifact for dev mode
+        self.artifact_store
+            .finalize_staged_artifact(&command.staging_key, &command.final_key)
+            .await?;
+
+        let mut artifact = command.artifact;
+        artifact.state = domain::media::ArtifactState::Ready;
+
+        self.artifact_index
+            .add(&command.project_id, &artifact)
+            .await?;
+
         Ok(())
     }
 

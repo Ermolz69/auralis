@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use domain::project::{Project, ProjectId};
-use ports::artifact_index::ArtifactIndex;
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::media::MediaProbePort;
 use ports::repository::ProjectRepository;
@@ -46,7 +45,7 @@ impl<
     P: MediaProbePort + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
-> ImportLocalMediaUseCase<R, P, V,  S>
+> ImportLocalMediaUseCase<R, P, V, S>
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -55,7 +54,7 @@ impl<
         job_scheduler: Arc<dyn JobSchedulerPort>,
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: V,
-            artifact_store: S,
+        artifact_store: S,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
@@ -64,7 +63,7 @@ impl<
             job_scheduler,
             storage_uow,
             subtitle_source,
-                        artifact_store,
+            artifact_store,
             target_dir_base,
         }
     }
@@ -97,7 +96,7 @@ impl<
             self.job_scheduler.clone(),
             self.storage_uow.clone(),
             self.subtitle_source.clone(),
-                        self.artifact_store.clone(),
+            self.artifact_store.clone(),
             self.target_dir_base.clone(),
         );
 
@@ -152,50 +151,6 @@ mod tests {
         }
     }
 
-    #[derive(Clone)]
-    struct MockArtifactIndex;
-
-    #[async_trait]
-    impl ports::artifact_index::ArtifactIndex for MockArtifactIndex {
-        async fn add(
-            &self,
-            _project_id: &domain::project::ProjectId,
-            _artifact: &domain::media::Artifact,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn get(
-            &self,
-            _id: &domain::media::ArtifactId,
-        ) -> Result<Option<domain::media::Artifact>, PortError> {
-            Ok(None)
-        }
-        async fn list_by_project(
-            &self,
-            _project_id: &domain::project::ProjectId,
-        ) -> Result<Vec<domain::media::Artifact>, PortError> {
-            Ok(vec![])
-        }
-        async fn list_by_project_and_kind(
-            &self,
-            _project_id: &domain::project::ProjectId,
-            _kind: domain::media::ArtifactKind,
-        ) -> Result<Vec<domain::media::Artifact>, PortError> {
-            Ok(vec![])
-        }
-        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn update_state(
-            &self,
-            _id: &domain::media::ArtifactId,
-            _state: domain::media::ArtifactState,
-            _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-    }
-
     use crate::test_utils::MockArtifactStore;
 
     #[tokio::test]
@@ -210,7 +165,7 @@ mod tests {
             job_scheduler.clone(),
             tx_gateway.clone(),
             MockSubtitleSource,
-                        MockArtifactStore,
+            MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -234,9 +189,8 @@ mod tests {
             response.job.status == JobStatus::Pending || response.job.status == JobStatus::Running
         );
 
-        let projects_saved = tx_gateway.projects_saved.lock().await;
-        assert_eq!(projects_saved.len(), 1);
-        assert_eq!(*projects_saved[0].status(), ProjectStatus::Processing);
+        let saved_project = repo.get(&project_id).await.unwrap().unwrap();
+        assert_eq!(*saved_project.status(), ProjectStatus::Processing);
     }
 
     #[tokio::test]
@@ -250,7 +204,7 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-                        MockArtifactStore,
+            MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -278,7 +232,7 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-                        MockArtifactStore,
+            MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -322,7 +276,7 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-                        MockArtifactStore,
+            MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -357,7 +311,7 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-                        MockArtifactStore,
+            MockArtifactStore,
             std::path::PathBuf::from("/tmp"),
         );
 

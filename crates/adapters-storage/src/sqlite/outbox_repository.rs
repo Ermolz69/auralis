@@ -22,6 +22,26 @@ impl SqliteOutboxRepository {
 #[async_trait]
 impl OutboxRepository for SqliteOutboxRepository {
     async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError> {
+        // Reclaim stale locks: messages in 'processing' state for more than 5 minutes
+        sqlx::query(
+            r#"
+            UPDATE outbox_messages
+            SET status = 'pending',
+                attempts = attempts + 1,
+                last_error = 'Timeout during processing (stale lock reclaimed)',
+                locked_at = NULL,
+                locked_by = NULL,
+                next_attempt_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+            WHERE status = 'processing' 
+              AND locked_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-5 minutes')
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| PortError::Io {
+            message: format!("Failed to reclaim stale outbox locks: {}", e),
+        })?;
+
         let rows = sqlx::query_as::<_, OutboxRow>(
             r#"
             SELECT 

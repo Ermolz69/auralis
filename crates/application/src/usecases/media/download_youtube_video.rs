@@ -36,12 +36,7 @@ where
     S: ArtifactStore,
     T: StorageUnitOfWork,
 {
-    pub fn new(
-        project_repo: P,
-        video_source: V,
-        artifact_store: S,
-        storage_uow: T,
-    ) -> Self {
+    pub fn new(project_repo: P, video_source: V, artifact_store: S, storage_uow: T) -> Self {
         Self {
             project_repo,
             video_source,
@@ -127,7 +122,11 @@ where
             temp_path_to_delete: Some(temp_path),
         };
 
-        if let Err(e) = self.storage_uow.commit_staged_artifact_write(commit_cmd).await {
+        if let Err(e) = self
+            .storage_uow
+            .commit_staged_artifact_write(commit_cmd)
+            .await
+        {
             // DB failed, we can optionally clean up the staging file
             let _ = self
                 .artifact_store
@@ -208,6 +207,23 @@ mod tests {
                 final_key: format!("final.{}", ext),
                 size_bytes: 1024,
             })
+        }
+
+        async fn import_external_file(
+            &self,
+            _project_id: &ProjectId,
+            _kind: ArtifactKind,
+            _source_path: &std::path::Path,
+            _filename_hint: Option<&str>,
+        ) -> Result<ports::storage::StagedArtifact, PortError> {
+            unimplemented!()
+        }
+
+        async fn cleanup_stale_staging(
+            &self,
+            _max_age: std::time::Duration,
+        ) -> Result<(), PortError> {
+            unimplemented!()
         }
 
         async fn finalize_staged_artifact(
@@ -296,7 +312,7 @@ mod tests {
             repo,
             source_port,
             artifact_store,
-            storage_uow,
+            transaction_gateway,
         );
 
         let _temp_guard = tempfile::tempdir().unwrap();

@@ -37,11 +37,12 @@ impl DeleteProjectUseCase {
             artifacts,
         };
 
-        self.storage_uow.commit_project_delete(commit).await.map_err(|e| {
-            ApplicationError::InvalidOperation {
+        self.storage_uow
+            .commit_project_delete(commit)
+            .await
+            .map_err(|e| ApplicationError::InvalidOperation {
                 message: format!("Failed to delete project: {}", e),
-            }
-        })?;
+            })?;
 
         Ok(())
     }

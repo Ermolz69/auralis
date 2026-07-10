@@ -60,7 +60,10 @@ async fn test_job_manager_flow() {
     let manager = JobManager::new(repo, None);
 
     let job = manager
-        .start_mock_dubbing_job_internal("Test Job".to_string(), Some(domain::project::ProjectId::new().to_string()))
+        .start_mock_dubbing_job_internal(
+            "Test Job".to_string(),
+            Some(domain::project::ProjectId::new().to_string()),
+        )
         .await
         .unwrap();
     let job_id = job.id().clone();
@@ -91,7 +94,10 @@ async fn test_concurrent_updates_and_cancellation() {
     let repo = Arc::new(MockJobRepository::new());
     let manager = JobManager::new(repo, None);
     let job = manager
-        .start_mock_dubbing_job_internal("Concurrent Test".to_string(), Some(domain::project::ProjectId::new().to_string()))
+        .start_mock_dubbing_job_internal(
+            "Concurrent Test".to_string(),
+            Some(domain::project::ProjectId::new().to_string()),
+        )
         .await
         .unwrap();
     let job_id = job.id().clone();
@@ -109,7 +115,7 @@ async fn test_concurrent_updates_and_cancellation() {
                     let mut prog = job.progress().clone();
                     prog.percent = j as u8;
                     job.update_progress(prog).ok();
-                    m.update_job(job).await;
+                    let _ = m.update_job(job).await;
                 }
                 tokio::task::yield_now().await;
             }

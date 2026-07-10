@@ -67,6 +67,10 @@ mod tests {
             Ok(self.artifacts.iter().find(|a| &a.id == id).cloned())
         }
 
+        async fn check_exists(&self, id: &ArtifactId) -> Result<bool, PortError> {
+            Ok(self.artifacts.iter().any(|a| &a.id == id))
+        }
+
         async fn list_by_project(
             &self,
             _project_id: &ProjectId,

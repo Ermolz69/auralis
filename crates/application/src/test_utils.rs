@@ -160,13 +160,27 @@ impl ArtifactStore for MockArtifactStore {
         unimplemented!()
     }
 
-    async fn stage_external_file(
+    async fn stage_owned_temp_file(
+        &self,
+        _project_id: &ProjectId,
+        _kind: ArtifactKind,
+        _temp_path: &Path,
+        _filename_hint: Option<&str>,
+    ) -> Result<StagedArtifact, PortError> {
+        unimplemented!()
+    }
+
+    async fn import_external_file(
         &self,
         _project_id: &ProjectId,
         _kind: ArtifactKind,
         _source_path: &Path,
         _filename_hint: Option<&str>,
     ) -> Result<StagedArtifact, PortError> {
+        unimplemented!()
+    }
+
+    async fn cleanup_stale_staging(&self, _max_age: std::time::Duration) -> Result<(), PortError> {
         unimplemented!()
     }
 
@@ -199,7 +213,7 @@ impl ArtifactStore for MockArtifactStore {
 }
 
 use ports::transaction::{
-    CommitJobUpdate, CommitStagedArtifactWrite, CommitProjectDelete, CommitTranscriptImport,
+    CommitJobUpdate, CommitProjectDelete, CommitStagedArtifactWrite, CommitTranscriptImport,
     StorageUnitOfWork,
 };
 
@@ -265,10 +279,7 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_project_delete(
-        &self,
-        command: CommitProjectDelete,
-    ) -> Result<(), PortError> {
+    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
         if self.should_fail {
             return Err(PortError::Unexpected {
                 message: "Mock transaction failure".to_string(),
@@ -279,10 +290,7 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_job_update(
-        &self,
-        command: CommitJobUpdate,
-    ) -> Result<(), PortError> {
+    async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
         if self.should_fail {
             return Err(PortError::Unexpected {
                 message: "Mock transaction failure".to_string(),

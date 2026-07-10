@@ -78,6 +78,22 @@ impl ArtifactIndex for SqliteArtifactIndex {
         row.map(row_to_artifact).transpose()
     }
 
+    async fn check_exists(&self, id: &ArtifactId) -> Result<bool, PortError> {
+        let exists = sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS(SELECT 1 FROM artifacts WHERE id = ?)
+            "#,
+        )
+        .bind(id.to_string())
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Failed to check artifact existence: {}", e),
+        })?;
+
+        Ok(exists)
+    }
+
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Artifact>, PortError> {
         let rows = sqlx::query_as::<_, ArtifactRow>(
             r#"

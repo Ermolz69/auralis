@@ -81,6 +81,13 @@ where
                 staging_key,
                 final_key,
             } => {
+                let artifact_exists = self.artifact_index.check_exists(artifact_id).await?;
+                if !artifact_exists {
+                    // Project or artifact was deleted. Do not finalize, just cleanup staging.
+                    let _ = self.artifact_store.delete_storage_key(staging_key).await;
+                    return Ok(());
+                }
+
                 // 1. Move file
                 self.artifact_store
                     .finalize_staged_artifact(staging_key, final_key)
