@@ -43,7 +43,7 @@ pub async fn create_project_from_youtube_cmd(
 
     Ok(CreateProjectResponse {
         project: ProjectDto::from(&response.project),
-        job: response.job,
+        job: crate::dto::job::JobDto::from(&response.job),
     })
 }
 
@@ -142,6 +142,6 @@ pub async fn start_project_mock_pipeline_cmd(
 
     Ok(CreateProjectResponse {
         project: ProjectDto::from(&response.project),
-        job: response.job,
+        job: crate::dto::job::JobDto::from(&response.job),
     })
 }

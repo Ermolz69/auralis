@@ -37,11 +37,13 @@ impl From<&Project> for ProjectDto {
     }
 }
 
+use crate::dto::job::JobDto;
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProjectResponse {
     pub project: ProjectDto,
-    pub job: ports::job_scheduler::ScheduledJob,
+    pub job: JobDto,
 }
 
 #[derive(Serialize)]

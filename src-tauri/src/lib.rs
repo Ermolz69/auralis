@@ -22,7 +22,6 @@ pub fn run() {
             commands::artifact::list_project_artifacts_cmd,
             commands::artifact::resolve_artifact_path_cmd,
             commands::job::health_check,
-            commands::job::start_mock_dubbing_job_cmd,
             commands::job::list_jobs_cmd,
             commands::job::cancel_job_cmd,
             commands::media::probe_local_media_cmd,

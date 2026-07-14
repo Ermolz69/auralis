@@ -14,9 +14,16 @@ impl TauriEventPublisher {
         Self { app }
     }
 
-    pub fn publish_job_event(&self, event: &ports::job_scheduler::JobLifecycleEvent) {
+    pub fn publish_job_event(
+        &self,
+        event: &ports::job_scheduler::JobLifecycleEvent,
+    ) -> Result<(), PortError> {
         let dto = crate::job_event_mapper::JobEventDtoMapper::map(event);
-        let _ = self.app.emit("job-event", dto);
+        self.app
+            .emit("job-event", dto)
+            .map_err(|e| PortError::Unexpected {
+                message: e.to_string(),
+            })
     }
 }
 
