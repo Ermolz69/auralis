@@ -9,8 +9,16 @@ pub fn spawn_outbox_worker(
     outbox_repo: SqliteOutboxRepository,
     artifact_store: RuntimeArtifactStore,
     artifact_index: RuntimeArtifactIndex,
+    uow: Arc<dyn ports::transaction::StorageUnitOfWork>,
+    workspace_root: std::path::PathBuf,
 ) -> OutboxWorkerShutdown {
-    let worker = OutboxWorker::new(outbox_repo, artifact_store, artifact_index);
+    let worker = OutboxWorker::new(
+        outbox_repo,
+        artifact_store,
+        artifact_index,
+        uow,
+        workspace_root,
+    );
     let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
     tauri::async_runtime::spawn(Arc::new(worker).run_loop(shutdown_rx));
     OutboxWorkerShutdown(shutdown_tx)

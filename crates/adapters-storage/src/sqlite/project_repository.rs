@@ -75,25 +75,21 @@ impl ProjectRepository for SqliteProjectRepository {
     async fn save(&self, project: &Project) -> Result<(), PortError> {
         let values = project_to_row_values(project)?;
 
-        sqlx::query(
+        let result = sqlx::query(
             r#"
-            INSERT INTO projects (
-                id, title, status, source_json, metadata_json, 
-                source_language, target_language, transcript_json, 
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                title = excluded.title,
-                status = excluded.status,
-                source_json = excluded.source_json,
-                metadata_json = excluded.metadata_json,
-                source_language = excluded.source_language,
-                target_language = excluded.target_language,
-                transcript_json = excluded.transcript_json,
-                updated_at = excluded.updated_at
+            UPDATE projects SET
+                title = ?,
+                status = ?,
+                source_json = ?,
+                metadata_json = ?,
+                source_language = ?,
+                target_language = ?,
+                transcript_json = ?,
+                active_job_id = ?,
+                updated_at = ?
+            WHERE id = ?
             "#,
         )
-        .bind(values.id)
         .bind(values.title)
         .bind(values.status)
         .bind(values.source_json)
@@ -101,13 +97,20 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(values.source_language)
         .bind(values.target_language)
         .bind(values.transcript_json)
-        .bind(values.created_at)
+        .bind(values.active_job_id)
         .bind(values.updated_at)
+        .bind(values.id)
         .execute(&self.pool)
         .await
         .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to save project: {}", e),
+            message: format!("Failed to update project: {}", e),
         })?;
+
+        if result.rows_affected() == 0 {
+            return Err(PortError::NotFound {
+                resource: "Project".to_string(),
+            });
+        }
 
         Ok(())
     }

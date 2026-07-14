@@ -51,24 +51,30 @@ pub async fn stage_owned_temp_file(
     // Try rename first
     if let Err(e) = tokio::fs::rename(source_path, &staging_path).await {
         // Rename failed, try copy + remove
-        tokio::fs::copy(source_path, &staging_path)
-            .await
-            .map_err(|copy_err| PortError::Io {
+        if let Err(copy_err) = tokio::fs::copy(source_path, &staging_path).await {
+            // Copy failed, make sure we don't leave a partial staging file
+            let _ = tokio::fs::remove_file(&staging_path).await;
+            return Err(PortError::Io {
                 message: format!(
                     "Failed to copy to {:?}: rename err: {}, copy err: {}",
                     staging_path, e, copy_err
                 ),
-            })?;
+            });
+        }
 
         // Remove source best-effort
         let _ = tokio::fs::remove_file(source_path).await;
     }
 
-    let metadata = tokio::fs::metadata(&staging_path)
-        .await
-        .map_err(|e| PortError::Io {
-            message: format!("Failed to read metadata of {:?}: {}", staging_path, e),
-        })?;
+    let metadata = match tokio::fs::metadata(&staging_path).await {
+        Ok(m) => m,
+        Err(e) => {
+            let _ = tokio::fs::remove_file(&staging_path).await;
+            return Err(PortError::Io {
+                message: format!("Failed to read metadata of {:?}: {}", staging_path, e),
+            });
+        }
+    };
 
     let size_bytes = metadata.len();
 
@@ -133,20 +139,25 @@ pub async fn import_external_file(
     ensure_safe_parent(base_dir, &staging_path).await?;
 
     // Only copy, do not move or remove original
-    tokio::fs::copy(source_path, &staging_path)
-        .await
-        .map_err(|copy_err| PortError::Io {
+    if let Err(copy_err) = tokio::fs::copy(source_path, &staging_path).await {
+        let _ = tokio::fs::remove_file(&staging_path).await;
+        return Err(PortError::Io {
             message: format!(
                 "Failed to copy from {:?} to {:?}: {}",
                 source_path, staging_path, copy_err
             ),
-        })?;
+        });
+    }
 
-    let metadata = tokio::fs::metadata(&staging_path)
-        .await
-        .map_err(|e| PortError::Io {
-            message: format!("Failed to read metadata of {:?}: {}", staging_path, e),
-        })?;
+    let metadata = match tokio::fs::metadata(&staging_path).await {
+        Ok(m) => m,
+        Err(e) => {
+            let _ = tokio::fs::remove_file(&staging_path).await;
+            return Err(PortError::Io {
+                message: format!("Failed to read metadata of {:?}: {}", staging_path, e),
+            });
+        }
+    };
 
     let size_bytes = metadata.len();
 

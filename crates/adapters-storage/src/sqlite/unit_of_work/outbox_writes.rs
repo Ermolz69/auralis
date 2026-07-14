@@ -12,6 +12,8 @@ pub(super) async fn save_outbox_message(
         OutboxPayload::DeleteStorageKey { .. } => "delete_storage_key",
         OutboxPayload::DeleteProjectArtifactDir { .. } => "delete_project_artifact_dir",
         OutboxPayload::DeleteTempPath { .. } => "delete_temp_path",
+        OutboxPayload::DeleteWorkspaceFile { .. } => "delete_workspace_file",
+        OutboxPayload::HandleTerminalJobState { .. } => "handle_terminal_job_state",
     };
 
     let payload_json = serde_json::to_string(&msg.payload).map_err(|e| PortError::Unexpected {

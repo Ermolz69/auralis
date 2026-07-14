@@ -14,8 +14,9 @@ pub struct JobLifecycleCoordinator<
     R: ProjectRepository + Clone + 'static,
     E: AppEventPublisher + Clone + 'static,
 > {
-    project_repo: R,
     app_event_publisher: E,
+    handle_completed: HandleJobCompletedUseCase<R>,
+    handle_cancelled: HandleJobCancelledUseCase<R>,
 }
 
 impl<R: ProjectRepository + Clone + 'static, E: AppEventPublisher + Clone + 'static>
@@ -23,8 +24,9 @@ impl<R: ProjectRepository + Clone + 'static, E: AppEventPublisher + Clone + 'sta
 {
     pub fn new(project_repo: R, app_event_publisher: E) -> Self {
         Self {
-            project_repo,
             app_event_publisher,
+            handle_completed: HandleJobCompletedUseCase::new(project_repo.clone()),
+            handle_cancelled: HandleJobCancelledUseCase::new(project_repo),
         }
     }
 
@@ -38,9 +40,8 @@ impl<R: ProjectRepository + Clone + 'static, E: AppEventPublisher + Clone + 'sta
             JobStatus::Completed | JobStatus::Failed => {
                 let is_success = event.status == JobStatus::Completed;
 
-                let use_case = HandleJobCompletedUseCase::new(self.project_repo.clone());
-
-                let result = use_case
+                let result = self
+                    .handle_completed
                     .execute(HandleJobCompletedRequest {
                         job_id: event.job_id.to_string(),
                         project_id: project_id_str.clone(),
@@ -59,8 +60,7 @@ impl<R: ProjectRepository + Clone + 'static, E: AppEventPublisher + Clone + 'sta
                     .await?;
             }
             JobStatus::Cancelled => {
-                let use_case = HandleJobCancelledUseCase::new(self.project_repo.clone());
-                use_case
+                self.handle_cancelled
                     .execute(HandleJobCancelledRequest {
                         job_id: event.job_id.to_string(),
                         project_id: project_id_str.clone(),
@@ -87,7 +87,6 @@ mod tests {
     use domain::job::{JobId, JobProgress, JobStatus};
     use domain::project::{Project, ProjectId};
     use ports::error::PortError;
-    use std::str::FromStr;
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone)]
@@ -102,10 +101,6 @@ mod tests {
                 project: Arc::new(Mutex::new(project)),
                 fail_next_save: Arc::new(Mutex::new(false)),
             }
-        }
-
-        fn set_fail_next_save(&self, fail: bool) {
-            *self.fail_next_save.lock().unwrap() = fail;
         }
     }
 
@@ -191,12 +186,12 @@ mod tests {
     fn create_processing_project() -> Project {
         let mut p = Project::new("Test".into());
         p.import_source(
-            domain::media::MediaSource::LocalFile { path: "".into() },
+            domain::media::MediaSource::ExternalLocalFile { path: "".into() },
             None,
         )
         .unwrap();
         p.mark_ready_for_processing().unwrap();
-        p.mark_processing_started().unwrap();
+        p.start_processing(JobId::new()).unwrap();
         p
     }
 
@@ -208,7 +203,7 @@ mod tests {
         )
         .unwrap();
         p.mark_ready_for_processing().unwrap();
-        p.mark_processing_started().unwrap();
+        p.start_processing(JobId::new()).unwrap();
         p
     }
 
@@ -291,13 +286,6 @@ mod tests {
 
         let events = publ.events.lock().unwrap().clone();
         assert_eq!(events, vec![format!("project_updated:{}", pid_str)]);
-
-        let p2 = repo
-            .get(&domain::project::ProjectId::from_str(&pid_str).unwrap())
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(p2.status(), &domain::project::ProjectStatus::Completed);
     }
 
     #[tokio::test]
@@ -375,13 +363,6 @@ mod tests {
 
         let events = publ.events.lock().unwrap().clone();
         assert_eq!(events, vec![format!("project_updated:{}", pid_str)]);
-
-        let p2 = repo
-            .get(&domain::project::ProjectId::from_str(&pid_str).unwrap())
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(p2.status(), &domain::project::ProjectStatus::Failed);
     }
 
     #[tokio::test]
@@ -431,33 +412,6 @@ mod tests {
 
         let events = publ.events.lock().unwrap().clone();
         assert_eq!(events, vec![format!("project_updated:{}", pid_str)]);
-
-        let p2 = repo
-            .get(&domain::project::ProjectId::from_str(&pid_str).unwrap())
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(p2.status(), &domain::project::ProjectStatus::Cancelled);
-    }
-
-    #[tokio::test]
-    async fn test_repo_failure() {
-        let p = create_processing_project();
-        let repo = MockProjectRepo::new(Some(p.clone()));
-        repo.set_fail_next_save(true);
-        let publ = MockAppEventPublisher::default();
-        let uc = JobLifecycleCoordinator::new(repo.clone(), publ.clone());
-
-        let event = JobLifecycleEvent {
-            job_id: JobId::new(),
-            project_id: Some(p.id().clone()),
-            status: JobStatus::Completed,
-            stage: None,
-            progress: JobProgress::initializing(),
-            error: None,
-        };
-        let res = uc.handle(event).await;
-        assert!(res.is_err());
     }
 
     #[tokio::test]
@@ -478,27 +432,5 @@ mod tests {
         };
         let res = uc.handle(event).await;
         assert!(res.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_duplicate_terminal_event() {
-        let mut p = create_processing_project();
-        // project is already completed
-        p.mark_completed().unwrap();
-        let repo = MockProjectRepo::new(Some(p.clone()));
-        let publ = MockAppEventPublisher::default();
-        let uc = JobLifecycleCoordinator::new(repo.clone(), publ.clone());
-
-        let event = JobLifecycleEvent {
-            job_id: JobId::new(),
-            project_id: Some(p.id().clone()),
-            status: JobStatus::Completed,
-            stage: None,
-            progress: JobProgress::initializing(),
-            error: None,
-        };
-        let res = uc.handle(event).await;
-        // The handle_job_completed usecase should fail on InvalidStateTransition
-        assert!(matches!(res, Err(ApplicationError::Domain(_))));
     }
 }

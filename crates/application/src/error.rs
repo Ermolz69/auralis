@@ -12,6 +12,17 @@ pub enum ApplicationError {
     #[error("Invalid operation: {message}")]
     InvalidOperation { message: String },
 
+    #[error(
+        "Pipeline start failed: scheduling failed with '{scheduling_error}', compensation failed with '{compensation_error}' (Recovery required)"
+    )]
+    PipelineStartFailedNeedsRecovery {
+        scheduling_error: String,
+        compensation_error: String,
+    },
+
+    #[error("Pipeline start failed: scheduling failed with '{scheduling_error}'")]
+    PipelineStartFailed { scheduling_error: String },
+
     #[error(transparent)]
     Domain(#[from] domain::error::DomainError),
 

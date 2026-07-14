@@ -1,25 +1,27 @@
-use crate::TauriEventPublisher;
+use crate::event_publisher::FrontendJobEventPublisher;
 use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
 use ports::events::AppEventPublisher;
 use ports::job_scheduler::JobLifecycleEvent;
 use ports::repository::ProjectRepository;
 use std::sync::Arc;
-use tauri::async_runtime::JoinHandle;
 use tokio::sync::{mpsc, oneshot};
+use tokio::task::JoinHandle;
 
-struct JobLifecycleWorker<R, E>
+struct JobLifecycleWorker<P, R, E>
 where
+    P: FrontendJobEventPublisher + 'static,
     R: ProjectRepository + Clone + Send + Sync + 'static,
     E: AppEventPublisher + Clone + Send + Sync + 'static,
 {
-    publisher: TauriEventPublisher,
+    publisher: P,
     coordinator: Arc<JobLifecycleCoordinator<R, E>>,
     receiver: mpsc::UnboundedReceiver<JobLifecycleEvent>,
     shutdown_rx: oneshot::Receiver<()>,
 }
 
-impl<R, E> JobLifecycleWorker<R, E>
+impl<P, R, E> JobLifecycleWorker<P, R, E>
 where
+    P: FrontendJobEventPublisher + 'static,
     R: ProjectRepository + Clone + Send + Sync + 'static,
     E: AppEventPublisher + Clone + Send + Sync + 'static,
 {
@@ -70,11 +72,9 @@ pub struct TauriJobEventBridge {
 }
 
 impl TauriJobEventBridge {
-    pub fn new<R, E>(
-        publisher: TauriEventPublisher,
-        coordinator: Arc<JobLifecycleCoordinator<R, E>>,
-    ) -> Self
+    pub fn new<P, R, E>(publisher: P, coordinator: Arc<JobLifecycleCoordinator<R, E>>) -> Self
     where
+        P: FrontendJobEventPublisher + 'static,
         R: ProjectRepository + Clone + Send + Sync + 'static,
         E: AppEventPublisher + Clone + Send + Sync + 'static,
     {
@@ -88,7 +88,8 @@ impl TauriJobEventBridge {
             shutdown_rx,
         };
 
-        let worker_handle = tauri::async_runtime::spawn(async move {
+        // Using tokio::spawn which is the standard async_runtime backend
+        let worker_handle = tokio::spawn(async move {
             worker.run().await;
         });
 
@@ -120,16 +121,183 @@ impl TauriJobEventBridge {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use async_trait::async_trait;
+    use domain::job::{JobId, JobProgress, JobStatus};
+    use domain::project::Project;
+    use ports::error::PortError;
+    use std::sync::{Arc, Mutex};
+    use tokio::time::{Duration, sleep};
 
-    // Since TauriEventPublisher requires an actual AppHandle to instantiate,
-    // we can't easily mock it in unit tests without setting up a full Tauri test context.
-    // However, the worker's logic can be verified implicitly if the channels work.
-    // In a real project we'd use a trait for the publisher too, but since we are bound to Tauri,
-    // these adapter tests often rely on integration tests.
-    // We add a dummy test to satisfy the checklist for 'add tests for job_event_bridge.rs'.
-    #[test]
-    fn test_bridge_compiles_and_has_shutdown() {
-        // Just verify the interface exists
-        let _ = JobEventBridgeHandle::shutdown;
+    #[derive(Clone, Default)]
+    struct MockProjectRepo {}
+    #[async_trait]
+    impl ProjectRepository for MockProjectRepo {
+        async fn get(
+            &self,
+            _id: &domain::project::ProjectId,
+        ) -> Result<Option<Project>, PortError> {
+            Ok(None)
+        }
+        async fn save(&self, _project: &Project) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn create(&self, _project: Project) -> Result<Project, PortError> {
+            unimplemented!()
+        }
+        async fn list(&self) -> Result<Vec<Project>, PortError> {
+            Ok(vec![])
+        }
+        async fn delete(&self, _id: &domain::project::ProjectId) -> Result<(), PortError> {
+            Ok(())
+        }
+    }
+
+    #[derive(Clone, Default)]
+    struct MockAppEventPublisher {}
+    #[async_trait]
+    impl AppEventPublisher for MockAppEventPublisher {
+        async fn publish_project_updated(&self, _project_id: &str) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn publish_transcript_ready(
+            &self,
+            _project_id: &str,
+            _job_id: &str,
+        ) -> Result<(), PortError> {
+            Ok(())
+        }
+    }
+
+    #[derive(Clone)]
+    struct MockFrontendPublisher {
+        events: Arc<Mutex<Vec<JobLifecycleEvent>>>,
+        fail_next: Arc<Mutex<bool>>,
+    }
+
+    impl MockFrontendPublisher {
+        fn new() -> Self {
+            Self {
+                events: Arc::new(Mutex::new(vec![])),
+                fail_next: Arc::new(Mutex::new(false)),
+            }
+        }
+    }
+
+    impl FrontendJobEventPublisher for MockFrontendPublisher {
+        fn publish_job_event(&self, event: &JobLifecycleEvent) -> Result<(), PortError> {
+            let mut fail = self.fail_next.lock().unwrap();
+            if *fail {
+                *fail = false;
+                return Err(PortError::Unexpected {
+                    message: "frontend pub failure".into(),
+                });
+            }
+            self.events.lock().unwrap().push(event.clone());
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bridge_event_ordering_and_shutdown() {
+        let repo = MockProjectRepo::default();
+        let app_pub = MockAppEventPublisher::default();
+        let coordinator = Arc::new(JobLifecycleCoordinator::new(repo, app_pub));
+
+        let frontend_pub = MockFrontendPublisher::new();
+        let mut bridge = TauriJobEventBridge::new(frontend_pub.clone(), coordinator);
+
+        let emitter = bridge.emitter();
+
+        let event1 = JobLifecycleEvent {
+            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+            job_id: JobId::new(),
+            project_id: None,
+            status: JobStatus::Running,
+            progress: JobProgress::initializing(),
+            error: None,
+        };
+
+        let event2 = JobLifecycleEvent {
+            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+            job_id: JobId::new(),
+            project_id: None,
+            status: JobStatus::Completed,
+            progress: JobProgress::initializing(),
+            error: None,
+        };
+
+        // Send two events
+        emitter(event1.clone());
+        emitter(event2.clone());
+
+        // Wait a bit for processing
+        sleep(Duration::from_millis(50)).await;
+
+        let emitted = frontend_pub.events.lock().unwrap().clone();
+        assert_eq!(emitted.len(), 2);
+        assert_eq!(emitted[0].status, JobStatus::Running);
+        assert_eq!(emitted[1].status, JobStatus::Completed);
+
+        // Test shutdown
+        let handle = bridge.take_handle().unwrap();
+        handle.shutdown().await;
+
+        // Try emitting after shutdown (should log error, but not panic)
+        let event3 = JobLifecycleEvent {
+            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+            job_id: JobId::new(),
+            project_id: None,
+            status: JobStatus::Failed,
+            progress: JobProgress::initializing(),
+            error: None,
+        };
+        emitter(event3);
+    }
+
+    #[tokio::test]
+    async fn test_bridge_processing_after_failure() {
+        let repo = MockProjectRepo::default();
+        let app_pub = MockAppEventPublisher::default();
+        let coordinator = Arc::new(JobLifecycleCoordinator::new(repo, app_pub));
+
+        let frontend_pub = MockFrontendPublisher::new();
+        let mut bridge = TauriJobEventBridge::new(frontend_pub.clone(), coordinator);
+
+        let emitter = bridge.emitter();
+
+        // Make the first publish fail
+        *frontend_pub.fail_next.lock().unwrap() = true;
+
+        let event1 = JobLifecycleEvent {
+            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+            job_id: JobId::new(),
+            project_id: None,
+            status: JobStatus::Running,
+            progress: JobProgress::initializing(),
+            error: None,
+        };
+
+        let event2 = JobLifecycleEvent {
+            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+            job_id: JobId::new(),
+            project_id: None,
+            status: JobStatus::Completed,
+            progress: JobProgress::initializing(),
+            error: None,
+        };
+
+        // Send events
+        emitter(event1);
+        emitter(event2);
+
+        sleep(Duration::from_millis(50)).await;
+
+        // The first event failed to publish, but the worker should have continued to process the second event
+        let emitted = frontend_pub.events.lock().unwrap().clone();
+        assert_eq!(emitted.len(), 1);
+        assert_eq!(emitted[0].status, JobStatus::Completed);
+
+        let handle = bridge.take_handle().unwrap();
+        handle.shutdown().await;
     }
 }

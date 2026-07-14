@@ -9,6 +9,7 @@ use tokio::sync::Mutex;
 #[derive(Clone)]
 pub struct MockJobScheduler {
     pub jobs: Arc<Mutex<Vec<ScheduledJob>>>,
+    pub should_fail: bool,
 }
 
 impl Default for MockJobScheduler {
@@ -21,6 +22,7 @@ impl MockJobScheduler {
     pub fn new() -> Self {
         Self {
             jobs: Arc::new(Mutex::new(Vec::new())),
+            should_fail: false,
         }
     }
 }
@@ -50,6 +52,11 @@ impl JobSchedulerPort for MockJobScheduler {
     }
 
     async fn enqueue_existing_job(&self, job_id: &JobId) -> Result<ScheduledJob, PortError> {
+        if self.should_fail {
+            return Err(PortError::Unexpected {
+                message: "Mock scheduling failure".to_string(),
+            });
+        }
         let job = ScheduledJob {
             id: job_id.clone(),
             project_id: None,

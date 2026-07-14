@@ -14,14 +14,6 @@ pub struct StagedArtifact {
 
 #[async_trait]
 pub trait ArtifactStore: Send + Sync {
-    async fn write_small_artifact(
-        &self,
-        project_id: &ProjectId,
-        kind: ArtifactKind,
-        filename: &str,
-        data: &[u8],
-    ) -> Result<Artifact, PortError>;
-
     async fn stage_owned_temp_file(
         &self,
         project_id: &ProjectId,
@@ -61,18 +53,6 @@ impl<T> ArtifactStore for Arc<T>
 where
     T: ArtifactStore + ?Sized,
 {
-    async fn write_small_artifact(
-        &self,
-        project_id: &ProjectId,
-        kind: ArtifactKind,
-        filename: &str,
-        data: &[u8],
-    ) -> Result<Artifact, PortError> {
-        (**self)
-            .write_small_artifact(project_id, kind, filename, data)
-            .await
-    }
-
     async fn stage_owned_temp_file(
         &self,
         project_id: &ProjectId,

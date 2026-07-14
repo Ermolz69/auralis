@@ -27,7 +27,13 @@ export const ProjectHeader = () => {
           <MediaSummary metadata={project.metadata} />
         ) : (
           <PageDescription className="!text-sm mt-1">
-            {project?.source?.urlOrPath || 'No media source attached'}
+            {project?.source?.kind === 'managedLocalFile'
+              ? project.source.originalFilename
+              : project?.source?.kind === 'externalLocalFile'
+                ? project.source.path
+                : project?.source?.kind === 'youtubeUrl' || project?.source?.kind === 'remoteUrl'
+                  ? project.source.url
+                  : 'No media source attached'}
           </PageDescription>
         )}
       </PageHeaderGroup>

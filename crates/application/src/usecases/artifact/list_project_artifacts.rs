@@ -44,65 +44,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
     use domain::media::{ArtifactId, ArtifactLocation};
-    use ports::error::PortError;
 
-    #[derive(Clone)]
-    struct MockArtifactIndex {
-        artifacts: Vec<Artifact>,
-    }
-
-    #[async_trait]
-    impl ArtifactIndex for MockArtifactIndex {
-        async fn add(
-            &self,
-            _project_id: &ProjectId,
-            _artifact: &Artifact,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-
-        async fn get(&self, id: &ArtifactId) -> Result<Option<Artifact>, PortError> {
-            Ok(self.artifacts.iter().find(|a| &a.id == id).cloned())
-        }
-
-        async fn check_exists(&self, id: &ArtifactId) -> Result<bool, PortError> {
-            Ok(self.artifacts.iter().any(|a| &a.id == id))
-        }
-
-        async fn list_by_project(
-            &self,
-            _project_id: &ProjectId,
-        ) -> Result<Vec<Artifact>, PortError> {
-            Ok(self.artifacts.clone())
-        }
-
-        async fn list_by_project_and_kind(
-            &self,
-            _project_id: &ProjectId,
-            kind: ArtifactKind,
-        ) -> Result<Vec<Artifact>, PortError> {
-            Ok(self
-                .artifacts
-                .iter()
-                .filter(|a| a.kind == kind)
-                .cloned()
-                .collect())
-        }
-
-        async fn delete(&self, _id: &domain::media::ArtifactId) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn update_state(
-            &self,
-            _id: &domain::media::ArtifactId,
-            _state: domain::media::ArtifactState,
-            _ready_at: Option<domain::chrono::DateTime<domain::chrono::Utc>>,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-    }
+    use crate::test_utils::MockArtifactIndex;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
     #[tokio::test]
     async fn test_list_project_artifacts_all() {
@@ -128,7 +74,7 @@ mod tests {
         };
 
         let index = MockArtifactIndex {
-            artifacts: vec![artifact1.clone(), artifact2.clone()],
+            artifacts: Arc::new(Mutex::new(vec![artifact1.clone(), artifact2.clone()])),
         };
 
         let use_case = ListProjectArtifactsUseCase::new(index);
@@ -167,7 +113,7 @@ mod tests {
         };
 
         let index = MockArtifactIndex {
-            artifacts: vec![artifact1.clone(), artifact2.clone()],
+            artifacts: Arc::new(Mutex::new(vec![artifact1.clone(), artifact2.clone()])),
         };
 
         let use_case = ListProjectArtifactsUseCase::new(index);

@@ -82,7 +82,7 @@ If a needed command does not have a task yet, add a new task to the appropriate 
 
 When reporting verification steps, always mention the `task ...` command that was used.
 
-# Architecture and code structure rules
+## Architecture and code structure rules
 
 ## Core architecture
 

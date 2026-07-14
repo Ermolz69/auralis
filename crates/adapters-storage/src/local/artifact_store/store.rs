@@ -10,7 +10,6 @@ use super::cleanup;
 use super::deletion;
 use super::resolver;
 use super::staging;
-use super::writer;
 
 pub struct LocalArtifactStore {
     base_dir: PathBuf,
@@ -33,16 +32,6 @@ impl LocalArtifactStore {
 
 #[async_trait]
 impl ArtifactStore for LocalArtifactStore {
-    async fn write_small_artifact(
-        &self,
-        project_id: &ProjectId,
-        kind: ArtifactKind,
-        filename: &str,
-        data: &[u8],
-    ) -> Result<Artifact, PortError> {
-        writer::write_small_artifact(&self.base_dir, project_id, kind, filename, data).await
-    }
-
     async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError> {
         resolver::resolve_artifact(&self.base_dir, artifact)
     }

@@ -32,7 +32,7 @@ export const TranscriptEditor = () => {
               <p className="text-sm text-danger mt-2 max-w-sm">{error}</p>
             </div>
           ) : !transcript || transcript.segments.length === 0 ? (
-            project?.source?.kind === 'localFile' ? (
+            project?.source?.kind === 'managedLocalFile' ? (
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
                 <p className="text-lg font-medium text-text">Transcript Unavailable</p>

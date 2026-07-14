@@ -80,8 +80,8 @@ where
                 project_id: request.project_id.clone(),
                 artifact: staged.artifact.clone(),
                 staging_key: staged.staging_key.clone(),
-                final_key: staged.final_key.clone(),
-                temp_path_to_delete: None,
+                final_key: staged.final_key,
+                temp_workspace_key: None,
             })
             .await;
 

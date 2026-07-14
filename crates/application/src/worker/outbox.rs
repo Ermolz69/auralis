@@ -1,36 +1,49 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use domain::media::ArtifactState;
 use domain::outbox::OutboxPayload;
 use ports::artifact_index::ArtifactIndex;
 use ports::repository::OutboxRepository;
 use ports::storage::ArtifactStore;
 
+use ports::transaction::StorageUnitOfWork;
+
 use crate::error::ApplicationError;
 
-pub struct OutboxWorker<O, S, I>
+pub struct OutboxWorker<O, S, I, U>
 where
     O: OutboxRepository,
     S: ArtifactStore,
     I: ArtifactIndex,
+    U: StorageUnitOfWork,
 {
     outbox_repo: O,
     artifact_store: S,
     artifact_index: I,
+    uow: U,
+    workspace_root: std::path::PathBuf,
 }
 
-impl<O, S, I> OutboxWorker<O, S, I>
+impl<O, S, I, U> OutboxWorker<O, S, I, U>
 where
     O: OutboxRepository,
-    S: ArtifactStore,
-    I: ArtifactIndex,
+    S: ArtifactStore + Clone,
+    I: ArtifactIndex + Clone,
+    U: StorageUnitOfWork,
 {
-    pub fn new(outbox_repo: O, artifact_store: S, artifact_index: I) -> Self {
+    pub fn new(
+        outbox_repo: O,
+        artifact_store: S,
+        artifact_index: I,
+        uow: U,
+        workspace_root: std::path::PathBuf,
+    ) -> Self {
         Self {
             outbox_repo,
             artifact_store,
             artifact_index,
+            uow,
+            workspace_root,
         }
     }
 
@@ -81,26 +94,18 @@ where
                 staging_key,
                 final_key,
             } => {
-                let artifact_exists = self.artifact_index.check_exists(artifact_id).await?;
-                if !artifact_exists {
-                    // Project or artifact was deleted. Do not finalize, just cleanup staging.
-                    let _ = self.artifact_store.delete_storage_key(staging_key).await;
+                let finalizer = crate::services::artifact_finalizer::ArtifactFinalizer::new(
+                    self.artifact_index.clone(),
+                    self.artifact_store.clone(),
+                );
+
+                if !finalizer
+                    .finalize(artifact_id, staging_key, final_key)
+                    .await?
+                {
+                    // If it returns false, it means project/artifact was deleted
                     return Ok(());
                 }
-
-                // 1. Move file
-                self.artifact_store
-                    .finalize_staged_artifact(staging_key, final_key)
-                    .await?;
-
-                // 2. Update artifact state in index
-                self.artifact_index
-                    .update_state(
-                        artifact_id,
-                        ArtifactState::Ready,
-                        Some(domain::chrono::Utc::now()),
-                    )
-                    .await?;
             }
             OutboxPayload::DeleteStorageKey { storage_key } => {
                 self.artifact_store.delete_storage_key(storage_key).await?;
@@ -109,7 +114,84 @@ where
                 self.artifact_store.delete_project_dir(project_id).await?;
             }
             OutboxPayload::DeleteTempPath { path } => {
-                let _ = tokio::fs::remove_file(path).await;
+                let target_path = std::path::Path::new(path);
+                match tokio::fs::canonicalize(target_path).await {
+                    Ok(canonical_target) => {
+                        let canonical_workspace = tokio::fs::canonicalize(&self.workspace_root)
+                            .await
+                            .unwrap_or_else(|_| self.workspace_root.clone());
+                        if canonical_target.starts_with(&canonical_workspace) {
+                            let _ = tokio::fs::remove_file(canonical_target).await;
+                        } else {
+                            eprintln!(
+                                "OutboxWorker: Refused to delete absolute path outside workspace: {}",
+                                path
+                            );
+                            return Err(ApplicationError::InvalidOperation {
+                                message: "Security violation: DeleteTempPath outside workspace"
+                                    .to_string(),
+                            });
+                        }
+                    }
+                    Err(_) => {
+                        // Missing file = success
+                    }
+                }
+            }
+            OutboxPayload::DeleteWorkspaceFile { workspace_key } => {
+                match domain::outbox::models::resolve_workspace_file(
+                    &self.workspace_root,
+                    workspace_key,
+                ) {
+                    Ok(target_path) => {
+                        match tokio::fs::canonicalize(&target_path).await {
+                            Ok(canonical_target) => {
+                                let canonical_workspace =
+                                    tokio::fs::canonicalize(&self.workspace_root)
+                                        .await
+                                        .unwrap_or_else(|_| self.workspace_root.clone());
+                                if canonical_target.starts_with(&canonical_workspace) {
+                                    let _ = tokio::fs::remove_file(canonical_target).await;
+                                } else {
+                                    eprintln!(
+                                        "OutboxWorker: Refused to delete resolved path outside workspace: {}",
+                                        workspace_key
+                                    );
+                                    return Err(ApplicationError::InvalidOperation { message: "Security violation: DeleteWorkspaceFile outside workspace".to_string() });
+                                }
+                            }
+                            Err(_) => {
+                                // Missing file = success
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("OutboxWorker: Invalid workspace_key: {}", e);
+                        return Err(ApplicationError::InvalidOperation {
+                            message: "Validation error: invalid workspace key".to_string(),
+                        });
+                    }
+                }
+            }
+            OutboxPayload::HandleTerminalJobState {
+                job_id,
+                project_id,
+                outcome,
+            } => {
+                let command = ports::transaction::ApplyTerminalLifecycle {
+                    project_id: project_id.clone(),
+                    job_id: job_id.clone(),
+                    outcome: outcome.clone(),
+                };
+                let res = self
+                    .uow
+                    .apply_terminal_lifecycle_conditionally(command)
+                    .await?;
+                // Even if IgnoredStale or AlreadyApplied, we consider it done for the outbox.
+                println!(
+                    "Terminal lifecycle applied for project {}: {:?}",
+                    project_id, res
+                );
             }
         }
 

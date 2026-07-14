@@ -12,6 +12,14 @@ use tauri::{App, Manager};
 pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
 
+    // 0. Compute workspace root
+    let app_path = app.path();
+    let workspace_root = app_path
+        .app_cache_dir()
+        .unwrap_or_else(|_| app_path.app_data_dir().unwrap())
+        .join("workspaces");
+    std::fs::create_dir_all(&workspace_root)?;
+
     // 1. Setup storage and workers
     let (services, outbox_repo_opt) = storage::setup_storage(app)?;
 
@@ -29,6 +37,8 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             outbox_repo,
             services.artifact_store.clone(),
             services.artifact_index.clone(),
+            services.storage_uow.clone(),
+            workspace_root.clone(),
         );
         app.manage(outbox_shutdown);
     }
@@ -48,6 +58,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         services.artifact_store,
         services.storage_uow,
         job_manager,
+        workspace_root,
     );
 
     Ok(())

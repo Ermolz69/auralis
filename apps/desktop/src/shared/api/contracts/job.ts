@@ -1,7 +1,26 @@
-export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export type JobStage =
-  'validate_source' | 'fetch_metadata' | 'prepare_media' | 'generate_transcript' | 'finalize';
+  | 'validateSource'
+  | 'inspectSubtitles'
+  | 'fetchMetadata'
+  | 'downloadMedia'
+  | 'extractOrGenerateTranscript'
+  | 'segmentTranscript'
+  | 'translateTranscript'
+  | 'prepareDubbingScript'
+  | 'synthesizeSegments'
+  | 'postprocessAudio'
+  | 'muxAudioTrack'
+  | 'exportResult';
+
+export type JobProgress = {
+  percent: number;
+  message: string;
+  currentStep: string | null;
+  processedItems: number | null;
+  totalItems: number | null;
+};
 
 export type Job = {
   id: string;
@@ -9,9 +28,7 @@ export type Job = {
   title: string;
   status: JobStatus;
   stage: JobStage | null;
-  progress: {
-    percent: number;
-  };
+  progress: JobProgress;
   error: string | null;
   createdAt: string;
   updatedAt: string;
@@ -22,9 +39,6 @@ export type JobEvent = {
   projectId: string | null;
   status: JobStatus;
   stage: JobStage | null;
-  progress: {
-    percent: number;
-  };
-  message: string | null;
+  progress: JobProgress;
   error: string | null;
 };

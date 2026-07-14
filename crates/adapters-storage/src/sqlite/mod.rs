@@ -10,6 +10,7 @@ pub mod outbox_row;
 pub mod project_mapper;
 pub mod project_repository;
 pub mod project_row;
+pub mod recovery_gateway;
 pub mod unit_of_work;
 
 pub use artifact_index::SqliteArtifactIndex;

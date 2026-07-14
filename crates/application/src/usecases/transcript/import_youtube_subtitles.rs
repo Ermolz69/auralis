@@ -118,14 +118,35 @@ impl ImportYoutubeSubtitlesUseCase {
             }
         };
 
-        let vtt_content =
-            std::fs::read_to_string(&vtt_path).map_err(|e| ApplicationError::InvalidOperation {
-                message: format!("Failed to read vtt file: {}", e),
-            })?;
+        // Best-effort cleanup helper
+        let cleanup_file = |path: PathBuf| async move {
+            match tokio::fs::remove_file(&path).await {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                    eprintln!("Failed to clean up temporary file {:?}: {}", path, e);
+                }
+                _ => {}
+            }
+        };
 
-        let transcript = parse_vtt(&vtt_content, &best_track.language)?;
+        let vtt_content = match tokio::fs::read_to_string(&vtt_path).await {
+            Ok(content) => content,
+            Err(e) => {
+                cleanup_file(vtt_path).await;
+                return Err(ApplicationError::InvalidOperation {
+                    message: format!("Failed to read vtt file: {}", e),
+                });
+            }
+        };
 
-        let staged = self
+        let transcript = match parse_vtt(&vtt_content, &best_track.language) {
+            Ok(t) => t,
+            Err(e) => {
+                cleanup_file(vtt_path).await;
+                return Err(e);
+            }
+        };
+
+        let staged = match self
             .artifact_store
             .stage_owned_temp_file(
                 &request.project_id,
@@ -133,19 +154,54 @@ impl ImportYoutubeSubtitlesUseCase {
                 &vtt_path,
                 Some("subtitles.vtt"),
             )
-            .await?;
+            .await
+        {
+            Ok(s) => s,
+            Err(e) => {
+                cleanup_file(vtt_path).await;
+                return Err(e.into());
+            }
+        };
 
         project.set_transcript(transcript.clone());
 
-        self.storage_uow
+        // Create a workspace key for the temp path just in case we need to delete it.
+        // wait, we don't have workspace_root here. But the target_dir is exactly the workspace root
+        // or a subdirectory (like `<workspace_root>/<project_id>`).
+        // We can just strip the target_dir prefix if it's there.
+        // Wait! The target_dir is the per-job directory or per-project directory?
+        // Actually, let's look at `target_dir` passed into `request`.
+        // The user says "Use relative keys when generating paths".
+        // Actually, `stage_owned_temp_file` consumes `vtt_path`, so it handles the file movement.
+        // We only need to delete the `staging_key` if DB commit fails.
+        // So `temp_workspace_key` isn't even strictly needed anymore if `stage_owned_temp_file` fully deletes `vtt_path` on success!
+        // But what if `stage_owned_temp_file` copies across filesystem boundaries and leaves `vtt_path` because it failed to delete?
+        // Let's compute a relative key if `vtt_path` is under `request.target_dir`.
+
+        let temp_workspace_key = vtt_path
+            .strip_prefix(&request.target_dir)
+            .ok()
+            .and_then(|p| p.to_str())
+            .map(|s| s.to_string());
+
+        if let Err(e) = self
+            .storage_uow
             .commit_transcript_import(CommitTranscriptImport {
                 project,
                 artifact: staged.artifact,
-                staging_key: staged.staging_key,
+                staging_key: staged.staging_key.clone(),
                 final_key: staged.final_key,
-                temp_path_to_delete: Some(vtt_path),
+                temp_workspace_key,
             })
-            .await?;
+            .await
+        {
+            let _ = self
+                .artifact_store
+                .delete_storage_key(&staged.staging_key)
+                .await;
+            cleanup_file(vtt_path).await;
+            return Err(e.into());
+        }
 
         Ok(ImportYoutubeSubtitlesResponse { transcript })
     }

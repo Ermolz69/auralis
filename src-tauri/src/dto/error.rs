@@ -19,6 +19,12 @@ impl From<ApplicationError> for CommandError {
                 CommandError::NotFound(err.to_string())
             }
             ApplicationError::InvalidOperation { .. } => CommandError::Validation(err.to_string()),
+            ApplicationError::PipelineStartFailed { scheduling_error } => {
+                CommandError::Internal(format!("Failed to start pipeline: scheduling failed ({})", scheduling_error))
+            }
+            ApplicationError::PipelineStartFailedNeedsRecovery { scheduling_error, compensation_error } => {
+                CommandError::Internal(format!("Failed to start pipeline: scheduling failed ({}) AND compensation failed ({}) - RECOVERY REQUIRED", scheduling_error, compensation_error))
+            }
             ApplicationError::Domain(domain_err) => match domain_err {
                 DomainError::ValidationError(_) | DomainError::InvalidStateTransition { .. } => {
                     CommandError::Validation(domain_err.to_string())

@@ -16,6 +16,7 @@ pub struct ProjectSnapshot {
     pub source_language: Option<LanguageCode>,
     pub target_language: Option<LanguageCode>,
     pub transcript: Option<Transcript>,
+    pub active_job_id: Option<crate::job::JobId>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

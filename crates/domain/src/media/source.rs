@@ -1,6 +1,17 @@
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MediaSource {
-    LocalFile { path: String },
-    YoutubeUrl { url: String },
-    RemoteUrl { url: String },
+    ManagedLocalFile {
+        artifact_id: super::ArtifactId,
+        original_filename: String,
+    },
+    #[serde(alias = "LocalFile")]
+    ExternalLocalFile {
+        path: String,
+    },
+    YoutubeUrl {
+        url: String,
+    },
+    RemoteUrl {
+        url: String,
+    },
 }

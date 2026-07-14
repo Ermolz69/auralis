@@ -41,7 +41,7 @@ impl VideoSourcePort for YtDlpAdapter {
         let url_str = match source {
             MediaSource::YoutubeUrl { url } => url,
             MediaSource::RemoteUrl { url } => url,
-            MediaSource::LocalFile { .. } => {
+            MediaSource::ManagedLocalFile { .. } | MediaSource::ExternalLocalFile { .. } => {
                 return Err(PortError::InvalidSource {
                     message: "yt-dlp adapter only supports URLs, not local files".to_string(),
                 });
@@ -143,7 +143,7 @@ impl SubtitleSourcePort for YtDlpAdapter {
         let url = match source {
             MediaSource::YoutubeUrl { url } => url,
             MediaSource::RemoteUrl { url } => url,
-            MediaSource::LocalFile { .. } => {
+            MediaSource::ManagedLocalFile { .. } | MediaSource::ExternalLocalFile { .. } => {
                 return Err(PortError::InvalidSource {
                     message: "yt-dlp subtitles only support URLs".to_string(),
                 });
@@ -168,7 +168,11 @@ impl SubtitleSourcePort for YtDlpAdapter {
         let url = match source {
             MediaSource::YoutubeUrl { url } => url,
             MediaSource::RemoteUrl { url } => url,
-            MediaSource::LocalFile { .. } => unreachable!(),
+            MediaSource::ManagedLocalFile { .. } | MediaSource::ExternalLocalFile { .. } => {
+                return Err(PortError::InvalidSource {
+                    message: "yt-dlp subtitle download only supports URLs".to_string(),
+                });
+            }
         };
 
         let path = super::command::run_ytdlp_download_subtitle(

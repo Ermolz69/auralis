@@ -14,7 +14,7 @@ pub use id::JobId;
 pub use kind::JobKind;
 pub use progress::JobProgress;
 pub use snapshot::JobSnapshot;
-pub use status::JobStatus;
+pub use status::{JobStatus, TerminalOutcome};
 
 #[cfg(test)]
 mod tests;

@@ -34,6 +34,14 @@ pub fn row_to_project(row: ProjectRow) -> Result<Project, PortError> {
         .map(|s| parse_json(&s, "transcript_json"))
         .transpose()?;
 
+    let active_job_id = row
+        .active_job_id
+        .map(|id| domain::job::JobId::from_str(&id))
+        .transpose()
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Failed to parse active_job_id: {}", e),
+        })?;
+
     let created_at = parse_datetime(&row.created_at, "created_at")?;
     let updated_at = parse_datetime(&row.updated_at, "updated_at")?;
 
@@ -46,6 +54,7 @@ pub fn row_to_project(row: ProjectRow) -> Result<Project, PortError> {
         source_language,
         target_language,
         transcript,
+        active_job_id,
         created_at,
         updated_at,
     };
@@ -92,6 +101,7 @@ pub fn project_to_row_values(project: &Project) -> Result<ProjectRow, PortError>
         source_language,
         target_language,
         transcript_json,
+        active_job_id: snapshot.active_job_id.map(|id| id.to_string()),
         created_at: snapshot.created_at.to_rfc3339(),
         updated_at: snapshot.updated_at.to_rfc3339(),
     })

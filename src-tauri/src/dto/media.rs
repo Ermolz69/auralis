@@ -2,27 +2,40 @@ use domain::media::{MediaMetadata, MediaSource};
 use serde::Serialize;
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MediaSourceDto {
-    pub kind: String,
-    pub url_or_path: String,
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum MediaSourceDto {
+    ManagedLocalFile {
+        #[serde(rename = "artifactId")]
+        artifact_id: String,
+        #[serde(rename = "originalFilename")]
+        original_filename: String,
+    },
+    ExternalLocalFile {
+        path: String,
+    },
+    YoutubeUrl {
+        url: String,
+    },
+    RemoteUrl {
+        url: String,
+    },
 }
 
 impl From<&MediaSource> for MediaSourceDto {
     fn from(m: &MediaSource) -> Self {
         match m {
-            MediaSource::RemoteUrl { url } => Self {
-                kind: "remoteUrl".to_string(),
-                url_or_path: url.clone(),
+            MediaSource::ManagedLocalFile {
+                artifact_id,
+                original_filename,
+            } => Self::ManagedLocalFile {
+                artifact_id: artifact_id.to_string(),
+                original_filename: original_filename.clone(),
             },
-            MediaSource::YoutubeUrl { url } => Self {
-                kind: "youtubeUrl".to_string(),
-                url_or_path: url.clone(),
-            },
-            MediaSource::LocalFile { path } => Self {
-                kind: "localFile".to_string(),
-                url_or_path: path.clone(),
-            },
+            MediaSource::ExternalLocalFile { path } => {
+                Self::ExternalLocalFile { path: path.clone() }
+            }
+            MediaSource::YoutubeUrl { url } => Self::YoutubeUrl { url: url.clone() },
+            MediaSource::RemoteUrl { url } => Self::RemoteUrl { url: url.clone() },
         }
     }
 }
@@ -146,5 +159,56 @@ impl From<&MediaMetadata> for MediaMetadataDto {
             video: m.video.as_ref().map(Into::into),
             audio_tracks: m.audio_tracks.iter().map(Into::into).collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::media::{ArtifactId, MediaSource};
+
+    #[test]
+    fn test_media_source_dto_serialization() {
+        let artifact_id = ArtifactId::new();
+        let source = MediaSource::ManagedLocalFile {
+            artifact_id: artifact_id.clone(),
+            original_filename: "test.mp4".to_string(),
+        };
+        let dto: MediaSourceDto = (&source).into();
+        let json = serde_json::to_string(&dto).unwrap();
+        assert_eq!(
+            json,
+            format!(
+                r#"{{"kind":"managedLocalFile","artifactId":"{}","originalFilename":"test.mp4"}}"#,
+                artifact_id.0
+            )
+        );
+
+        let source = MediaSource::ExternalLocalFile {
+            path: "/a/b.mp4".to_string(),
+        };
+        let dto: MediaSourceDto = (&source).into();
+        let json = serde_json::to_string(&dto).unwrap();
+        assert_eq!(json, r#"{"kind":"externalLocalFile","path":"/a/b.mp4"}"#);
+
+        let source = MediaSource::YoutubeUrl {
+            url: "https://youtu.be/xxx".to_string(),
+        };
+        let dto: MediaSourceDto = (&source).into();
+        let json = serde_json::to_string(&dto).unwrap();
+        assert_eq!(
+            json,
+            r#"{"kind":"youtubeUrl","url":"https://youtu.be/xxx"}"#
+        );
+
+        let source = MediaSource::RemoteUrl {
+            url: "https://example.com/video.mp4".to_string(),
+        };
+        let dto: MediaSourceDto = (&source).into();
+        let json = serde_json::to_string(&dto).unwrap();
+        assert_eq!(
+            json,
+            r#"{"kind":"remoteUrl","url":"https://example.com/video.mp4"}"#
+        );
     }
 }

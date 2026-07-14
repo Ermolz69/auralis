@@ -16,16 +16,6 @@ pub(super) struct MockArtifactStore {
 
 #[async_trait]
 impl ArtifactStore for MockArtifactStore {
-    async fn write_small_artifact(
-        &self,
-        _project_id: &ProjectId,
-        _kind: ArtifactKind,
-        _filename: &str,
-        _data: &[u8],
-    ) -> Result<Artifact, PortError> {
-        unimplemented!()
-    }
-
     async fn stage_owned_temp_file(
         &self,
         _project_id: &ProjectId,

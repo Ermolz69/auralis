@@ -16,7 +16,6 @@ pub async fn probe_local_media_cmd(
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<MediaMetadataDto, String> {
     let req = ProbeLocalMediaRequest {
-        project_id: None,
         path: PathBuf::from(path),
     };
 

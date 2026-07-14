@@ -6,9 +6,7 @@ export async function listJobs(): Promise<Job[]> {
   return invoke('list_jobs_cmd');
 }
 
-export async function startMockDubbingJob(input: string): Promise<Job> {
-  return invoke('start_mock_dubbing_job_cmd', { input });
-}
+
 
 export async function cancelJob(jobId: string): Promise<Job> {
   return invoke('cancel_job_cmd', { jobId });

@@ -1,6 +1,7 @@
 pub mod artifact_index;
 pub mod job_repository;
 pub mod project_repository;
+pub mod recovery_gateway;
 pub mod unit_of_work;
 
 pub use artifact_index::InMemoryArtifactIndex;

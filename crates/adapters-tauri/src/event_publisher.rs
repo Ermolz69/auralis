@@ -9,12 +9,21 @@ pub struct TauriEventPublisher {
     app: AppHandle,
 }
 
+pub trait FrontendJobEventPublisher: Send + Sync {
+    fn publish_job_event(
+        &self,
+        event: &ports::job_scheduler::JobLifecycleEvent,
+    ) -> Result<(), PortError>;
+}
+
 impl TauriEventPublisher {
     pub fn new(app: AppHandle) -> Self {
         Self { app }
     }
+}
 
-    pub fn publish_job_event(
+impl FrontendJobEventPublisher for TauriEventPublisher {
+    fn publish_job_event(
         &self,
         event: &ports::job_scheduler::JobLifecycleEvent,
     ) -> Result<(), PortError> {

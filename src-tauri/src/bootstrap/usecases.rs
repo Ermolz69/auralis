@@ -11,7 +11,6 @@ use application::usecases::artifact::list_project_artifacts::ListProjectArtifact
 use application::usecases::artifact::resolve_path::ResolveArtifactPathUseCase;
 use application::usecases::job::cancel::CancelJobUseCase;
 use application::usecases::job::list::ListJobsUseCase;
-use application::usecases::job::start_mock::StartMockJobUseCase;
 use application::usecases::media::import_local_media::ImportLocalMediaUseCase;
 use application::usecases::media::probe_local::ProbeLocalMediaUseCase;
 use application::usecases::pipeline::start_mock::StartMockPipelineUseCase;
@@ -27,7 +26,7 @@ pub struct AppUseCases {
     pub list_project_artifacts: ListProjectArtifactsUseCase<RuntimeArtifactIndex>,
     pub resolve_artifact_path:
         ResolveArtifactPathUseCase<RuntimeArtifactIndex, RuntimeArtifactStore>,
-    pub probe_local_media: ProbeLocalMediaUseCase<RuntimeProjectRepository, FfprobeAdapter>,
+    pub probe_local_media: ProbeLocalMediaUseCase<FfprobeAdapter>,
     pub import_local_media: ImportLocalMediaUseCase<
         RuntimeProjectRepository,
         FfprobeAdapter,
@@ -47,7 +46,6 @@ pub struct AppUseCases {
     pub start_mock_pipeline:
         StartMockPipelineUseCase<RuntimeProjectRepository, YtDlpAdapter, RuntimeArtifactStore>,
     pub get_transcript: GetTranscriptUseCase<RuntimeProjectRepository>,
-    pub start_mock_job: StartMockJobUseCase,
     pub list_jobs: ListJobsUseCase,
     pub cancel_job: CancelJobUseCase,
 }
@@ -59,13 +57,10 @@ pub fn setup_usecases(
     artifact_store: RuntimeArtifactStore,
     storage_uow: RuntimeStorageUnitOfWork,
     job_scheduler: Arc<dyn JobSchedulerPort>,
+    workspace_root: std::path::PathBuf,
 ) {
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
     let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates);
-    let target_dir_base = app
-        .path()
-        .app_data_dir()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."));
 
     let probe = FfprobeAdapter::new(crate::bootstrap::media_tools::resolve_ffprobe_candidates(
         app,
@@ -77,7 +72,7 @@ pub fn setup_usecases(
             artifact_index.clone(),
             artifact_store.clone(),
         ),
-        probe_local_media: ProbeLocalMediaUseCase::new(project_repo.clone(), probe.clone()),
+        probe_local_media: ProbeLocalMediaUseCase::new(probe.clone()),
         import_local_media: ImportLocalMediaUseCase::new(
             project_repo.clone(),
             probe.clone(),
@@ -85,7 +80,8 @@ pub fn setup_usecases(
             storage_uow.clone(),
             ytdlp_adapter.clone(),
             artifact_store.clone(),
-            target_dir_base.clone(),
+            artifact_index.clone(),
+            workspace_root.clone(),
         ),
         create_project: CreateProjectUseCase::new(project_repo.clone()),
         create_project_from_youtube: CreateProjectFromYoutubeUseCase::new(
@@ -95,7 +91,7 @@ pub fn setup_usecases(
             storage_uow.clone(),
             ytdlp_adapter.clone(),
             artifact_store.clone(),
-            target_dir_base.clone(),
+            workspace_root.clone(),
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
@@ -106,10 +102,9 @@ pub fn setup_usecases(
             storage_uow.clone(),
             ytdlp_adapter.clone(),
             artifact_store.clone(),
-            target_dir_base.clone(),
+            workspace_root.clone(),
         ),
         get_transcript: GetTranscriptUseCase::new(project_repo.clone()),
-        start_mock_job: StartMockJobUseCase::new(job_scheduler.clone()),
         list_jobs: ListJobsUseCase::new(job_scheduler.clone()),
         cancel_job: CancelJobUseCase::new(job_scheduler.clone()),
     };

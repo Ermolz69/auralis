@@ -6,43 +6,21 @@ use ports::storage::ArtifactStore;
 use tempfile::tempdir;
 
 #[tokio::test]
-async fn test_write_small_artifact() {
-    let temp_dir = tempdir().unwrap();
-    let store = LocalArtifactStore::new(temp_dir.path().to_path_buf());
-    let project_id = ProjectId(uuid::Uuid::new_v4());
-
-    let result = store
-        .write_small_artifact(
-            &project_id,
-            ArtifactKind::LogFile,
-            "test_file.txt",
-            b"hello world",
-        )
-        .await;
-
-    assert!(result.is_ok());
-    let artifact = result.unwrap();
-
-    match artifact.location {
-        domain::media::ArtifactLocation::StorageKey(key) => {
-            let path = store.resolve_storage_key(&key).unwrap();
-            let saved_data = tokio::fs::read(&path).await.expect("File should exist");
-            assert_eq!(saved_data, b"hello world");
-        }
-        _ => panic!("Expected StorageKey"),
-    }
-}
-
-#[tokio::test]
 async fn test_resolve_artifact() {
     let temp_dir = tempdir().unwrap();
     let store = LocalArtifactStore::new(temp_dir.path().to_path_buf());
-    let project_id = ProjectId(uuid::Uuid::new_v4());
+    let _project_id = ProjectId(uuid::Uuid::new_v4());
 
-    let artifact = store
-        .write_small_artifact(&project_id, ArtifactKind::LogFile, "test.log", b"test")
-        .await
-        .unwrap();
+    let artifact = domain::media::Artifact {
+        id: domain::media::ArtifactId::new(),
+        kind: ArtifactKind::LogFile,
+        location: domain::media::ArtifactLocation::StorageKey("test.log".to_string()),
+        size_bytes: None,
+        state: domain::media::ArtifactState::Ready,
+        created_at: domain::chrono::Utc::now(),
+        updated_at: domain::chrono::Utc::now(),
+        ready_at: Some(domain::chrono::Utc::now()),
+    };
 
     let resolved_path = store.resolve_artifact(&artifact).await.unwrap();
     assert!(resolved_path.starts_with(temp_dir.path()));

@@ -113,13 +113,19 @@ where
             }
         };
 
+        let temp_workspace_key = temp_path
+            .strip_prefix(&request.temp_dir)
+            .ok()
+            .and_then(|p| p.to_str())
+            .map(|s| s.to_string());
+
         // 3. Atomically persist to DB and write outbox message
         let commit_cmd = CommitStagedArtifactWrite {
             project_id: request.project_id.clone(),
             artifact: staged.artifact,
             staging_key: staged.staging_key.clone(),
             final_key: staged.final_key.clone(),
-            temp_path_to_delete: Some(temp_path),
+            temp_workspace_key,
         };
 
         if let Err(e) = self

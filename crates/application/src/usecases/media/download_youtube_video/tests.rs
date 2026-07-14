@@ -82,8 +82,8 @@ async fn test_non_youtube_source_fails() {
     let mut project = Project::new("Test Project".to_string());
     project
         .import_source(
-            MediaSource::LocalFile {
-                path: "/tmp/test.mp4".into(),
+            MediaSource::ExternalLocalFile {
+                path: "".to_string(),
             },
             None,
         )

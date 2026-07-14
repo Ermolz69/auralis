@@ -53,14 +53,24 @@ pub fn setup_storage(
 
         let job_repo: Arc<dyn JobRepository> = Arc::new(SqliteJobRepository::new(pool.clone()));
 
-        let use_case = application::usecases::project::recover_interrupted::RecoverInterruptedProjectsUseCase::new(repo.clone());
-        tauri::async_runtime::block_on(use_case.execute())?;
-
-        let job_use_case =
-            application::usecases::job::recover_interrupted::RecoverInterruptedJobsUseCase::new(
-                job_repo.clone(),
+        let recovery_storage = Arc::new(
+            adapters_storage::sqlite::recovery_gateway::SqliteRecoveryStorage::new(pool.clone()),
+        );
+        let use_case =
+            application::usecases::system::recover_interrupted::RecoverInterruptedStateUseCase::new(
+                recovery_storage,
             );
-        tauri::async_runtime::block_on(job_use_case.execute())?;
+        let report = tauri::async_runtime::block_on(use_case.execute())?;
+
+        if report.has_fatal_issues() {
+            for issue in &report.fatal_issues {
+                eprintln!("FATAL RECOVERY ISSUE: {:?}", issue);
+            }
+            return Err("Startup halted due to fatal state recovery issues.".into());
+        }
+        for warning in &report.warnings {
+            println!("Recovery warning: {:?}", warning);
+        }
 
         let artifacts_dir = app_data_dir.join("artifacts");
         std::fs::create_dir_all(&artifacts_dir)?;

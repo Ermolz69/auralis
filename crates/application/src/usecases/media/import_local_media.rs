@@ -37,6 +37,7 @@ pub struct ImportLocalMediaUseCase<
     storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: V,
     artifact_store: S,
+    artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
     target_dir_base: std::path::PathBuf,
 }
 
@@ -55,6 +56,7 @@ impl<
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: V,
         artifact_store: S,
+        artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
         target_dir_base: std::path::PathBuf,
     ) -> Self {
         Self {
@@ -64,6 +66,7 @@ impl<
             storage_uow,
             subtitle_source,
             artifact_store,
+            artifact_index,
             target_dir_base,
         }
     }
@@ -72,22 +75,71 @@ impl<
         &self,
         request: ImportLocalMediaRequest,
     ) -> Result<ImportLocalMediaResponse, ApplicationError> {
-        let probe_use_case =
-            ProbeLocalMediaUseCase::new(self.project_repo.clone(), self.media_probe.clone());
+        let probe_use_case = ProbeLocalMediaUseCase::new(self.media_probe.clone());
         let probe_req = ProbeLocalMediaRequest {
-            project_id: Some(request.project_id.clone()),
-            path: request.path,
+            path: request.path.clone(),
         };
 
-        // This will probe and import the source, saving it.
+        // This will probe the source
         let probe_res = probe_use_case.execute(probe_req).await?;
 
-        let mut project = probe_res
-            .project
-            .ok_or_else(|| ApplicationError::InvalidOperation {
-                message: "Probe local media did not return project".to_string(),
-            })?;
+        let original_filename = request
+            .path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string());
 
+        // 1. Stage the file
+        let staged_artifact = self
+            .artifact_store
+            .import_external_file(
+                &request.project_id,
+                domain::media::ArtifactKind::SourceVideo,
+                &request.path,
+                original_filename.as_deref(),
+            )
+            .await?;
+
+        // 2. Load project
+        let mut project = self
+            .project_repo
+            .get(&request.project_id)
+            .await?
+            .ok_or_else(|| ApplicationError::ProjectNotFound(request.project_id.clone()))?;
+
+        // 3. Attach ManagedLocalFile
+        let source = domain::media::MediaSource::ManagedLocalFile {
+            artifact_id: staged_artifact.artifact.id.clone(),
+            original_filename: original_filename.unwrap_or_else(|| "video.mp4".to_string()),
+        };
+        project.import_source(source, Some(probe_res.metadata.clone()))?;
+
+        // 4. Commit managed source import
+        let commit_cmd = ports::transaction::CommitManagedSourceImport {
+            project: project.clone(),
+            artifact: staged_artifact.artifact.clone(),
+            staging_key: staged_artifact.staging_key.clone(),
+            final_key: staged_artifact.final_key.clone(),
+        };
+        self.storage_uow
+            .commit_managed_source_import(commit_cmd)
+            .await?;
+
+        // 5. Fast-path finalization
+        let finalizer = crate::services::artifact_finalizer::ArtifactFinalizer::new(
+            self.artifact_index.clone(),
+            self.artifact_store.clone(),
+        );
+
+        finalizer
+            .finalize(
+                &staged_artifact.artifact.id,
+                &staged_artifact.staging_key,
+                &staged_artifact.final_key,
+            )
+            .await?;
+
+        // 6. Transition project to ReadyForProcessing
+        let mut project = self.project_repo.get(&request.project_id).await?.unwrap();
         project.mark_ready_for_processing()?;
         self.project_repo.save(&project).await?;
 
@@ -151,7 +203,7 @@ mod tests {
         }
     }
 
-    use crate::test_utils::MockArtifactStore;
+    use crate::test_utils::{MockArtifactIndex, MockArtifactStore};
 
     #[tokio::test]
     async fn imports_local_media_and_starts_pipeline() {
@@ -165,7 +217,8 @@ mod tests {
             job_scheduler.clone(),
             tx_gateway.clone(),
             MockSubtitleSource,
-            MockArtifactStore,
+            Arc::new(MockArtifactStore),
+            Arc::new(MockArtifactIndex::new()),
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -189,7 +242,11 @@ mod tests {
             response.job.status == JobStatus::Pending || response.job.status == JobStatus::Running
         );
 
-        let saved_project = repo.get(&project_id).await.unwrap().unwrap();
+        let projects_saved = tx_gateway.projects_saved.lock().await;
+        let saved_project = projects_saved
+            .iter()
+            .find(|p| p.id() == &project_id)
+            .unwrap();
         assert_eq!(*saved_project.status(), ProjectStatus::Processing);
     }
 
@@ -204,7 +261,8 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactStore,
+            Arc::new(MockArtifactStore),
+            Arc::new(MockArtifactIndex::new()),
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -232,7 +290,8 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactStore,
+            Arc::new(MockArtifactStore),
+            Arc::new(MockArtifactIndex::new()),
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -276,7 +335,8 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactStore,
+            Arc::new(MockArtifactStore),
+            Arc::new(MockArtifactIndex::new()),
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -311,7 +371,8 @@ mod tests {
             job_scheduler.clone(),
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
-            MockArtifactStore,
+            Arc::new(MockArtifactStore),
+            Arc::new(MockArtifactIndex::new()),
             std::path::PathBuf::from("/tmp"),
         );
 
@@ -323,15 +384,18 @@ mod tests {
         // which might fail if it's Completed.
         project
             .import_source(
-                domain::media::MediaSource::LocalFile {
+                domain::media::MediaSource::ExternalLocalFile {
                     path: "".to_string(),
                 },
                 None,
             )
             .unwrap();
         project.mark_ready_for_processing().unwrap();
-        project.mark_processing_started().unwrap();
-        project.mark_completed().unwrap();
+        let test_job_id = domain::job::JobId::new();
+        project.start_processing(test_job_id.clone()).unwrap();
+        project
+            .apply_terminal_transition(&test_job_id, domain::job::TerminalOutcome::Completed)
+            .unwrap();
 
         repo.create(project.clone()).await.unwrap();
 

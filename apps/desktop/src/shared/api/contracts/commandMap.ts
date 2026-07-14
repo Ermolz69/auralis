@@ -32,10 +32,7 @@ export interface CommandMap {
     args: undefined;
     result: Project[];
   };
-  start_mock_dubbing_job_cmd: {
-    args: { input: string };
-    result: Job;
-  };
+
   list_jobs_cmd: {
     args: undefined;
     result: Job[];

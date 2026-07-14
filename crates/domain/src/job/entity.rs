@@ -217,4 +217,14 @@ impl Job {
             finished_at: snapshot.finished_at,
         }
     }
+
+    #[cfg(test)]
+    pub fn set_status(&mut self, status: JobStatus) {
+        self.status = status;
+    }
+
+    #[cfg(test)]
+    pub fn set_id(&mut self, id: JobId) {
+        self.id = id;
+    }
 }

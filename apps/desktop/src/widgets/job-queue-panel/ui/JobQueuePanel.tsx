@@ -7,6 +7,12 @@ import type { Job } from '@/entities/job';
 import { CancelJobButton } from '@/features/cancel-job';
 import { useProjectContext } from '@/entities/project';
 
+const formatStage = (stage: string | null) => {
+  if (!stage) return '';
+  const withSpaces = stage.replace(/([A-Z])/g, ' $1');
+  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+};
+
 export const JobQueuePanel = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const { projectId } = useProjectContext();
@@ -33,7 +39,7 @@ export const JobQueuePanel = () => {
                 status: event.status,
                 stage: event.stage,
                 progress: event.progress,
-                error: event.error || newJobs[index].error,
+                error: event.error ?? newJobs[index].error,
               };
               return newJobs;
             } else {
@@ -82,19 +88,30 @@ export const JobQueuePanel = () => {
                   <div className="flex flex-col">
                     <p className="text-sm text-text font-medium">{job.title}</p>
                     <p className="text-xs text-muted capitalize">
-                      {job.status.replace('_', ' ')}{' '}
-                      {job.stage && `- ${job.stage.replace(/_/g, ' ')}`}
+                      {job.status.replace('_', ' ')}
+                      {job.stage && ` - ${formatStage(job.stage)}`}
                     </p>
                   </div>
-                  {(job.status === 'queued' || job.status === 'running') && (
+                  {(job.status === 'pending' || job.status === 'running') && (
                     <CancelJobButton jobId={job.id} />
                   )}
                 </div>
 
                 {job.status === 'failed' && job.error ? (
-                  <p className="text-xs text-danger">{job.error}</p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-danger">{job.error}</p>
+                    {job.progress.message && (
+                      <p className="text-xs text-muted">Final state: {job.progress.message}</p>
+                    )}
+                  </div>
                 ) : (
-                  <Progress value={job.progress.percent} />
+                  <div className="flex flex-col gap-1">
+                    <Progress value={job.progress.percent} />
+                    <div className="flex justify-between text-xs text-muted">
+                      <span>{job.progress.message || 'Initializing...'}</span>
+                      <span>{job.progress.percent}%</span>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
