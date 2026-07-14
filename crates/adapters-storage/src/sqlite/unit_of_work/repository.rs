@@ -290,14 +290,14 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::job::JobId;
+
     use domain::media::{Artifact, ArtifactId};
     use domain::project::Project;
     use sqlx::SqlitePool;
 
     async fn setup_db() -> SqlitePool {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::migrate!("./src/sqlite/migrations_runtime")
+        sqlx::migrate!("./migrations") 
             .run(&pool)
             .await
             .unwrap();
@@ -309,14 +309,9 @@ mod tests {
         let pool = setup_db().await;
         let uow = SqliteStorageUnitOfWork::new(pool.clone());
 
-        let mut project = Project::new("Tx Test".to_string());
-
-        // 1. Pre-insert the project since update_project expects it to exist, wait actually update_project uses UPSERT?
-        // Let's look at project_writes::update_project, it uses `ON CONFLICT(id) DO UPDATE`. So it works for insert too.
-
         let artifact = Artifact {
             id: ArtifactId::new(),
-            kind: domain::media::ArtifactKind::OriginalSubtitle,
+            kind: domain::media::ArtifactKind::SourceVideo,
             location: domain::media::ArtifactLocation::LocalPath("fake_path".into()),
             size_bytes: Some(1024),
             state: domain::media::ArtifactState::PendingFinalize,
@@ -324,6 +319,27 @@ mod tests {
             updated_at: chrono::Utc::now(),
             ready_at: None,
         };
+
+        let mut project = Project::new("Tx Test".to_string());
+        sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+            .bind(project.id().to_string())
+            .bind(project.title())
+            .bind("Draft")
+            .bind(project.created_at().to_rfc3339())
+            .bind(project.updated_at().to_rfc3339())
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        project
+            .import_source(
+                domain::media::MediaSource::ManagedLocalFile {
+                    artifact_id: artifact.id.clone(),
+                    original_filename: "test".into(),
+                },
+                None,
+            )
+            .unwrap();
 
         let cmd = CommitManagedSourceImport {
             project: project.clone(),

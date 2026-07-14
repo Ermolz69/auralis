@@ -5,7 +5,7 @@ use tokio::sync::Mutex;
 use super::recover_interrupted::RecoverInterruptedStateUseCase;
 use domain::job::{Job, JobError, JobId, JobStatus};
 use domain::project::{Project, ProjectId, ProjectStatus};
-use domain::system::recovery::{RecoveryIssueType, RecoveryReport};
+use domain::system::recovery::RecoveryIssueType;
 use ports::error::PortError;
 use ports::recovery::{RecoverySnapshot, RecoveryStorage};
 
@@ -69,9 +69,8 @@ fn create_project(status: ProjectStatus, active_job_id: Option<JobId>) -> Projec
         ProjectStatus::Draft => {}
         ProjectStatus::SourceImported => {
             p.import_source(
-                domain::media::MediaSource::LocalFile {
-                    original_path: "test".into(),
-                    artifact_id: None,
+                domain::media::MediaSource::ExternalLocalFile {
+                    path: "test".into(),
                 },
                 None,
             )
@@ -79,9 +78,8 @@ fn create_project(status: ProjectStatus, active_job_id: Option<JobId>) -> Projec
         }
         ProjectStatus::ReadyForProcessing => {
             p.import_source(
-                domain::media::MediaSource::LocalFile {
-                    original_path: "test".into(),
-                    artifact_id: None,
+                domain::media::MediaSource::ExternalLocalFile {
+                    path: "test".into(),
                 },
                 None,
             )
@@ -90,22 +88,20 @@ fn create_project(status: ProjectStatus, active_job_id: Option<JobId>) -> Projec
         }
         ProjectStatus::Processing => {
             p.import_source(
-                domain::media::MediaSource::LocalFile {
-                    original_path: "test".into(),
-                    artifact_id: None,
+                domain::media::MediaSource::ExternalLocalFile {
+                    path: "test".into(),
                 },
                 None,
             )
             .unwrap();
             p.mark_ready_for_processing().unwrap();
-            p.start_processing(active_job_id.unwrap_or_else(|| JobId::new()))
+            p.start_processing(active_job_id.unwrap_or_default())
                 .unwrap();
         }
         ProjectStatus::Completed => {
             p.import_source(
-                domain::media::MediaSource::LocalFile {
-                    original_path: "test".into(),
-                    artifact_id: None,
+                domain::media::MediaSource::ExternalLocalFile {
+                    path: "test".into(),
                 },
                 None,
             )
@@ -121,9 +117,8 @@ fn create_project(status: ProjectStatus, active_job_id: Option<JobId>) -> Projec
         }
         ProjectStatus::Cancelled => {
             p.import_source(
-                domain::media::MediaSource::LocalFile {
-                    original_path: "test".into(),
-                    artifact_id: None,
+                domain::media::MediaSource::ExternalLocalFile {
+                    path: "test".into(),
                 },
                 None,
             )
@@ -139,11 +134,11 @@ fn create_project(status: ProjectStatus, active_job_id: Option<JobId>) -> Projec
 }
 
 fn create_job(project_id: ProjectId, status: JobStatus, id: Option<JobId>) -> Job {
-    let mut snapshot = JobSnapshot {
-        id: id.unwrap_or_else(|| JobId::new()),
+    let snapshot = JobSnapshot {
+        id: id.unwrap_or_default(),
         project_id,
         title: "Test Job".into(),
-        kind: JobKind::FullPipeline,
+        kind: JobKind::Dubbing,
         status,
         stage: None,
         progress: JobProgress::initializing(),
@@ -159,8 +154,8 @@ fn create_job(project_id: ProjectId, status: JobStatus, id: Option<JobId>) -> Jo
 #[tokio::test]
 async fn test_processing_pending_both_failed() {
     let job_id = JobId::new();
-    let mut project = create_project(ProjectStatus::Processing, Some(job_id.clone()));
-    let mut job = create_job(
+    let project = create_project(ProjectStatus::Processing, Some(job_id.clone()));
+    let job = create_job(
         project.id().clone(),
         JobStatus::Pending,
         Some(job_id.clone()),
@@ -186,14 +181,14 @@ async fn test_processing_pending_both_failed() {
     assert_eq!(pairs.len(), 1);
     assert_eq!(*pairs[0].0.status(), ProjectStatus::Failed);
     assert_eq!(*pairs[0].1.status(), JobStatus::Failed);
-    assert_eq!(pairs[0].1.error().as_ref().unwrap().code(), "APP_RESTART");
+    assert_eq!(pairs[0].1.error().as_ref().unwrap().code, "APP_RESTART");
 }
 
 #[tokio::test]
 async fn test_processing_completed_reconciled() {
     let job_id = JobId::new();
-    let mut project = create_project(ProjectStatus::Processing, Some(job_id.clone()));
-    let mut job = create_job(
+    let project = create_project(ProjectStatus::Processing, Some(job_id.clone()));
+    let job = create_job(
         project.id().clone(),
         JobStatus::Completed,
         Some(job_id.clone()),
@@ -220,7 +215,7 @@ async fn test_processing_completed_reconciled() {
 #[tokio::test]
 async fn test_processing_failed_reconciled() {
     let job_id = JobId::new();
-    let mut project = create_project(ProjectStatus::Processing, Some(job_id.clone()));
+    let project = create_project(ProjectStatus::Processing, Some(job_id.clone()));
     let mut job = create_job(
         project.id().clone(),
         JobStatus::Failed,
@@ -277,7 +272,7 @@ async fn test_processing_without_job() {
 #[tokio::test]
 async fn test_orphan_active_job() {
     let project = create_project(ProjectStatus::Completed, None);
-    let mut job = create_job(project.id().clone(), JobStatus::Running, None);
+    let job = create_job(project.id().clone(), JobStatus::Running, None);
 
     let snapshot = RecoverySnapshot {
         processing_projects: vec![],
@@ -307,7 +302,7 @@ async fn test_job_project_mismatch() {
     let project = create_project(ProjectStatus::Processing, Some(job_id.clone()));
 
     let other_project_id = ProjectId::new();
-    let mut job = create_job(
+    let job = create_job(
         other_project_id.clone(),
         JobStatus::Running,
         Some(job_id.clone()),

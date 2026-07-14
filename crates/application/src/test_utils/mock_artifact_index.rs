@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use domain::media::{Artifact, ArtifactId, ArtifactKind, ArtifactState};
+use domain::media::{Artifact, ArtifactId, ArtifactState};
 use domain::project::ProjectId;
 use ports::artifact_index::ArtifactIndex;
 use ports::error::PortError;
