@@ -4,7 +4,8 @@ use std::sync::Arc;
 use ports::error::PortError;
 use ports::transaction::{
     CommitJobUpdate, CommitPipelineStart, CommitPipelineStartFailure, CommitProjectDelete,
-    CommitStagedArtifactWrite, CommitTranscriptImport, StorageUnitOfWork,
+    CommitProjectDeleteResult, CommitStagedArtifactWrite, CommitTranscriptImport,
+    StorageUnitOfWork,
 };
 
 use super::database::InMemoryDatabase;
@@ -97,10 +98,32 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<CommitProjectDeleteResult, PortError> {
         let mut db = self.db.lock().unwrap();
+
+        if !db.projects.contains_key(&command.project_id) {
+            return Err(PortError::NotFound {
+                resource: format!("Project {}", command.project_id),
+            });
+        }
+
+        let deleted_job_ids: Vec<domain::job::JobId> = db
+            .jobs
+            .values()
+            .filter(|j| j.project_id() == &command.project_id)
+            .map(|j| j.id().clone())
+            .collect();
+
+        for job_id in &deleted_job_ids {
+            db.jobs.remove(job_id);
+        }
+
         db.projects.remove(&command.project_id);
-        Ok(())
+
+        Ok(CommitProjectDeleteResult { deleted_job_ids })
     }
 
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {

@@ -67,11 +67,13 @@ impl<
         ];
 
         for (stage, percent, delay_ms) in stages {
-            // Check cancellation before each stage
-            if let Ok(Some(job)) = self.job_scheduler.get_job(&job_id).await {
-                if job.status == JobStatus::Cancelled {
-                    return;
+            match self.job_scheduler.get_job(&job_id).await {
+                Ok(Some(job)) => {
+                    if job.status == JobStatus::Cancelled {
+                        return;
+                    }
                 }
+                _ => return, // Cancelled or deleted
             }
 
             let progress = JobProgress {
@@ -91,10 +93,13 @@ impl<
         }
 
         // ExtractOrGenerateTranscript stage (Real work: Subtitles Import)
-        if let Ok(Some(job)) = self.job_scheduler.get_job(&job_id).await {
-            if job.status == JobStatus::Cancelled {
-                return;
+        match self.job_scheduler.get_job(&job_id).await {
+            Ok(Some(job)) => {
+                if job.status == JobStatus::Cancelled {
+                    return;
+                }
             }
+            _ => return,
         }
 
         let _ = self
@@ -144,10 +149,13 @@ impl<
         }
 
         // Check cancellation again
-        if let Ok(Some(job)) = self.job_scheduler.get_job(&job_id).await {
-            if job.status == JobStatus::Cancelled {
-                return;
+        match self.job_scheduler.get_job(&job_id).await {
+            Ok(Some(job)) => {
+                if job.status == JobStatus::Cancelled {
+                    return;
+                }
             }
+            _ => return,
         }
 
         // ExportResult stage

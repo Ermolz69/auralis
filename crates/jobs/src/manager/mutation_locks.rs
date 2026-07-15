@@ -25,4 +25,9 @@ impl JobMutationLocks {
             lock
         }
     }
+
+    pub fn remove(&self, job_id: &DomainJobId) {
+        let mut map = self.locks.lock().unwrap();
+        map.remove(job_id);
+    }
 }

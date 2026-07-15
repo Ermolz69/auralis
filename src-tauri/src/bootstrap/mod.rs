@@ -62,9 +62,9 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         services.artifact_index,
         services.artifact_store,
         services.storage_uow,
-        job_manager,
+        job_manager.clone() as Arc<dyn ports::job_scheduler::JobSchedulerPort>,
         temp_workspace,
-        services.job_repo.clone(),
+        job_manager.clone() as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     );
 
     Ok(())

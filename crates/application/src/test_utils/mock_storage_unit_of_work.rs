@@ -83,7 +83,10 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<ports::transaction::CommitProjectDeleteResult, PortError> {
         if self.should_fail {
             return Err(PortError::Unexpected {
                 message: "Mock transaction failure".to_string(),
@@ -91,7 +94,9 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
         }
         let mut deleted = self.projects_deleted.lock().await;
         deleted.push(command.project_id);
-        Ok(())
+        Ok(ports::transaction::CommitProjectDeleteResult {
+            deleted_job_ids: vec![],
+        })
     }
 
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {

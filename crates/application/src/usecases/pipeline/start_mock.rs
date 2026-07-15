@@ -54,7 +54,6 @@ impl<
             job_scheduler,
             storage_uow,
             subtitle_source,
-
             artifact_store,
             workspace_port,
         }
@@ -449,7 +448,7 @@ mod tests {
             async fn commit_project_delete(
                 &self,
                 cmd: ports::transaction::CommitProjectDelete,
-            ) -> Result<(), PortError> {
+            ) -> Result<ports::transaction::CommitProjectDeleteResult, PortError> {
                 self.inner.commit_project_delete(cmd).await
             }
             async fn commit_job_update(

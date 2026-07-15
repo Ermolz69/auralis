@@ -222,7 +222,7 @@ impl ports::transaction::StorageUnitOfWork for MockUow {
     async fn commit_project_delete(
         &self,
         _command: ports::transaction::CommitProjectDelete,
-    ) -> Result<(), ports::error::PortError> {
+    ) -> Result<ports::transaction::CommitProjectDeleteResult, ports::error::PortError> {
         unimplemented!()
     }
     async fn commit_job_update(

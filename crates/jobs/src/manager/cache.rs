@@ -24,6 +24,10 @@ impl JobCache {
         self.jobs.read().await.get(id).cloned()
     }
 
+    pub async fn remove(&self, id: &JobId) {
+        self.jobs.write().await.remove(id);
+    }
+
     pub async fn list_all(&self) -> Vec<Job> {
         self.jobs.read().await.values().cloned().collect()
     }

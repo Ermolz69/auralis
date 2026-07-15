@@ -25,7 +25,10 @@ pub trait StorageUnitOfWork: Send + Sync {
         &self,
         command: CommitManagedSourceImport,
     ) -> Result<(), PortError>;
-    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError>;
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<CommitProjectDeleteResult, PortError>;
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError>;
     async fn commit_pipeline_start(&self, command: CommitPipelineStart) -> Result<(), PortError>;
     async fn commit_pipeline_start_failure(
@@ -62,7 +65,10 @@ impl<T: ?Sized + StorageUnitOfWork> StorageUnitOfWork for std::sync::Arc<T> {
     ) -> Result<(), PortError> {
         (**self).commit_managed_source_import(command).await
     }
-    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<CommitProjectDeleteResult, PortError> {
         (**self).commit_project_delete(command).await
     }
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {

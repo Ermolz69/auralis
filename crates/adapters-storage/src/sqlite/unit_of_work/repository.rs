@@ -5,7 +5,8 @@ use domain::outbox::{OutboxMessage, OutboxPayload};
 use ports::error::PortError;
 use ports::transaction::{
     CommitJobUpdate, CommitManagedSourceImport, CommitPipelineStart, CommitPipelineStartFailure,
-    CommitProjectDelete, CommitStagedArtifactWrite, CommitTranscriptImport, StorageUnitOfWork,
+    CommitProjectDelete, CommitProjectDeleteResult, CommitStagedArtifactWrite,
+    CommitTranscriptImport, StorageUnitOfWork,
 };
 
 use super::artifact_writes::save_artifact;
@@ -113,27 +114,78 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         Ok(())
     }
 
-    async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
+    async fn commit_project_delete(
+        &self,
+        command: CommitProjectDelete,
+    ) -> Result<CommitProjectDeleteResult, PortError> {
+        // We'll acquire a write lock immediately
+        // by executing a dummy update to ensure equivalent serialization (IMMEDIATE transaction semantics).
         let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+            message: format!("Failed to acquire connection: {}", e),
         })?;
 
-        // 1. Insert outbox DeleteStorageKey for each StorageKey artifact
-        for artifact in command.artifacts {
-            if let domain::media::ArtifactLocation::StorageKey(storage_key) = artifact.location {
-                let msg = OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key });
-                save_outbox_message(&mut tx, &msg).await?;
-            }
+        // 1. Acquire write lock to serialize and prevent concurrent reads from missing this delete
+        // and to check existence.
+        let exists = sqlx::query("UPDATE projects SET id = id WHERE id = ?")
+            .bind(command.project_id.to_string())
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| PortError::Unexpected {
+                message: format!("Failed to verify project existence: {}", e),
+            })?;
+
+        if exists.rows_affected() == 0 {
+            return Err(PortError::NotFound {
+                resource: format!("Project {}", command.project_id),
+            });
         }
 
-        // 2. Insert outbox DeleteProjectArtifactDir
+        // 2. Query Job IDs belonging to the project
+        let job_records = sqlx::query("SELECT id FROM jobs WHERE project_id = ?")
+            .bind(command.project_id.to_string())
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(|e| PortError::Unexpected {
+                message: format!("Failed to fetch job IDs: {}", e),
+            })?;
+
+        let deleted_job_ids: Vec<domain::job::JobId> = job_records
+            .into_iter()
+            .map(|record| {
+                use sqlx::Row;
+                let id_str: String = record.get("id");
+                std::str::FromStr::from_str(&id_str).unwrap()
+            })
+            .collect();
+
+        // 3. Query StorageKeys of artifacts for the project
+        let artifact_records = sqlx::query(
+            "SELECT storage_key FROM artifacts WHERE project_id = ? AND storage_key IS NOT NULL",
+        )
+        .bind(command.project_id.to_string())
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Failed to fetch artifacts: {}", e),
+        })?;
+
+        // 4. Insert outbox DeleteStorageKey for each StorageKey artifact
+        for record in artifact_records {
+            use sqlx::Row;
+            let key_str: String = record.get("storage_key");
+            let storage_key = std::str::FromStr::from_str(&key_str).unwrap();
+            let msg = OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key });
+            save_outbox_message(&mut tx, &msg).await?;
+        }
+
+        // 5. Insert outbox DeleteProjectArtifactDir
         let del_msg = OutboxMessage::new(OutboxPayload::DeleteProjectArtifactDir {
             project_id: command.project_id.clone(),
         });
         save_outbox_message(&mut tx, &del_msg).await?;
 
-        // 3. Delete project (artifacts will be cascade deleted)
-        sqlx::query("DELETE FROM projects WHERE id = ?")
+        // 6. Delete project (artifacts and jobs will be cascade deleted)
+        let delete_result = sqlx::query("DELETE FROM projects WHERE id = ?")
             .bind(command.project_id.to_string())
             .execute(&mut *tx)
             .await
@@ -141,11 +193,20 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
                 message: format!("Failed to delete project in tx: {}", e),
             })?;
 
+        if delete_result.rows_affected() != 1 {
+            return Err(PortError::Unexpected {
+                message: format!(
+                    "Project {} not found during delete phase",
+                    command.project_id
+                ),
+            });
+        }
+
         tx.commit().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to commit transaction: {}", e),
         })?;
 
-        Ok(())
+        Ok(CommitProjectDeleteResult { deleted_job_ids })
     }
 
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {

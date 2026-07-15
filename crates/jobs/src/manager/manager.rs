@@ -10,7 +10,6 @@ use ports::repository::JobRepository;
 use super::cache::JobCache;
 use super::cancellation_registry::CancellationRegistry;
 use super::mapper::map_job_to_scheduled;
-
 pub type JobEventEmitter = Arc<dyn Fn(JobLifecycleEvent) + Send + Sync + 'static>;
 
 #[derive(Clone)]
@@ -117,14 +116,6 @@ impl JobManager {
         jobs
     }
 
-    pub async fn register_cancel_handle(
-        &self,
-        id: DomainJobId,
-        handle: crate::cancellation::CancelHandle,
-    ) {
-        self.cancellation_registry.register(id, handle).await;
-    }
-
     pub(super) async fn mutate_job<F>(
         &self,
         job_id: &DomainJobId,
@@ -215,5 +206,27 @@ impl JobManager {
         if let Some(emitter) = &self.emitter {
             emitter(event);
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
+    async fn cancel_and_evict_jobs(
+        &self,
+        job_ids: &[domain::job::JobId],
+    ) -> Result<(), ports::error::PortError> {
+        for job_id in job_ids {
+            self.cancellation_registry.cancel_and_wait(job_id).await;
+
+            let lock = self.mutation_locks.get_lock(job_id);
+            let _guard = lock.lock().await;
+
+            self.cache.remove(job_id).await;
+            self.cancellation_registry.unregister(job_id).await;
+
+            drop(_guard);
+            self.mutation_locks.remove(job_id);
+        }
+        Ok(())
     }
 }

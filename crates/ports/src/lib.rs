@@ -3,6 +3,7 @@ pub mod control;
 pub mod engine;
 pub mod error;
 pub mod events;
+pub mod job_runtime_control;
 pub mod job_scheduler;
 pub mod media;
 pub mod recovery;

@@ -42,8 +42,13 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
     ) -> Result<(), PortError> {
         Ok(())
     }
-    async fn commit_project_delete(&self, _c: CommitProjectDelete) -> Result<(), PortError> {
-        Ok(())
+    async fn commit_project_delete(
+        &self,
+        _command: CommitProjectDelete,
+    ) -> Result<ports::transaction::CommitProjectDeleteResult, PortError> {
+        Ok(ports::transaction::CommitProjectDeleteResult {
+            deleted_job_ids: vec![],
+        })
     }
     async fn commit_job_update(&self, _c: CommitJobUpdate) -> Result<(), PortError> {
         Ok(())
