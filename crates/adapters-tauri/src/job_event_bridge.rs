@@ -2,7 +2,7 @@ use crate::event_publisher::FrontendJobEventPublisher;
 use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
 use ports::job_scheduler::JobLifecycleEvent;
 use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{broadcast, oneshot};
 use tokio::task::JoinHandle;
 
 struct JobLifecycleWorker<P>
@@ -11,7 +11,7 @@ where
 {
     publisher: P,
     coordinator: Arc<JobLifecycleCoordinator>,
-    receiver: mpsc::UnboundedReceiver<JobLifecycleEvent>,
+    receiver: broadcast::Receiver<JobLifecycleEvent>,
     shutdown_rx: oneshot::Receiver<()>,
 }
 
@@ -26,9 +26,9 @@ where
                     tracing::info!("JobLifecycleWorker: shutdown signal received, stopping");
                     break;
                 }
-                event_opt = self.receiver.recv() => {
-                    match event_opt {
-                        Some(event) => {
+                event_result = self.receiver.recv() => {
+                    match event_result {
+                        Ok(event) => {
                             if let Err(e) = self.publisher.publish_job_event(&event) {
                                 tracing::error!(error = ?e, "failed to publish job event to frontend");
                             }
@@ -37,7 +37,13 @@ where
                                 tracing::error!(error = ?e, "failed to handle job lifecycle event");
                             }
                         }
-                        None => {
+                        Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                            tracing::warn!("JobLifecycleWorker lagged behind, skipped {} events. Publishing invalidated event.", skipped);
+                            if let Err(e) = self.publisher.publish_invalidated() {
+                                tracing::error!(error = ?e, "failed to publish invalidated event to frontend");
+                            }
+                        }
+                        Err(broadcast::error::RecvError::Closed) => {
                             tracing::info!("JobLifecycleWorker: all senders dropped, stopping");
                             break;
                         }
@@ -61,7 +67,7 @@ impl JobEventBridgeHandle {
 }
 
 pub struct TauriJobEventBridge {
-    tx: mpsc::UnboundedSender<JobLifecycleEvent>,
+    tx: broadcast::Sender<JobLifecycleEvent>,
     handle: Option<JobEventBridgeHandle>,
 }
 
@@ -70,7 +76,7 @@ impl TauriJobEventBridge {
     where
         P: FrontendJobEventPublisher + 'static,
     {
-        let (tx, rx) = mpsc::unbounded_channel();
+        let (tx, rx) = broadcast::channel(256);
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
         let worker = JobLifecycleWorker {
@@ -122,6 +128,7 @@ mod tests {
     struct MockFrontendPublisher {
         events: Arc<Mutex<Vec<JobLifecycleEvent>>>,
         fail_next: Arc<Mutex<bool>>,
+        invalidated_calls: Arc<Mutex<usize>>,
     }
 
     impl MockFrontendPublisher {
@@ -129,6 +136,7 @@ mod tests {
             Self {
                 events: Arc::new(Mutex::new(vec![])),
                 fail_next: Arc::new(Mutex::new(false)),
+                invalidated_calls: Arc::new(Mutex::new(0)),
             }
         }
     }
@@ -143,6 +151,11 @@ mod tests {
                 });
             }
             self.events.lock().unwrap().push(event.clone());
+            Ok(())
+        }
+
+        fn publish_invalidated(&self) -> Result<(), PortError> {
+            *self.invalidated_calls.lock().unwrap() += 1;
             Ok(())
         }
     }

@@ -14,6 +14,8 @@ pub trait FrontendJobEventPublisher: Send + Sync {
         &self,
         event: &ports::job_scheduler::JobLifecycleEvent,
     ) -> Result<(), PortError>;
+
+    fn publish_invalidated(&self) -> Result<(), PortError>;
 }
 
 impl TauriEventPublisher {
@@ -30,6 +32,14 @@ impl FrontendJobEventPublisher for TauriEventPublisher {
         let dto = crate::job_event_mapper::JobEventDtoMapper::map(event);
         self.app
             .emit("job-event", dto)
+            .map_err(|e| PortError::Unexpected {
+                message: e.to_string(),
+            })
+    }
+
+    fn publish_invalidated(&self) -> Result<(), PortError> {
+        self.app
+            .emit("job-events-invalidated", ())
             .map_err(|e| PortError::Unexpected {
                 message: e.to_string(),
             })
