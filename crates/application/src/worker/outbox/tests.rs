@@ -87,6 +87,17 @@ impl OutboxRepository for MockOutboxRepository {
     async fn mark_dead_raw(&self, _id_raw: &str, _reason: &str) -> Result<(), PortError> {
         Ok(())
     }
+
+    async fn prune_terminal_rows(
+        &self,
+        _done_retention_days: u32,
+        _dead_retention_days: u32,
+    ) -> Result<ports::repository::OutboxPruneReport, PortError> {
+        Ok(ports::repository::OutboxPruneReport {
+            done_deleted: 0,
+            dead_deleted: 0,
+        })
+    }
 }
 
 // Dummy struct for ArtifactStore, ArtifactIndex, StorageUnitOfWork

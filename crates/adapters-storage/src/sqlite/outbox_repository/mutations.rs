@@ -101,4 +101,51 @@ impl SqliteOutboxRepository {
 
         Ok(())
     }
+
+    pub async fn execute_prune_terminal_rows(
+        &self,
+        done_retention_days: u32,
+        dead_retention_days: u32,
+    ) -> Result<ports::repository::OutboxPruneReport, PortError> {
+        let mut tx = self.pool.begin().await.map_err(|e| PortError::Io {
+            message: format!("Failed to begin prune transaction: {}", e),
+        })?;
+
+        let done_result = sqlx::query(
+            r#"
+            DELETE FROM outbox_messages
+            WHERE status = 'done'
+              AND created_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-' || CAST(? AS TEXT) || ' days')
+            "#,
+        )
+        .bind(done_retention_days)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| PortError::Io {
+            message: format!("Failed to prune done outbox messages: {}", e),
+        })?;
+
+        let dead_result = sqlx::query(
+            r#"
+            DELETE FROM outbox_messages
+            WHERE status = 'dead'
+              AND created_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-' || CAST(? AS TEXT) || ' days')
+            "#,
+        )
+        .bind(dead_retention_days)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| PortError::Io {
+            message: format!("Failed to prune dead outbox messages: {}", e),
+        })?;
+
+        tx.commit().await.map_err(|e| PortError::Io {
+            message: format!("Failed to commit prune transaction: {}", e),
+        })?;
+
+        Ok(ports::repository::OutboxPruneReport {
+            done_deleted: done_result.rows_affected() as usize,
+            dead_deleted: dead_result.rows_affected() as usize,
+        })
+    }
 }

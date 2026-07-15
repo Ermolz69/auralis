@@ -31,6 +31,11 @@ pub struct FetchPendingResult {
     pub isolation_errors: usize,
 }
 
+pub struct OutboxPruneReport {
+    pub done_deleted: usize,
+    pub dead_deleted: usize,
+}
+
 #[async_trait]
 pub trait OutboxRepository: Send + Sync {
     async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError>;
@@ -42,6 +47,12 @@ pub trait OutboxRepository: Send + Sync {
     async fn mark_done(&self, id: &OutboxMessageId) -> Result<(), PortError>;
     async fn mark_failed(&self, id: &OutboxMessageId, error: &str) -> Result<(), PortError>;
     async fn mark_dead_raw(&self, id_raw: &str, reason: &str) -> Result<(), PortError>;
+
+    async fn prune_terminal_rows(
+        &self,
+        done_retention_days: u32,
+        dead_retention_days: u32,
+    ) -> Result<OutboxPruneReport, PortError>;
 }
 use std::sync::Arc;
 
@@ -98,5 +109,15 @@ where
 
     async fn mark_dead_raw(&self, id_raw: &str, reason: &str) -> Result<(), PortError> {
         (**self).mark_dead_raw(id_raw, reason).await
+    }
+
+    async fn prune_terminal_rows(
+        &self,
+        done_retention_days: u32,
+        dead_retention_days: u32,
+    ) -> Result<OutboxPruneReport, PortError> {
+        (**self)
+            .prune_terminal_rows(done_retention_days, dead_retention_days)
+            .await
     }
 }

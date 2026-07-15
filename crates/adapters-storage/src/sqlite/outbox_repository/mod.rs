@@ -48,4 +48,13 @@ impl OutboxRepository for SqliteOutboxRepository {
     async fn mark_dead_raw(&self, id_raw: &str, reason: &str) -> Result<(), PortError> {
         self.execute_mark_dead_raw(id_raw, reason).await
     }
+
+    async fn prune_terminal_rows(
+        &self,
+        done_retention_days: u32,
+        dead_retention_days: u32,
+    ) -> Result<ports::repository::OutboxPruneReport, PortError> {
+        self.execute_prune_terminal_rows(done_retention_days, dead_retention_days)
+            .await
+    }
 }
