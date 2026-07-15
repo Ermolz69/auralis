@@ -5,6 +5,8 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, oneshot};
 use tokio::task::JoinHandle;
 
+pub const JOB_EVENT_CHANNEL_CAPACITY: usize = 256;
+
 struct JobLifecycleWorker<P>
 where
     P: FrontendJobEventPublisher + 'static,
@@ -38,7 +40,7 @@ where
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(skipped)) => {
-                            tracing::warn!("JobLifecycleWorker lagged behind, skipped {} events. Publishing invalidated event.", skipped);
+                            tracing::warn!(skipped_events = skipped, "JobLifecycleWorker lagged behind, skipped events. Publishing invalidated event.");
                             if let Err(e) = self.publisher.publish_invalidated() {
                                 tracing::error!(error = ?e, "failed to publish invalidated event to frontend");
                             }
@@ -76,7 +78,7 @@ impl TauriJobEventBridge {
     where
         P: FrontendJobEventPublisher + 'static,
     {
-        let (tx, rx) = broadcast::channel(256);
+        let (tx, rx) = broadcast::channel(JOB_EVENT_CHANNEL_CAPACITY);
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
         let worker = JobLifecycleWorker {
@@ -258,5 +260,51 @@ mod tests {
 
         let handle = bridge.take_handle().unwrap();
         handle.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_bridge_lagged_receiver() {
+        let coordinator = Arc::new(JobLifecycleCoordinator::new());
+        let frontend_pub = MockFrontendPublisher::new();
+
+        // We use a small capacity channel for testing lagged
+        let (tx, rx) = broadcast::channel(2);
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+
+        let worker = JobLifecycleWorker {
+            publisher: frontend_pub.clone(),
+            coordinator,
+            receiver: rx,
+            shutdown_rx,
+        };
+
+        let worker_handle = tokio::spawn(async move {
+            worker.run().await;
+        });
+
+        // Fill the channel and overflow it
+        for _ in 0..5 {
+            let event = JobLifecycleEvent {
+                stage: None,
+                job_id: JobId::new(),
+                project_id: None,
+                status: JobStatus::Running,
+                progress: JobProgress::initializing(),
+                error: None,
+            };
+            let _ = tx.send(event);
+        }
+
+        // Give worker time to process the lagged error
+        sleep(Duration::from_millis(50)).await;
+
+        let invalidations = *frontend_pub.invalidated_calls.lock().unwrap();
+        assert!(
+            invalidations > 0,
+            "Expected at least one invalidated event to be published"
+        );
+
+        let _ = shutdown_tx.send(());
+        let _ = worker_handle.await;
     }
 }

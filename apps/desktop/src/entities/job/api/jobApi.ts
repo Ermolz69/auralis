@@ -17,3 +17,9 @@ export async function subscribeJobEvents(handler: (event: JobEvent) => void): Pr
     handler(event.payload);
   });
 }
+
+export async function subscribeJobsInvalidated(handler: () => void): Promise<UnlistenFn> {
+  return listen('job-events-invalidated', () => {
+    handler();
+  });
+}

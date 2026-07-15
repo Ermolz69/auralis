@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../../shared/ui/card';
 import { Progress } from '../../../shared/ui/progress';
 import { Icon } from '../../../shared/ui/icon';
-import { listJobs, subscribeJobEvents } from '@/entities/job';
+import { listJobs, subscribeJobEvents, subscribeJobsInvalidated } from '@/entities/job';
 import type { Job } from '@/entities/job';
 import { CancelJobButton } from '@/features/cancel-job';
 import { useProjectContext } from '@/entities/project';
@@ -52,10 +52,21 @@ export const JobQueuePanel = () => {
           });
         });
 
+        const invalidatedFn = await subscribeJobsInvalidated(() => {
+          console.warn('Job events invalidated (lagged), refetching jobs');
+          listJobs()
+            .then((allJobs) => setJobs(allJobs.filter((j) => j.projectId === projectId)))
+            .catch(console.error);
+        });
+
         if (cancelled) {
           fn();
+          invalidatedFn();
         } else {
-          unlisten = fn;
+          unlisten = () => {
+            fn();
+            invalidatedFn();
+          };
         }
       } catch (e) {
         console.error('Failed to setup JobQueuePanel', e);
