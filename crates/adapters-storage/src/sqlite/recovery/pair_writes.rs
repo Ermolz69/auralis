@@ -49,9 +49,14 @@ pub async fn commit_failed_interrupted_pair(
 
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
+    let expected_last_terminal = cmd
+        .expected_last_terminal_job_id
+        .clone()
+        .map(|id| id.to_string());
+
     let project_affected = sqlx::query(
         "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?, last_terminal_job_id = ?
-         WHERE id = ? AND status = ? AND active_job_id = ?",
+         WHERE id = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status())?)
     .bind(cmd.project.updated_at())
@@ -60,6 +65,7 @@ pub async fn commit_failed_interrupted_pair(
     .bind(cmd.project.id().to_string())
     .bind(&expected_project_status)
     .bind(cmd.expected_active_job_id.to_string())
+    .bind(expected_last_terminal)
     .execute(&mut *tx)
     .await
     .map_err(|e| PortError::Unexpected {
@@ -158,9 +164,14 @@ pub async fn commit_reconciled_terminal_pair(
 
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
+    let expected_last_terminal = cmd
+        .expected_last_terminal_job_id
+        .clone()
+        .map(|id| id.to_string());
+
     let rows = sqlx::query(
         "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?, last_terminal_job_id = ?
-         WHERE id = ? AND status = ? AND active_job_id = ?",
+         WHERE id = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status())?)
     .bind(cmd.project.updated_at())
@@ -169,6 +180,7 @@ pub async fn commit_reconciled_terminal_pair(
     .bind(cmd.project.id().to_string())
     .bind(&expected_project_status)
     .bind(cmd.expected_active_job_id.to_string())
+    .bind(expected_last_terminal)
     .execute(&mut *tx)
     .await
     .map_err(|e| PortError::Unexpected {
@@ -240,15 +252,21 @@ pub async fn commit_legacy_pair_fallback(
 
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
+    let expected_last_terminal = cmd
+        .expected_last_terminal_job_id
+        .clone()
+        .map(|id| id.to_string());
+
     let project_affected = sqlx::query(
         "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?
-         WHERE id = ? AND status = ? AND active_job_id IS NULL",
+         WHERE id = ? AND status = ? AND active_job_id IS NULL AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status())?)
     .bind(cmd.project.updated_at())
     .bind(cmd.project.active_job_id().map(|id| id.to_string()))
     .bind(cmd.project.id().to_string())
     .bind(&expected_project_status)
+    .bind(&expected_last_terminal)
     .execute(&mut *tx)
     .await
     .map_err(|e| PortError::Unexpected {
@@ -324,15 +342,21 @@ pub async fn commit_failed_project_with_missing_linked_job(
 
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
+    let expected_last_terminal = cmd
+        .expected_last_terminal_job_id
+        .clone()
+        .map(|id| id.to_string());
+
     let rows = sqlx::query(
         "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL
-         WHERE id = ? AND status = ? AND active_job_id = ?",
+         WHERE id = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status())?)
     .bind(cmd.project.updated_at())
     .bind(cmd.project.id().to_string())
     .bind(&expected_project_status)
     .bind(cmd.expected_active_job_id.to_string())
+    .bind(&expected_last_terminal)
     .execute(&mut *tx)
     .await
     .map_err(|e| PortError::Unexpected {
@@ -353,7 +377,10 @@ pub async fn commit_failed_project_with_missing_linked_job(
         })?;
 
         let new_status = serialize_enum(cmd.project.status())?;
-        let expected_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
+        let expected_last_terminal = cmd
+            .expected_last_terminal_job_id
+            .clone()
+            .map(|id| id.to_string());
         if current_project == Some((new_status, None, expected_last_terminal)) {
             return Ok(RecoveryApplyResult::AlreadyApplied);
         } else {
@@ -383,14 +410,20 @@ pub async fn commit_failed_legacy_project_without_job(
 
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
+    let expected_last_terminal = cmd
+        .expected_last_terminal_job_id
+        .clone()
+        .map(|id| id.to_string());
+
     let rows = sqlx::query(
         "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL
-         WHERE id = ? AND status = ? AND active_job_id IS NULL",
+         WHERE id = ? AND status = ? AND active_job_id IS NULL AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status())?)
     .bind(cmd.project.updated_at())
     .bind(cmd.project.id().to_string())
     .bind(&expected_project_status)
+    .bind(&expected_last_terminal)
     .execute(&mut *tx)
     .await
     .map_err(|e| PortError::Unexpected {
@@ -411,7 +444,10 @@ pub async fn commit_failed_legacy_project_without_job(
         })?;
 
         let new_status = serialize_enum(cmd.project.status())?;
-        let expected_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
+        let expected_last_terminal = cmd
+            .expected_last_terminal_job_id
+            .clone()
+            .map(|id| id.to_string());
         if current_project == Some((new_status, None, expected_last_terminal)) {
             return Ok(RecoveryApplyResult::AlreadyApplied);
         } else {

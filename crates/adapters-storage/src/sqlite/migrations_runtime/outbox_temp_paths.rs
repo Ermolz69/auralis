@@ -17,6 +17,16 @@ pub async fn migrate_delete_temp_paths(
     tx: &mut Transaction<'_, Sqlite>,
     workspace_root: &std::path::Path,
 ) -> Result<(), PortError> {
+    let canonical_root =
+        tokio::fs::canonicalize(workspace_root)
+            .await
+            .map_err(|e| PortError::Unexpected {
+                message: format!(
+                    "Failed to canonicalize workspace root during migration: {}",
+                    e
+                ),
+            })?;
+
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT id, payload_json FROM outbox_messages WHERE kind = 'delete_temp_path'",
     )
@@ -35,8 +45,8 @@ pub async fn migrate_delete_temp_paths(
             }) => {
                 let p = path.or(absolute_path);
                 if let Some(p) = p {
-                    match convert_path_to_workspace_key(&p, workspace_root).await {
-                        Some(workspace_key) => {
+                    match convert_path_to_workspace_key(&p, &canonical_root).await {
+                        Ok(workspace_key) => {
                             let new_payload = serde_json::json!({
                                 "type": "delete_workspace_file",
                                 "workspace_key": workspace_key
@@ -54,11 +64,11 @@ pub async fn migrate_delete_temp_paths(
                                 message: format!("Failed to update legacy temp path message {}: {}", id, e),
                             })?;
                         }
-                        None => {
+                        Err(reason) => {
                             sqlx::query(
                                 "UPDATE outbox_messages SET status = 'dead', last_error = ? WHERE id = ?"
                             )
-                            .bind("Legacy DeleteTempPath path is outside workspace root")
+                            .bind(reason)
                             .bind(&id)
                             .execute(&mut **tx)
                             .await
@@ -106,41 +116,69 @@ pub async fn migrate_delete_temp_paths(
 
 async fn convert_path_to_workspace_key(
     path: &str,
-    workspace_root: &std::path::Path,
-) -> Option<String> {
+    canonical_root: &std::path::Path,
+) -> Result<String, &'static str> {
     let target = std::path::PathBuf::from(path);
 
-    // If it's absolute, check if it's within workspace root
-    if target.is_absolute() {
-        let canonical_root = tokio::fs::canonicalize(workspace_root)
+    let relative = if target.is_absolute() {
+        let mut nearest_existing = target.clone();
+        let mut missing_components = Vec::new();
+
+        while tokio::fs::metadata(&nearest_existing).await.is_err() {
+            if let Some(parent) = nearest_existing.parent() {
+                if let Some(name) = nearest_existing.file_name() {
+                    missing_components.push(name.to_owned());
+                }
+                nearest_existing = parent.to_path_buf();
+            } else {
+                return Err("Path has no existing ancestor");
+            }
+        }
+
+        missing_components.reverse();
+
+        let canonical_ancestor = tokio::fs::canonicalize(&nearest_existing)
             .await
-            .unwrap_or_else(|_| workspace_root.to_path_buf());
+            .map_err(|_| "Failed to canonicalize nearest ancestor")?;
 
-        // We do a string prefix check or strip_prefix
-        // Strip prefix works if they are normalized. We can just use `strip_prefix` on the raw path
-        // since `canonicalize` might fail if `target` doesn't exist yet, which is the case for temp files.
-        let target_normalized = path.replace('\\', "/");
-        let root_str = canonical_root.to_string_lossy().replace('\\', "/");
+        let stripped = canonical_ancestor
+            .strip_prefix(canonical_root)
+            .map_err(|_| "Legacy DeleteTempPath path is outside workspace root")?;
 
-        let relative_str = if target_normalized.starts_with(&root_str) {
-            target_normalized[root_str.len()..]
-                .trim_start_matches('/')
-                .to_string()
-        } else {
-            return None;
-        };
-
-        if domain::outbox::WorkspaceKey::new(relative_str.clone()).is_ok() {
-            Some(relative_str)
-        } else {
-            None
+        let mut final_relative = stripped.to_path_buf();
+        for comp in missing_components {
+            final_relative.push(comp);
         }
+
+        final_relative
     } else {
-        let path_normalized = path.replace('\\', "/");
-        if domain::outbox::WorkspaceKey::new(path_normalized.clone()).is_ok() {
-            Some(path_normalized)
-        } else {
-            None
+        target
+    };
+
+    let mut relative_str = String::new();
+    for comp in relative.components() {
+        match comp {
+            std::path::Component::Normal(os_str) => {
+                if let Some(s) = os_str.to_str() {
+                    if !relative_str.is_empty() {
+                        relative_str.push('/');
+                    }
+                    relative_str.push_str(s);
+                } else {
+                    return Err("Legacy DeleteTempPath contains invalid UTF-8");
+                }
+            }
+            _ => return Err("Legacy DeleteTempPath contains invalid components"),
         }
+    }
+
+    if !relative_str.starts_with("tmp/") {
+        return Err("Legacy DeleteTempPath does not start with tmp/");
+    }
+
+    if domain::outbox::WorkspaceKey::new(relative_str.clone()).is_ok() {
+        Ok(relative_str)
+    } else {
+        Err("Legacy DeleteTempPath is not a valid WorkspaceKey")
     }
 }

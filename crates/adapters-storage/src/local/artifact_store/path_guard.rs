@@ -16,12 +16,9 @@ pub async fn ensure_safe_parent(base_dir: &Path, path: &Path) -> Result<(), Port
         let canon_base = base_dir
             .canonicalize()
             .unwrap_or_else(|_| base_dir.to_path_buf());
-        if !canon_parent.starts_with(&canon_base) {
-            return Err(PortError::Unexpected {
-                message: format!(
-                    "Parent path {:?} escapes base directory {:?}",
-                    parent, base_dir
-                ),
+        if canon_parent.strip_prefix(&canon_base).is_err() {
+            return Err(PortError::Io {
+                message: "Resolved artifact path escapes root".to_string(),
             });
         }
     }
@@ -46,9 +43,9 @@ pub fn verify_path_under_base_dir(base_dir: &Path, path: &Path) -> Result<(), Po
         .canonicalize()
         .unwrap_or_else(|_| base_dir.to_path_buf());
 
-    if !canon_current.starts_with(&canon_base) {
-        return Err(PortError::Unexpected {
-            message: format!("Path {:?} escapes base directory {:?}", path, base_dir),
+    if canon_current.strip_prefix(&canon_base).is_err() {
+        return Err(PortError::Io {
+            message: "Path escapes base directory".to_string(),
         });
     }
     Ok(())

@@ -168,3 +168,190 @@ async fn test_storage_key_rejects_parent_dir() {
         panic!("Expected Unexpected error");
     }
 }
+
+use crate::local::artifact_store::staging::{FileOps, stage_owned_temp_file_with_ops};
+use std::path::Path;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+#[derive(Clone, Default)]
+struct FakeFileOps {
+    pub rename_result: Arc<Mutex<Option<std::io::Error>>>,
+    pub copy_result: Arc<Mutex<Option<std::io::Error>>>,
+    pub remove_source_result: Arc<Mutex<Option<std::io::Error>>>,
+    pub remove_staging_result: Arc<Mutex<Option<std::io::Error>>>,
+    pub renamed_calls: Arc<Mutex<usize>>,
+    pub copied_calls: Arc<Mutex<usize>>,
+    pub removed_source_calls: Arc<Mutex<usize>>,
+    pub removed_staging_calls: Arc<Mutex<usize>>,
+}
+
+#[async_trait::async_trait]
+impl FileOps for FakeFileOps {
+    async fn rename(&self, _from: &Path, _to: &Path) -> std::io::Result<()> {
+        *self.renamed_calls.lock().await += 1;
+        if let Some(err) = self.rename_result.lock().await.take() {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    async fn copy(&self, from: &Path, to: &Path) -> std::io::Result<u64> {
+        *self.copied_calls.lock().await += 1;
+        if let Some(err) = self.copy_result.lock().await.take() {
+            return Err(err);
+        }
+        // Simulate actual copy so metadata works
+        tokio::fs::copy(from, to).await
+    }
+
+    async fn remove_file(&self, path: &Path) -> std::io::Result<()> {
+        let is_staging = path.to_string_lossy().contains(".staging");
+        if is_staging {
+            *self.removed_staging_calls.lock().await += 1;
+            if let Some(err) = self.remove_staging_result.lock().await.take() {
+                return Err(err);
+            }
+        } else {
+            *self.removed_source_calls.lock().await += 1;
+            if let Some(err) = self.remove_source_result.lock().await.take() {
+                return Err(err);
+            }
+        }
+        tokio::fs::remove_file(path).await
+    }
+}
+
+#[tokio::test]
+async fn test_source_remove_failure_after_fallback_copy() {
+    let temp_dir = tempdir().unwrap();
+    let base_dir = temp_dir.path();
+    let source_file = base_dir.join("source.txt");
+    std::fs::write(&source_file, "data").unwrap();
+
+    let fake_ops = FakeFileOps::default();
+    *fake_ops.rename_result.lock().await = Some(std::io::Error::other("rename failed"));
+    *fake_ops.remove_source_result.lock().await =
+        Some(std::io::Error::other("remove source failed"));
+
+    let result = stage_owned_temp_file_with_ops(
+        base_dir,
+        &ProjectId::new(),
+        ArtifactKind::FinalVideo,
+        &source_file,
+        None,
+        &fake_ops,
+    )
+    .await;
+
+    let err_msg = match result {
+        Err(PortError::Io { message }) => message,
+        _ => panic!("Expected IO error"),
+    };
+
+    assert!(err_msg.contains("remove source failed"));
+    assert!(err_msg.contains("Staging copy rolled back"));
+
+    assert_eq!(*fake_ops.renamed_calls.lock().await, 1);
+    assert_eq!(*fake_ops.copied_calls.lock().await, 1);
+    assert_eq!(*fake_ops.removed_source_calls.lock().await, 1);
+    assert_eq!(*fake_ops.removed_staging_calls.lock().await, 1);
+}
+
+#[tokio::test]
+async fn test_source_remove_and_staging_remove_both_fail() {
+    let temp_dir = tempdir().unwrap();
+    let base_dir = temp_dir.path();
+    let source_file = base_dir.join("source.txt");
+    std::fs::write(&source_file, "data").unwrap();
+
+    let fake_ops = FakeFileOps::default();
+    *fake_ops.rename_result.lock().await = Some(std::io::Error::other("rename failed"));
+    *fake_ops.remove_source_result.lock().await =
+        Some(std::io::Error::other("remove source failed"));
+    *fake_ops.remove_staging_result.lock().await =
+        Some(std::io::Error::other("remove staging failed"));
+
+    let result = stage_owned_temp_file_with_ops(
+        base_dir,
+        &ProjectId::new(),
+        ArtifactKind::FinalVideo,
+        &source_file,
+        None,
+        &fake_ops,
+    )
+    .await;
+
+    let err_msg = match result {
+        Err(PortError::Io { message }) => message,
+        _ => panic!("Expected IO error"),
+    };
+
+    assert!(err_msg.contains("remove source failed"));
+    assert!(err_msg.contains("remove staging failed"));
+}
+
+#[tokio::test]
+async fn test_copy_fails() {
+    let temp_dir = tempdir().unwrap();
+    let base_dir = temp_dir.path();
+    let source_file = base_dir.join("source.txt");
+    std::fs::write(&source_file, "data").unwrap();
+
+    let fake_ops = FakeFileOps::default();
+    *fake_ops.rename_result.lock().await = Some(std::io::Error::other("rename failed"));
+    *fake_ops.copy_result.lock().await = Some(std::io::Error::other("copy failed"));
+
+    let result = stage_owned_temp_file_with_ops(
+        base_dir,
+        &ProjectId::new(),
+        ArtifactKind::FinalVideo,
+        &source_file,
+        None,
+        &fake_ops,
+    )
+    .await;
+
+    let err_msg = match result {
+        Err(PortError::Io { message }) => message,
+        _ => panic!("Expected IO error"),
+    };
+
+    assert!(err_msg.contains("rename failed"));
+    assert!(err_msg.contains("copy failed"));
+
+    assert_eq!(*fake_ops.renamed_calls.lock().await, 1);
+    assert_eq!(*fake_ops.copied_calls.lock().await, 1);
+    // Source should be removed even on failure for stage_owned
+    assert_eq!(*fake_ops.removed_source_calls.lock().await, 1);
+    // Staging should be removed for rollback
+    assert_eq!(*fake_ops.removed_staging_calls.lock().await, 1);
+}
+
+#[tokio::test]
+async fn test_full_fallback_success() {
+    let temp_dir = tempdir().unwrap();
+    let base_dir = temp_dir.path();
+    let source_file = base_dir.join("source.txt");
+    std::fs::write(&source_file, "data").unwrap();
+
+    let fake_ops = FakeFileOps::default();
+    *fake_ops.rename_result.lock().await = Some(std::io::Error::other("rename failed"));
+
+    let result = stage_owned_temp_file_with_ops(
+        base_dir,
+        &ProjectId::new(),
+        ArtifactKind::FinalVideo,
+        &source_file,
+        None,
+        &fake_ops,
+    )
+    .await;
+
+    assert!(result.is_ok());
+
+    assert_eq!(*fake_ops.renamed_calls.lock().await, 1);
+    assert_eq!(*fake_ops.copied_calls.lock().await, 1);
+    assert_eq!(*fake_ops.removed_source_calls.lock().await, 1);
+    assert_eq!(*fake_ops.removed_staging_calls.lock().await, 0); // Staging should be kept
+}

@@ -1,6 +1,9 @@
 pub mod backfill_artifacts;
 pub mod outbox_temp_paths;
 
+#[cfg(test)]
+mod tests;
+
 use ports::error::PortError;
 use sqlx::SqlitePool;
 

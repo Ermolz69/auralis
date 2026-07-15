@@ -108,7 +108,7 @@ impl TempWorkspacePort for LocalTempWorkspace {
                         message: format!("Failed to canonicalize ancestor: {}", e),
                     })?;
 
-            if !canonical_ancestor.starts_with(&canonical_root) {
+            if canonical_ancestor.strip_prefix(&canonical_root).is_err() {
                 return Err(PortError::Io {
                     message: "Path escapes workspace root".to_string(),
                 });

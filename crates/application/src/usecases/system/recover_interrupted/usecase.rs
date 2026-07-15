@@ -30,15 +30,14 @@ impl RecoverInterruptedStateUseCase {
         let mut report = RecoveryReport::new();
 
         report.warnings = plan.warnings;
-        report.resolved_violations = plan.resolved_violations;
         report.unresolved_violations = plan.unresolved_violations;
 
-        for action in plan.actions {
-            let action_kind = action.action_type();
+        for planned in plan.actions {
+            let action_kind = planned.action.action_type();
             let mut project_id_for_err = None;
             let mut job_id_for_err = None;
 
-            let result = match action {
+            let result = match planned.action {
                 RecoveryAction::FailInterruptedPair {
                     mut project,
                     mut job,
@@ -49,6 +48,7 @@ impl RecoverInterruptedStateUseCase {
                     let expected_project_status = project.status().clone();
                     let expected_active_job_id = project.active_job_id().cloned().unwrap();
                     let expected_job_status = job.status().clone();
+                    let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     if let Err(e) = job.mark_failed(JobError::new(
                         "APP_RESTART",
@@ -68,6 +68,7 @@ impl RecoverInterruptedStateUseCase {
                                 expected_project_status,
                                 expected_active_job_id,
                                 expected_job_status,
+                                expected_last_terminal_job_id,
                             })
                             .await
                             .map_err(|e| e.to_string())
@@ -80,6 +81,7 @@ impl RecoverInterruptedStateUseCase {
                     let expected_project_status = project.status().clone();
                     let expected_active_job_id = project.active_job_id().cloned().unwrap();
                     let expected_job_status = job.status().clone();
+                    let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     let outcome = match *job.status() {
                         domain::job::JobStatus::Completed => TerminalOutcome::Completed,
@@ -98,6 +100,7 @@ impl RecoverInterruptedStateUseCase {
                                 expected_project_status,
                                 expected_active_job_id,
                                 expected_job_status,
+                                expected_last_terminal_job_id,
                             })
                             .await
                             .map_err(|e| e.to_string())
@@ -112,6 +115,7 @@ impl RecoverInterruptedStateUseCase {
 
                     let expected_project_status = project.status().clone();
                     let expected_job_status = job.status().clone();
+                    let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     if let Err(e) = job.mark_failed(JobError::new(
                         "APP_RESTART",
@@ -127,6 +131,7 @@ impl RecoverInterruptedStateUseCase {
                                 job,
                                 expected_project_status,
                                 expected_job_status,
+                                expected_last_terminal_job_id,
                             })
                             .await
                             .map_err(|e| e.to_string())
@@ -141,6 +146,7 @@ impl RecoverInterruptedStateUseCase {
 
                     let expected_project_status = project.status().clone();
                     let expected_active_job_id = missing_job_id.clone();
+                    let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     project.force_fail_legacy_recovery(); // Equivalent to force failing due to missing job
                     self.recovery_storage
@@ -149,6 +155,7 @@ impl RecoverInterruptedStateUseCase {
                                 project,
                                 expected_project_status,
                                 expected_active_job_id,
+                                expected_last_terminal_job_id,
                             },
                         )
                         .await
@@ -158,6 +165,7 @@ impl RecoverInterruptedStateUseCase {
                     project_id_for_err = Some(project.id().clone());
 
                     let expected_project_status = project.status().clone();
+                    let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     project.force_fail_legacy_recovery();
                     self.recovery_storage
@@ -165,6 +173,7 @@ impl RecoverInterruptedStateUseCase {
                             FailLegacyProjectWithoutJobCommand {
                                 project,
                                 expected_project_status,
+                                expected_last_terminal_job_id,
                             },
                         )
                         .await
@@ -195,9 +204,14 @@ impl RecoverInterruptedStateUseCase {
             match result {
                 Ok(RecoveryApplyResult::Applied) => {
                     report.increment_actions();
+                    if let Some(violation) = planned.resolved_violation {
+                        report.resolved_violations.push(violation);
+                    }
                 }
                 Ok(RecoveryApplyResult::AlreadyApplied) => {
-                    // Do nothing, already recovered
+                    if let Some(violation) = planned.resolved_violation {
+                        report.resolved_violations.push(violation);
+                    }
                 }
                 Err(e) => {
                     report.add_persistence_failure(PersistenceFailure {

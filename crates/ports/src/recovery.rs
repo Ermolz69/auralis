@@ -23,6 +23,7 @@ pub struct FailInterruptedPairCommand {
     pub expected_project_status: ProjectStatus,
     pub expected_active_job_id: JobId,
     pub expected_job_status: JobStatus, // e.g. Pending or Running
+    pub expected_last_terminal_job_id: Option<JobId>,
 }
 
 pub struct ReconcileTerminalPairCommand {
@@ -31,6 +32,7 @@ pub struct ReconcileTerminalPairCommand {
     pub expected_project_status: ProjectStatus, // Processing
     pub expected_active_job_id: JobId,
     pub expected_job_status: JobStatus, // e.g. Completed, Failed, Cancelled
+    pub expected_last_terminal_job_id: Option<JobId>,
 }
 
 pub struct FailLegacyPairFallbackCommand {
@@ -39,18 +41,21 @@ pub struct FailLegacyPairFallbackCommand {
     pub expected_project_status: ProjectStatus, // Processing
     // active_job_id must be NULL
     pub expected_job_status: JobStatus, // Pending or Running
+    pub expected_last_terminal_job_id: Option<JobId>,
 }
 
 pub struct FailProjectWithMissingLinkedJobCommand {
     pub project: Project,
     pub expected_project_status: ProjectStatus, // Processing
     pub expected_active_job_id: JobId,
+    pub expected_last_terminal_job_id: Option<JobId>,
 }
 
 pub struct FailLegacyProjectWithoutJobCommand {
     pub project: Project,
     pub expected_project_status: ProjectStatus, // Processing
-                                                // active_job_id must be NULL
+    // active_job_id must be NULL
+    pub expected_last_terminal_job_id: Option<JobId>,
 }
 
 pub struct FailOrphanJobCommand {

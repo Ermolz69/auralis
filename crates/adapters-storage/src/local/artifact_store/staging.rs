@@ -7,12 +7,53 @@ use super::path_guard::ensure_safe_parent;
 use super::resolver::resolve_storage_key;
 use crate::local::storage_key::make_storage_key;
 
+#[async_trait::async_trait]
+pub trait FileOps: Send + Sync {
+    async fn rename(&self, from: &Path, to: &Path) -> std::io::Result<()>;
+    async fn copy(&self, from: &Path, to: &Path) -> std::io::Result<u64>;
+    async fn remove_file(&self, path: &Path) -> std::io::Result<()>;
+}
+
+pub struct DefaultFileOps;
+
+#[async_trait::async_trait]
+impl FileOps for DefaultFileOps {
+    async fn rename(&self, from: &Path, to: &Path) -> std::io::Result<()> {
+        tokio::fs::rename(from, to).await
+    }
+    async fn copy(&self, from: &Path, to: &Path) -> std::io::Result<u64> {
+        tokio::fs::copy(from, to).await
+    }
+    async fn remove_file(&self, path: &Path) -> std::io::Result<()> {
+        tokio::fs::remove_file(path).await
+    }
+}
+
 pub async fn stage_owned_temp_file(
     base_dir: &Path,
     project_id: &ProjectId,
     kind: ArtifactKind,
     source_path: &Path,
     filename_hint: Option<&str>,
+) -> Result<ports::storage::StagedArtifact, PortError> {
+    stage_owned_temp_file_with_ops(
+        base_dir,
+        project_id,
+        kind,
+        source_path,
+        filename_hint,
+        &DefaultFileOps,
+    )
+    .await
+}
+
+pub async fn stage_owned_temp_file_with_ops<F: FileOps>(
+    base_dir: &Path,
+    project_id: &ProjectId,
+    kind: ArtifactKind,
+    source_path: &Path,
+    filename_hint: Option<&str>,
+    ops: &F,
 ) -> Result<ports::storage::StagedArtifact, PortError> {
     let source_exists = tokio::fs::try_exists(source_path)
         .await
@@ -49,14 +90,14 @@ pub async fn stage_owned_temp_file(
     ensure_safe_parent(base_dir, &staging_path).await?;
 
     // Try rename first
-    if let Err(e) = tokio::fs::rename(source_path, &staging_path).await {
+    if let Err(e) = ops.rename(source_path, &staging_path).await {
         // Rename failed, try copy + remove
-        if let Err(copy_err) = tokio::fs::copy(source_path, &staging_path).await {
+        if let Err(copy_err) = ops.copy(source_path, &staging_path).await {
             // Copy failed, make sure we don't leave a partial staging file
-            let _ = tokio::fs::remove_file(&staging_path).await;
+            let _ = ops.remove_file(&staging_path).await;
 
             // IMPORTANT: Since this is an owned file, we must delete it even on failure
-            let _ = tokio::fs::remove_file(source_path).await;
+            let _ = ops.remove_file(source_path).await;
 
             return Err(PortError::Io {
                 message: format!(
@@ -67,8 +108,8 @@ pub async fn stage_owned_temp_file(
         }
 
         // Remove source, and if it fails, we MUST rollback staging
-        if let Err(rm_err) = tokio::fs::remove_file(source_path).await {
-            if let Err(rollback_err) = tokio::fs::remove_file(&staging_path).await {
+        if let Err(rm_err) = ops.remove_file(source_path).await {
+            if let Err(rollback_err) = ops.remove_file(&staging_path).await {
                 return Err(PortError::Io {
                     message: format!(
                         "Failed to delete source {:?} after copy: {}. Rollback of staging copy also failed: {}",
@@ -88,7 +129,7 @@ pub async fn stage_owned_temp_file(
     let metadata = match tokio::fs::metadata(&staging_path).await {
         Ok(m) => m,
         Err(e) => {
-            let _ = tokio::fs::remove_file(&staging_path).await;
+            let _ = ops.remove_file(&staging_path).await;
             return Err(PortError::Io {
                 message: format!("Failed to read metadata of {:?}: {}", staging_path, e),
             });

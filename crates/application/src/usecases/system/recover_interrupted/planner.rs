@@ -7,6 +7,11 @@ use ports::recovery::RecoverySnapshot;
 
 use super::report::RecoveryActionType;
 
+pub struct PlannedAction {
+    pub action: RecoveryAction,
+    pub resolved_violation: Option<RecoveryViolation>,
+}
+
 pub enum RecoveryAction {
     FailInterruptedPair {
         project: Project,
@@ -50,9 +55,8 @@ impl RecoveryAction {
 }
 
 pub struct RecoveryPlan {
-    pub actions: Vec<RecoveryAction>,
+    pub actions: Vec<PlannedAction>,
     pub warnings: Vec<RecoveryWarning>,
-    pub resolved_violations: Vec<RecoveryViolation>,
     pub unresolved_violations: Vec<RecoveryViolation>,
     pub blocked_project_ids: HashSet<ProjectId>,
     pub blocked_job_ids: HashSet<JobId>,
@@ -63,7 +67,6 @@ impl RecoveryPlan {
         Self {
             actions: Vec::new(),
             warnings: Vec::new(),
-            resolved_violations: Vec::new(),
             unresolved_violations: Vec::new(),
             blocked_project_ids: HashSet::new(),
             blocked_job_ids: HashSet::new(),
@@ -195,29 +198,36 @@ impl Planner {
                             }
 
                             if matches!(*job.status(), JobStatus::Pending | JobStatus::Running) {
-                                plan.actions.push(RecoveryAction::FailInterruptedPair {
-                                    project,
-                                    job: job.clone(),
+                                plan.actions.push(PlannedAction {
+                                    action: RecoveryAction::FailInterruptedPair {
+                                        project,
+                                        job: job.clone(),
+                                    },
+                                    resolved_violation: None,
                                 });
                             } else {
-                                plan.actions.push(RecoveryAction::ReconcileTerminalPair {
-                                    project,
-                                    job: job.clone(),
+                                plan.actions.push(PlannedAction {
+                                    action: RecoveryAction::ReconcileTerminalPair {
+                                        project,
+                                        job: job.clone(),
+                                    },
+                                    resolved_violation: None,
                                 });
                             }
                         }
                         None => {
-                            plan.resolved_violations.push(RecoveryViolation {
-                                project_id: Some(project.id().clone()),
-                                job_id: Some(active_job_id.clone()),
-                                issue_type: RecoveryIssueType::MissingActiveJob,
-                                message: "Project points to a missing job".into(),
+                            plan.actions.push(PlannedAction {
+                                action: RecoveryAction::FailProjectWithMissingLinkedJob {
+                                    project: project.clone(),
+                                    missing_job_id: active_job_id.clone(),
+                                },
+                                resolved_violation: Some(RecoveryViolation {
+                                    project_id: Some(project.id().clone()),
+                                    job_id: Some(active_job_id),
+                                    issue_type: RecoveryIssueType::MissingActiveJob,
+                                    message: "Project points to a missing job".into(),
+                                }),
                             });
-                            plan.actions
-                                .push(RecoveryAction::FailProjectWithMissingLinkedJob {
-                                    project,
-                                    missing_job_id: active_job_id,
-                                });
                         }
                     }
                 }
@@ -229,25 +239,32 @@ impl Planner {
                         .collect();
 
                     if project_active_jobs.is_empty() {
-                        plan.resolved_violations.push(RecoveryViolation {
-                            project_id: Some(project.id().clone()),
-                            job_id: None,
-                            issue_type: RecoveryIssueType::MissingActiveJob,
-                            message: "Legacy project has no active jobs".into(),
+                        plan.actions.push(PlannedAction {
+                            action: RecoveryAction::FailLegacyProjectWithoutJob {
+                                project: project.clone(),
+                            },
+                            resolved_violation: Some(RecoveryViolation {
+                                project_id: Some(project.id().clone()),
+                                job_id: None,
+                                issue_type: RecoveryIssueType::MissingActiveJob,
+                                message: "Legacy project has no active jobs".into(),
+                            }),
                         });
-                        plan.actions
-                            .push(RecoveryAction::FailLegacyProjectWithoutJob { project });
                     } else if project_active_jobs.len() == 1 {
                         let job = project_active_jobs[0].clone();
                         processed_job_ids.insert(job.id().clone());
-                        plan.resolved_violations.push(RecoveryViolation {
-                            project_id: Some(project.id().clone()),
-                            job_id: Some(job.id().clone()),
-                            issue_type: RecoveryIssueType::MissingActiveJob,
-                            message: "Legacy project missing active job link repaired".into(),
+                        plan.actions.push(PlannedAction {
+                            action: RecoveryAction::FailLegacyPair {
+                                project: project.clone(),
+                                job: job.clone(),
+                            },
+                            resolved_violation: Some(RecoveryViolation {
+                                project_id: Some(project.id().clone()),
+                                job_id: Some(job.id().clone()),
+                                issue_type: RecoveryIssueType::MissingActiveJob,
+                                message: "Legacy project missing active job link repaired".into(),
+                            }),
                         });
-                        plan.actions
-                            .push(RecoveryAction::FailLegacyPair { project, job });
                     } else {
                         plan.block_project(project.id().clone());
                         for j in project_active_jobs {
@@ -275,13 +292,15 @@ impl Planner {
             }
 
             if matches!(*job.status(), JobStatus::Pending | JobStatus::Running) {
-                plan.resolved_violations.push(RecoveryViolation {
-                    project_id: Some(job.project_id().clone()), // it has a project_id, but the project doesn't link to it
-                    job_id: Some(job.id().clone()),
-                    issue_type: RecoveryIssueType::OrphanActiveJob,
-                    message: "Active job has no owning project".into(),
+                plan.actions.push(PlannedAction {
+                    action: RecoveryAction::FailOrphanJob { job: job.clone() },
+                    resolved_violation: Some(RecoveryViolation {
+                        project_id: Some(job.project_id().clone()),
+                        job_id: Some(job.id().clone()),
+                        issue_type: RecoveryIssueType::OrphanActiveJob,
+                        message: "Active job has no owning project".into(),
+                    }),
                 });
-                plan.actions.push(RecoveryAction::FailOrphanJob { job });
             }
         }
 
