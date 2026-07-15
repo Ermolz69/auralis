@@ -121,9 +121,17 @@ impl<
             staging_key: staged_artifact.staging_key.clone(),
             final_key: staged_artifact.final_key.clone(),
         };
-        self.storage_uow
+        if let Err(e) = self
+            .storage_uow
             .commit_managed_source_import(commit_cmd)
-            .await?;
+            .await
+        {
+            let _ = self
+                .artifact_store
+                .delete_storage_key(&staged_artifact.staging_key)
+                .await;
+            return Err(ApplicationError::Port(e));
+        }
 
         // 5. Fast-path finalization
         let finalizer = crate::services::artifact_finalizer::ArtifactFinalizer::new(

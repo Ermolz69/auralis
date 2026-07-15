@@ -117,10 +117,10 @@ impl VideoSourcePort for FailingVideoSourceAdapter {
             kind: ArtifactKind::DownloadedVideo,
             location: ArtifactLocation::StorageKey("this_should_be_local_path".to_string()),
             size_bytes: None,
-            state: domain::media::ArtifactState::Ready,
+            state: domain::media::ArtifactState::PendingFinalize,
             created_at: domain::chrono::Utc::now(),
             updated_at: domain::chrono::Utc::now(),
-            ready_at: Some(domain::chrono::Utc::now()),
+            ready_at: None,
         })
     }
 }

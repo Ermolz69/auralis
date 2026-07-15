@@ -36,6 +36,7 @@ impl From<ApplicationError> for CommandError {
                 PortError::InvalidSource { .. } => CommandError::Validation(port_err.to_string()),
                 _ => CommandError::Repository(port_err.to_string()),
             },
+            ApplicationError::Unexpected(msg) => CommandError::Internal(msg),
         }
     }
 }

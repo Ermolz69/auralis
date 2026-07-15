@@ -57,23 +57,36 @@ pub fn setup_storage(
 
         let job_repo: Arc<dyn JobRepository> = Arc::new(SqliteJobRepository::new(pool.clone()));
 
-        let recovery_storage = Arc::new(
-            adapters_storage::sqlite::recovery_gateway::SqliteRecoveryStorage::new(pool.clone()),
-        );
+        let recovery_storage =
+            Arc::new(adapters_storage::sqlite::recovery::SqliteRecoveryStorage::new(pool.clone()));
         let use_case =
-            application::usecases::system::recover_interrupted::RecoverInterruptedStateUseCase::new(
+            application::usecases::system::recover_interrupted::usecase::RecoverInterruptedStateUseCase::new(
                 recovery_storage,
             );
         let report = tauri::async_runtime::block_on(use_case.execute())?;
 
-        if report.has_fatal_issues() {
-            for issue in &report.fatal_issues {
-                eprintln!("FATAL RECOVERY ISSUE: {:?}", issue);
+        for warning in &report.warnings {
+            println!("Recovery warning: {:?}", warning);
+        }
+        for violation in &report.resolved_violations {
+            println!("Recovery resolved violation: {:?}", violation);
+        }
+
+        if report.has_blocking_failures() {
+            for failure in &report.persistence_failures {
+                eprintln!("Recovery persistence failure: {:?}", failure);
+            }
+            for violation in &report.unresolved_violations {
+                eprintln!("Recovery unresolved violation: {:?}", violation);
             }
             return Err("Startup halted due to fatal state recovery issues.".into());
         }
-        for warning in &report.warnings {
-            println!("Recovery warning: {:?}", warning);
+
+        if report.actions_applied > 0 {
+            println!(
+                "Recovery applied {} actions successfully.",
+                report.actions_applied
+            );
         }
 
         let artifacts_dir = app_data_dir.join("artifacts");

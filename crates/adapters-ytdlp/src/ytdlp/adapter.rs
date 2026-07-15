@@ -123,10 +123,10 @@ impl VideoSourcePort for YtDlpAdapter {
                 path.to_string_lossy().to_string(),
             ),
             size_bytes: None,
-            state: domain::media::ArtifactState::Ready,
+            state: domain::media::ArtifactState::PendingFinalize,
             created_at: domain::chrono::Utc::now(),
             updated_at: domain::chrono::Utc::now(),
-            ready_at: Some(domain::chrono::Utc::now()),
+            ready_at: None,
         })
     }
 }
@@ -207,10 +207,10 @@ impl SubtitleSourcePort for YtDlpAdapter {
             kind: ArtifactKind::OriginalSubtitle,
             location: ArtifactLocation::LocalPath(path.to_string_lossy().to_string()),
             size_bytes: None,
-            state: domain::media::ArtifactState::Ready,
+            state: domain::media::ArtifactState::PendingFinalize,
             created_at: domain::chrono::Utc::now(),
             updated_at: domain::chrono::Utc::now(),
-            ready_at: Some(domain::chrono::Utc::now()),
+            ready_at: None,
         })
     }
 }

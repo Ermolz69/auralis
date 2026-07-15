@@ -12,12 +12,29 @@ pub struct MockArtifactStore;
 impl ArtifactStore for MockArtifactStore {
     async fn stage_owned_temp_file(
         &self,
-        _project_id: &ProjectId,
-        _kind: ArtifactKind,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
         _temp_path: &Path,
-        _filename_hint: Option<&str>,
+        filename_hint: Option<&str>,
     ) -> Result<StagedArtifact, PortError> {
-        unimplemented!()
+        let artifact = Artifact {
+            id: domain::media::ArtifactId::new(),
+            kind: kind.clone(),
+            location: domain::media::ArtifactLocation::LocalPath(
+                filename_hint.unwrap_or("test.ext").to_string(),
+            ),
+            size_bytes: Some(1024),
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            ready_at: None,
+        };
+        Ok(StagedArtifact {
+            artifact,
+            staging_key: format!("staged_{}_{:?}", project_id, kind),
+            final_key: format!("final_{}_{:?}", project_id, kind),
+            size_bytes: 1024,
+        })
     }
 
     async fn import_external_file(
@@ -34,10 +51,10 @@ impl ArtifactStore for MockArtifactStore {
                 filename_hint.unwrap_or("test.ext").to_string(),
             ),
             size_bytes: Some(1024),
-            state: domain::media::ArtifactState::Ready,
+            state: domain::media::ArtifactState::PendingFinalize,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
-            ready_at: Some(chrono::Utc::now()),
+            ready_at: None,
         };
         Ok(StagedArtifact {
             artifact,

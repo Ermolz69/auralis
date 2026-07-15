@@ -255,7 +255,13 @@ impl Project {
         Ok(TerminalTransitionResult::Applied { transcript_ready })
     }
 
-    pub fn force_failed_due_to_recovery(&mut self) {
+    pub fn force_fail_legacy_recovery(&mut self) {
+        self.status = ProjectStatus::Failed;
+        self.active_job_id = None;
+        self.updated_at = Utc::now();
+    }
+
+    pub fn force_fail_missing_job_recovery(&mut self) {
         self.status = ProjectStatus::Failed;
         self.active_job_id = None;
         self.updated_at = Utc::now();

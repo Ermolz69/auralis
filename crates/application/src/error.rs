@@ -23,6 +23,9 @@ pub enum ApplicationError {
     #[error("Pipeline start failed: scheduling failed with '{scheduling_error}'")]
     PipelineStartFailed { scheduling_error: String },
 
+    #[error("Unexpected error: {0}")]
+    Unexpected(String),
+
     #[error(transparent)]
     Domain(#[from] domain::error::DomainError),
 
