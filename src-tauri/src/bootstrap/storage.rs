@@ -14,7 +14,7 @@ pub fn setup_storage(
     workspace_root: &std::path::Path,
 ) -> Result<(RuntimeServices, Option<SqliteOutboxRepository>), Box<dyn std::error::Error>> {
     if std::env::var("AURALIS_STORAGE").unwrap_or_default() == "in-memory" {
-        println!("WARNING: Running with IN-MEMORY storage adapter! Data will be lost on exit.");
+        tracing::warn!("Running with IN-MEMORY storage adapter! Data will be lost on exit.");
         let db = Arc::new(std::sync::Mutex::new(
             adapters_storage::memory::InMemoryDatabase::new(),
         ));
@@ -74,24 +74,24 @@ pub fn setup_storage(
         let report = tauri::async_runtime::block_on(use_case.execute())?;
 
         for warning in &report.warnings {
-            println!("Recovery warning: {:?}", warning);
+            tracing::warn!("Recovery warning: {:?}", warning);
         }
         for violation in &report.resolved_violations {
-            println!("Recovery resolved violation: {:?}", violation);
+            tracing::info!("Recovery resolved violation: {:?}", violation);
         }
 
         if report.has_blocking_failures() {
             for failure in &report.persistence_failures {
-                eprintln!("Recovery persistence failure: {:?}", failure);
+                tracing::error!("Recovery persistence failure: {:?}", failure);
             }
             for violation in &report.unresolved_violations {
-                eprintln!("Recovery unresolved violation: {:?}", violation);
+                tracing::error!("Recovery unresolved violation: {:?}", violation);
             }
             return Err("Startup halted due to fatal state recovery issues.".into());
         }
 
         if report.actions_applied > 0 {
-            println!(
+            tracing::info!(
                 "Recovery applied {} actions successfully.",
                 report.actions_applied
             );

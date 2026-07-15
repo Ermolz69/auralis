@@ -26,3 +26,6 @@ tauri-plugin-dialog = "2.7.1"
 async-trait = "0.1.89"
 tauri-plugin-shell = "2.3.5"
 chrono = { version = "0.4.45", features = ["serde"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2.5"

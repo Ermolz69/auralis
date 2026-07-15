@@ -47,9 +47,10 @@ impl DeleteProjectUseCase {
             .cancel_and_evict_jobs(&result.deleted_job_ids)
             .await
         {
-            eprintln!(
-                "CRITICAL: Failed to cleanup runtime jobs for project {}: {}",
-                project_id, e
+            tracing::error!(
+                project_id = %project_id,
+                "CRITICAL: Failed to cleanup runtime jobs for project: {}",
+                e
             );
             // We do not return an error to the UI because the project is already persistently deleted.
         }

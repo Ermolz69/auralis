@@ -20,7 +20,6 @@ where
     U: StorageUnitOfWork,
 {
     outbox_repo: O,
-    artifact_store: S,
     handler: PayloadHandler<S, I, U>,
 }
 
@@ -49,7 +48,6 @@ where
 
         Self {
             outbox_repo,
-            artifact_store,
             handler,
         }
     }
@@ -85,9 +83,10 @@ where
             let claimed = match claim_result {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!(
-                        "OutboxWorker: Failed to claim message {}: {}",
-                        message.id, e
+                    tracing::error!(
+                        message_id = %message.id,
+                        "OutboxWorker: Failed to claim message: {}",
+                        e
                     );
                     report.storage_errors += 1;
                     continue;
@@ -110,9 +109,10 @@ where
                         report.completed += 1;
                     }
                     Err(e) => {
-                        eprintln!(
-                            "OutboxWorker: Failed to mark message {} as done: {}",
-                            message.id, e
+                        tracing::error!(
+                            message_id = %message.id,
+                            "OutboxWorker: Failed to mark message as done: {}",
+                            e
                         );
                         report.storage_errors += 1;
                     }
@@ -132,9 +132,10 @@ where
                             }
                         }
                         Err(db_err) => {
-                            eprintln!(
-                                "OutboxWorker: Failed to mark message {} as failed: {}",
-                                message.id, db_err
+                            tracing::error!(
+                                message_id = %message.id,
+                                "OutboxWorker: Failed to mark message as failed: {}",
+                                db_err
                             );
                             report.storage_errors += 1;
                         }
@@ -155,32 +156,16 @@ where
                     match self.process_pending_messages(10).await {
                         Ok(report) => {
                             if report.fetched > 0 || report.storage_errors > 0 {
-                                println!("OutboxWorker report: {}", report);
+                                tracing::info!("OutboxWorker report: {}", report);
                             }
                         }
                         Err(e) => {
-                            eprintln!("OutboxWorker error: {}", e);
-                        }
-                    }
-                    // Run staging janitor
-                    if let Err(e) = self.artifact_store.cleanup_stale_staging(Duration::from_secs(24 * 3600)).await {
-                        eprintln!("OutboxWorker staging janitor error: {}", e);
-                    }
-
-                    // Run workspace janitor
-                    match self.handler.workspace_port.cleanup_stale_allocations(Duration::from_secs(24 * 3600)).await {
-                        Ok(report) => {
-                            if report.deleted_count > 0 || report.failed_count > 0 {
-                                println!("OutboxWorker workspace janitor report: {:?}", report);
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("OutboxWorker workspace janitor error: {}", e);
+                            tracing::error!("OutboxWorker error: {}", e);
                         }
                     }
                 }
                 _ = shutdown_rx.recv() => {
-                    println!("OutboxWorker shutting down...");
+                    tracing::info!("OutboxWorker shutting down...");
                     break;
                 }
             }

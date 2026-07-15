@@ -14,6 +14,11 @@ tasks:
   global:
     cmds:
       - task: format-check
+      - task: runtime-println
+
+  runtime-println:
+    cmds:
+      - node tools/scripts/check-runtime-println.mjs
 
   fsd-boundaries:
     cmds:

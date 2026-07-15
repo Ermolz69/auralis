@@ -32,9 +32,10 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
         let artifacts: Vec<LegacyArtifact> = match serde_json::from_str(&artifacts_json) {
             Ok(a) => a,
             Err(e) => {
-                println!(
-                    "WARNING: Failed to parse artifacts_json for project {}: {}",
-                    project_id, e
+                tracing::warn!(
+                    "Legacy artifacts backfill: Failed to parse artifacts_json for project {}: {}",
+                    project_id,
+                    e
                 );
                 continue;
             }
@@ -50,9 +51,10 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
             let kind = match helpers::serialize_enum(&artifact.kind, "artifact.kind") {
                 Ok(k) => k,
                 Err(e) => {
-                    println!(
-                        "WARNING: Failed to serialize kind for artifact {}: {:?}",
-                        artifact.id, e
+                    tracing::warn!(
+                        "Legacy artifacts backfill: Failed to serialize kind for artifact {}: {:?}",
+                        artifact.id,
+                        e
                     );
                     all_inserted = false;
                     break;
@@ -92,7 +94,7 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
             .execute(&mut *tx)
             .await
             {
-                println!("WARNING: Failed to insert backfilled artifact {}: {}", artifact.id, e);
+                tracing::warn!("Legacy artifacts backfill: Failed to insert backfilled artifact {}: {}", artifact.id, e);
                 all_inserted = false;
                 break;
             }
@@ -105,9 +107,10 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
                 .execute(&mut *tx)
                 .await
             {
-                println!(
-                    "WARNING: Failed to clear artifacts_json for project {}: {}",
-                    project_id, e
+                tracing::warn!(
+                    "Legacy artifacts backfill: Failed to clear artifacts_json for project {}: {}",
+                    project_id,
+                    e
                 );
                 let _ = tx.rollback().await;
             } else {

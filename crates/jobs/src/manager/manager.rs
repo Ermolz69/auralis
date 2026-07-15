@@ -88,7 +88,7 @@ impl JobManager {
         let mut jobs = match self.repo.list_recent(100).await {
             Ok(j) => j,
             Err(e) => {
-                eprintln!("WARNING: Failed to list recent jobs from repo: {}", e);
+                tracing::warn!("Failed to list recent jobs from repo: {}", e);
                 // Fallback to cache
                 self.cache.list_all().await
             }

@@ -1,6 +1,7 @@
 pub mod bootstrap;
 pub mod commands;
 pub mod dto;
+pub mod observability;
 pub mod state;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

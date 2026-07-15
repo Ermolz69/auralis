@@ -76,9 +76,10 @@ impl SqliteOutboxRepository {
                         let reason = format!("Corrupted outbox payload: {}", e);
                         // Mark as dead directly
                         if let Err(err) = self.execute_mark_dead_raw(&id_raw, &reason).await {
-                            eprintln!(
+                            tracing::error!(
                                 "Failed to isolate corrupted outbox message {}: {}",
-                                id_raw, err
+                                id_raw,
+                                err
                             );
                             isolation_errors += 1;
                             // Guarantee exit from fetch loop to avoid infinite loop on this row

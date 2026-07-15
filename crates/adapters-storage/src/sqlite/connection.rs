@@ -63,7 +63,7 @@ pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, Po
                 let backup_dir = db_path.parent().unwrap_or(Path::new(""));
                 let backup_path = backup_dir.join(format!("{}.backup_{}", db_name, timestamp));
 
-                eprintln!(
+                tracing::warn!(
                     "Legacy unmigrated dev database detected. Backing up to {} and recreating a fresh database...",
                     backup_path.display()
                 );
@@ -91,7 +91,7 @@ pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, Po
                         }
 
                         if let Some(e) = last_err {
-                            eprintln!("Failed to rename {}: {}", src.display(), e);
+                            tracing::error!("Failed to rename {}: {}", src.display(), e);
                             if suffix.is_empty() {
                                 return Err(PortError::Unexpected {
                                     message: format!("Failed to backup database file: {}", e),

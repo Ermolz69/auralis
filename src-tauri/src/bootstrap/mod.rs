@@ -12,6 +12,12 @@ use tauri::{App, Manager};
 pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
 
+    // 0a. Initialize observability
+    let log_dir = app.path().app_log_dir().ok();
+    let guard =
+        crate::observability::init(crate::observability::config::ObservabilityConfig { log_dir });
+    app.manage(guard);
+
     // 0. Compute workspace root
     let app_path = app.path();
     let workspace_root = app_path

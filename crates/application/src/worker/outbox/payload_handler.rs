@@ -56,9 +56,10 @@ where
             }
             OutboxPayload::DeleteWorkspaceFile { workspace_key } => {
                 if let Err(e) = self.workspace_port.delete_allocation(workspace_key).await {
-                    eprintln!(
-                        "OutboxWorker: Failed to delete workspace allocation {}: {}",
-                        workspace_key, e
+                    tracing::error!(
+                        workspace_key = %workspace_key,
+                        "OutboxWorker: Failed to delete workspace allocation: {}",
+                        e
                     );
                     return Err(ApplicationError::InvalidOperation {
                         message: format!("Failed to delete workspace allocation: {}", e),
@@ -80,9 +81,11 @@ where
                     .apply_terminal_lifecycle_conditionally(command)
                     .await?;
                 // Even if IgnoredStale or AlreadyApplied, we consider it done for the outbox.
-                println!(
-                    "Terminal lifecycle applied for project {}: {:?}",
-                    project_id, res
+                tracing::info!(
+                    project_id = %project_id,
+                    job_id = %job_id,
+                    "Terminal lifecycle applied: {:?}",
+                    res
                 );
 
                 if let domain::project::status::TerminalTransitionResult::Applied {
