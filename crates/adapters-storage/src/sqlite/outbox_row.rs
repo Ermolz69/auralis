@@ -11,6 +11,7 @@ pub struct OutboxRow {
     pub locked_at: Option<String>,
     pub locked_by: Option<String>,
     pub last_error: Option<String>,
+    pub deduplication_key: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

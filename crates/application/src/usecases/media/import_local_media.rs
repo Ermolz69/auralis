@@ -139,7 +139,6 @@ impl<
             .await?;
 
         // 6. Transition project to ReadyForProcessing
-        let mut project = self.project_repo.get(&request.project_id).await?.unwrap();
         project.mark_ready_for_processing()?;
         self.project_repo.save(&project).await?;
 
@@ -245,7 +244,7 @@ mod tests {
         let projects_saved = tx_gateway.projects_saved.lock().await;
         let saved_project = projects_saved
             .iter()
-            .find(|p| p.id() == &project_id)
+            .rfind(|p| p.id() == &project_id)
             .unwrap();
         assert_eq!(*saved_project.status(), ProjectStatus::Processing);
     }

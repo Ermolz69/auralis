@@ -11,7 +11,7 @@ pub enum ProjectStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TerminalTransitionResult {
-    Applied,
+    Applied { transcript_ready: bool },
     AlreadyApplied,
     IgnoredStale,
     ProjectMissing,

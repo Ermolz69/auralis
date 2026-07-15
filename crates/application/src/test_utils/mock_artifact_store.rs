@@ -22,12 +22,29 @@ impl ArtifactStore for MockArtifactStore {
 
     async fn import_external_file(
         &self,
-        _project_id: &ProjectId,
-        _kind: ArtifactKind,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
         _source_path: &Path,
-        _filename_hint: Option<&str>,
+        filename_hint: Option<&str>,
     ) -> Result<StagedArtifact, PortError> {
-        unimplemented!()
+        let artifact = Artifact {
+            id: domain::media::ArtifactId::new(),
+            kind: kind.clone(),
+            location: domain::media::ArtifactLocation::LocalPath(
+                filename_hint.unwrap_or("test.ext").to_string(),
+            ),
+            size_bytes: Some(1024),
+            state: domain::media::ArtifactState::Ready,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            ready_at: Some(chrono::Utc::now()),
+        };
+        Ok(StagedArtifact {
+            artifact,
+            staging_key: format!("staged_{}_{:?}", project_id, kind),
+            final_key: format!("final_{}_{:?}", project_id, kind),
+            size_bytes: 1024,
+        })
     }
 
     async fn cleanup_stale_staging(&self, _max_age: std::time::Duration) -> Result<(), PortError> {
@@ -39,14 +56,14 @@ impl ArtifactStore for MockArtifactStore {
         _staging_key: &str,
         _final_key: &str,
     ) -> Result<(), PortError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn resolve_artifact(
         &self,
         _artifact: &Artifact,
     ) -> Result<std::path::PathBuf, PortError> {
-        unimplemented!()
+        Ok(std::path::PathBuf::from("/mock/path"))
     }
 
     async fn delete_storage_key(&self, _key: &str) -> Result<(), PortError> {

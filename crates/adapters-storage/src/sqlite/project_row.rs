@@ -11,6 +11,7 @@ pub struct ProjectRow {
     pub target_language: Option<String>,
     pub transcript_json: Option<String>,
     pub active_job_id: Option<String>,
+    pub last_terminal_job_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

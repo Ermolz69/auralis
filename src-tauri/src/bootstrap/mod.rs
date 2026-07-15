@@ -25,12 +25,9 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Setup Event Bridge and Coordinator
     let publisher = TauriEventPublisher::new(app_handle.clone());
-    let coordinator = Arc::new(JobLifecycleCoordinator::new(
-        services.project_repo.clone(),
-        publisher.clone(),
-    ));
+    let coordinator = Arc::new(JobLifecycleCoordinator::new());
 
-    let mut event_bridge = TauriJobEventBridge::new(publisher, coordinator);
+    let mut event_bridge = TauriJobEventBridge::new(publisher.clone(), coordinator);
 
     if let Some(outbox_repo) = outbox_repo_opt {
         let outbox_shutdown = workers::spawn_outbox_worker(
@@ -38,14 +35,18 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             services.artifact_store.clone(),
             services.artifact_index.clone(),
             services.storage_uow.clone(),
+            Arc::new(publisher.clone()),
             workspace_root.clone(),
         );
         app.manage(outbox_shutdown);
     }
 
     // 3. Build Job Scheduler
-    let job_manager =
-        services::build_job_scheduler(services.job_repo.clone(), event_bridge.emitter());
+    let job_manager = services::build_job_scheduler(
+        services.job_repo.clone(),
+        services.storage_uow.clone(),
+        event_bridge.emitter(),
+    );
 
     // 4. Register State
     app.manage(event_bridge.take_handle().unwrap());

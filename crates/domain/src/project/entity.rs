@@ -21,6 +21,7 @@ pub struct Project {
     target_language: Option<LanguageCode>,
     transcript: Option<Transcript>,
     active_job_id: Option<JobId>,
+    last_terminal_job_id: Option<JobId>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -37,6 +38,7 @@ impl Project {
             target_language: self.target_language.clone(),
             transcript: self.transcript.clone(),
             active_job_id: self.active_job_id.clone(),
+            last_terminal_job_id: self.last_terminal_job_id.clone(),
             created_at: self.created_at,
             updated_at: self.updated_at,
         }
@@ -94,6 +96,7 @@ impl Project {
             target_language: snapshot.target_language,
             transcript: snapshot.transcript,
             active_job_id: snapshot.active_job_id,
+            last_terminal_job_id: snapshot.last_terminal_job_id,
             created_at: snapshot.created_at,
             updated_at: snapshot.updated_at,
         })
@@ -111,6 +114,7 @@ impl Project {
             target_language: None,
             transcript: None,
             active_job_id: None,
+            last_terminal_job_id: None,
             created_at: now,
             updated_at: now,
         }
@@ -143,6 +147,9 @@ impl Project {
     }
     pub fn active_job_id(&self) -> Option<&JobId> {
         self.active_job_id.as_ref()
+    }
+    pub fn last_terminal_job_id(&self) -> Option<&JobId> {
+        self.last_terminal_job_id.as_ref()
     }
     pub fn created_at(&self) -> DateTime<Utc> {
         self.created_at
@@ -219,18 +226,28 @@ impl Project {
         job_id: &JobId,
         outcome: TerminalOutcome,
     ) -> Result<TerminalTransitionResult, DomainError> {
-        if self.active_job_id.as_ref() != Some(job_id) {
-            return Ok(TerminalTransitionResult::IgnoredStale);
-        }
-
         let target_status = match outcome {
             TerminalOutcome::Completed => ProjectStatus::Completed,
             TerminalOutcome::Failed => ProjectStatus::Failed,
             TerminalOutcome::Cancelled => ProjectStatus::Cancelled,
         };
 
-        if self.status == target_status {
-            return Ok(TerminalTransitionResult::AlreadyApplied);
+        if self.active_job_id.as_ref() != Some(job_id) {
+            // Check for idempotency: was this the exact job that last terminalized the project?
+            if self.last_terminal_job_id.as_ref() == Some(job_id) {
+                if self.status == target_status {
+                    return Ok(TerminalTransitionResult::AlreadyApplied);
+                } else {
+                    return Err(DomainError::InvalidStateTransition {
+                        from: format!("{:?}", self.status),
+                        to: format!(
+                            "Conflicting outcome for already terminal job: {:?}",
+                            target_status
+                        ),
+                    });
+                }
+            }
+            return Ok(TerminalTransitionResult::IgnoredStale);
         }
 
         if self.status != ProjectStatus::Processing {
@@ -241,10 +258,11 @@ impl Project {
         }
 
         self.status = target_status;
-        self.active_job_id = None;
+        self.last_terminal_job_id = self.active_job_id.take();
         self.updated_at = Utc::now();
 
-        Ok(TerminalTransitionResult::Applied)
+        let transcript_ready = self.transcript.is_some();
+        Ok(TerminalTransitionResult::Applied { transcript_ready })
     }
 
     pub fn force_failed_due_to_recovery(&mut self) {

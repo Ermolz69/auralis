@@ -73,14 +73,18 @@ mod tests {
             ready_at: Some(domain::chrono::Utc::now()),
         };
 
+        let project_id = ProjectId::new();
         let index = MockArtifactIndex {
-            artifacts: Arc::new(Mutex::new(vec![artifact1.clone(), artifact2.clone()])),
+            artifacts: Arc::new(Mutex::new(vec![
+                (project_id.clone(), artifact1.clone()),
+                (project_id.clone(), artifact2.clone()),
+            ])),
         };
 
         let use_case = ListProjectArtifactsUseCase::new(index);
         let result = use_case
             .execute(ListProjectArtifactsRequest {
-                project_id: ProjectId::new(),
+                project_id,
                 kind: None,
             })
             .await
@@ -112,14 +116,18 @@ mod tests {
             ready_at: Some(domain::chrono::Utc::now()),
         };
 
+        let project_id = ProjectId::new();
         let index = MockArtifactIndex {
-            artifacts: Arc::new(Mutex::new(vec![artifact1.clone(), artifact2.clone()])),
+            artifacts: Arc::new(Mutex::new(vec![
+                (project_id.clone(), artifact1.clone()),
+                (project_id.clone(), artifact2.clone()),
+            ])),
         };
 
         let use_case = ListProjectArtifactsUseCase::new(index);
         let result = use_case
             .execute(ListProjectArtifactsRequest {
-                project_id: ProjectId::new(),
+                project_id,
                 kind: Some(ArtifactKind::OriginalSubtitle),
             })
             .await

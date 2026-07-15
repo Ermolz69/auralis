@@ -87,6 +87,7 @@ pub struct OutboxMessage {
     pub locked_at: Option<DateTime<Utc>>,
     pub locked_by: Option<String>,
     pub last_error: Option<String>,
+    pub deduplication_key: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -103,6 +104,7 @@ impl OutboxMessage {
             locked_at: None,
             locked_by: None,
             last_error: None,
+            deduplication_key: None,
             created_at: now,
             updated_at: now,
         }

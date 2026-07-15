@@ -25,11 +25,10 @@ impl ProjectRepository for SqliteProjectRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO projects (
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                active_job_id, last_terminal_job_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(values.id)
@@ -40,6 +39,8 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(values.source_language)
         .bind(values.target_language)
         .bind(values.transcript_json)
+        .bind(values.active_job_id)
+        .bind(values.last_terminal_job_id)
         .bind(values.created_at)
         .bind(values.updated_at)
         .execute(&self.pool)
@@ -57,7 +58,7 @@ impl ProjectRepository for SqliteProjectRepository {
             SELECT 
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
-                created_at, updated_at
+                active_job_id, last_terminal_job_id, created_at, updated_at
             FROM projects 
             WHERE id = ?
             "#,
@@ -86,6 +87,7 @@ impl ProjectRepository for SqliteProjectRepository {
                 target_language = ?,
                 transcript_json = ?,
                 active_job_id = ?,
+                last_terminal_job_id = ?,
                 updated_at = ?
             WHERE id = ?
             "#,
@@ -98,6 +100,7 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(values.target_language)
         .bind(values.transcript_json)
         .bind(values.active_job_id)
+        .bind(values.last_terminal_job_id)
         .bind(values.updated_at)
         .bind(values.id)
         .execute(&self.pool)
@@ -121,7 +124,7 @@ impl ProjectRepository for SqliteProjectRepository {
             SELECT 
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
-                created_at, updated_at
+                active_job_id, last_terminal_job_id, created_at, updated_at
             FROM projects 
             ORDER BY updated_at DESC
             "#,

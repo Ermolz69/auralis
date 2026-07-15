@@ -209,27 +209,12 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         update_job(&mut tx, &command.job).await?;
 
-        use std::str::FromStr;
-        let outbox_msg = OutboxMessage {
-            id: domain::outbox::OutboxMessageId::from_str(&command.outbox_message_id).map_err(
-                |e| PortError::Unexpected {
-                    message: e.to_string(),
-                },
-            )?,
-            payload: OutboxPayload::HandleTerminalJobState {
-                job_id: command.job.id().clone(),
-                project_id: command.project_id,
-                outcome: command.outcome,
-            },
-            status: domain::outbox::OutboxMessageStatus::Pending,
-            attempts: 0,
-            next_attempt_at: chrono::Utc::now(),
-            locked_at: None,
-            locked_by: None,
-            last_error: None,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-        };
+        let mut outbox_msg = OutboxMessage::new(OutboxPayload::HandleTerminalJobState {
+            job_id: command.job.id().clone(),
+            project_id: command.project_id,
+            outcome: command.outcome,
+        });
+        outbox_msg.deduplication_key = Some(command.deduplication_key);
 
         save_outbox_message(&mut tx, &outbox_msg).await?;
 
@@ -275,7 +260,10 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
                 message: e.to_string(),
             })?;
 
-        if res == domain::project::status::TerminalTransitionResult::Applied {
+        if matches!(
+            res,
+            domain::project::status::TerminalTransitionResult::Applied { .. }
+        ) {
             update_project(&mut tx, &project).await?;
         }
 
@@ -297,10 +285,7 @@ mod tests {
 
     async fn setup_db() -> SqlitePool {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::migrate!("./migrations") 
-            .run(&pool)
-            .await
-            .unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
         pool
     }
 

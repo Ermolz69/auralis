@@ -8,7 +8,7 @@ use tokio::sync::Mutex;
 
 #[derive(Clone, Default)]
 pub struct MockArtifactIndex {
-    pub artifacts: Arc<Mutex<Vec<Artifact>>>,
+    pub artifacts: Arc<Mutex<Vec<(ProjectId, Artifact)>>>,
 }
 
 impl MockArtifactIndex {
@@ -21,18 +21,21 @@ impl MockArtifactIndex {
 impl ArtifactIndex for MockArtifactIndex {
     async fn check_exists(&self, id: &ArtifactId) -> Result<bool, PortError> {
         let lock = self.artifacts.lock().await;
-        Ok(lock.iter().any(|a| a.id == *id))
+        Ok(lock.iter().any(|(_p, a)| a.id == *id))
     }
 
-    async fn add(&self, _project_id: &ProjectId, artifact: &Artifact) -> Result<(), PortError> {
+    async fn add(&self, project_id: &ProjectId, artifact: &Artifact) -> Result<(), PortError> {
         let mut lock = self.artifacts.lock().await;
-        lock.push(artifact.clone());
+        lock.push((project_id.clone(), artifact.clone()));
         Ok(())
     }
 
     async fn get(&self, id: &ArtifactId) -> Result<Option<Artifact>, PortError> {
         let lock = self.artifacts.lock().await;
-        Ok(lock.iter().find(|a| a.id == *id).cloned())
+        Ok(lock
+            .iter()
+            .find(|(_p, a)| a.id == *id)
+            .map(|(_p, a)| a.clone()))
     }
 
     async fn update_state(
@@ -42,28 +45,37 @@ impl ArtifactIndex for MockArtifactIndex {
         _time: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<(), PortError> {
         let mut lock = self.artifacts.lock().await;
-        if let Some(artifact) = lock.iter_mut().find(|a| a.id == *id) {
+        if let Some((_, artifact)) = lock.iter_mut().find(|(_p, a)| a.id == *id) {
             artifact.state = state;
         }
         Ok(())
     }
 
-    async fn list_by_project(&self, _project_id: &ProjectId) -> Result<Vec<Artifact>, PortError> {
-        Ok(vec![])
+    async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Artifact>, PortError> {
+        let lock = self.artifacts.lock().await;
+        Ok(lock
+            .iter()
+            .filter(|(p, _a)| p == project_id)
+            .map(|(_p, a)| a.clone())
+            .collect())
     }
 
     async fn list_by_project_and_kind(
         &self,
-        _project_id: &ProjectId,
+        project_id: &ProjectId,
         kind: domain::media::ArtifactKind,
     ) -> Result<Vec<Artifact>, PortError> {
         let lock = self.artifacts.lock().await;
-        Ok(lock.iter().filter(|a| a.kind == kind).cloned().collect())
+        Ok(lock
+            .iter()
+            .filter(|(p, a)| p == project_id && a.kind == kind)
+            .map(|(_p, a)| a.clone())
+            .collect())
     }
 
     async fn delete(&self, id: &ArtifactId) -> Result<(), PortError> {
         let mut lock = self.artifacts.lock().await;
-        lock.retain(|a| a.id != *id);
+        lock.retain(|(_, a)| a.id != *id);
         Ok(())
     }
 }

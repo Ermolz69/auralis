@@ -142,7 +142,10 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
                 message: e.to_string(),
             })?;
 
-        if res == domain::project::status::TerminalTransitionResult::Applied {
+        if matches!(
+            res,
+            domain::project::status::TerminalTransitionResult::Applied { .. }
+        ) {
             self.project_repo.save(&project).await?;
         }
 

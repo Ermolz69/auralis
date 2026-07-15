@@ -9,6 +9,71 @@ use domain::job::{Job, JobId, JobStatus};
 use ports::error::PortError;
 use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::JobRepository;
+use ports::transaction::{
+    ApplyTerminalLifecycle, CommitJobUpdate, CommitManagedSourceImport, CommitPipelineStart,
+    CommitPipelineStartFailure, CommitProjectDelete, CommitStagedArtifactWrite,
+    CommitTerminalJobUpdate, CommitTranscriptImport, StorageUnitOfWork,
+};
+
+pub struct MockStorageUnitOfWork {
+    jobs: Arc<Mutex<HashMap<JobId, Job>>>,
+}
+
+impl MockStorageUnitOfWork {
+    pub fn new(jobs: Arc<Mutex<HashMap<JobId, Job>>>) -> Self {
+        Self { jobs }
+    }
+}
+
+#[async_trait]
+impl StorageUnitOfWork for MockStorageUnitOfWork {
+    async fn commit_transcript_import(&self, _c: CommitTranscriptImport) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_staged_artifact_write(
+        &self,
+        _c: CommitStagedArtifactWrite,
+    ) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_managed_source_import(
+        &self,
+        _c: CommitManagedSourceImport,
+    ) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_project_delete(&self, _c: CommitProjectDelete) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_job_update(&self, _c: CommitJobUpdate) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_pipeline_start(&self, _c: CommitPipelineStart) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_pipeline_start_failure(
+        &self,
+        _c: CommitPipelineStartFailure,
+    ) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_terminal_job_update(
+        &self,
+        c: CommitTerminalJobUpdate,
+    ) -> Result<(), PortError> {
+        self.jobs
+            .lock()
+            .await
+            .insert(c.job.id().clone(), c.job.clone());
+        Ok(())
+    }
+    async fn apply_terminal_lifecycle_conditionally(
+        &self,
+        _c: ApplyTerminalLifecycle,
+    ) -> Result<domain::project::status::TerminalTransitionResult, PortError> {
+        Ok(domain::project::status::TerminalTransitionResult::AlreadyApplied)
+    }
+}
 
 pub struct MockJobRepository {
     jobs: Arc<Mutex<HashMap<JobId, Job>>>,
@@ -57,93 +122,132 @@ impl JobRepository for MockJobRepository {
 #[tokio::test]
 async fn test_job_manager_flow() {
     let repo = Arc::new(MockJobRepository::new());
-    let manager = JobManager::new(repo, None);
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
 
     let job = manager
-        .start_mock_dubbing_job_internal(
-            "Test Job".to_string(),
-            Some(domain::project::ProjectId::new().to_string()),
-        )
+        .start_dubbing_job(ports::job_scheduler::StartDubbingJobRequest {
+            title: "Test Job".into(),
+            project_id: Some(domain::project::ProjectId::new()),
+        })
         .await
         .unwrap();
-    let job_id = job.id().clone();
+    let job_id = job.id.clone();
 
-    let job = manager.get_job_internal(&job_id).await.unwrap();
-    assert!(*job.status() == JobStatus::Pending || *job.status() == JobStatus::Running);
+    let job = manager.get_job(&job_id).await.unwrap().unwrap();
+    assert!(job.status == JobStatus::Pending || job.status == JobStatus::Running);
 
-    let _cancelled_job = manager.cancel_job_internal(&job_id).await.unwrap();
+    let _cancelled_job = manager.cancel_job(&job_id).await.unwrap();
 
-    sleep(Duration::from_millis(600)).await;
-
-    let job = manager.get_job_internal(&job_id).await.unwrap();
-    assert_eq!(*job.status(), JobStatus::Cancelled);
+    let job = manager.get_job(&job_id).await.unwrap().unwrap();
+    assert_eq!(job.status, JobStatus::Cancelled);
 }
 
 #[tokio::test]
 async fn test_cancel_unknown_job() {
     let repo = Arc::new(MockJobRepository::new());
-    let manager = JobManager::new(repo, None);
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
     let fake_id = JobId::new();
 
-    let result = manager.cancel_job_internal(&fake_id).await;
+    let result = manager.cancel_job(&fake_id).await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
-async fn test_concurrent_updates_and_cancellation() {
-    let repo = Arc::new(MockJobRepository::new());
-    let manager = JobManager::new(repo, None);
+async fn test_deterministic_concurrent_updates() {
+    struct DelayedRepo {
+        inner: MockJobRepository,
+    }
+
+    #[async_trait]
+    impl JobRepository for DelayedRepo {
+        async fn create(&self, job: Job) -> Result<Job, PortError> {
+            self.inner.create(job).await
+        }
+        async fn get(&self, id: &JobId) -> Result<Option<Job>, PortError> {
+            // Introduce a delay to ensure overlap if locks weren't used
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            self.inner.get(id).await
+        }
+        async fn save(&self, job: &Job) -> Result<(), PortError> {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            self.inner.save(job).await
+        }
+        async fn list_by_project(
+            &self,
+            project_id: &domain::project::ProjectId,
+        ) -> Result<Vec<Job>, PortError> {
+            self.inner.list_by_project(project_id).await
+        }
+        async fn list_active(&self) -> Result<Vec<Job>, PortError> {
+            self.inner.list_active().await
+        }
+        async fn list_recent(&self, limit: usize) -> Result<Vec<Job>, PortError> {
+            self.inner.list_recent(limit).await
+        }
+    }
+
+    let repo = Arc::new(DelayedRepo {
+        inner: MockJobRepository::new(),
+    });
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.inner.jobs.clone()));
+    let manager = JobManager::new(repo, uow, None);
+
     let job = manager
-        .start_mock_dubbing_job_internal(
-            "Concurrent Test".to_string(),
-            Some(domain::project::ProjectId::new().to_string()),
-        )
+        .start_dubbing_job(ports::job_scheduler::StartDubbingJobRequest {
+            title: "Deterministic Test".into(),
+            project_id: Some(domain::project::ProjectId::new()),
+        })
         .await
         .unwrap();
-    let job_id = job.id().clone();
+    let job_id = job.id.clone();
 
-    let manager_clone = manager.clone();
+    // Spawn an update task
+    let m_clone = manager.clone();
     let id_clone = job_id.clone();
+    let update_task = tokio::spawn(async move {
+        m_clone
+            .update_job_stage(
+                &id_clone,
+                domain::dubbing::DubbingPipelineStage::FetchMetadata,
+                domain::job::JobProgress {
+                    percent: 50,
+                    message: "Updating".into(),
+                    current_step: None,
+                    processed_items: None,
+                    total_items: None,
+                },
+            )
+            .await
+    });
 
-    let mut tasks = vec![];
-    for _ in 0..10 {
-        let m = manager.clone();
-        let id = job_id.clone();
-        tasks.push(tokio::spawn(async move {
-            for j in 0..20 {
-                if let Some(mut job) = m.get_job_internal(&id).await {
-                    let mut prog = job.progress().clone();
-                    prog.percent = j as u8;
-                    job.update_progress(prog).ok();
-                    let _ = m.update_job(job).await;
-                }
-                tokio::task::yield_now().await;
-            }
-        }));
-    }
+    // Wait a tiny bit to ensure update_task enters the locked section
+    sleep(Duration::from_millis(5)).await;
 
-    tasks.push(tokio::spawn(async move {
-        sleep(Duration::from_millis(5)).await;
-        let _ = manager_clone.cancel_job_internal(&id_clone).await;
-    }));
+    // Spawn a cancel task
+    let m_clone2 = manager.clone();
+    let id_clone2 = job_id.clone();
+    let cancel_task = tokio::spawn(async move { m_clone2.cancel_job(&id_clone2).await });
 
-    for t in tasks {
-        let _ = t.await;
-    }
+    let update_result = update_task.await.unwrap();
+    let cancel_result = cancel_task.await.unwrap();
 
-    let job = manager.get_job_internal(&job_id).await.unwrap();
-    assert!(
-        *job.status() == JobStatus::Cancelled
-            || *job.status() == JobStatus::Running
-            || *job.status() == JobStatus::Pending
-            || *job.status() == JobStatus::Completed
-    );
+    // Since cancel_task was queued behind update_task's lock, it sees the updated job and cancels it.
+    assert!(update_result.is_ok());
+    assert!(cancel_result.is_ok());
+
+    let final_job = manager.get_job(&job_id).await.unwrap().unwrap();
+    assert_eq!(final_job.status, JobStatus::Cancelled);
+    // The progress from the update task should be present because they were serialized
+    assert_eq!(final_job.progress.percent, 50);
 }
 
 #[tokio::test]
 async fn test_enqueue_existing_job_starts_pending_job() {
     let repo = Arc::new(MockJobRepository::new());
-    let manager = JobManager::new(repo.clone(), None);
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
 
     let job = Job::new(
         domain::project::ProjectId::new(),
@@ -163,7 +267,8 @@ async fn test_enqueue_existing_job_starts_pending_job() {
 #[tokio::test]
 async fn test_enqueue_existing_job_rejects_missing_job() {
     let repo = Arc::new(MockJobRepository::new());
-    let manager = JobManager::new(repo, None);
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
 
     let result = manager.enqueue_existing_job(&JobId::new()).await;
     assert!(matches!(result, Err(PortError::NotFound { .. })));
@@ -172,7 +277,8 @@ async fn test_enqueue_existing_job_rejects_missing_job() {
 #[tokio::test]
 async fn test_enqueue_existing_job_rejects_completed_job() {
     let repo = Arc::new(MockJobRepository::new());
-    let manager = JobManager::new(repo.clone(), None);
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
 
     let mut job = Job::new(
         domain::project::ProjectId::new(),
@@ -191,7 +297,8 @@ async fn test_enqueue_existing_job_rejects_completed_job() {
 #[tokio::test]
 async fn test_enqueue_existing_job_is_idempotent_for_already_running_job() {
     let repo = Arc::new(MockJobRepository::new());
-    let manager = JobManager::new(repo.clone(), None);
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
 
     let mut job = Job::new(
         domain::project::ProjectId::new(),

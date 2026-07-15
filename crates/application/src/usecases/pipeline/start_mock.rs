@@ -102,15 +102,22 @@ impl<
                 let mut failed_project = project.clone();
                 let mut failed_job = job.clone();
 
-                let _ = failed_project.apply_terminal_transition(
+                if let Err(e) = failed_project.apply_terminal_transition(
                     failed_job.id(),
                     domain::job::TerminalOutcome::Failed,
-                ); // Ignore transition error if any
-                let _ = failed_job.mark_failed(domain::job::JobError::new(
+                ) {
+                    eprintln!(
+                        "Failed to apply terminal transition during compensation: {}",
+                        e
+                    );
+                }
+                if let Err(e) = failed_job.mark_failed(domain::job::JobError::new(
                     "SCHEDULING_FAILED",
                     format!("Failed to schedule job: {}", enqueue_err),
                     false,
-                ));
+                )) {
+                    eprintln!("Failed to mark job as failed during compensation: {}", e);
+                }
 
                 let failure_cmd = CommitPipelineStartFailure {
                     project: failed_project,
@@ -472,7 +479,9 @@ mod tests {
                 &self,
                 _command: ports::transaction::ApplyTerminalLifecycle,
             ) -> Result<domain::project::status::TerminalTransitionResult, PortError> {
-                Ok(domain::project::status::TerminalTransitionResult::Applied)
+                Ok(domain::project::status::TerminalTransitionResult::Applied {
+                    transcript_ready: false,
+                })
             }
         }
 

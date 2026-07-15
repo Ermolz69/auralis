@@ -46,7 +46,7 @@ impl OutboxRepository for SqliteOutboxRepository {
             r#"
             SELECT 
                 id, kind, payload_json, status, attempts, 
-                next_attempt_at, locked_at, locked_by, last_error, 
+                next_attempt_at, locked_at, locked_by, last_error, deduplication_key, 
                 created_at, updated_at
             FROM outbox_messages
             WHERE status IN ('pending', 'failed') AND next_attempt_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
@@ -128,7 +128,7 @@ impl OutboxRepository for SqliteOutboxRepository {
             r#"
             SELECT 
                 id, kind, payload_json, status, attempts, 
-                next_attempt_at, locked_at, locked_by, last_error, 
+                next_attempt_at, locked_at, locked_by, last_error, deduplication_key, 
                 created_at, updated_at
             FROM outbox_messages
             WHERE id = ?

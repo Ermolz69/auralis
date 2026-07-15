@@ -1,29 +1,23 @@
 use crate::event_publisher::FrontendJobEventPublisher;
 use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
-use ports::events::AppEventPublisher;
 use ports::job_scheduler::JobLifecycleEvent;
-use ports::repository::ProjectRepository;
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
-struct JobLifecycleWorker<P, R, E>
+struct JobLifecycleWorker<P>
 where
     P: FrontendJobEventPublisher + 'static,
-    R: ProjectRepository + Clone + Send + Sync + 'static,
-    E: AppEventPublisher + Clone + Send + Sync + 'static,
 {
     publisher: P,
-    coordinator: Arc<JobLifecycleCoordinator<R, E>>,
+    coordinator: Arc<JobLifecycleCoordinator>,
     receiver: mpsc::UnboundedReceiver<JobLifecycleEvent>,
     shutdown_rx: oneshot::Receiver<()>,
 }
 
-impl<P, R, E> JobLifecycleWorker<P, R, E>
+impl<P> JobLifecycleWorker<P>
 where
     P: FrontendJobEventPublisher + 'static,
-    R: ProjectRepository + Clone + Send + Sync + 'static,
-    E: AppEventPublisher + Clone + Send + Sync + 'static,
 {
     async fn run(mut self) {
         loop {
@@ -72,11 +66,9 @@ pub struct TauriJobEventBridge {
 }
 
 impl TauriJobEventBridge {
-    pub fn new<P, R, E>(publisher: P, coordinator: Arc<JobLifecycleCoordinator<R, E>>) -> Self
+    pub fn new<P>(publisher: P, coordinator: Arc<JobLifecycleCoordinator>) -> Self
     where
         P: FrontendJobEventPublisher + 'static,
-        R: ProjectRepository + Clone + Send + Sync + 'static,
-        E: AppEventPublisher + Clone + Send + Sync + 'static,
     {
         let (tx, rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
@@ -123,50 +115,9 @@ mod tests {
     use super::*;
     use async_trait::async_trait;
     use domain::job::{JobId, JobProgress, JobStatus};
-    use domain::project::Project;
     use ports::error::PortError;
     use std::sync::{Arc, Mutex};
     use tokio::time::{Duration, sleep};
-
-    #[derive(Clone, Default)]
-    struct MockProjectRepo {}
-    #[async_trait]
-    impl ProjectRepository for MockProjectRepo {
-        async fn get(
-            &self,
-            _id: &domain::project::ProjectId,
-        ) -> Result<Option<Project>, PortError> {
-            Ok(None)
-        }
-        async fn save(&self, _project: &Project) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn create(&self, _project: Project) -> Result<Project, PortError> {
-            unimplemented!()
-        }
-        async fn list(&self) -> Result<Vec<Project>, PortError> {
-            Ok(vec![])
-        }
-        async fn delete(&self, _id: &domain::project::ProjectId) -> Result<(), PortError> {
-            Ok(())
-        }
-    }
-
-    #[derive(Clone, Default)]
-    struct MockAppEventPublisher {}
-    #[async_trait]
-    impl AppEventPublisher for MockAppEventPublisher {
-        async fn publish_project_updated(&self, _project_id: &str) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn publish_transcript_ready(
-            &self,
-            _project_id: &str,
-            _job_id: &str,
-        ) -> Result<(), PortError> {
-            Ok(())
-        }
-    }
 
     #[derive(Clone)]
     struct MockFrontendPublisher {
@@ -199,9 +150,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bridge_event_ordering_and_shutdown() {
-        let repo = MockProjectRepo::default();
-        let app_pub = MockAppEventPublisher::default();
-        let coordinator = Arc::new(JobLifecycleCoordinator::new(repo, app_pub));
+        let coordinator = Arc::new(JobLifecycleCoordinator::new());
 
         let frontend_pub = MockFrontendPublisher::new();
         let mut bridge = TauriJobEventBridge::new(frontend_pub.clone(), coordinator);
@@ -256,9 +205,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_bridge_processing_after_failure() {
-        let repo = MockProjectRepo::default();
-        let app_pub = MockAppEventPublisher::default();
-        let coordinator = Arc::new(JobLifecycleCoordinator::new(repo, app_pub));
+        let coordinator = Arc::new(JobLifecycleCoordinator::new());
 
         let frontend_pub = MockFrontendPublisher::new();
         let mut bridge = TauriJobEventBridge::new(frontend_pub.clone(), coordinator);

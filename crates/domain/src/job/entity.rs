@@ -106,28 +106,22 @@ impl Job {
         Ok(())
     }
 
-    pub fn update_progress(&mut self, progress: JobProgress) -> Result<(), DomainError> {
+    pub fn advance(
+        &mut self,
+        stage: DubbingPipelineStage,
+        progress: JobProgress,
+    ) -> Result<(), DomainError> {
         if self.status != JobStatus::Running {
-            return Err(DomainError::ValidationError(
-                "Can only update progress of a running job".to_string(),
-            ));
+            return Err(DomainError::InvalidStateTransition {
+                from: format!("{:?}", self.status),
+                to: "Stage Update (Running)".to_string(),
+            });
         }
 
         progress.validate()?;
-        self.progress = progress;
-        self.updated_at = Utc::now();
-
-        Ok(())
-    }
-
-    pub fn update_stage(&mut self, stage: DubbingPipelineStage) -> Result<(), DomainError> {
-        if self.status != JobStatus::Running {
-            return Err(DomainError::ValidationError(
-                "Can only update stage of a running job".to_string(),
-            ));
-        }
 
         self.stage = Some(stage);
+        self.progress = progress;
         self.updated_at = Utc::now();
 
         Ok(())
@@ -169,6 +163,10 @@ impl Job {
     }
 
     pub fn cancel(&mut self) -> Result<(), DomainError> {
+        if self.status == JobStatus::Cancelled {
+            return Ok(());
+        }
+
         if matches!(self.status, JobStatus::Completed | JobStatus::Failed) {
             return Err(DomainError::InvalidStateTransition {
                 from: format!("{:?}", self.status),

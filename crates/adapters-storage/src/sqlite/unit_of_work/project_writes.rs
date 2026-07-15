@@ -20,6 +20,7 @@ pub(super) async fn update_project(
             target_language = ?,
             transcript_json = ?,
             active_job_id = ?,
+            last_terminal_job_id = ?,
             updated_at = ?
         WHERE id = ?
         "#,
@@ -32,6 +33,7 @@ pub(super) async fn update_project(
     .bind(row.target_language)
     .bind(row.transcript_json)
     .bind(row.active_job_id)
+    .bind(row.last_terminal_job_id)
     .bind(row.updated_at)
     .bind(row.id)
     .execute(&mut **tx)

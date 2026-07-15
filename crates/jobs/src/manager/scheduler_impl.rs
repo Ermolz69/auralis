@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use domain::job::{JobId as DomainJobId, JobStatus};
+use domain::job::JobId as DomainJobId;
 use ports::error::PortError;
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob, StartDubbingJobRequest};
 
@@ -21,49 +21,24 @@ impl JobSchedulerPort for JobManager {
     }
 
     async fn enqueue_existing_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
-        // 1. Get from repo
-        let mut job = self
-            .repo
-            .get(job_id)
-            .await?
-            .ok_or_else(|| PortError::NotFound {
-                resource: format!("Job {}", job_id),
-            })?;
-
-        // 2. Validate status
-        if job.status() != &domain::job::JobStatus::Pending {
-            // If it's already running, we can just return it idly. If it's something else, return error.
-            if job.status() == &domain::job::JobStatus::Running {
-                return Ok(map_job_to_scheduled(&job));
-            }
-            return Err(PortError::Unexpected {
-                message: format!(
-                    "Cannot enqueue job {} with status {:?}",
-                    job_id,
-                    job.status()
-                ),
-            });
-        }
-
-        // 3. Start the job
-        job.start().map_err(|e| PortError::Unexpected {
-            message: e.to_string(),
-        })?;
-
-        // 4. Save
-        self.repo.save(&job).await?;
-
-        // 5. Update in memory map
-        self.cache.insert(job.clone()).await;
-
-        // 6. Emit event
-        self.emit_job_event(&job);
-
+        let job = self
+            .mutate_job(job_id, |job| {
+                if job.status() == &domain::job::JobStatus::Running {
+                    return Ok(());
+                }
+                job.start()
+            })
+            .await?;
         Ok(map_job_to_scheduled(&job))
     }
 
     async fn cancel_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
-        let job = self.cancel_job_internal(job_id).await?;
+        let job = self
+            .mutate_job_terminal(job_id, domain::job::TerminalOutcome::Cancelled, |job| {
+                job.cancel()
+            })
+            .await?;
+        self.cancellation_registry.cancel(job_id).await;
         Ok(map_job_to_scheduled(&job))
     }
 
@@ -83,41 +58,18 @@ impl JobSchedulerPort for JobManager {
         stage: domain::dubbing::DubbingPipelineStage,
         progress: domain::job::JobProgress,
     ) -> Result<ScheduledJob, PortError> {
-        let mut job = self
-            .get_job_internal(job_id)
-            .await
-            .ok_or_else(|| PortError::NotFound {
-                resource: format!("Job {}", job_id),
-            })?;
-
-        if job.status() != &JobStatus::Running {
-            return Err(PortError::Unexpected {
-                message: format!("Cannot update stage for job in status {:?}", job.status()),
-            });
-        }
-
-        job.update_stage(stage).ok();
-        job.update_progress(progress).ok();
-
-        self.update_job(job.clone()).await?;
-
+        let job = self
+            .mutate_job(job_id, |job| job.advance(stage, progress))
+            .await?;
         Ok(map_job_to_scheduled(&job))
     }
 
     async fn complete_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
-        let mut job = self
-            .get_job_internal(job_id)
-            .await
-            .ok_or_else(|| PortError::NotFound {
-                resource: format!("Job {}", job_id),
-            })?;
-
-        job.mark_completed().map_err(|e| PortError::Unexpected {
-            message: e.to_string(),
-        })?;
-
-        self.update_job(job.clone()).await?;
-
+        let job = self
+            .mutate_job_terminal(job_id, domain::job::TerminalOutcome::Completed, |job| {
+                job.mark_completed()
+            })
+            .await?;
         Ok(map_job_to_scheduled(&job))
     }
 
@@ -128,20 +80,11 @@ impl JobSchedulerPort for JobManager {
         message: String,
         _retryable: bool,
     ) -> Result<ScheduledJob, PortError> {
-        let mut job = self
-            .get_job_internal(job_id)
-            .await
-            .ok_or_else(|| PortError::NotFound {
-                resource: format!("Job {}", job_id),
-            })?;
-
-        job.mark_failed(domain::job::JobError::new(code, message, _retryable))
-            .map_err(|e| PortError::Unexpected {
-                message: e.to_string(),
-            })?;
-
-        self.update_job(job.clone()).await?;
-
+        let job = self
+            .mutate_job_terminal(job_id, domain::job::TerminalOutcome::Failed, |job| {
+                job.mark_failed(domain::job::JobError::new(code, message, _retryable))
+            })
+            .await?;
         Ok(map_job_to_scheduled(&job))
     }
 }

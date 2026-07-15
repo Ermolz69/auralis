@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use domain::job::{Job, JobId as DomainJobId, JobKind, JobStatus};
+use domain::job::{Job, JobId as DomainJobId, JobKind};
 use domain::project::ProjectId as DomainProjectId;
 use ports::error::PortError;
 use ports::job_scheduler::JobLifecycleEvent;
@@ -18,15 +18,23 @@ pub struct JobManager {
     pub(super) cache: JobCache,
     pub(super) repo: Arc<dyn JobRepository>,
     pub(super) cancellation_registry: CancellationRegistry,
+    pub(super) mutation_locks: super::mutation_locks::JobMutationLocks,
+    pub(super) storage_uow: Arc<dyn ports::transaction::StorageUnitOfWork>,
     pub(super) emitter: Option<JobEventEmitter>,
 }
 
 impl JobManager {
-    pub fn new(repo: Arc<dyn JobRepository>, emitter: Option<JobEventEmitter>) -> Self {
+    pub fn new(
+        repo: Arc<dyn JobRepository>,
+        storage_uow: Arc<dyn ports::transaction::StorageUnitOfWork>,
+        emitter: Option<JobEventEmitter>,
+    ) -> Self {
         Self {
             cache: JobCache::new(),
             repo,
             cancellation_registry: CancellationRegistry::new(),
+            mutation_locks: super::mutation_locks::JobMutationLocks::new(),
+            storage_uow,
             emitter,
         }
     }
@@ -109,38 +117,83 @@ impl JobManager {
         jobs
     }
 
-    pub async fn cancel_job_internal(&self, job_id: &DomainJobId) -> Result<Job, PortError> {
-        let mut job = self
-            .get_job_internal(job_id)
-            .await
-            .ok_or_else(|| PortError::NotFound {
-                resource: format!("Job {}", job_id),
-            })?;
-
-        let should_cancel = matches!(job.status(), JobStatus::Pending | JobStatus::Running);
-        if should_cancel {
-            job.cancel().ok();
-
-            self.cancellation_registry.cancel(job_id).await;
-            self.update_job(job.clone()).await?;
-        }
-
-        Ok(job)
-    }
-
-    pub async fn update_job(&self, updated_job: Job) -> Result<(), PortError> {
-        self.repo.save(&updated_job).await?;
-        self.cache.insert(updated_job.clone()).await;
-        self.emit_job_event(&updated_job);
-        Ok(())
-    }
-
     pub async fn register_cancel_handle(
         &self,
         id: DomainJobId,
         handle: crate::cancellation::CancelHandle,
     ) {
         self.cancellation_registry.register(id, handle).await;
+    }
+
+    pub(super) async fn mutate_job<F>(
+        &self,
+        job_id: &DomainJobId,
+        action: F,
+    ) -> Result<Job, PortError>
+    where
+        F: FnOnce(&mut Job) -> Result<(), domain::error::DomainError>,
+    {
+        let lock = self.mutation_locks.get_lock(job_id);
+        let _guard = lock.lock().await;
+
+        let mut job = self
+            .repo
+            .get(job_id)
+            .await?
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Job {}", job_id),
+            })?;
+
+        action(&mut job).map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
+
+        self.repo.save(&job).await?;
+        self.cache.insert(job.clone()).await;
+        self.emit_job_event(&job);
+
+        Ok(job)
+    }
+
+    pub(super) async fn mutate_job_terminal<F>(
+        &self,
+        job_id: &DomainJobId,
+        outcome: domain::job::TerminalOutcome,
+        action: F,
+    ) -> Result<Job, PortError>
+    where
+        F: FnOnce(&mut Job) -> Result<(), domain::error::DomainError>,
+    {
+        let lock = self.mutation_locks.get_lock(job_id);
+        let _guard = lock.lock().await;
+
+        let mut job = self
+            .repo
+            .get(job_id)
+            .await?
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Job {}", job_id),
+            })?;
+
+        action(&mut job).map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
+
+        let deduplication_key = format!("terminal-{}-{:?}", job.id(), outcome);
+
+        let command = ports::transaction::CommitTerminalJobUpdate {
+            job: job.clone(),
+            deduplication_key,
+            project_id: job.project_id().clone(),
+            outcome,
+        };
+
+        self.storage_uow.commit_terminal_job_update(command).await?;
+
+        self.cache.insert(job.clone()).await;
+        self.emit_job_event(&job);
+
+        Ok(job)
     }
 
     pub async fn remove_cancel_handle(&self, id: &DomainJobId) {

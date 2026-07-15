@@ -21,6 +21,7 @@ where
     artifact_store: S,
     artifact_index: I,
     uow: U,
+    event_publisher: Arc<dyn ports::events::AppEventPublisher>,
     workspace_root: std::path::PathBuf,
 }
 
@@ -36,6 +37,7 @@ where
         artifact_store: S,
         artifact_index: I,
         uow: U,
+        event_publisher: Arc<dyn ports::events::AppEventPublisher>,
         workspace_root: std::path::PathBuf,
     ) -> Self {
         Self {
@@ -43,6 +45,7 @@ where
             artifact_store,
             artifact_index,
             uow,
+            event_publisher,
             workspace_root,
         }
     }
@@ -192,6 +195,22 @@ where
                     "Terminal lifecycle applied for project {}: {:?}",
                     project_id, res
                 );
+
+                if let domain::project::status::TerminalTransitionResult::Applied {
+                    transcript_ready,
+                } = res
+                {
+                    if transcript_ready {
+                        let _ = self
+                            .event_publisher
+                            .publish_transcript_ready(&project_id.to_string(), &job_id.to_string())
+                            .await;
+                    }
+                    let _ = self
+                        .event_publisher
+                        .publish_project_updated(&project_id.to_string())
+                        .await;
+                }
             }
         }
 

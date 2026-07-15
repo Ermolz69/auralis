@@ -50,11 +50,30 @@ impl RecoverInterruptedStateUseCase {
                             "Interrupted by application restart (legacy fallback)",
                             false,
                         );
-                        let _ = job.mark_failed(error);
-                        let _ = project.apply_terminal_transition(
+                        if let Err(e) = job.mark_failed(error) {
+                            report.add_fatal_issue(RecoveryFatalIssue {
+                                project_id: Some(project.id().clone()),
+                                job_id: Some(job_id),
+                                issue_type: RecoveryIssueType::MissingLegacyJob,
+                                message: format!(
+                                    "Failed to mark legacy active job as failed: {}",
+                                    e
+                                ),
+                            });
+                            continue;
+                        }
+                        if let Err(e) = project.apply_terminal_transition(
                             &job_id,
                             domain::job::TerminalOutcome::Failed,
-                        );
+                        ) {
+                            report.add_fatal_issue(RecoveryFatalIssue {
+                                project_id: Some(project.id().clone()),
+                                job_id: Some(job_id),
+                                issue_type: RecoveryIssueType::MissingLegacyJob,
+                                message: format!("Failed to apply terminal transition: {}", e),
+                            });
+                            continue;
+                        }
 
                         if let Err(e) = self
                             .recovery_storage
@@ -107,11 +126,33 @@ impl RecoverInterruptedStateUseCase {
                                     "Interrupted by application restart",
                                     false,
                                 );
-                                let _ = job.mark_failed(error);
-                                let _ = project.apply_terminal_transition(
+                                if let Err(e) = job.mark_failed(error) {
+                                    report.add_fatal_issue(RecoveryFatalIssue {
+                                        project_id: Some(project.id().clone()),
+                                        job_id: Some(job_id),
+                                        issue_type: RecoveryIssueType::MissingLegacyJob,
+                                        message: format!(
+                                            "Failed to mark active job as failed: {}",
+                                            e
+                                        ),
+                                    });
+                                    continue;
+                                }
+                                if let Err(e) = project.apply_terminal_transition(
                                     &job_id,
                                     domain::job::TerminalOutcome::Failed,
-                                );
+                                ) {
+                                    report.add_fatal_issue(RecoveryFatalIssue {
+                                        project_id: Some(project.id().clone()),
+                                        job_id: Some(job_id),
+                                        issue_type: RecoveryIssueType::MissingLegacyJob,
+                                        message: format!(
+                                            "Failed to apply terminal transition: {}",
+                                            e
+                                        ),
+                                    });
+                                    continue;
+                                }
 
                                 if let Err(e) = self
                                     .recovery_storage
@@ -129,7 +170,19 @@ impl RecoverInterruptedStateUseCase {
                                     JobStatus::Cancelled => domain::job::TerminalOutcome::Cancelled,
                                     _ => unreachable!(),
                                 };
-                                let _ = project.apply_terminal_transition(&job_id, outcome);
+                                if let Err(e) = project.apply_terminal_transition(&job_id, outcome)
+                                {
+                                    report.add_fatal_issue(RecoveryFatalIssue {
+                                        project_id: Some(project.id().clone()),
+                                        job_id: Some(job_id),
+                                        issue_type: RecoveryIssueType::MissingLegacyJob,
+                                        message: format!(
+                                            "Failed to sync terminal state to project: {}",
+                                            e
+                                        ),
+                                    });
+                                    continue;
+                                }
                                 if let Err(e) = self
                                     .recovery_storage
                                     .commit_reconciled_project(project.clone())
@@ -184,7 +237,15 @@ impl RecoverInterruptedStateUseCase {
                 "Orphan active job interrupted by application restart",
                 false,
             );
-            let _ = orphan_job.mark_failed(error);
+            if let Err(e) = orphan_job.mark_failed(error) {
+                report.add_fatal_issue(RecoveryFatalIssue {
+                    project_id: Some(orphan_job.project_id().clone()),
+                    job_id: Some(orphan_job.id().clone()),
+                    issue_type: RecoveryIssueType::OrphanActiveJob,
+                    message: format!("Failed to mark orphan job as failed: {}", e),
+                });
+                continue;
+            }
             if let Err(e) = self
                 .recovery_storage
                 .commit_orphan_job(orphan_job.clone())

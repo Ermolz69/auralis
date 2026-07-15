@@ -44,6 +44,7 @@ pub fn row_to_outbox_message(row: OutboxRow) -> Result<OutboxMessage, PortError>
         locked_at,
         locked_by: row.locked_by,
         last_error: row.last_error,
+        deduplication_key: row.deduplication_key,
         created_at,
         updated_at,
     })

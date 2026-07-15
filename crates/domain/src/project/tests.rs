@@ -41,9 +41,14 @@ fn test_project_transitions() {
     let result = project
         .apply_terminal_transition(&job_id, TerminalOutcome::Completed)
         .unwrap();
-    assert_eq!(result, TerminalTransitionResult::Applied);
+    assert_eq!(
+        result,
+        TerminalTransitionResult::Applied {
+            transcript_ready: false
+        }
+    );
     assert_eq!(project.status(), &ProjectStatus::Completed);
-    assert_eq!(project.active_job_id(), None);
+    assert_eq!(project.last_terminal_job_id().unwrap(), &job_id);
 
     // Cannot cancel completed project
     let result = project
@@ -68,7 +73,12 @@ fn test_project_fail_and_retry() {
     let result = project
         .apply_terminal_transition(&job_id1, TerminalOutcome::Failed)
         .unwrap();
-    assert_eq!(result, TerminalTransitionResult::Applied);
+    assert_eq!(
+        result,
+        TerminalTransitionResult::Applied {
+            transcript_ready: false
+        }
+    );
     assert_eq!(project.status(), &ProjectStatus::Failed);
 
     // Retry (start processing again from failed state)
