@@ -1,0 +1,37 @@
+{
+  "statuses": [
+    "pending",
+    "running",
+    "completed",
+    "failed",
+    "cancelled"
+  ],
+  "stages": [
+    "validateSource",
+    "inspectSubtitles",
+    "fetchMetadata",
+    "downloadMedia",
+    "extractOrGenerateTranscript",
+    "segmentTranscript",
+    "translateTranscript",
+    "prepareDubbingScript",
+    "synthesizeSegments",
+    "postprocessAudio",
+    "muxAudioTrack",
+    "exportResult"
+  ],
+  "examplePayload": {
+    "jobId": "00000000-0000-0000-0000-000000000000",
+    "projectId": "11111111-1111-1111-1111-111111111111",
+    "status": "running",
+    "stage": "downloadMedia",
+    "progress": {
+      "percent": 50,
+      "message": "Downloading video...",
+      "currentStep": "video.mp4",
+      "processedItems": 1,
+      "totalItems": 2
+    },
+    "error": null
+  }
+}

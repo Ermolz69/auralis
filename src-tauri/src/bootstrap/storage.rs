@@ -14,8 +14,13 @@ pub fn setup_storage(
 ) -> Result<(RuntimeServices, Option<SqliteOutboxRepository>), Box<dyn std::error::Error>> {
     if std::env::var("AURALIS_STORAGE").unwrap_or_default() == "in-memory" {
         println!("WARNING: Running with IN-MEMORY storage adapter! Data will be lost on exit.");
-        let project_repo = Arc::new(InMemoryProjectRepository::new());
-        let job_repo = Arc::new(adapters_storage::memory::InMemoryJobRepository::new());
+        let db = Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        ));
+        let project_repo = Arc::new(InMemoryProjectRepository::new(db.clone()));
+        let job_repo = Arc::new(adapters_storage::memory::InMemoryJobRepository::new(
+            db.clone(),
+        ));
         let artifact_index = Arc::new(InMemoryArtifactIndex::new());
         let artifact_store = Arc::new(LocalArtifactStore::new(
             std::env::temp_dir().join("auralis-memory-artifacts"),
@@ -28,8 +33,7 @@ pub fn setup_storage(
                 artifact_index: artifact_index.clone(),
                 artifact_store: artifact_store.clone(),
                 storage_uow: Arc::new(adapters_storage::memory::InMemoryStorageUnitOfWork::new(
-                    project_repo,
-                    job_repo,
+                    db,
                     artifact_index,
                     artifact_store,
                 )),

@@ -8,6 +8,7 @@ use crate::error::ApplicationError;
 use crate::usecases::pipeline::mock_dubbing_pipeline::MockDubbingPipelineRunner;
 use ports::source::SubtitleSourcePort;
 use ports::storage::ArtifactStore;
+use ports::workspace::TempWorkspacePort;
 
 #[derive(Debug)]
 pub struct StartMockPipelineRequest {
@@ -30,7 +31,7 @@ pub struct StartMockPipelineUseCase<
     storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: V,
     artifact_store: S,
-    target_dir_base: std::path::PathBuf,
+    workspace_port: Arc<dyn TempWorkspacePort>,
 }
 
 impl<
@@ -46,7 +47,7 @@ impl<
         subtitle_source: V,
 
         artifact_store: S,
-        target_dir_base: std::path::PathBuf,
+        workspace_port: Arc<dyn TempWorkspacePort>,
     ) -> Self {
         Self {
             project_repo,
@@ -55,7 +56,7 @@ impl<
             subtitle_source,
 
             artifact_store,
-            target_dir_base,
+            workspace_port,
         }
     }
 
@@ -151,7 +152,7 @@ impl<
             self.subtitle_source.clone(),
             self.storage_uow.clone(),
             self.artifact_store.clone(),
-            self.target_dir_base.clone(),
+            self.workspace_port.clone(),
         );
 
         runner.spawn(job.id.clone(), request.project_id.clone());
@@ -184,9 +185,7 @@ mod tests {
 
         async fn download_subtitle(
             &self,
-            _source: &domain::media::MediaSource,
-            _track: &domain::media::SubtitleTrack,
-            _target_path: &std::path::Path,
+            _request: ports::source::DownloadSubtitleRequest,
         ) -> Result<domain::media::Artifact, PortError> {
             Err(PortError::Unsupported {
                 message: "Not implemented".into(),
@@ -195,10 +194,13 @@ mod tests {
     }
 
     use crate::test_utils::MockArtifactStore;
+    use adapters_storage::local::LocalTempWorkspace;
 
     #[tokio::test]
     async fn test_success_saves_project_processing_and_job_pending_running() {
-        let project_repo = InMemoryProjectRepository::new();
+        let project_repo = InMemoryProjectRepository::new(std::sync::Arc::new(
+            std::sync::Mutex::new(adapters_storage::memory::InMemoryDatabase::new()),
+        ));
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
@@ -220,7 +222,7 @@ mod tests {
             tx_gateway.clone(),
             MockSubtitleSource,
             MockArtifactStore,
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -246,7 +248,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_transaction_failure_does_not_enqueue_job() {
-        let project_repo = InMemoryProjectRepository::new();
+        let project_repo = InMemoryProjectRepository::new(std::sync::Arc::new(
+            std::sync::Mutex::new(adapters_storage::memory::InMemoryDatabase::new()),
+        ));
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let tx_gateway = Arc::new(MockStorageUnitOfWork::with_failure()); // Will fail
 
@@ -268,7 +272,7 @@ mod tests {
             tx_gateway.clone(),
             MockSubtitleSource,
             MockArtifactStore,
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -287,7 +291,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cannot_start_from_draft() {
-        let project_repo = InMemoryProjectRepository::new();
+        let project_repo = InMemoryProjectRepository::new(std::sync::Arc::new(
+            std::sync::Mutex::new(adapters_storage::memory::InMemoryDatabase::new()),
+        ));
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
@@ -300,7 +306,7 @@ mod tests {
             tx_gateway.clone(),
             MockSubtitleSource,
             MockArtifactStore,
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -312,7 +318,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cannot_start_from_completed() {
-        let project_repo = InMemoryProjectRepository::new();
+        let project_repo = InMemoryProjectRepository::new(std::sync::Arc::new(
+            std::sync::Mutex::new(adapters_storage::memory::InMemoryDatabase::new()),
+        ));
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
@@ -339,7 +347,7 @@ mod tests {
             tx_gateway.clone(),
             MockSubtitleSource,
             MockArtifactStore,
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -351,7 +359,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_enqueue_failure_compensates_and_marks_failed() {
-        let project_repo = InMemoryProjectRepository::new();
+        let project_repo = InMemoryProjectRepository::new(std::sync::Arc::new(
+            std::sync::Mutex::new(adapters_storage::memory::InMemoryDatabase::new()),
+        ));
         let mut job_scheduler = MockJobScheduler::new();
         job_scheduler.should_fail = true; // Make enqueue fail
         let job_scheduler = Arc::new(job_scheduler);
@@ -375,7 +385,7 @@ mod tests {
             tx_gateway.clone(),
             MockSubtitleSource,
             MockArtifactStore,
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -410,7 +420,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_enqueue_and_compensation_failure_returns_both_errors() {
-        let project_repo = InMemoryProjectRepository::new();
+        let project_repo = InMemoryProjectRepository::new(std::sync::Arc::new(
+            std::sync::Mutex::new(adapters_storage::memory::InMemoryDatabase::new()),
+        ));
         let mut job_scheduler = MockJobScheduler::new();
         job_scheduler.should_fail = true; // Make enqueue fail
         let job_scheduler = Arc::new(job_scheduler);
@@ -507,7 +519,7 @@ mod tests {
             tx_gateway.clone(),
             MockSubtitleSource,
             MockArtifactStore,
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),

@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use std::path::Path;
 
 use domain::media::{Artifact, ArtifactKind, MediaMetadata, MediaSource, SubtitleTrack};
 use ports::error::PortError;
@@ -111,11 +110,11 @@ impl SubtitleSourcePort for MockSubtitleSourceAdapter {
 
     async fn download_subtitle(
         &self,
-        _source: &MediaSource,
-        track: &SubtitleTrack,
-        target_path: &Path,
+        request: ports::source::DownloadSubtitleRequest,
     ) -> Result<Artifact, PortError> {
-        let path = target_path.join(format!("mock_sub_{}.vtt", track.language));
+        let path = request
+            .target_directory
+            .join(format!("mock_sub_{}.vtt", request.track.language));
         Ok(Artifact {
             id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::OriginalSubtitle,

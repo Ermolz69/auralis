@@ -32,6 +32,7 @@ impl From<ApplicationError> for CommandError {
             },
             ApplicationError::Port(port_err) => match port_err {
                 PortError::NotFound { .. } => CommandError::NotFound(port_err.to_string()),
+                PortError::Conflict { .. } => CommandError::Validation(port_err.to_string()),
                 PortError::InvalidSource { .. } => CommandError::Validation(port_err.to_string()),
                 _ => CommandError::Repository(port_err.to_string()),
             },

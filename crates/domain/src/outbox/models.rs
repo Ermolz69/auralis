@@ -64,11 +64,8 @@ pub enum OutboxPayload {
     DeleteProjectArtifactDir {
         project_id: ProjectId,
     },
-    DeleteTempPath {
-        path: String,
-    },
     DeleteWorkspaceFile {
-        workspace_key: String,
+        workspace_key: crate::outbox::WorkspaceKey,
     },
     HandleTerminalJobState {
         job_id: crate::job::JobId,
@@ -109,35 +106,4 @@ impl OutboxMessage {
             updated_at: now,
         }
     }
-}
-
-pub fn resolve_workspace_file(
-    base: &std::path::Path,
-    key: &str,
-) -> Result<std::path::PathBuf, DomainError> {
-    if key.is_empty() {
-        return Err(DomainError::ValidationError(
-            "Workspace key cannot be empty".to_string(),
-        ));
-    }
-
-    // Check for obvious escapes
-    if key.contains("..") || key.starts_with('/') || key.starts_with('\\') {
-        return Err(DomainError::ValidationError(format!(
-            "Invalid workspace key: {}",
-            key
-        )));
-    }
-
-    // Windows absolute path check (e.g. C:)
-    if key.chars().nth(1) == Some(':') {
-        return Err(DomainError::ValidationError(format!(
-            "Invalid workspace key: {}",
-            key
-        )));
-    }
-
-    let target_path = base.join(key);
-
-    Ok(target_path)
 }

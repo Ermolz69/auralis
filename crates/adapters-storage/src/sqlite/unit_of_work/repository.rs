@@ -9,7 +9,7 @@ use ports::transaction::{
 };
 
 use super::artifact_writes::save_artifact;
-use super::job_writes::{insert_job, save_job, update_job};
+use super::job_writes::{insert_job, update_job};
 use super::outbox_writes::save_outbox_message;
 use super::project_writes::update_project;
 
@@ -153,7 +153,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             message: format!("Failed to begin transaction: {}", e),
         })?;
 
-        save_job(&mut tx, &command.job).await?;
+        update_job(&mut tx, &command.job).await?;
 
         tx.commit().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to commit transaction: {}", e),

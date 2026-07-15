@@ -65,7 +65,7 @@ export const ProjectList = () => {
         {projects.map((project) => (
           <Card
             key={project.id}
-            className="p-4 hover:bg-bg/50 cursor-pointer transition-colors flex items-center justify-between shadow-sm border border-border"
+            className="p-4 hover:bg-bg/50 cursor-pointer transition-colors flex items-center justify-between shadow-sm border border-secondary"
             onClick={() => handleOpenProject(project)}
           >
             <div className="flex items-center gap-3">

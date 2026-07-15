@@ -9,6 +9,9 @@ pub enum PortError {
     #[error("Not found: {resource}")]
     NotFound { resource: String },
 
+    #[error("Conflict: {resource} - {message}")]
+    Conflict { resource: String, message: String },
+
     #[error("Invalid source: {message}")]
     InvalidSource { message: String },
 

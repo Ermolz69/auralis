@@ -7,7 +7,7 @@ pub struct CommitTranscriptImport {
     pub artifact: Artifact,
     pub staging_key: String,
     pub final_key: String,
-    pub temp_workspace_key: Option<String>,
+    pub temp_workspace_key: Option<domain::outbox::WorkspaceKey>,
 }
 
 pub struct CommitManagedSourceImport {
@@ -57,5 +57,5 @@ pub struct CommitStagedArtifactWrite {
     pub artifact: Artifact,
     pub staging_key: String,
     pub final_key: String,
-    pub temp_workspace_key: Option<String>,
+    pub temp_workspace_key: Option<domain::outbox::WorkspaceKey>,
 }

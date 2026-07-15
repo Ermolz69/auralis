@@ -9,6 +9,7 @@ use ports::repository::ProjectRepository;
 use ports::source::{SubtitleSourcePort, VideoSourcePort};
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
+use ports::workspace::TempWorkspacePort;
 use std::sync::Arc;
 
 pub struct CreateProjectFromYoutubeRequest {
@@ -32,7 +33,7 @@ pub struct CreateProjectFromYoutubeUseCase<
     storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: SSub,
     artifact_store: SStore,
-    target_dir_base: std::path::PathBuf,
+    workspace_port: Arc<dyn TempWorkspacePort>,
 }
 
 impl<
@@ -50,7 +51,7 @@ impl<
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: SSub,
         artifact_store: SStore,
-        target_dir_base: std::path::PathBuf,
+        workspace_port: Arc<dyn TempWorkspacePort>,
     ) -> Self {
         Self {
             project_repo,
@@ -59,7 +60,7 @@ impl<
             storage_uow,
             subtitle_source,
             artifact_store,
-            target_dir_base,
+            workspace_port,
         }
     }
 
@@ -96,7 +97,7 @@ impl<
             self.storage_uow.clone(),
             self.subtitle_source.clone(),
             self.artifact_store.clone(),
-            self.target_dir_base.clone(),
+            self.workspace_port.clone(),
         );
         let req3 = StartMockPipelineRequest {
             project_id: proj.id().clone(),

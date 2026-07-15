@@ -46,8 +46,18 @@ impl JobRepository for SqliteJobRepository {
         .bind(values.finished_at)
         .execute(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to create job: {}", e),
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.is_unique_violation()
+            {
+                return PortError::Conflict {
+                    resource: "Job".to_string(),
+                    message: format!("Job with id {} already exists", job.id()),
+                };
+            }
+            PortError::Unexpected {
+                message: format!("Failed to create job: {}", e),
+            }
         })?;
 
         Ok(job)
@@ -75,26 +85,22 @@ impl JobRepository for SqliteJobRepository {
     async fn save(&self, job: &Job) -> Result<(), PortError> {
         let values = job_to_row_values(job)?;
 
-        sqlx::query(
+        let result = sqlx::query(
             r#"
-            INSERT INTO jobs (
-                id, project_id, title, kind, status, stage, progress_json, error_json,
-                created_at, updated_at, started_at, finished_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                project_id = excluded.project_id,
-                title = excluded.title,
-                kind = excluded.kind,
-                status = excluded.status,
-                stage = excluded.stage,
-                progress_json = excluded.progress_json,
-                error_json = excluded.error_json,
-                updated_at = excluded.updated_at,
-                started_at = excluded.started_at,
-                finished_at = excluded.finished_at
+            UPDATE jobs SET
+                project_id = ?,
+                title = ?,
+                kind = ?,
+                status = ?,
+                stage = ?,
+                progress_json = ?,
+                error_json = ?,
+                updated_at = ?,
+                started_at = ?,
+                finished_at = ?
+            WHERE id = ?
             "#,
         )
-        .bind(values.id)
         .bind(values.project_id)
         .bind(values.title)
         .bind(values.kind)
@@ -102,15 +108,21 @@ impl JobRepository for SqliteJobRepository {
         .bind(values.stage)
         .bind(values.progress_json)
         .bind(values.error_json)
-        .bind(values.created_at)
         .bind(values.updated_at)
         .bind(values.started_at)
         .bind(values.finished_at)
+        .bind(values.id)
         .execute(&self.pool)
         .await
         .map_err(|e| PortError::Unexpected {
             message: format!("Failed to save job: {}", e),
         })?;
+
+        if result.rows_affected() == 0 {
+            return Err(PortError::NotFound {
+                resource: "Job".to_string(),
+            });
+        }
 
         Ok(())
     }

@@ -58,7 +58,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_import_video_source_success() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         // Create project first
         let project = Project::new("Test Project".to_string());
         let project_id = project.id().clone();
@@ -85,7 +87,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_import_source_not_found() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let port = MockVideoSourceAdapter::new();
         let use_case = ImportVideoSourceUseCase::new(repo, port);
 
@@ -102,7 +106,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_import_source_validation_fails() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let port = MockVideoSourceAdapter::failing();
 
         let project = Project::new("Test".to_string());

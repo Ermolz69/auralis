@@ -157,15 +157,14 @@ impl SubtitleSourcePort for YtDlpAdapter {
         Ok(parse_subtitle_tracks(&value))
     }
 
+    #[allow(clippy::collapsible_if)]
     async fn download_subtitle(
         &self,
-        source: &MediaSource,
-        track: &SubtitleTrack,
-        target_path: &std::path::Path,
+        request: ports::source::DownloadSubtitleRequest,
     ) -> Result<domain::media::Artifact, PortError> {
-        self.validate_source(source).await?;
+        self.validate_source(&request.source).await?;
 
-        let url = match source {
+        let url = match &request.source {
             MediaSource::YoutubeUrl { url } => url,
             MediaSource::RemoteUrl { url } => url,
             MediaSource::ManagedLocalFile { .. } | MediaSource::ExternalLocalFile { .. } => {
@@ -175,16 +174,33 @@ impl SubtitleSourcePort for YtDlpAdapter {
             }
         };
 
-        let path = super::command::run_ytdlp_download_subtitle(
+        if !request.target_directory.exists() {
+            if let Err(e) = tokio::fs::create_dir_all(&request.target_directory).await {
+                return Err(PortError::Io {
+                    message: e.to_string(),
+                });
+            }
+        }
+
+        let result = super::command::run_ytdlp_download_subtitle(
             &self.candidates,
             url,
-            target_path,
-            &track.language,
+            &request.target_directory,
+            &request.track.language,
             "vtt",
-            track.is_auto_generated,
+            request.track.is_auto_generated,
             self.timeout_ms,
         )
-        .await?;
+        .await;
+
+        let path = match result {
+            Ok(p) => p,
+            Err(e) => {
+                // Try to clean up the directory if download failed
+                let _ = tokio::fs::remove_dir_all(&request.target_directory).await;
+                return Err(e.into());
+            }
+        };
 
         Ok(domain::media::Artifact {
             id: domain::media::ArtifactId::new(),

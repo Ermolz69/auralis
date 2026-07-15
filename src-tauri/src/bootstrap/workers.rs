@@ -11,7 +11,7 @@ pub fn spawn_outbox_worker(
     artifact_index: RuntimeArtifactIndex,
     uow: Arc<dyn ports::transaction::StorageUnitOfWork>,
     event_publisher: Arc<dyn ports::events::AppEventPublisher>,
-    workspace_root: std::path::PathBuf,
+    workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
 ) -> OutboxWorkerShutdown {
     let worker = OutboxWorker::new(
         outbox_repo,
@@ -19,7 +19,7 @@ pub fn spawn_outbox_worker(
         artifact_index,
         uow,
         event_publisher,
-        workspace_root,
+        workspace_port,
     );
     let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
     tauri::async_runtime::spawn(Arc::new(worker).run_loop(shutdown_rx));

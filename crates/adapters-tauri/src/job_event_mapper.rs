@@ -136,4 +136,52 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn test_cross_language_contract() {
+        let contract_path = std::path::Path::new("../../tests/fixtures/job_contract.json");
+        let contract_data = std::fs::read_to_string(contract_path).unwrap();
+        let contract: serde_json::Value = serde_json::from_str(&contract_data).unwrap();
+
+        let statuses = contract["statuses"].as_array().unwrap();
+        let expected_statuses: Vec<&str> = statuses.iter().map(|v| v.as_str().unwrap()).collect();
+
+        // Check all Rust statuses
+        let all_statuses = vec![
+            JobStatus::Pending,
+            JobStatus::Running,
+            JobStatus::Completed,
+            JobStatus::Failed,
+            JobStatus::Cancelled,
+        ];
+        assert_eq!(all_statuses.len(), expected_statuses.len());
+        for status in all_statuses {
+            let mapped = map_status(&status);
+            assert!(expected_statuses.contains(&mapped.as_str()));
+        }
+
+        let stages = contract["stages"].as_array().unwrap();
+        let expected_stages: Vec<&str> = stages.iter().map(|v| v.as_str().unwrap()).collect();
+
+        // Check all Rust stages
+        let all_stages = vec![
+            DubbingPipelineStage::ValidateSource,
+            DubbingPipelineStage::InspectSubtitles,
+            DubbingPipelineStage::FetchMetadata,
+            DubbingPipelineStage::DownloadMedia,
+            DubbingPipelineStage::ExtractOrGenerateTranscript,
+            DubbingPipelineStage::SegmentTranscript,
+            DubbingPipelineStage::TranslateTranscript,
+            DubbingPipelineStage::PrepareDubbingScript,
+            DubbingPipelineStage::SynthesizeSegments,
+            DubbingPipelineStage::PostprocessAudio,
+            DubbingPipelineStage::MuxAudioTrack,
+            DubbingPipelineStage::ExportResult,
+        ];
+        assert_eq!(all_stages.len(), expected_stages.len());
+        for stage in all_stages {
+            let mapped = map_stage(&stage);
+            assert!(expected_stages.contains(&mapped.as_str()));
+        }
+    }
 }

@@ -54,6 +54,10 @@ pub async fn stage_owned_temp_file(
         if let Err(copy_err) = tokio::fs::copy(source_path, &staging_path).await {
             // Copy failed, make sure we don't leave a partial staging file
             let _ = tokio::fs::remove_file(&staging_path).await;
+
+            // IMPORTANT: Since this is an owned file, we must delete it even on failure
+            let _ = tokio::fs::remove_file(source_path).await;
+
             return Err(PortError::Io {
                 message: format!(
                     "Failed to copy to {:?}: rename err: {}, copy err: {}",

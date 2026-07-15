@@ -23,6 +23,10 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Setup storage and workers
     let (services, outbox_repo_opt) = storage::setup_storage(app)?;
 
+    let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
+        workspace_root.clone(),
+    ));
+
     // 2. Setup Event Bridge and Coordinator
     let publisher = TauriEventPublisher::new(app_handle.clone());
     let coordinator = Arc::new(JobLifecycleCoordinator::new());
@@ -36,7 +40,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             services.artifact_index.clone(),
             services.storage_uow.clone(),
             Arc::new(publisher.clone()),
-            workspace_root.clone(),
+            temp_workspace.clone(),
         );
         app.manage(outbox_shutdown);
     }
@@ -59,7 +63,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         services.artifact_store,
         services.storage_uow,
         job_manager,
-        workspace_root,
+        temp_workspace,
     );
 
     Ok(())

@@ -8,6 +8,7 @@ use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
+use ports::workspace::TempWorkspacePort;
 
 use crate::error::ApplicationError;
 use crate::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
@@ -38,7 +39,7 @@ pub struct ImportLocalMediaUseCase<
     subtitle_source: V,
     artifact_store: S,
     artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
-    target_dir_base: std::path::PathBuf,
+    workspace_port: Arc<dyn TempWorkspacePort>,
 }
 
 impl<
@@ -57,7 +58,7 @@ impl<
         subtitle_source: V,
         artifact_store: S,
         artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
-        target_dir_base: std::path::PathBuf,
+        workspace_port: Arc<dyn TempWorkspacePort>,
     ) -> Self {
         Self {
             project_repo,
@@ -67,7 +68,7 @@ impl<
             subtitle_source,
             artifact_store,
             artifact_index,
-            target_dir_base,
+            workspace_port,
         }
     }
 
@@ -148,7 +149,7 @@ impl<
             self.storage_uow.clone(),
             self.subtitle_source.clone(),
             self.artifact_store.clone(),
-            self.target_dir_base.clone(),
+            self.workspace_port.clone(),
         );
 
         let pipeline_req = StartMockPipelineRequest {
@@ -169,6 +170,7 @@ mod tests {
     use super::*;
     use crate::test_utils::MockJobScheduler;
     use adapters_ffmpeg::mock::MockMediaProbeAdapter;
+    use adapters_storage::local::LocalTempWorkspace;
     use adapters_storage::memory::InMemoryProjectRepository;
     use async_trait::async_trait;
     use domain::job::JobStatus;
@@ -192,9 +194,7 @@ mod tests {
 
         async fn download_subtitle(
             &self,
-            _source: &domain::media::MediaSource,
-            _track: &SubtitleTrack,
-            _target_path: &std::path::Path,
+            _request: ports::source::DownloadSubtitleRequest,
         ) -> Result<domain::media::Artifact, PortError> {
             Err(PortError::Unsupported {
                 message: "Not implemented".into(),
@@ -206,7 +206,9 @@ mod tests {
 
     #[tokio::test]
     async fn imports_local_media_and_starts_pipeline() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let tx_gateway = std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new());
@@ -218,7 +220,7 @@ mod tests {
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
             Arc::new(MockArtifactIndex::new()),
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -251,7 +253,9 @@ mod tests {
 
     #[tokio::test]
     async fn returns_error_when_project_missing() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let use_case = ImportLocalMediaUseCase::new(
@@ -262,7 +266,7 @@ mod tests {
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
             Arc::new(MockArtifactIndex::new()),
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
 
         let dir = tempdir().unwrap();
@@ -280,7 +284,9 @@ mod tests {
 
     #[tokio::test]
     async fn returns_error_when_file_missing() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let use_case = ImportLocalMediaUseCase::new(
@@ -291,7 +297,7 @@ mod tests {
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
             Arc::new(MockArtifactIndex::new()),
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -325,7 +331,9 @@ mod tests {
 
     #[tokio::test]
     async fn does_not_start_job_when_probe_fails() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let probe = FailingProbeAdapter;
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let use_case = ImportLocalMediaUseCase::new(
@@ -336,7 +344,7 @@ mod tests {
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
             Arc::new(MockArtifactIndex::new()),
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -361,7 +369,9 @@ mod tests {
 
     #[tokio::test]
     async fn fails_on_invalid_project_transition() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let probe = MockMediaProbeAdapter::new();
         let job_scheduler = Arc::new(MockJobScheduler::new());
         let use_case = ImportLocalMediaUseCase::new(
@@ -372,7 +382,7 @@ mod tests {
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
             Arc::new(MockArtifactIndex::new()),
-            std::path::PathBuf::from("/tmp"),
+            Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
         );
 
         let mut project = Project::new("Test Probe".to_string());

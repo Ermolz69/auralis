@@ -9,6 +9,7 @@ use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
+use ports::workspace::TempWorkspacePort;
 use std::sync::Arc;
 use tokio::time::{Duration, sleep};
 
@@ -23,7 +24,7 @@ pub struct MockDubbingPipelineRunner<
     subtitle_source: V,
     storage_uow: T,
     artifact_store: S,
-    target_dir_base: std::path::PathBuf,
+    workspace_port: Arc<dyn TempWorkspacePort>,
 }
 
 impl<
@@ -39,7 +40,7 @@ impl<
         subtitle_source: V,
         storage_uow: T,
         artifact_store: S,
-        target_dir_base: std::path::PathBuf,
+        workspace_port: Arc<dyn TempWorkspacePort>,
     ) -> Self {
         Self {
             job_scheduler,
@@ -47,7 +48,7 @@ impl<
             subtitle_source,
             storage_uow,
             artifact_store,
-            target_dir_base,
+            workspace_port,
         }
     }
 
@@ -111,24 +112,17 @@ impl<
             )
             .await;
 
-        let target_dir = self
-            .target_dir_base
-            .join("auralis")
-            .join("projects")
-            .join(project_id.to_string())
-            .join("subtitles");
-
         let import_use_case = ImportYoutubeSubtitlesUseCase::new(
             Arc::new(self.project_repo.clone()),
             Arc::new(self.subtitle_source.clone()),
             Arc::new(self.artifact_store.clone()),
             Arc::new(self.storage_uow.clone()),
+            self.workspace_port.clone(),
         );
 
         match import_use_case
             .execute(ImportYoutubeSubtitlesRequest {
                 project_id: project_id.clone(),
-                target_dir,
                 preferred_languages: vec!["en".to_string(), "ru".to_string(), "uk".to_string()],
                 allow_auto_generated: true,
             })

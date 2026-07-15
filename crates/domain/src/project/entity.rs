@@ -235,17 +235,7 @@ impl Project {
         if self.active_job_id.as_ref() != Some(job_id) {
             // Check for idempotency: was this the exact job that last terminalized the project?
             if self.last_terminal_job_id.as_ref() == Some(job_id) {
-                if self.status == target_status {
-                    return Ok(TerminalTransitionResult::AlreadyApplied);
-                } else {
-                    return Err(DomainError::InvalidStateTransition {
-                        from: format!("{:?}", self.status),
-                        to: format!(
-                            "Conflicting outcome for already terminal job: {:?}",
-                            target_status
-                        ),
-                    });
-                }
+                return Ok(TerminalTransitionResult::AlreadyApplied);
             }
             return Ok(TerminalTransitionResult::IgnoredStale);
         }

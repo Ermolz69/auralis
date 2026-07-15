@@ -25,6 +25,7 @@ impl ProjectRepository for SqliteProjectRepository {
 
         sqlx::query(
             r#"
+            INSERT INTO projects (
                 id, title, status, source_json, metadata_json, 
                 source_language, target_language, transcript_json, 
                 active_job_id, last_terminal_job_id, created_at, updated_at
@@ -45,8 +46,18 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(values.updated_at)
         .execute(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to create project: {}", e),
+        .map_err(|e| {
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.is_unique_violation()
+            {
+                return PortError::Conflict {
+                    resource: "Project".to_string(),
+                    message: format!("Project with id {} already exists", project.id()),
+                };
+            }
+            PortError::Unexpected {
+                message: format!("Failed to create project: {}", e),
+            }
         })?;
 
         Ok(project)
@@ -106,7 +117,7 @@ impl ProjectRepository for SqliteProjectRepository {
         .execute(&self.pool)
         .await
         .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to update project: {}", e),
+            message: format!("Failed to save project: {}", e),
         })?;
 
         if result.rows_affected() == 0 {

@@ -14,7 +14,9 @@ use ports::repository::ProjectRepository;
 
 #[tokio::test]
 async fn test_download_video_success() {
-    let repo = InMemoryProjectRepository::new();
+    let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+        adapters_storage::memory::InMemoryDatabase::new(),
+    )));
     let source_port = MockVideoSourceAdapter::new();
     let transaction_gateway = MockStorageUnitOfWork::new();
     let artifact_store = MockArtifactStore {
@@ -51,7 +53,9 @@ async fn test_download_video_success() {
 
 #[tokio::test]
 async fn test_download_missing_project_fails_before_download() {
-    let repo = InMemoryProjectRepository::new();
+    let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+        adapters_storage::memory::InMemoryDatabase::new(),
+    )));
     // project is missing
 
     let use_case = DownloadYoutubeVideoUseCase::new(
@@ -78,7 +82,9 @@ async fn test_download_missing_project_fails_before_download() {
 
 #[tokio::test]
 async fn test_non_youtube_source_fails() {
-    let repo = InMemoryProjectRepository::new();
+    let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+        adapters_storage::memory::InMemoryDatabase::new(),
+    )));
     let mut project = Project::new("Test Project".to_string());
     project
         .import_source(
@@ -115,7 +121,9 @@ async fn test_non_youtube_source_fails() {
 
 #[tokio::test]
 async fn test_wrong_location_from_port_fails() {
-    let repo = InMemoryProjectRepository::new();
+    let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+        adapters_storage::memory::InMemoryDatabase::new(),
+    )));
     let mut project = Project::new("Test Project".to_string());
     project
         .import_source(
@@ -152,7 +160,9 @@ async fn test_wrong_location_from_port_fails() {
 
 #[tokio::test]
 async fn test_import_failure_propagates() {
-    let repo = InMemoryProjectRepository::new();
+    let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+        adapters_storage::memory::InMemoryDatabase::new(),
+    )));
     let mut project = Project::new("Test Project".to_string());
     project
         .import_source(
@@ -189,7 +199,9 @@ async fn test_import_failure_propagates() {
 
 #[tokio::test]
 async fn test_transaction_failure_deletes_staged_artifact() {
-    let repo = InMemoryProjectRepository::new();
+    let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+        adapters_storage::memory::InMemoryDatabase::new(),
+    )));
     let mut project = Project::new("Test Project".to_string());
     project
         .import_source(

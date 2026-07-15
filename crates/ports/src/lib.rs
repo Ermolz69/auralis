@@ -10,6 +10,7 @@ pub mod repository;
 pub mod source;
 pub mod storage;
 pub mod transaction;
+pub mod workspace;
 
 pub use control::*;
 pub use engine::*;
@@ -20,3 +21,4 @@ pub use media::*;
 pub use repository::*;
 pub use source::*;
 pub use storage::*;
+pub use workspace::*;

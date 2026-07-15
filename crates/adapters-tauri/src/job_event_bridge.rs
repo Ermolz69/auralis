@@ -113,7 +113,6 @@ impl TauriJobEventBridge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
     use domain::job::{JobId, JobProgress, JobStatus};
     use ports::error::PortError;
     use std::sync::{Arc, Mutex};

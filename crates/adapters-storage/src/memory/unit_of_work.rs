@@ -7,28 +7,24 @@ use ports::transaction::{
     CommitStagedArtifactWrite, CommitTranscriptImport, StorageUnitOfWork,
 };
 
-use super::job_repository::InMemoryJobRepository;
-use super::project_repository::InMemoryProjectRepository;
-use ports::repository::{JobRepository, ProjectRepository};
+use super::database::InMemoryDatabase;
+use std::sync::Mutex;
 
 #[derive(Clone)]
 pub struct InMemoryStorageUnitOfWork {
-    project_repo: Arc<InMemoryProjectRepository>,
-    job_repo: Arc<InMemoryJobRepository>,
+    db: Arc<Mutex<InMemoryDatabase>>,
     artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
     artifact_store: Arc<dyn ports::storage::ArtifactStore>,
 }
 
 impl InMemoryStorageUnitOfWork {
     pub fn new(
-        project_repo: Arc<InMemoryProjectRepository>,
-        job_repo: Arc<InMemoryJobRepository>,
+        db: Arc<Mutex<InMemoryDatabase>>,
         artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
         artifact_store: Arc<dyn ports::storage::ArtifactStore>,
     ) -> Self {
         Self {
-            project_repo,
-            job_repo,
+            db,
             artifact_index,
             artifact_store,
         }
@@ -41,7 +37,14 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: CommitTranscriptImport,
     ) -> Result<(), PortError> {
-        self.project_repo.save(&command.project).await?;
+        let mut db = self.db.lock().unwrap();
+        if !db.projects.contains_key(command.project.id()) {
+            return Err(PortError::NotFound {
+                resource: "Project".to_string(),
+            });
+        }
+        db.projects
+            .insert(command.project.id().clone(), command.project.clone());
         Ok(())
     }
 
@@ -76,7 +79,17 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         let mut artifact = command.artifact;
         artifact.state = domain::media::ArtifactState::Ready;
 
-        self.project_repo.save(&command.project).await?;
+        {
+            let mut db = self.db.lock().unwrap();
+            if !db.projects.contains_key(command.project.id()) {
+                return Err(PortError::NotFound {
+                    resource: "Project".to_string(),
+                });
+            }
+            db.projects
+                .insert(command.project.id().clone(), command.project.clone());
+        }
+
         self.artifact_index
             .add(command.project.id(), &artifact)
             .await?;
@@ -85,21 +98,42 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
     }
 
     async fn commit_project_delete(&self, command: CommitProjectDelete) -> Result<(), PortError> {
-        self.project_repo.delete(&command.project_id).await?;
+        let mut db = self.db.lock().unwrap();
+        db.projects.remove(&command.project_id);
         Ok(())
     }
 
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
-        self.job_repo.save(&command.job).await?;
+        let mut db = self.db.lock().unwrap();
+        if !db.jobs.contains_key(command.job.id()) {
+            return Err(PortError::NotFound {
+                resource: "Job".to_string(),
+            });
+        }
+        db.jobs
+            .insert(command.job.id().clone(), command.job.clone());
         Ok(())
     }
 
     async fn commit_pipeline_start(&self, command: CommitPipelineStart) -> Result<(), PortError> {
         command.validate()?;
 
-        // Best effort atomic write for dev adapter. Real atomicity relies on SQLite implementation.
-        self.project_repo.save(&command.project).await?;
-        self.job_repo.save(&command.job).await?;
+        let mut db = self.db.lock().unwrap();
+        if !db.projects.contains_key(command.project.id()) {
+            return Err(PortError::NotFound {
+                resource: "Project".to_string(),
+            });
+        }
+        if db.jobs.contains_key(command.job.id()) {
+            return Err(PortError::Conflict {
+                resource: "Job".to_string(),
+                message: format!("Job with id {} already exists", command.job.id()),
+            });
+        }
+        db.projects
+            .insert(command.project.id().clone(), command.project.clone());
+        db.jobs
+            .insert(command.job.id().clone(), command.job.clone());
         Ok(())
     }
 
@@ -109,9 +143,21 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
     ) -> Result<(), PortError> {
         command.validate()?;
 
-        // Best effort atomic write for dev adapter. Real atomicity relies on SQLite implementation.
-        self.project_repo.save(&command.project).await?;
-        self.job_repo.save(&command.job).await?;
+        let mut db = self.db.lock().unwrap();
+        if !db.projects.contains_key(command.project.id()) {
+            return Err(PortError::NotFound {
+                resource: "Project".to_string(),
+            });
+        }
+        if !db.jobs.contains_key(command.job.id()) {
+            return Err(PortError::NotFound {
+                resource: "Job".to_string(),
+            });
+        }
+        db.projects
+            .insert(command.project.id().clone(), command.project.clone());
+        db.jobs
+            .insert(command.job.id().clone(), command.job.clone());
         Ok(())
     }
 
@@ -119,7 +165,14 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: ports::transaction::CommitTerminalJobUpdate,
     ) -> Result<(), PortError> {
-        self.job_repo.save(&command.job).await?;
+        let mut db = self.db.lock().unwrap();
+        if !db.jobs.contains_key(command.job.id()) {
+            return Err(PortError::NotFound {
+                resource: "Job".to_string(),
+            });
+        }
+        db.jobs
+            .insert(command.job.id().clone(), command.job.clone());
         // InMemoryAdapter doesn't have an outbox right now, so we just return
         Ok(())
     }
@@ -128,15 +181,16 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: ports::transaction::ApplyTerminalLifecycle,
     ) -> Result<domain::project::status::TerminalTransitionResult, PortError> {
-        let mut project = self
-            .project_repo
-            .get(&command.project_id)
-            .await?
-            .ok_or_else(|| PortError::Unexpected {
-                message: "Project not found".to_string(),
-            })?;
+        let mut db = self.db.lock().unwrap();
+        let project =
+            db.projects
+                .get(&command.project_id)
+                .ok_or_else(|| PortError::Unexpected {
+                    message: "Project not found".to_string(),
+                })?;
 
-        let res = project
+        let mut updated_project = project.clone();
+        let res = updated_project
             .apply_terminal_transition(&command.job_id, command.outcome)
             .map_err(|e| PortError::Unexpected {
                 message: e.to_string(),
@@ -146,7 +200,8 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
             res,
             domain::project::status::TerminalTransitionResult::Applied { .. }
         ) {
-            self.project_repo.save(&project).await?;
+            db.projects
+                .insert(updated_project.id().clone(), updated_project);
         }
 
         Ok(res)

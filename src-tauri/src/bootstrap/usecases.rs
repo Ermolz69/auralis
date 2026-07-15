@@ -57,7 +57,7 @@ pub fn setup_usecases(
     artifact_store: RuntimeArtifactStore,
     storage_uow: RuntimeStorageUnitOfWork,
     job_scheduler: Arc<dyn JobSchedulerPort>,
-    workspace_root: std::path::PathBuf,
+    workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
 ) {
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
     let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates);
@@ -81,7 +81,7 @@ pub fn setup_usecases(
             ytdlp_adapter.clone(),
             artifact_store.clone(),
             artifact_index.clone(),
-            workspace_root.clone(),
+            workspace_port.clone(),
         ),
         create_project: CreateProjectUseCase::new(project_repo.clone()),
         create_project_from_youtube: CreateProjectFromYoutubeUseCase::new(
@@ -91,7 +91,7 @@ pub fn setup_usecases(
             storage_uow.clone(),
             ytdlp_adapter.clone(),
             artifact_store.clone(),
-            workspace_root.clone(),
+            workspace_port.clone(),
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
@@ -102,7 +102,7 @@ pub fn setup_usecases(
             storage_uow.clone(),
             ytdlp_adapter.clone(),
             artifact_store.clone(),
-            workspace_root.clone(),
+            workspace_port.clone(),
         ),
         get_transcript: GetTranscriptUseCase::new(project_repo.clone()),
         list_jobs: ListJobsUseCase::new(job_scheduler.clone()),

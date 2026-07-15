@@ -54,7 +54,7 @@ fn test_project_transitions() {
     let result = project
         .apply_terminal_transition(&job_id, TerminalOutcome::Cancelled)
         .unwrap();
-    assert_eq!(result, TerminalTransitionResult::IgnoredStale);
+    assert_eq!(result, TerminalTransitionResult::AlreadyApplied);
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn test_project_fail_and_retry() {
     let result = project
         .apply_terminal_transition(&job_id1, TerminalOutcome::Failed)
         .unwrap();
-    assert_eq!(result, TerminalTransitionResult::IgnoredStale);
+    assert_eq!(result, TerminalTransitionResult::AlreadyApplied);
     assert_eq!(project.status(), &ProjectStatus::Processing);
 }
 

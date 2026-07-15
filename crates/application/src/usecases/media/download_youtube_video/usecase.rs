@@ -117,7 +117,7 @@ where
             .strip_prefix(&request.temp_dir)
             .ok()
             .and_then(|p| p.to_str())
-            .map(|s| s.to_string());
+            .and_then(|s| domain::outbox::WorkspaceKey::new(s.replace('\\', "/")).ok());
 
         // 3. Atomically persist to DB and write outbox message
         let commit_cmd = CommitStagedArtifactWrite {

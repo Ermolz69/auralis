@@ -35,6 +35,7 @@ pub trait OutboxRepository: Send + Sync {
     ) -> Result<bool, PortError>;
     async fn mark_done(&self, id: &OutboxMessageId) -> Result<(), PortError>;
     async fn mark_failed(&self, id: &OutboxMessageId, error: &str) -> Result<(), PortError>;
+    async fn mark_dead_raw(&self, id_raw: &str, reason: &str) -> Result<(), PortError>;
 }
 use std::sync::Arc;
 
@@ -87,5 +88,9 @@ where
 
     async fn mark_failed(&self, id: &OutboxMessageId, error: &str) -> Result<(), PortError> {
         (**self).mark_failed(id, error).await
+    }
+
+    async fn mark_dead_raw(&self, id_raw: &str, reason: &str) -> Result<(), PortError> {
+        (**self).mark_dead_raw(id_raw, reason).await
     }
 }
