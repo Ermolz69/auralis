@@ -33,13 +33,19 @@ impl Default for MockOutboxRepository {
     }
 }
 
+use ports::repository::FetchPendingResult;
+
 #[async_trait]
 impl OutboxRepository for MockOutboxRepository {
-    async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError> {
+    async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError> {
         let mut messages = self.messages_to_return.lock().unwrap();
         let count = std::cmp::min(limit, messages.len());
         let result: Vec<_> = messages.drain(0..count).collect();
-        Ok(result)
+        Ok(FetchPendingResult {
+            messages: result,
+            corrupted_isolated: 0,
+            isolation_errors: 0,
+        })
     }
 
     async fn mark_processing(
@@ -270,6 +276,38 @@ impl ports::events::AppEventPublisher for MockEventPublisher {
     }
 }
 
+#[derive(Default)]
+struct MockWorkspacePort;
+
+#[async_trait]
+impl ports::workspace::TempWorkspacePort for MockWorkspacePort {
+    async fn create_allocation(
+        &self,
+        _project_id: &ProjectId,
+        _purpose: &str,
+    ) -> Result<ports::workspace::WorkspaceAllocation, PortError> {
+        unimplemented!()
+    }
+
+    async fn delete_allocation(&self, _key: &WorkspaceKey) -> Result<(), PortError> {
+        Ok(()) // Success for outbox tests
+    }
+
+    async fn resolve_key(&self, _key: &WorkspaceKey) -> Result<std::path::PathBuf, PortError> {
+        unimplemented!()
+    }
+
+    async fn cleanup_stale_allocations(
+        &self,
+        _age_threshold: std::time::Duration,
+    ) -> Result<ports::workspace::WorkspaceCleanupReport, PortError> {
+        Ok(ports::workspace::WorkspaceCleanupReport {
+            deleted_count: 0,
+            failed_count: 0,
+        })
+    }
+}
+
 fn create_worker(
     repo: MockOutboxRepository,
 ) -> OutboxWorker<MockOutboxRepository, MockStore, MockIndex, MockUow> {
@@ -279,9 +317,7 @@ fn create_worker(
         MockIndex,
         MockUow,
         Arc::new(MockEventPublisher),
-        Arc::new(adapters_storage::local::LocalTempWorkspace::new(
-            std::path::PathBuf::from("/tmp"),
-        )),
+        Arc::new(MockWorkspacePort),
     )
 }
 

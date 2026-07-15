@@ -11,6 +11,7 @@ use tauri::{App, Manager};
 
 pub fn setup_storage(
     app: &App,
+    workspace_root: &std::path::Path,
 ) -> Result<(RuntimeServices, Option<SqliteOutboxRepository>), Box<dyn std::error::Error>> {
     if std::env::var("AURALIS_STORAGE").unwrap_or_default() == "in-memory" {
         println!("WARNING: Running with IN-MEMORY storage adapter! Data will be lost on exit.");
@@ -48,6 +49,13 @@ pub fn setup_storage(
 
         let pool =
             tauri::async_runtime::block_on(adapters_storage::sqlite::connect_sqlite(db_path))?;
+
+        tauri::async_runtime::block_on(
+            adapters_storage::sqlite::migrations_runtime::run_runtime_backfills(
+                &pool,
+                workspace_root,
+            ),
+        )?;
 
         let repo: crate::state::RuntimeProjectRepository =
             Arc::new(SqliteProjectRepository::new(pool.clone()));

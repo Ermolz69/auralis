@@ -36,6 +36,23 @@ impl From<ApplicationError> for CommandError {
                 PortError::InvalidSource { .. } => CommandError::Validation(port_err.to_string()),
                 _ => CommandError::Repository(port_err.to_string()),
             },
+            ApplicationError::OperationFailedWithCleanup { primary, cleanup_report } => {
+                let mut dto = CommandError::from(*primary);
+                // We could attach cleanup info to details if CommandError supported it,
+                // but for now mapping to Internal with context is best.
+                match &mut dto {
+                    CommandError::Internal(msg) => {
+                        *msg = format!("{} (Cleanup failed: {:?})", msg, cleanup_report);
+                    }
+                    _ => {
+                        dto = CommandError::Internal(format!(
+                            "Operation failed but mapped to non-internal error. Cleanup failed: {:?}",
+                            cleanup_report
+                        ));
+                    }
+                }
+                dto
+            }
             ApplicationError::Unexpected(msg) => CommandError::Internal(msg),
         }
     }

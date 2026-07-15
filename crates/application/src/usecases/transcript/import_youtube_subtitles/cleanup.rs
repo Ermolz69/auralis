@@ -23,17 +23,45 @@ impl ImportCleanupCoordinator {
     /// Cleans up the workspace allocation.
     /// If an error occurs, logs it. We do NOT return the error here because
     /// this is typically called during an existing failure path.
-    pub async fn cleanup_workspace(&self, key: &WorkspaceKey) {
+    pub async fn cleanup_workspace(&self, key: &WorkspaceKey) -> crate::error::CleanupReport {
+        let mut report = crate::error::CleanupReport::new();
         if let Err(e) = self.workspace_port.delete_allocation(key).await {
-            eprintln!("Failed to clean up workspace allocation {}: {:?}", key, e);
+            report.add_failure(
+                crate::error::CleanupTarget::Workspace {
+                    key: key.to_string(),
+                },
+                e,
+            );
         }
+        report
     }
 
     /// Cleans up both artifact staging and workspace allocation.
-    pub async fn cleanup_all(&self, staging_key: &str, workspace_key: &WorkspaceKey) {
+    pub async fn cleanup_all(
+        &self,
+        staging_key: &str,
+        workspace_key: &WorkspaceKey,
+    ) -> crate::error::CleanupReport {
+        let mut report = crate::error::CleanupReport::new();
+
         if let Err(e) = self.artifact_store.delete_storage_key(staging_key).await {
-            eprintln!("Failed to clean up staging key {}: {:?}", staging_key, e);
+            report.add_failure(
+                crate::error::CleanupTarget::Staging {
+                    key: staging_key.to_string(),
+                },
+                e,
+            );
         }
-        self.cleanup_workspace(workspace_key).await;
+
+        if let Err(e) = self.workspace_port.delete_allocation(workspace_key).await {
+            report.add_failure(
+                crate::error::CleanupTarget::Workspace {
+                    key: workspace_key.to_string(),
+                },
+                e,
+            );
+        }
+
+        report
     }
 }

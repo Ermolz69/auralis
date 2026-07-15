@@ -21,7 +21,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&workspace_root)?;
 
     // 1. Setup storage and workers
-    let (services, outbox_repo_opt) = storage::setup_storage(app)?;
+    let (services, outbox_repo_opt) = storage::setup_storage(app, &workspace_root)?;
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
         workspace_root.clone(),

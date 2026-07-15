@@ -66,8 +66,23 @@ pub async fn stage_owned_temp_file(
             });
         }
 
-        // Remove source best-effort
-        let _ = tokio::fs::remove_file(source_path).await;
+        // Remove source, and if it fails, we MUST rollback staging
+        if let Err(rm_err) = tokio::fs::remove_file(source_path).await {
+            if let Err(rollback_err) = tokio::fs::remove_file(&staging_path).await {
+                return Err(PortError::Io {
+                    message: format!(
+                        "Failed to delete source {:?} after copy: {}. Rollback of staging copy also failed: {}",
+                        source_path, rm_err, rollback_err
+                    ),
+                });
+            }
+            return Err(PortError::Io {
+                message: format!(
+                    "Failed to delete source {:?} after copy: {}. Staging copy rolled back.",
+                    source_path, rm_err
+                ),
+            });
+        }
     }
 
     let metadata = match tokio::fs::metadata(&staging_path).await {

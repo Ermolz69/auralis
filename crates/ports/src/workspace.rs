@@ -13,6 +13,7 @@ pub struct WorkspaceAllocation {
     pub allocation_id: String,
 }
 
+#[derive(Debug)]
 pub struct WorkspaceCleanupReport {
     pub deleted_count: usize,
     pub failed_count: usize,

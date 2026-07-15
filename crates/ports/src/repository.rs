@@ -25,9 +25,15 @@ pub trait JobRepository: Send + Sync {
 
 use domain::outbox::{OutboxMessage, OutboxMessageId};
 
+pub struct FetchPendingResult {
+    pub messages: Vec<OutboxMessage>,
+    pub corrupted_isolated: usize,
+    pub isolation_errors: usize,
+}
+
 #[async_trait]
 pub trait OutboxRepository: Send + Sync {
-    async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError>;
+    async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError>;
     async fn mark_processing(
         &self,
         id: &OutboxMessageId,
@@ -70,7 +76,7 @@ impl<T> OutboxRepository for Arc<T>
 where
     T: OutboxRepository + ?Sized,
 {
-    async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError> {
+    async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError> {
         (**self).fetch_pending(limit).await
     }
 

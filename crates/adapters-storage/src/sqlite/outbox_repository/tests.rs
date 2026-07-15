@@ -59,8 +59,8 @@ async fn outbox_insert_and_fetch_pending() {
     .unwrap();
 
     let pending = repo.fetch_pending(10).await.unwrap();
-    assert_eq!(pending.len(), 1);
-    assert_eq!(pending[0].id, msg.id);
+    assert_eq!(pending.messages.len(), 1);
+    assert_eq!(pending.messages[0].id, msg.id);
 }
 
 #[tokio::test]
@@ -251,9 +251,9 @@ async fn corrupted_payload_becomes_error_or_dead() {
 
     // fetch_pending should skip the corrupted one, mark it dead, and return the 2 valid ones
     let pending = repo.fetch_pending(10).await.unwrap();
-    assert_eq!(pending.len(), 2);
-    assert_eq!(pending[0].id, msg1.id);
-    assert_eq!(pending[1].id, msg3.id);
+    assert_eq!(pending.messages.len(), 2);
+    assert_eq!(pending.messages[0].id, msg1.id);
+    assert_eq!(pending.messages[1].id, msg3.id);
 
     use sqlx::Row;
     let row = sqlx::query("SELECT status, last_error FROM outbox_messages WHERE id = ?")
@@ -297,8 +297,8 @@ async fn invalid_outbox_id_does_not_block_batch() {
     .unwrap();
 
     let pending = repo.fetch_pending(10).await.unwrap();
-    assert_eq!(pending.len(), 1);
-    assert_eq!(pending[0].id, msg1.id);
+    assert_eq!(pending.messages.len(), 1);
+    assert_eq!(pending.messages[0].id, msg1.id);
 
     use sqlx::Row;
     let row = sqlx::query("SELECT status, last_error FROM outbox_messages WHERE id = ?")
@@ -355,7 +355,7 @@ async fn stale_lock_reclaim() {
 
     // fetch_pending reclaims stale locks implicitly
     let pending = repo.fetch_pending(10).await.unwrap();
-    assert_eq!(pending.len(), 1);
+    assert_eq!(pending.messages.len(), 1);
 
     use sqlx::Row;
     let row = sqlx::query("SELECT status, attempts, last_error FROM outbox_messages WHERE id = ?")
@@ -369,4 +369,45 @@ async fn stale_lock_reclaim() {
         row.get::<String, _>("last_error"),
         "Timeout during processing (stale lock reclaimed)"
     );
+}
+
+#[tokio::test]
+async fn mark_dead_failure_breaks_fetch_loop() {
+    let pool = setup_db().await;
+    let repo = SqliteOutboxRepository::new(pool.clone());
+
+    let corrupted_id = OutboxMessageId::new().to_string();
+
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at,
+            created_at, updated_at
+        ) VALUES 
+        (?, 'delete_project_artifact_dir', 'invalid json', 'pending', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 minute'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 minute'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+        "#
+    )
+    .bind(&corrupted_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Create a trigger that fails any update to status = 'dead'
+    sqlx::query(
+        r#"
+        CREATE TRIGGER prevent_mark_dead BEFORE UPDATE ON outbox_messages
+        FOR EACH ROW WHEN NEW.status = 'dead'
+        BEGIN
+            SELECT RAISE(ABORT, 'Simulated mark_dead_raw failure');
+        END;
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let result = repo.fetch_pending(10).await.unwrap();
+    assert_eq!(result.messages.len(), 0);
+    assert_eq!(result.corrupted_isolated, 0);
+    assert_eq!(result.isolation_errors, 1);
 }

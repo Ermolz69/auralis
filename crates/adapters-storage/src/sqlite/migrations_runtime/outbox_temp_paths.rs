@@ -6,14 +6,17 @@ use sqlx::{Sqlite, Transaction};
 #[serde(tag = "type", rename_all = "snake_case")]
 enum LegacyOutboxPayload {
     DeleteTempPath {
-        path: String,
+        path: Option<String>,
+        absolute_path: Option<String>,
     },
     #[serde(other)]
     Other,
 }
 
-pub async fn migrate_delete_temp_paths(tx: &mut Transaction<'_, Sqlite>) -> Result<(), PortError> {
-    // We only fetch rows that are `delete_temp_path`
+pub async fn migrate_delete_temp_paths(
+    tx: &mut Transaction<'_, Sqlite>,
+    workspace_root: &std::path::Path,
+) -> Result<(), PortError> {
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT id, payload_json FROM outbox_messages WHERE kind = 'delete_temp_path'",
     )
@@ -24,48 +27,63 @@ pub async fn migrate_delete_temp_paths(tx: &mut Transaction<'_, Sqlite>) -> Resu
     })?;
 
     for (id, payload_json) in rows {
-        // Parse legacy
         let legacy: Result<LegacyOutboxPayload, _> = serde_json::from_str(&payload_json);
         match legacy {
-            Ok(LegacyOutboxPayload::DeleteTempPath { path }) => {
-                // Determine if we can convert it to DeleteWorkspaceFile
-                match convert_path_to_workspace_key(&path) {
-                    Some(workspace_key) => {
-                        // We can convert!
-                        let new_payload = serde_json::json!({
-                            "type": "delete_workspace_file",
-                            "workspace_key": workspace_key
-                        });
-                        let new_payload_str = serde_json::to_string(&new_payload).unwrap();
+            Ok(LegacyOutboxPayload::DeleteTempPath {
+                path,
+                absolute_path,
+            }) => {
+                let p = path.or(absolute_path);
+                if let Some(p) = p {
+                    match convert_path_to_workspace_key(&p, workspace_root).await {
+                        Some(workspace_key) => {
+                            let new_payload = serde_json::json!({
+                                "type": "delete_workspace_file",
+                                "workspace_key": workspace_key
+                            });
+                            let new_payload_str = serde_json::to_string(&new_payload).unwrap();
 
-                        sqlx::query(
-                            "UPDATE outbox_messages SET kind = 'delete_workspace_file', payload_json = ? WHERE id = ?"
-                        )
-                        .bind(new_payload_str)
-                        .bind(&id)
-                        .execute(&mut **tx)
-                        .await
-                        .map_err(|e| PortError::Unexpected {
-                            message: format!("Failed to update legacy temp path message {}: {}", id, e),
-                        })?;
+                            sqlx::query(
+                                "UPDATE outbox_messages SET kind = 'delete_workspace_file', payload_json = ? WHERE id = ?"
+                            )
+                            .bind(new_payload_str)
+                            .bind(&id)
+                            .execute(&mut **tx)
+                            .await
+                            .map_err(|e| PortError::Unexpected {
+                                message: format!("Failed to update legacy temp path message {}: {}", id, e),
+                            })?;
+                        }
+                        None => {
+                            sqlx::query(
+                                "UPDATE outbox_messages SET status = 'dead', last_error = ? WHERE id = ?"
+                            )
+                            .bind("Legacy DeleteTempPath path is outside workspace root")
+                            .bind(&id)
+                            .execute(&mut **tx)
+                            .await
+                            .map_err(|e| PortError::Unexpected {
+                                message: format!("Failed to mark legacy temp path message dead {}: {}", id, e),
+                            })?;
+                        }
                     }
-                    None => {
-                        // Cannot safely convert. Mark as dead.
-                        sqlx::query(
-                            "UPDATE outbox_messages SET status = 'dead', last_error = ? WHERE id = ?"
-                        )
-                        .bind("Legacy DeleteTempPath could not be converted to WorkspaceKey")
-                        .bind(&id)
-                        .execute(&mut **tx)
-                        .await
-                        .map_err(|e| PortError::Unexpected {
-                            message: format!("Failed to mark legacy temp path message dead {}: {}", id, e),
-                        })?;
-                    }
+                } else {
+                    sqlx::query(
+                        "UPDATE outbox_messages SET status = 'dead', last_error = ? WHERE id = ?",
+                    )
+                    .bind("Legacy DeleteTempPath had no valid path fields")
+                    .bind(&id)
+                    .execute(&mut **tx)
+                    .await
+                    .map_err(|e| PortError::Unexpected {
+                        message: format!(
+                            "Failed to mark empty temp path message dead {}: {}",
+                            id, e
+                        ),
+                    })?;
                 }
             }
             _ => {
-                // Maybe it's malformed? Mark as dead.
                 sqlx::query(
                     "UPDATE outbox_messages SET status = 'dead', last_error = ? WHERE id = ?",
                 )
@@ -86,19 +104,43 @@ pub async fn migrate_delete_temp_paths(tx: &mut Transaction<'_, Sqlite>) -> Resu
     Ok(())
 }
 
-fn convert_path_to_workspace_key(path: &str) -> Option<String> {
-    // If it's absolute, we can't safely convert. We don't know the workspace root.
-    if path.starts_with('/') || path.starts_with('\\') || path.chars().nth(1) == Some(':') {
-        return None;
-    }
+async fn convert_path_to_workspace_key(
+    path: &str,
+    workspace_root: &std::path::Path,
+) -> Option<String> {
+    let target = std::path::PathBuf::from(path);
 
-    // Convert all `\` to `/`
-    let path = path.replace('\\', "/");
+    // If it's absolute, check if it's within workspace root
+    if target.is_absolute() {
+        let canonical_root = tokio::fs::canonicalize(workspace_root)
+            .await
+            .unwrap_or_else(|_| workspace_root.to_path_buf());
 
-    // Check if it's a valid WorkspaceKey
-    if domain::outbox::WorkspaceKey::new(path.clone()).is_ok() {
-        Some(path)
+        // We do a string prefix check or strip_prefix
+        // Strip prefix works if they are normalized. We can just use `strip_prefix` on the raw path
+        // since `canonicalize` might fail if `target` doesn't exist yet, which is the case for temp files.
+        let target_normalized = path.replace('\\', "/");
+        let root_str = canonical_root.to_string_lossy().replace('\\', "/");
+
+        let relative_str = if target_normalized.starts_with(&root_str) {
+            target_normalized[root_str.len()..]
+                .trim_start_matches('/')
+                .to_string()
+        } else {
+            return None;
+        };
+
+        if domain::outbox::WorkspaceKey::new(relative_str.clone()).is_ok() {
+            Some(relative_str)
+        } else {
+            None
+        }
     } else {
-        None
+        let path_normalized = path.replace('\\', "/");
+        if domain::outbox::WorkspaceKey::new(path_normalized.clone()).is_ok() {
+            Some(path_normalized)
+        } else {
+            None
+        }
     }
 }

@@ -47,43 +47,16 @@ pub async fn commit_failed_interrupted_pair(
     })?
     .rows_affected();
 
-    if job_affected == 0 {
-        // Rollback explicitly (though dropping tx does this) to avoid returning PortError from commit
-        let _ = tx.rollback().await;
-        // Check if already applied
-        let current_status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
-                .bind(cmd.job.id().to_string())
-                .fetch_optional(pool)
-                .await
-                .map_err(|e| PortError::Unexpected {
-                    message: e.to_string(),
-                })?;
-
-        let new_status = serialize_enum(cmd.job.status())?;
-        if current_status == Some(new_status) {
-            return Ok(RecoveryApplyResult::AlreadyApplied);
-        } else if current_status.is_some() {
-            return Err(PortError::Conflict {
-                resource: "jobs".to_string(),
-                message: format!("Job {} status changed incompatibly", cmd.job.id()),
-            });
-        } else {
-            return Err(PortError::NotFound {
-                resource: "jobs".to_string(),
-            });
-        }
-    }
-
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
     let project_affected = sqlx::query(
-        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?
+        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?, last_terminal_job_id = ?
          WHERE id = ? AND status = ? AND active_job_id = ?",
     )
     .bind(serialize_enum(cmd.project.status())?)
     .bind(cmd.project.updated_at())
     .bind(cmd.project.active_job_id().map(|id| id.to_string()))
+    .bind(cmd.project.last_terminal_job_id().map(|id| id.to_string()))
     .bind(cmd.project.id().to_string())
     .bind(&expected_project_status)
     .bind(cmd.expected_active_job_id.to_string())
@@ -94,12 +67,56 @@ pub async fn commit_failed_interrupted_pair(
     })?
     .rows_affected();
 
-    if project_affected == 0 {
-        let _ = tx.rollback().await;
-        return Err(PortError::Conflict {
-            resource: "projects".to_string(),
-            message: format!("Project {} state changed incompatibly", cmd.project.id()),
-        });
+    if job_affected == 0 || project_affected == 0 {
+        let current_job_status: Option<String> =
+            sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
+                .bind(cmd.job.id().to_string())
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| PortError::Unexpected {
+                    message: e.to_string(),
+                })?;
+
+        let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
+        )
+        .bind(cmd.project.id().to_string())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
+
+        let new_job_status = serialize_enum(cmd.job.status())?;
+        let new_proj_status = serialize_enum(cmd.project.status())?;
+        let new_active_job = cmd.project.active_job_id().map(|id| id.to_string());
+        let new_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
+
+        let job_ok = job_affected > 0 || current_job_status == Some(new_job_status);
+        let proj_ok = project_affected > 0
+            || current_project
+                == Some((
+                    new_proj_status.clone(),
+                    new_active_job.clone(),
+                    new_last_terminal.clone(),
+                ));
+
+        if !job_ok || !proj_ok {
+            let _ = tx.rollback().await;
+            return Err(PortError::Conflict {
+                resource: "pair".to_string(),
+                message: format!(
+                    "Pair {}-{} state changed incompatibly",
+                    cmd.project.id(),
+                    cmd.job.id()
+                ),
+            });
+        }
+
+        if job_affected == 0 && project_affected == 0 {
+            let _ = tx.rollback().await;
+            return Ok(RecoveryApplyResult::AlreadyApplied);
+        }
     }
 
     tx.commit().await.map_err(|e| PortError::Unexpected {
@@ -161,17 +178,21 @@ pub async fn commit_reconciled_terminal_pair(
 
     if rows == 0 {
         let _ = tx.rollback().await;
-        let current_status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM projects WHERE id = ?")
-                .bind(cmd.project.id().to_string())
-                .fetch_optional(pool)
-                .await
-                .map_err(|e| PortError::Unexpected {
-                    message: e.to_string(),
-                })?;
+        let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
+        )
+        .bind(cmd.project.id().to_string())
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
 
         let new_status = serialize_enum(cmd.project.status())?;
-        if current_status == Some(new_status) {
+        let expected_active = cmd.project.active_job_id().map(|id| id.to_string());
+        let expected_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
+
+        if current_project == Some((new_status, expected_active, expected_last_terminal)) {
             return Ok(RecoveryApplyResult::AlreadyApplied);
         } else {
             return Err(PortError::Conflict {
@@ -217,14 +238,6 @@ pub async fn commit_legacy_pair_fallback(
     })?
     .rows_affected();
 
-    if job_affected == 0 {
-        let _ = tx.rollback().await;
-        return Err(PortError::Conflict {
-            resource: "projects".to_string(),
-            message: format!("Legacy job {} status changed incompatibly", cmd.job.id()),
-        });
-    }
-
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
     let project_affected = sqlx::query(
@@ -243,15 +256,56 @@ pub async fn commit_legacy_pair_fallback(
     })?
     .rows_affected();
 
-    if project_affected == 0 {
-        let _ = tx.rollback().await;
-        return Err(PortError::Conflict {
-            resource: "projects".to_string(),
-            message: format!(
-                "Legacy project {} state changed incompatibly",
-                cmd.project.id()
-            ),
-        });
+    if job_affected == 0 || project_affected == 0 {
+        let current_job_status: Option<String> =
+            sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
+                .bind(cmd.job.id().to_string())
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| PortError::Unexpected {
+                    message: e.to_string(),
+                })?;
+
+        let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
+        )
+        .bind(cmd.project.id().to_string())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
+
+        let new_job_status = serialize_enum(cmd.job.status())?;
+        let new_proj_status = serialize_enum(cmd.project.status())?;
+        let new_active_job = cmd.project.active_job_id().map(|id| id.to_string());
+        let expected_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
+
+        let job_ok = job_affected > 0 || current_job_status == Some(new_job_status);
+        let proj_ok = project_affected > 0
+            || current_project
+                == Some((
+                    new_proj_status.clone(),
+                    new_active_job.clone(),
+                    expected_last_terminal.clone(),
+                ));
+
+        if !job_ok || !proj_ok {
+            let _ = tx.rollback().await;
+            return Err(PortError::Conflict {
+                resource: "pair".to_string(),
+                message: format!(
+                    "Legacy Pair {}-{} state changed incompatibly",
+                    cmd.project.id(),
+                    cmd.job.id()
+                ),
+            });
+        }
+
+        if job_affected == 0 && project_affected == 0 {
+            let _ = tx.rollback().await;
+            return Ok(RecoveryApplyResult::AlreadyApplied);
+        }
     }
 
     tx.commit().await.map_err(|e| PortError::Unexpected {
@@ -288,17 +342,19 @@ pub async fn commit_failed_project_with_missing_linked_job(
 
     if rows == 0 {
         let _ = tx.rollback().await;
-        let current_status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM projects WHERE id = ?")
-                .bind(cmd.project.id().to_string())
-                .fetch_optional(pool)
-                .await
-                .map_err(|e| PortError::Unexpected {
-                    message: e.to_string(),
-                })?;
+        let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
+        )
+        .bind(cmd.project.id().to_string())
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
 
         let new_status = serialize_enum(cmd.project.status())?;
-        if current_status == Some(new_status) {
+        let expected_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
+        if current_project == Some((new_status, None, expected_last_terminal)) {
             return Ok(RecoveryApplyResult::AlreadyApplied);
         } else {
             return Err(PortError::Conflict {
@@ -344,17 +400,19 @@ pub async fn commit_failed_legacy_project_without_job(
 
     if rows == 0 {
         let _ = tx.rollback().await;
-        let current_status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM projects WHERE id = ?")
-                .bind(cmd.project.id().to_string())
-                .fetch_optional(pool)
-                .await
-                .map_err(|e| PortError::Unexpected {
-                    message: e.to_string(),
-                })?;
+        let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
+        )
+        .bind(cmd.project.id().to_string())
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| PortError::Unexpected {
+            message: e.to_string(),
+        })?;
 
         let new_status = serialize_enum(cmd.project.status())?;
-        if current_status == Some(new_status) {
+        let expected_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
+        if current_project == Some((new_status, None, expected_last_terminal)) {
             return Ok(RecoveryApplyResult::AlreadyApplied);
         } else {
             return Err(PortError::Conflict {

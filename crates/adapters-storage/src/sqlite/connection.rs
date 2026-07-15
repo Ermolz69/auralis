@@ -25,7 +25,8 @@ pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, Po
             message: format!("Failed to run sqlite migrations: {}", e),
         })?;
 
-    crate::sqlite::migrations_runtime::run_runtime_backfills(&pool).await?;
+    // Note: Runtime backfills must be run manually after this function,
+    // passing the appropriate workspace_root to them.
 
     Ok(pool)
 }

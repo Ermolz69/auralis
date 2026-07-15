@@ -58,11 +58,14 @@ where
         &self,
         limit: usize,
     ) -> Result<OutboxBatchReport, ApplicationError> {
-        let messages = self.outbox_repo.fetch_pending(limit).await?;
+        let fetch_result = self.outbox_repo.fetch_pending(limit).await?;
+        let messages = fetch_result.messages;
         let count = messages.len();
 
         let mut report = OutboxBatchReport {
             fetched: count,
+            corrupted: fetch_result.corrupted_isolated,
+            storage_errors: fetch_result.isolation_errors,
             ..Default::default()
         };
 
@@ -162,6 +165,18 @@ where
                     // Run staging janitor
                     if let Err(e) = self.artifact_store.cleanup_stale_staging(Duration::from_secs(24 * 3600)).await {
                         eprintln!("OutboxWorker staging janitor error: {}", e);
+                    }
+
+                    // Run workspace janitor
+                    match self.handler.workspace_port.cleanup_stale_allocations(Duration::from_secs(24 * 3600)).await {
+                        Ok(report) => {
+                            if report.deleted_count > 0 || report.failed_count > 0 {
+                                println!("OutboxWorker workspace janitor report: {:?}", report);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("OutboxWorker workspace janitor error: {}", e);
+                        }
                     }
                 }
                 _ = shutdown_rx.recv() => {

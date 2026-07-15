@@ -1,5 +1,5 @@
-use domain::outbox::OutboxMessage;
 use ports::error::PortError;
+use ports::repository::FetchPendingResult;
 
 use super::SqliteOutboxRepository;
 use crate::sqlite::outbox_mapper::row_to_outbox_message;
@@ -9,7 +9,7 @@ impl SqliteOutboxRepository {
     pub async fn execute_fetch_pending(
         &self,
         limit: usize,
-    ) -> Result<Vec<OutboxMessage>, PortError> {
+    ) -> Result<FetchPendingResult, PortError> {
         // Reclaim stale locks: messages in 'processing' state for more than 5 minutes
         sqlx::query(
             r#"
@@ -31,6 +31,8 @@ impl SqliteOutboxRepository {
         })?;
 
         let mut valid_messages = Vec::with_capacity(limit);
+        let mut corrupted_isolated = 0;
+        let mut isolation_errors = 0;
 
         // Fetch loop to handle corrupted messages
         loop {
@@ -73,7 +75,21 @@ impl SqliteOutboxRepository {
                         // Diagnostic reason: e.g. mapping error, invalid payload JSON
                         let reason = format!("Corrupted outbox payload: {}", e);
                         // Mark as dead directly
-                        let _ = self.execute_mark_dead_raw(&id_raw, &reason).await;
+                        if let Err(err) = self.execute_mark_dead_raw(&id_raw, &reason).await {
+                            eprintln!(
+                                "Failed to isolate corrupted outbox message {}: {}",
+                                id_raw, err
+                            );
+                            isolation_errors += 1;
+                            // Guarantee exit from fetch loop to avoid infinite loop on this row
+                            return Ok(FetchPendingResult {
+                                messages: valid_messages,
+                                corrupted_isolated,
+                                isolation_errors,
+                            });
+                        } else {
+                            corrupted_isolated += 1;
+                        }
                     }
                 }
             }
@@ -84,6 +100,10 @@ impl SqliteOutboxRepository {
             }
         }
 
-        Ok(valid_messages)
+        Ok(FetchPendingResult {
+            messages: valid_messages,
+            corrupted_isolated,
+            isolation_errors,
+        })
     }
 }

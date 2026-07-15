@@ -207,6 +207,12 @@ impl Planner {
                             }
                         }
                         None => {
+                            plan.resolved_violations.push(RecoveryViolation {
+                                project_id: Some(project.id().clone()),
+                                job_id: Some(active_job_id.clone()),
+                                issue_type: RecoveryIssueType::MissingActiveJob,
+                                message: "Project points to a missing job".into(),
+                            });
                             plan.actions
                                 .push(RecoveryAction::FailProjectWithMissingLinkedJob {
                                     project,
@@ -223,11 +229,23 @@ impl Planner {
                         .collect();
 
                     if project_active_jobs.is_empty() {
+                        plan.resolved_violations.push(RecoveryViolation {
+                            project_id: Some(project.id().clone()),
+                            job_id: None,
+                            issue_type: RecoveryIssueType::MissingActiveJob,
+                            message: "Legacy project has no active jobs".into(),
+                        });
                         plan.actions
                             .push(RecoveryAction::FailLegacyProjectWithoutJob { project });
                     } else if project_active_jobs.len() == 1 {
                         let job = project_active_jobs[0].clone();
                         processed_job_ids.insert(job.id().clone());
+                        plan.resolved_violations.push(RecoveryViolation {
+                            project_id: Some(project.id().clone()),
+                            job_id: Some(job.id().clone()),
+                            issue_type: RecoveryIssueType::MissingActiveJob,
+                            message: "Legacy project missing active job link repaired".into(),
+                        });
                         plan.actions
                             .push(RecoveryAction::FailLegacyPair { project, job });
                     } else {
@@ -257,6 +275,12 @@ impl Planner {
             }
 
             if matches!(*job.status(), JobStatus::Pending | JobStatus::Running) {
+                plan.resolved_violations.push(RecoveryViolation {
+                    project_id: Some(job.project_id().clone()), // it has a project_id, but the project doesn't link to it
+                    job_id: Some(job.id().clone()),
+                    issue_type: RecoveryIssueType::OrphanActiveJob,
+                    message: "Active job has no owning project".into(),
+                });
                 plan.actions.push(RecoveryAction::FailOrphanJob { job });
             }
         }

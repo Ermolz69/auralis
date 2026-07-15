@@ -19,13 +19,13 @@ impl SqliteOutboxRepository {
 }
 
 use async_trait::async_trait;
-use domain::outbox::{OutboxMessage, OutboxMessageId};
+use domain::outbox::OutboxMessageId;
 use ports::error::PortError;
-use ports::repository::OutboxRepository;
+use ports::repository::{FetchPendingResult, OutboxRepository};
 
 #[async_trait]
 impl OutboxRepository for SqliteOutboxRepository {
-    async fn fetch_pending(&self, limit: usize) -> Result<Vec<OutboxMessage>, PortError> {
+    async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError> {
         self.execute_fetch_pending(limit).await
     }
 

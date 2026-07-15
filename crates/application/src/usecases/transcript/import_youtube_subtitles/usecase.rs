@@ -49,6 +49,42 @@ impl ImportYoutubeSubtitlesUseCase {
         }
     }
 
+    async fn handle_workspace_failure(
+        &self,
+        alloc_key: &domain::outbox::WorkspaceKey,
+        primary_err: ApplicationError,
+    ) -> ApplicationError {
+        let report = self.cleanup_coordinator.cleanup_workspace(alloc_key).await;
+        if report.is_empty() {
+            primary_err
+        } else {
+            ApplicationError::OperationFailedWithCleanup {
+                primary: Box::new(primary_err),
+                cleanup_report: report,
+            }
+        }
+    }
+
+    async fn handle_all_failure(
+        &self,
+        staging_key: &str,
+        alloc_key: &domain::outbox::WorkspaceKey,
+        primary_err: ApplicationError,
+    ) -> ApplicationError {
+        let report = self
+            .cleanup_coordinator
+            .cleanup_all(staging_key, alloc_key)
+            .await;
+        if report.is_empty() {
+            primary_err
+        } else {
+            ApplicationError::OperationFailedWithCleanup {
+                primary: Box::new(primary_err),
+                cleanup_report: report,
+            }
+        }
+    }
+
     pub async fn execute(
         &self,
         request: ImportYoutubeSubtitlesRequest,
@@ -127,44 +163,44 @@ impl ImportYoutubeSubtitlesUseCase {
         {
             Ok(a) => a,
             Err(e) => {
-                self.cleanup_coordinator
-                    .cleanup_workspace(&alloc.workspace_key)
-                    .await;
-                return Err(e.into());
+                return Err(self
+                    .handle_workspace_failure(&alloc.workspace_key, e.into())
+                    .await);
             }
         };
 
         let vtt_path = match &artifact.location {
             domain::media::ArtifactLocation::LocalPath(p) => std::path::PathBuf::from(p),
             _ => {
-                self.cleanup_coordinator
-                    .cleanup_workspace(&alloc.workspace_key)
-                    .await;
-                return Err(ApplicationError::InvalidOperation {
-                    message: "Invalid subtitle artifact location".to_string(),
-                });
+                return Err(self
+                    .handle_workspace_failure(
+                        &alloc.workspace_key,
+                        ApplicationError::InvalidOperation {
+                            message: "Invalid subtitle artifact location".to_string(),
+                        },
+                    )
+                    .await);
             }
         };
 
         let vtt_content = match tokio::fs::read_to_string(&vtt_path).await {
             Ok(content) => content,
             Err(e) => {
-                self.cleanup_coordinator
-                    .cleanup_workspace(&alloc.workspace_key)
-                    .await;
-                return Err(ApplicationError::InvalidOperation {
-                    message: format!("Failed to read vtt file: {}", e),
-                });
+                return Err(self
+                    .handle_workspace_failure(
+                        &alloc.workspace_key,
+                        ApplicationError::InvalidOperation {
+                            message: format!("Failed to read vtt file: {}", e),
+                        },
+                    )
+                    .await);
             }
         };
 
         let transcript = match parse_vtt(&vtt_content, &best_track.language) {
             Ok(t) => t,
             Err(e) => {
-                self.cleanup_coordinator
-                    .cleanup_workspace(&alloc.workspace_key)
-                    .await;
-                return Err(e);
+                return Err(self.handle_workspace_failure(&alloc.workspace_key, e).await);
             }
         };
 
@@ -180,10 +216,9 @@ impl ImportYoutubeSubtitlesUseCase {
         {
             Ok(s) => s,
             Err(e) => {
-                self.cleanup_coordinator
-                    .cleanup_workspace(&alloc.workspace_key)
-                    .await;
-                return Err(e.into());
+                return Err(self
+                    .handle_workspace_failure(&alloc.workspace_key, e.into())
+                    .await);
             }
         };
 
@@ -200,10 +235,9 @@ impl ImportYoutubeSubtitlesUseCase {
             })
             .await
         {
-            self.cleanup_coordinator
-                .cleanup_all(&staged.staging_key, &alloc.workspace_key)
-                .await;
-            return Err(e.into());
+            return Err(self
+                .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
+                .await);
         }
 
         Ok(ImportYoutubeSubtitlesResponse { transcript })

@@ -26,9 +26,46 @@ pub enum ApplicationError {
     #[error("Unexpected error: {0}")]
     Unexpected(String),
 
+    #[error("Operation failed: {primary}, and cleanup also failed: {cleanup_report:?}")]
+    OperationFailedWithCleanup {
+        primary: Box<ApplicationError>,
+        cleanup_report: CleanupReport,
+    },
+
     #[error(transparent)]
     Domain(#[from] domain::error::DomainError),
 
     #[error(transparent)]
     Port(#[from] ports::error::PortError),
+}
+
+#[derive(Debug)]
+pub enum CleanupTarget {
+    Staging { key: String },
+    Workspace { key: String },
+}
+
+#[derive(Debug)]
+pub struct CleanupFailure {
+    pub target: CleanupTarget,
+    pub error: ports::error::PortError,
+}
+
+#[derive(Debug, Default)]
+pub struct CleanupReport {
+    pub failures: Vec<CleanupFailure>,
+}
+
+impl CleanupReport {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.failures.is_empty()
+    }
+
+    pub fn add_failure(&mut self, target: CleanupTarget, error: ports::error::PortError) {
+        self.failures.push(CleanupFailure { target, error });
+    }
 }
