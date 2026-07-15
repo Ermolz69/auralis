@@ -51,7 +51,15 @@ pub async fn migrate_delete_temp_paths(
                                 "type": "delete_workspace_file",
                                 "workspace_key": workspace_key
                             });
-                            let new_payload_str = serde_json::to_string(&new_payload).unwrap();
+                            let new_payload_str =
+                                serde_json::to_string(&new_payload).map_err(|e| {
+                                    PortError::Unexpected {
+                                        message: format!(
+                                            "Failed to serialize new legacy outbox payload: {}",
+                                            e
+                                        ),
+                                    }
+                                })?;
 
                             sqlx::query(
                                 "UPDATE outbox_messages SET kind = 'delete_workspace_file', payload_json = ? WHERE id = ?"
@@ -118,6 +126,12 @@ async fn convert_path_to_workspace_key(
     path: &str,
     canonical_root: &std::path::Path,
 ) -> Result<String, &'static str> {
+    for comp in path.split(['/', '\\']) {
+        if comp == "." || comp == ".." {
+            return Err("Legacy DeleteTempPath contains invalid components");
+        }
+    }
+
     let target = std::path::PathBuf::from(path);
 
     let relative = if target.is_absolute() {

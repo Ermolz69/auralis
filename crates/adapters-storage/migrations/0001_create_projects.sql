@@ -7,6 +7,8 @@ CREATE TABLE projects (
     source_language TEXT,
     target_language TEXT,
     transcript_json TEXT,
+    -- DEPRECATED: artifacts_json is managed by legacy backfill and slated for removal.
+    -- See docs/storage/legacy-artifacts-json.md for details.
     artifacts_json TEXT NOT NULL DEFAULT '[]',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL

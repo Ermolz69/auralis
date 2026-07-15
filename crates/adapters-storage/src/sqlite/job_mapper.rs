@@ -57,29 +57,22 @@ pub fn row_to_job(row: JobRow) -> Result<Job, PortError> {
 }
 
 pub fn job_to_row_values(job: &Job) -> Result<JobRow, PortError> {
+    use super::helpers::{serialize_enum, serialize_json};
+
     let snapshot = job.to_snapshot();
 
-    let kind = serde_json::to_string(&snapshot.kind)
-        .unwrap_or_default()
-        .trim_matches('"')
-        .to_string();
-    let status = serde_json::to_string(&snapshot.status)
-        .unwrap_or_default()
-        .trim_matches('"')
-        .to_string();
-    let stage = snapshot.stage.map(|s| {
-        serde_json::to_string(&s)
-            .unwrap_or_default()
-            .trim_matches('"')
-            .to_string()
-    });
+    let kind = serialize_enum(&snapshot.kind, "job.kind")?;
+    let status = serialize_enum(&snapshot.status, "job.status")?;
+    let stage = snapshot
+        .stage
+        .map(|s| serialize_enum(&s, "job.stage"))
+        .transpose()?;
 
-    let progress_json =
-        serde_json::to_string(&snapshot.progress).map_err(|e| PortError::Unexpected {
-            message: format!("Failed to serialize progress_json: {}", e),
-        })?;
-
-    let error_json = snapshot.error.map(|s| serde_json::to_string(&s).unwrap());
+    let progress_json = serialize_json(&snapshot.progress, "job.progress")?;
+    let error_json = snapshot
+        .error
+        .map(|e| serialize_json(&e, "job.error"))
+        .transpose()?;
 
     Ok(JobRow {
         id: snapshot.id.to_string(),
@@ -98,9 +91,7 @@ pub fn job_to_row_values(job: &Job) -> Result<JobRow, PortError> {
 }
 
 fn parse_json<T: serde::de::DeserializeOwned>(value: &str, field: &str) -> Result<T, PortError> {
-    serde_json::from_str(value).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to deserialize field `{}`: {}", field, e),
-    })
+    super::helpers::deserialize_json(value, field)
 }
 
 fn parse_datetime(value: &str, field: &str) -> Result<chrono::DateTime<chrono::Utc>, PortError> {

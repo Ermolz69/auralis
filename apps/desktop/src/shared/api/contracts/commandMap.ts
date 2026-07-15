@@ -32,6 +32,10 @@ export interface CommandMap {
     args: undefined;
     result: Project[];
   };
+  delete_project_cmd: {
+    args: { projectId: string };
+    result: null;
+  };
 
   list_jobs_cmd: {
     args: undefined;

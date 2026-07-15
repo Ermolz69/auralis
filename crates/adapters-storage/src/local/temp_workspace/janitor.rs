@@ -4,9 +4,24 @@ use std::time::{Duration, SystemTime};
 use ports::error::PortError;
 use ports::workspace::WorkspaceCleanupReport;
 
+#[async_trait::async_trait]
+pub(crate) trait JanitorOps: Send + Sync {
+    async fn remove_dir_all(&self, path: &std::path::Path) -> std::io::Result<()>;
+}
+
+pub(crate) struct DefaultJanitorOps;
+
+#[async_trait::async_trait]
+impl JanitorOps for DefaultJanitorOps {
+    async fn remove_dir_all(&self, path: &std::path::Path) -> std::io::Result<()> {
+        tokio::fs::remove_dir_all(path).await
+    }
+}
+
 pub struct TempWorkspaceJanitor {
     workspace_root: PathBuf,
     age_threshold: Duration,
+    ops: Box<dyn JanitorOps>,
 }
 
 impl TempWorkspaceJanitor {
@@ -14,6 +29,20 @@ impl TempWorkspaceJanitor {
         Self {
             workspace_root,
             age_threshold,
+            ops: Box::new(DefaultJanitorOps),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_ops(
+        workspace_root: PathBuf,
+        age_threshold: Duration,
+        ops: Box<dyn JanitorOps>,
+    ) -> Self {
+        Self {
+            workspace_root,
+            age_threshold,
+            ops,
         }
     }
 
@@ -56,7 +85,7 @@ impl TempWorkspaceJanitor {
 
                         if let Ok(modified) = metadata.modified() {
                             if modified < cutoff_time {
-                                if tokio::fs::remove_dir_all(alloc_entry.path()).await.is_ok() {
+                                if self.ops.remove_dir_all(&alloc_entry.path()).await.is_ok() {
                                     report.deleted_count += 1;
                                 } else {
                                     report.failed_count += 1;

@@ -8,13 +8,13 @@ use super::resolver::resolve_storage_key;
 use crate::local::storage_key::make_storage_key;
 
 #[async_trait::async_trait]
-pub trait FileOps: Send + Sync {
+pub(crate) trait FileOps: Send + Sync {
     async fn rename(&self, from: &Path, to: &Path) -> std::io::Result<()>;
     async fn copy(&self, from: &Path, to: &Path) -> std::io::Result<u64>;
     async fn remove_file(&self, path: &Path) -> std::io::Result<()>;
 }
 
-pub struct DefaultFileOps;
+pub(crate) struct DefaultFileOps;
 
 #[async_trait::async_trait]
 impl FileOps for DefaultFileOps {
@@ -47,7 +47,7 @@ pub async fn stage_owned_temp_file(
     .await
 }
 
-pub async fn stage_owned_temp_file_with_ops<F: FileOps>(
+pub(crate) async fn stage_owned_temp_file_with_ops<F: FileOps>(
     base_dir: &Path,
     project_id: &ProjectId,
     kind: ArtifactKind,
@@ -94,10 +94,23 @@ pub async fn stage_owned_temp_file_with_ops<F: FileOps>(
         // Rename failed, try copy + remove
         if let Err(copy_err) = ops.copy(source_path, &staging_path).await {
             // Copy failed, make sure we don't leave a partial staging file
-            let _ = ops.remove_file(&staging_path).await;
+            let staging_rm_err = ops.remove_file(&staging_path).await;
 
             // IMPORTANT: Since this is an owned file, we must delete it even on failure
-            let _ = ops.remove_file(source_path).await;
+            let _source_rm_err = ops.remove_file(source_path).await;
+
+            if staging_rm_err
+                .as_ref()
+                .is_err_and(|e| e.kind() != std::io::ErrorKind::NotFound)
+            {
+                let rollback_err = staging_rm_err.unwrap_err();
+                return Err(PortError::Io {
+                    message: format!(
+                        "Failed to copy to {:?}: rename err: {}, copy err: {}. Rollback of staging copy also failed: {}",
+                        staging_path, e, copy_err, rollback_err
+                    ),
+                });
+            }
 
             return Err(PortError::Io {
                 message: format!(

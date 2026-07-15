@@ -16,3 +16,8 @@ export async function createProject(title: string): Promise<Project> {
 export async function listProjects(): Promise<Project[]> {
   return invoke('list_projects_cmd');
 }
+
+export async function deleteProject(projectId: string): Promise<void> {
+  await invoke('delete_project_cmd', { projectId });
+}
+

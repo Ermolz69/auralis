@@ -13,9 +13,13 @@ pub mod project_row;
 pub mod recovery;
 pub mod unit_of_work;
 
+pub mod helpers;
 pub use artifact_index::SqliteArtifactIndex;
 pub use connection::connect_sqlite;
 pub use job_repository::SqliteJobRepository;
 pub use outbox_repository::SqliteOutboxRepository;
 pub use project_repository::SqliteProjectRepository;
 pub use unit_of_work::SqliteStorageUnitOfWork;
+
+#[cfg(test)]
+mod connection_tests;

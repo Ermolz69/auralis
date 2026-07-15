@@ -1,10 +1,14 @@
+use crate::sqlite::helpers;
 use domain::media::ArtifactLocation;
 use ports::error::PortError;
 use sqlx::{Row, SqlitePool};
 
+/// Runs the legacy artifact backfill process.
+/// This reads from the deprecated `artifacts_json` column.
+/// See `docs/storage/legacy-artifacts-json.md` for lifecycle and removal details.
 pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
     // Read raw JSON from projects table to avoid tying migration to current domain structs
-    let rows = sqlx::query("SELECT id, artifacts_json FROM projects WHERE artifacts_json IS NOT NULL AND artifacts_json != '[]'")
+    let rows = sqlx::query("SELECT id, artifacts_json, created_at FROM projects WHERE artifacts_json IS NOT NULL AND artifacts_json != '[]'")
         .fetch_all(pool)
         .await
         .map_err(|e| PortError::Unexpected {
@@ -14,6 +18,7 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
     for row in rows {
         let project_id: String = row.get("id");
         let artifacts_json: String = row.get("artifacts_json");
+        let project_created_at: String = row.get("created_at");
 
         #[derive(serde::Deserialize)]
         struct LegacyArtifact {
@@ -35,11 +40,24 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
             }
         };
 
+        let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
+            message: format!("Failed to begin transaction for backfill: {}", e),
+        })?;
+
+        let mut all_inserted = true;
+
         for artifact in artifacts {
-            let kind = serde_json::to_string(&artifact.kind)
-                .unwrap_or_default()
-                .trim_matches('"')
-                .to_string();
+            let kind = match helpers::serialize_enum(&artifact.kind, "artifact.kind") {
+                Ok(k) => k,
+                Err(e) => {
+                    println!(
+                        "WARNING: Failed to serialize kind for artifact {}: {:?}",
+                        artifact.id, e
+                    );
+                    all_inserted = false;
+                    break;
+                }
+            };
 
             let (location_kind, location_value) = match &artifact.location {
                 ArtifactLocation::LocalPath(p) => ("LocalPath".to_string(), p.clone()),
@@ -48,13 +66,13 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
 
             let created_at = artifact
                 .created_at
-                .unwrap_or_else(chrono::Utc::now)
-                .to_rfc3339();
+                .map(|d| d.to_rfc3339())
+                .unwrap_or_else(|| project_created_at.clone());
             let updated_at = created_at.clone();
             let ready_at = created_at.clone();
             let state = "ready".to_string();
 
-            sqlx::query(
+            if let Err(e) = sqlx::query(
                 r#"
                 INSERT OR IGNORE INTO artifacts (
                     id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
@@ -71,24 +89,33 @@ pub async fn run(pool: &SqlitePool) -> Result<(), PortError> {
             .bind(created_at)
             .bind(updated_at)
             .bind(ready_at)
-            .execute(pool)
+            .execute(&mut *tx)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to insert backfilled artifact: {}", e),
-            })?;
+            {
+                println!("WARNING: Failed to insert backfilled artifact {}: {}", artifact.id, e);
+                all_inserted = false;
+                break;
+            }
         }
 
-        // Clear the artifacts_json now that they are migrated
-        sqlx::query("UPDATE projects SET artifacts_json = '[]' WHERE id = ?")
-            .bind(&project_id)
-            .execute(pool)
-            .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!(
-                    "Failed to clear artifacts_json for project {}: {}",
+        if all_inserted {
+            // Clear the artifacts_json now that they are migrated
+            if let Err(e) = sqlx::query("UPDATE projects SET artifacts_json = '[]' WHERE id = ?")
+                .bind(&project_id)
+                .execute(&mut *tx)
+                .await
+            {
+                println!(
+                    "WARNING: Failed to clear artifacts_json for project {}: {}",
                     project_id, e
-                ),
-            })?;
+                );
+                let _ = tx.rollback().await;
+            } else {
+                let _ = tx.commit().await;
+            }
+        } else {
+            let _ = tx.rollback().await;
+        }
     }
 
     Ok(())

@@ -64,6 +64,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         services.storage_uow,
         job_manager,
         temp_workspace,
+        services.job_repo.clone(),
     );
 
     Ok(())

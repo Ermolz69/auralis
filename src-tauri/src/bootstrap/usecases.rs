@@ -50,6 +50,7 @@ pub struct AppUseCases {
     pub cancel_job: CancelJobUseCase,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn setup_usecases(
     app: &AppHandle,
     project_repo: RuntimeProjectRepository,
@@ -58,6 +59,7 @@ pub fn setup_usecases(
     storage_uow: RuntimeStorageUnitOfWork,
     job_scheduler: Arc<dyn JobSchedulerPort>,
     workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
+    job_repo: Arc<dyn ports::repository::JobRepository>,
 ) {
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
     let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates);
@@ -95,7 +97,11 @@ pub fn setup_usecases(
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
-        delete_project: DeleteProjectUseCase::new(artifact_index.clone(), storage_uow.clone()),
+        delete_project: DeleteProjectUseCase::new(
+            artifact_index.clone(),
+            job_repo.clone(),
+            storage_uow.clone(),
+        ),
         start_mock_pipeline: StartMockPipelineUseCase::new(
             project_repo.clone(),
             job_scheduler.clone(),

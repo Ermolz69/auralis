@@ -147,14 +147,25 @@ async fn test_workspace_janitor() {
     set_file_mtime(&old_project_dir, two_hours_ago).unwrap();
 
     #[cfg(unix)]
+    let mut outside_dir_guard = None;
+
+    #[cfg(unix)]
     {
         // Add symlink escape (which should be skipped or untraversed)
         let outside_dir = tempdir().unwrap();
         let outside_file = outside_dir.path().join("secret.txt");
         fs::write(&outside_file, "secret").unwrap();
         std::os::unix::fs::symlink(&outside_file, old_dir.join("link.txt")).unwrap();
-        // Since the parent (old_dir) is old, janitor will remove_dir_all(old_dir),
-        // which removes the symlink itself, but NOT the external target.
+
+        // Add a symlink DIRECTLY in place of a project directory
+        let symlinked_project_id = Uuid::new_v4();
+        let symlinked_project_dir = workspace_dir
+            .path()
+            .join("tmp")
+            .join(symlinked_project_id.to_string());
+        std::os::unix::fs::symlink(&outside_dir.path(), &symlinked_project_dir).unwrap();
+
+        outside_dir_guard = Some((outside_dir, outside_file, symlinked_project_dir));
     }
 
     // Also create empty project directory
@@ -177,4 +188,58 @@ async fn test_workspace_janitor() {
     assert!(!empty_dir.exists());
     assert!(fresh_dir.exists());
     assert!(fresh_file.exists());
+
+    #[cfg(unix)]
+    {
+        let (_guard, outside_file, symlinked_project_dir) = outside_dir_guard.unwrap();
+        // External file must still exist
+        assert!(outside_file.exists(), "External file was deleted!");
+        // The project directory symlink must still exist (skipped by janitor)
+        assert!(
+            symlinked_project_dir.exists(),
+            "Project symlink was deleted!"
+        );
+    }
+}
+
+struct FailingJanitorOps;
+
+#[async_trait::async_trait]
+impl super::janitor::JanitorOps for FailingJanitorOps {
+    async fn remove_dir_all(&self, _path: &std::path::Path) -> std::io::Result<()> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "mock error",
+        ))
+    }
+}
+
+#[tokio::test]
+async fn test_janitor_failed_count() {
+    let workspace_dir = tempdir().unwrap();
+
+    let old_project_id = Uuid::new_v4();
+    let old_dir = workspace_dir
+        .path()
+        .join("tmp")
+        .join(old_project_id.to_string())
+        .join("purpose_1");
+    fs::create_dir_all(&old_dir).unwrap();
+    let old_file = old_dir.join("old.txt");
+    fs::write(&old_file, "old").unwrap();
+
+    let two_hours_ago = FileTime::from_unix_time(chrono::Utc::now().timestamp() - 7200, 0);
+    set_file_mtime(&old_file, two_hours_ago).unwrap();
+    set_file_mtime(&old_dir, two_hours_ago).unwrap();
+
+    let janitor = super::janitor::TempWorkspaceJanitor::with_ops(
+        workspace_dir.path().to_path_buf(),
+        std::time::Duration::from_secs(3600),
+        Box::new(FailingJanitorOps),
+    );
+
+    let report = janitor.run().await.unwrap();
+
+    assert_eq!(report.failed_count, 1);
+    assert_eq!(report.deleted_count, 0);
 }
