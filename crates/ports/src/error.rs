@@ -12,6 +12,14 @@ pub enum PortError {
     #[error("Conflict: {resource} - {message}")]
     Conflict { resource: String, message: String },
 
+    #[error("Invalid stored data in {entity_type} {entity_id}, field '{field}': {message}")]
+    InvalidStoredData {
+        entity_type: String,
+        entity_id: String,
+        field: String,
+        message: String,
+    },
+
     #[error("Invalid source: {message}")]
     InvalidSource { message: String },
 

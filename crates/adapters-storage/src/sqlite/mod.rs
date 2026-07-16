@@ -7,6 +7,7 @@ pub mod migrations_runtime;
 pub mod outbox_mapper;
 pub mod outbox_repository;
 pub mod outbox_row;
+pub mod preflight;
 pub mod project_mapper;
 pub mod project_repository;
 pub mod project_row;

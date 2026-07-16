@@ -151,16 +151,29 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         let deleted_job_ids: Vec<domain::job::JobId> = job_records
             .into_iter()
-            .map(|record| {
+            .map(|record| -> Result<domain::job::JobId, PortError> {
                 use sqlx::Row;
-                let id_str: String = record.get("id");
-                std::str::FromStr::from_str(&id_str).unwrap()
+                let id_str: String =
+                    record
+                        .try_get("id")
+                        .map_err(|e| PortError::InvalidStoredData {
+                            entity_type: "job".to_string(),
+                            entity_id: "unknown".to_string(),
+                            field: "id".to_string(),
+                            message: format!("Failed to decode job ID: {}", e),
+                        })?;
+                std::str::FromStr::from_str(&id_str).map_err(|e| PortError::InvalidStoredData {
+                    entity_type: "job".to_string(),
+                    entity_id: id_str,
+                    field: "id".to_string(),
+                    message: format!("Invalid UUID: {}", e),
+                })
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
 
         // 3. Query StorageKeys of artifacts for the project
         let artifact_records = sqlx::query(
-            "SELECT storage_key FROM artifacts WHERE project_id = ? AND storage_key IS NOT NULL",
+            "SELECT id, storage_key FROM artifacts WHERE project_id = ? AND storage_key IS NOT NULL",
         )
         .bind(command.project_id.to_string())
         .fetch_all(&mut *tx)
@@ -172,8 +185,35 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         // 4. Insert outbox DeleteStorageKey for each StorageKey artifact
         for record in artifact_records {
             use sqlx::Row;
-            let key_str: String = record.get("storage_key");
-            let storage_key = std::str::FromStr::from_str(&key_str).unwrap();
+            let artifact_id: String =
+                record
+                    .try_get("id")
+                    .map_err(|e| PortError::InvalidStoredData {
+                        entity_type: "artifact".to_string(),
+                        entity_id: "unknown".to_string(),
+                        field: "id".to_string(),
+                        message: format!("Failed to decode artifact ID: {}", e),
+                    })?;
+
+            let key_str: String =
+                record
+                    .try_get("storage_key")
+                    .map_err(|e| PortError::InvalidStoredData {
+                        entity_type: "artifact".to_string(),
+                        entity_id: artifact_id.clone(),
+                        field: "storage_key".to_string(),
+                        message: format!("Failed to decode storage key: {}", e),
+                    })?;
+
+            let storage_key = std::str::FromStr::from_str(&key_str).map_err(|e| {
+                PortError::InvalidStoredData {
+                    entity_type: "artifact".to_string(),
+                    entity_id: artifact_id,
+                    field: "storage_key".to_string(),
+                    message: format!("Invalid StorageKey: {}", e),
+                }
+            })?;
+
             let msg = OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key });
             save_outbox_message(&mut tx, &msg).await?;
         }
@@ -194,11 +234,9 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             })?;
 
         if delete_result.rows_affected() != 1 {
-            return Err(PortError::Unexpected {
-                message: format!(
-                    "Project {} not found during delete phase",
-                    command.project_id
-                ),
+            return Err(PortError::Conflict {
+                resource: format!("Project {}", command.project_id),
+                message: "Project concurrently deleted or missing".to_string(),
             });
         }
 
@@ -337,6 +375,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -435,6 +474,86 @@ mod tests {
                 assert_eq!(final_key, "final_key");
             }
             _ => panic!("Expected FinalizeStagedArtifact payload"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_commit_project_delete_rolls_back_on_invalid_job_id() {
+        let pool = setup_db().await;
+        let uow = SqliteStorageUnitOfWork::new(pool.clone());
+        let project_id = domain::project::ProjectId::new();
+
+        sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+            .bind(project_id.to_string())
+            .bind("Corrupt Job Test")
+            .bind("Draft")
+            .bind(chrono::Utc::now().to_rfc3339())
+            .bind(chrono::Utc::now().to_rfc3339())
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO jobs (id, project_id, kind, title, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            .bind("invalid-job-uuid-12345") // CORRUPTED UUID
+            .bind(project_id.to_string())
+            .bind("Extracting")
+            .bind("Job title")
+            .bind("Pending")
+            .bind(r#"{}"#)
+            .bind::<Option<String>>(None)
+            .bind(chrono::Utc::now().to_rfc3339())
+            .bind(chrono::Utc::now().to_rfc3339())
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let cmd = CommitProjectDelete {
+            project_id: project_id.clone(),
+        };
+
+        let result = uow.commit_project_delete(cmd).await;
+
+        match result {
+            Err(PortError::InvalidStoredData { field, .. }) => {
+                assert_eq!(field, "id");
+            }
+            Ok(_) => panic!("Expected InvalidStoredData error, got Ok"),
+            Err(e) => panic!("Expected InvalidStoredData error, got Err({:?})", e),
+        }
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM projects WHERE id = ?")
+            .bind(project_id.to_string())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
+
+        let outbox_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM outbox_messages")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(outbox_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_commit_project_delete_conflict_when_missing() {
+        let pool = setup_db().await;
+        let uow = SqliteStorageUnitOfWork::new(pool.clone());
+        let project_id = domain::project::ProjectId::new();
+
+        let cmd = CommitProjectDelete {
+            project_id: project_id.clone(),
+        };
+
+        let result = uow.commit_project_delete(cmd).await;
+
+        match result {
+            Err(PortError::NotFound { .. }) => {}
+            Ok(_) => panic!("Expected NotFound on missing project initial check, got Ok"),
+            Err(e) => panic!(
+                "Expected NotFound on missing project initial check, got Err({:?})",
+                e
+            ),
         }
     }
 }

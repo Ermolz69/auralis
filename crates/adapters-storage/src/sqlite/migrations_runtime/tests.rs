@@ -405,46 +405,15 @@ async fn legacy_migration_is_idempotent() {
     assert_eq!(row2.get::<String, _>("kind"), "delete_workspace_file");
 }
 
+async fn setup_backfill_db() -> sqlx::SqlitePool {
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    pool
+}
+
 #[tokio::test]
 async fn test_backfill_artifacts_clears_json_and_migrates_data() {
-    let pool = setup_db().await;
-
-    // We need projects and artifacts table for this test
-    sqlx::query(
-        r#"
-        CREATE TABLE projects (
-            id TEXT PRIMARY KEY NOT NULL,
-            title TEXT NOT NULL,
-            status TEXT NOT NULL,
-            artifacts_json TEXT NOT NULL DEFAULT '[]',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )
-        "#,
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    sqlx::query(
-        r#"
-        CREATE TABLE artifacts (
-            id TEXT PRIMARY KEY NOT NULL,
-            project_id TEXT NOT NULL,
-            kind TEXT NOT NULL,
-            location_kind TEXT NOT NULL,
-            location_value TEXT NOT NULL,
-            size_bytes INTEGER,
-            state TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            ready_at TEXT
-        )
-        "#,
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
+    let pool = setup_backfill_db().await;
 
     // Insert legacy project
     let project_id = uuid::Uuid::new_v4().to_string();
@@ -458,8 +427,9 @@ async fn test_backfill_artifacts_clears_json_and_migrates_data() {
         "created_at": "2026-01-01T00:00:00Z"
     }]);
 
+    // We must provide ALL 12 columns as expected by the new rebuild logic
     sqlx::query(
-        "INSERT INTO projects (id, title, status, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+        "INSERT INTO projects (id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
     )
     .bind(&project_id)
     .bind(legacy_json.to_string())
@@ -472,14 +442,14 @@ async fn test_backfill_artifacts_clears_json_and_migrates_data() {
         .await
         .unwrap();
 
-    // Verify artifacts_json is cleared
-    let row = sqlx::query("SELECT artifacts_json FROM projects WHERE id = ?")
-        .bind(&project_id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    let remaining_json: String = row.get("artifacts_json");
-    assert_eq!(remaining_json, "[]");
+    // Verify artifacts_json is gone
+    let has_column: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('projects') WHERE name = 'artifacts_json'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(has_column, 0);
 
     // Verify artifact is migrated
     let artifact_row = sqlx::query("SELECT * FROM artifacts WHERE id = ?")
@@ -499,36 +469,19 @@ async fn test_backfill_artifacts_clears_json_and_migrates_data() {
 
 #[tokio::test]
 async fn test_backfill_artifacts_leaves_json_on_failure() {
-    let pool = setup_db().await;
+    let pool = setup_backfill_db().await;
 
-    sqlx::query(
-        r#"
-        CREATE TABLE projects (
-            id TEXT PRIMARY KEY NOT NULL,
-            title TEXT NOT NULL,
-            status TEXT NOT NULL,
-            artifacts_json TEXT NOT NULL DEFAULT '[]',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )
-        "#,
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    // Do NOT create artifacts table to force an insert failure
     let project_id = uuid::Uuid::new_v4().to_string();
     let artifact_id = uuid::Uuid::new_v4().to_string();
 
+    // Missing required location field will cause parsing error
     let legacy_json = json!([{
         "id": artifact_id,
-        "kind": "SourceVideo",
-        "location": { "LocalPath": "/tmp/test.mp4" }
+        "kind": "SourceVideo"
     }]);
 
     sqlx::query(
-        "INSERT INTO projects (id, title, status, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+        "INSERT INTO projects (id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
     )
     .bind(&project_id)
     .bind(legacy_json.to_string())
@@ -536,12 +489,14 @@ async fn test_backfill_artifacts_leaves_json_on_failure() {
     .await
     .unwrap();
 
-    // Run backfill (should succeed but print a warning and rollback the transaction for that project)
-    crate::sqlite::migrations_runtime::backfill_artifacts::run(&pool)
+    // Run backfill (should fail due to missing fields)
+    let err = crate::sqlite::migrations_runtime::backfill_artifacts::run(&pool)
         .await
-        .unwrap();
+        .unwrap_err();
 
-    // Verify artifacts_json is NOT cleared because insert failed
+    assert!(err.to_string().contains("Backfill failed for 1 projects"));
+
+    // Verify artifacts_json is NOT cleared
     let row = sqlx::query("SELECT artifacts_json FROM projects WHERE id = ?")
         .bind(&project_id)
         .fetch_one(&pool)
@@ -549,4 +504,159 @@ async fn test_backfill_artifacts_leaves_json_on_failure() {
         .unwrap();
     let remaining_json: String = row.get("artifacts_json");
     assert_ne!(remaining_json, "[]");
+}
+
+#[tokio::test]
+async fn test_equivalent_artifact_exists() {
+    let pool = setup_backfill_db().await;
+
+    let project_id = uuid::Uuid::new_v4().to_string();
+    let artifact_id = uuid::Uuid::new_v4().to_string();
+
+    let legacy_json = json!([{
+        "id": artifact_id,
+        "kind": "SourceVideo",
+        "location": { "LocalPath": "/tmp/test.mp4" },
+        "size_bytes": 1234,
+        "created_at": "2026-01-01T00:00:00Z"
+    }]);
+
+    sqlx::query(
+        "INSERT INTO projects (id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+    )
+    .bind(&project_id)
+    .bind(legacy_json.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Manually insert the SAME artifact into the artifacts table
+    sqlx::query(
+        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', '/tmp/test.mp4', 1234, 'ready', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+    )
+    .bind(&artifact_id)
+    .bind(&project_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Run backfill
+    let report = crate::sqlite::migrations_runtime::backfill_artifacts::run(&pool)
+        .await
+        .unwrap();
+
+    assert_eq!(report.artifacts_already_present, 1);
+    assert_eq!(report.failed_projects, 0);
+}
+
+#[tokio::test]
+async fn test_same_id_different_data_fails() {
+    let pool = setup_backfill_db().await;
+
+    let project_id = uuid::Uuid::new_v4().to_string();
+    let artifact_id = uuid::Uuid::new_v4().to_string();
+
+    let legacy_json = json!([{
+        "id": artifact_id,
+        "kind": "SourceVideo",
+        "location": { "LocalPath": "/tmp/test.mp4" },
+        "size_bytes": 1234
+    }]);
+
+    sqlx::query(
+        "INSERT INTO projects (id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+    )
+    .bind(&project_id)
+    .bind(legacy_json.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Manually insert the DIFFERENT artifact with the SAME id
+    sqlx::query(
+        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', '/tmp/different.mp4', 1234, 'ready', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+    )
+    .bind(&artifact_id)
+    .bind(&project_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Run backfill
+    let err = crate::sqlite::migrations_runtime::backfill_artifacts::run(&pool)
+        .await
+        .unwrap_err();
+
+    assert!(err.to_string().contains("Backfill failed for 1 projects"));
+}
+
+#[tokio::test]
+async fn test_same_location_different_id_fails() {
+    let pool = setup_backfill_db().await;
+
+    let project_id = uuid::Uuid::new_v4().to_string();
+    let artifact_id = uuid::Uuid::new_v4().to_string();
+
+    let legacy_json = json!([{
+        "id": artifact_id,
+        "kind": "SourceVideo",
+        "location": { "LocalPath": "/tmp/conflict.mp4" }
+    }]);
+
+    sqlx::query(
+        "INSERT INTO projects (id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+    )
+    .bind(&project_id)
+    .bind(legacy_json.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Insert an artifact with a DIFFERENT id but the SAME location
+    let other_artifact_id = uuid::Uuid::new_v4().to_string();
+    sqlx::query(
+        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', '/tmp/conflict.mp4', 1234, 'ready', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+    )
+    .bind(&other_artifact_id)
+    .bind(&project_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Run backfill
+    let err = crate::sqlite::migrations_runtime::backfill_artifacts::run(&pool)
+        .await
+        .unwrap_err();
+
+    assert!(err.to_string().contains("Backfill failed for 1 projects"));
+}
+
+#[tokio::test]
+async fn test_size_bytes_exceeds_i64_max_fails() {
+    let pool = setup_backfill_db().await;
+
+    let project_id = uuid::Uuid::new_v4().to_string();
+    let artifact_id = uuid::Uuid::new_v4().to_string();
+
+    let legacy_json = json!([{
+        "id": artifact_id,
+        "kind": "SourceVideo",
+        "location": { "LocalPath": "/tmp/test.mp4" },
+        "size_bytes": u64::MAX
+    }]);
+
+    sqlx::query(
+        "INSERT INTO projects (id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, artifacts_json, created_at, updated_at) VALUES (?, 'Legacy', 'Draft', NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"
+    )
+    .bind(&project_id)
+    .bind(legacy_json.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let err = crate::sqlite::migrations_runtime::backfill_artifacts::run(&pool)
+        .await
+        .unwrap_err();
+
+    assert!(err.to_string().contains("Backfill failed for 1 projects"));
 }

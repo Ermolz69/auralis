@@ -15,10 +15,15 @@ tasks:
     cmds:
       - task: format-check
       - task: runtime-println
+      - task: storage-fallbacks
 
   runtime-println:
     cmds:
       - node tools/scripts/check-runtime-println.mjs
+
+  storage-fallbacks:
+    cmds:
+      - node tools/scripts/check-storage-fallbacks.mjs
 
   fsd-boundaries:
     cmds:
