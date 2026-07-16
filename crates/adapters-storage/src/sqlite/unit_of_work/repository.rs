@@ -120,8 +120,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
     ) -> Result<CommitProjectDeleteResult, PortError> {
         // We'll acquire a write lock immediately
         // by executing a dummy update to ensure equivalent serialization (IMMEDIATE transaction semantics).
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to acquire connection: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to acquire connection", e)
         })?;
 
         // 1. Acquire write lock to serialize and prevent concurrent reads from missing this delete
@@ -130,8 +130,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             .bind(command.project_id.to_string())
             .execute(&mut *tx)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to verify project existence: {}", e),
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to verify project existence", e)
             })?;
 
         if exists.rows_affected() == 0 {
@@ -145,9 +145,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             .bind(command.project_id.to_string())
             .fetch_all(&mut *tx)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to fetch job IDs: {}", e),
-            })?;
+            .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch job IDs", e))?;
 
         let deleted_job_ids: Vec<domain::job::JobId> = job_records
             .into_iter()
@@ -178,9 +176,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         .bind(command.project_id.to_string())
         .fetch_all(&mut *tx)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to fetch artifacts: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch artifacts", e))?;
 
         // 4. Insert outbox DeleteStorageKey for each StorageKey artifact
         for record in artifact_records {
@@ -229,8 +225,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             .bind(command.project_id.to_string())
             .execute(&mut *tx)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to delete project in tx: {}", e),
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to delete project in tx", e)
             })?;
 
         if delete_result.rows_affected() != 1 {
@@ -240,8 +236,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             });
         }
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(CommitProjectDeleteResult { deleted_job_ids })
@@ -554,6 +550,54 @@ mod tests {
                 "Expected NotFound on missing project initial check, got Err({:?})",
                 e
             ),
+        }
+    }
+
+    #[sqlx::test]
+    async fn test_commit_project_delete_busy_lock_contention(pool: sqlx::SqlitePool) {
+        let project_id = domain::project::ProjectId::new();
+        // Insert a dummy project
+        sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'Test', 'draft', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")
+            .bind(project_id.to_string())
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        // Start a transaction on a separate connection that holds a write lock
+        let mut blocker_tx = pool.begin().await.unwrap();
+        // Acquire write lock
+        sqlx::query("UPDATE projects SET title = 'Locked' WHERE id = ?")
+            .bind(project_id.to_string())
+            .execute(&mut *blocker_tx)
+            .await
+            .unwrap();
+
+        // Now attempt to delete using the UoW in another task/connection.
+        // It should encounter SQLITE_BUSY immediately because of IMMEDIATE transaction semantics or the dummy UPDATE.
+        // In WAL mode, writers block writers immediately.
+        let uow = SqliteStorageUnitOfWork::new(pool.clone());
+        let cmd = CommitProjectDelete {
+            project_id: project_id.clone(),
+        };
+
+        // Note: With default busy_timeout=5000 in SqliteConnectOptions, it might wait 5s before failing if not configured properly,
+        // but for testing, if it takes time and returns Busy, that's fine. We just want to ensure it maps to PortError::Busy.
+        // However, we can use sqlx::query on a new connection with busy_timeout=0 if needed. But let's assume the UoW encounters Busy.
+        
+        // Actually, to make it fast for test, we can configure a pool with busy_timeout=0, but we just use the provided pool.
+        // We will run this and expect a Busy or timeout that maps to Unexpected.
+        // If it maps to Unexpected (e.g. database is locked), wait, SQLITE_BUSY extended is usually 5 or SQLITE_BUSY_TIMEOUT (517 -> 5).
+        // Let's just run it.
+        
+        let result = uow.commit_project_delete(cmd).await;
+
+        match result {
+            Err(PortError::Busy { .. }) => {} // Success
+            Err(PortError::Unexpected { message }) if message.contains("database is locked") || message.contains("busy") => {
+                panic!("Mapped to Unexpected instead of Busy: {}", message);
+            }
+            Err(e) => panic!("Expected Busy, got {:?}", e),
+            Ok(_) => panic!("Expected error, got Ok (lock was not held?)"),
         }
     }
 }

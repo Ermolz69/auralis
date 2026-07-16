@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
-import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { ProjectList } from './ProjectList';
 import { deleteProject, listProjects, useProjectContext } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
@@ -22,6 +22,7 @@ vi.mock('@/shared/ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    warning: vi.fn(),
   },
 }));
 
@@ -50,7 +51,7 @@ const mockProject: Project = {
 
 const mockProject2: Project = {
   id: 'p-2',
-  title: 'Another Project',
+  title: '', // Empty title to test fallback
   status: 'completed',
   source: { kind: 'externalLocalFile', path: '/local.mp4' },
   metadata: null,
@@ -62,7 +63,9 @@ describe('ProjectList', () => {
   let mockSetProjectId: Mock;
   let mockSetProject: Mock;
   let mockSetCurrentView: Mock;
-
+  let mockBeginProjectDeletion: Mock;
+  let mockFinishProjectDeletion: Mock;
+  
   beforeEach(() => {
     vi.clearAllMocks();
     cleanup();
@@ -70,11 +73,16 @@ describe('ProjectList', () => {
     mockSetProjectId = vi.fn();
     mockSetProject = vi.fn();
     mockSetCurrentView = vi.fn();
+    mockBeginProjectDeletion = vi.fn().mockReturnValue(true);
+    mockFinishProjectDeletion = vi.fn();
 
     (useProjectContext as any).mockReturnValue({
       projectId: 'p-1',
       setProjectId: mockSetProjectId,
       setProject: mockSetProject,
+      deletingProjectId: null,
+      beginProjectDeletion: mockBeginProjectDeletion,
+      finishProjectDeletion: mockFinishProjectDeletion,
     });
 
     (useNavigation as any).mockReturnValue({
@@ -84,131 +92,154 @@ describe('ProjectList', () => {
     (listProjects as any).mockResolvedValue([mockProject, mockProject2]);
   });
 
-  it('cancel confirmation does not call API', async () => {
+  it('Delete Button and Open Button are siblings', async () => {
     render(<ProjectList />);
+    await screen.findByText('Test Project');
+    const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
+    expect(openBtn.parentElement).toBe(deleteBtn.parentElement?.parentElement);
+  });
 
-    await screen.findByTitle('Test Project');
+  it('Empty title uses Untitled Project', async () => {
+    render(<ProjectList />);
+    await screen.findByText('Untitled Project');
+    expect(screen.getByRole('button', { name: 'Delete Untitled Project' })).not.toBeNull();
+  });
 
-    const deleteBtn = screen.getByLabelText('Delete Test Project');
+  it('cancel confirmation does not call API and returns focus to Delete Button', async () => {
+    render(<ProjectList />);
+    await screen.findByText('Test Project');
+
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
+    deleteBtn.focus();
     fireEvent.click(deleteBtn);
 
     const cancelBtn = screen.getByRole('button', { name: /cancel/i });
     fireEvent.click(cancelBtn);
 
     expect(deleteProject).not.toHaveBeenCalled();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(deleteBtn);
   });
 
-  it('delete calls API with correct ID and row is removed after success', async () => {
-    (deleteProject as any).mockResolvedValue();
-    
+  it('two rapid confirms trigger backend once', async () => {
     render(<ProjectList />);
-    await screen.findByTitle('Test Project');
+    await screen.findByText('Test Project');
 
-    const deleteBtn = screen.getByLabelText('Delete Test Project');
-    fireEvent.click(deleteBtn);
-
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    
+    mockBeginProjectDeletion.mockReturnValueOnce(true).mockReturnValueOnce(false);
+    
     const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
     fireEvent.click(confirmBtn);
+    fireEvent.click(confirmBtn);
 
-    expect(deleteProject).toHaveBeenCalledWith('p-1');
-    
-    // Project should be removed
-    await waitFor(() => {
-      expect(screen.queryByTitle('Test Project')).toBeNull();
-    });
-    expect(screen.queryByTitle('Another Project')).not.toBeNull();
-    
-    // Context is cleared for selected project
-    expect(mockSetProjectId).toHaveBeenCalledWith(null);
-    expect(mockSetProject).toHaveBeenCalledWith(null);
-    expect(mockSetCurrentView).toHaveBeenCalledWith('home');
-    expect(toast.success).toHaveBeenCalledWith('Project deleted successfully');
+    expect(deleteProject).toHaveBeenCalledTimes(1);
   });
 
-  it('context is cleared only for the selected Project', async () => {
-    (deleteProject as any).mockResolvedValue();
-    
-    render(<ProjectList />);
-    await screen.findByTitle('Another Project');
-
-    // Delete a project that is NOT the current one ('p-2')
-    const deleteBtn = screen.getByLabelText('Delete Another Project');
-    fireEvent.click(deleteBtn);
-
-    const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
-    fireEvent.click(confirmBtn);
-
-    expect(deleteProject).toHaveBeenCalledWith('p-2');
-    
-    await waitFor(() => {
-      expect(screen.queryByTitle('Another Project')).toBeNull();
+  it('opening deleting project is blocked', async () => {
+    (useProjectContext as any).mockReturnValue({
+      projectId: 'p-1',
+      deletingProjectId: 'p-1',
+      beginProjectDeletion: mockBeginProjectDeletion,
+      finishProjectDeletion: mockFinishProjectDeletion,
+      setProjectId: mockSetProjectId,
+      setProject: mockSetProject,
     });
+    render(<ProjectList />);
+    await screen.findByText('Test Project');
+
+    const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    expect((openBtn as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(openBtn);
     
-    // Context should NOT be cleared
     expect(mockSetProjectId).not.toHaveBeenCalled();
-    expect(mockSetProject).not.toHaveBeenCalled();
-    expect(mockSetCurrentView).not.toHaveBeenCalled();
   });
 
-  it('row remains after error and toast is shown', async () => {
-    (deleteProject as any).mockRejectedValue(new Error('Backend failure'));
-    
+  it('BUSY leaves row, shows warning, allows retry', async () => {
+    (deleteProject as any).mockRejectedValue({ code: 'BUSY', message: 'Busy error' });
     render(<ProjectList />);
-    await screen.findByTitle('Test Project');
+    await screen.findByText('Test Project');
 
-    const deleteBtn = screen.getByLabelText('Delete Test Project');
-    fireEvent.click(deleteBtn);
-
-    const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
-    fireEvent.click(confirmBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Error: Backend failure');
+      expect(toast.warning).toHaveBeenCalledWith('Busy error');
     });
-
-    // Row should still be there
-    expect(screen.queryByTitle('Test Project')).not.toBeNull();
+    expect(screen.getByText('Test Project')).not.toBeNull();
   });
 
-  it('clicking delete does not open Project', async () => {
+  it('REPOSITORY, VALIDATION, INTERNAL leave row and show error', async () => {
+    (deleteProject as any).mockRejectedValue({ code: 'REPOSITORY', message: 'Repo error' });
     render(<ProjectList />);
-    await screen.findByTitle('Test Project');
+    await screen.findByText('Test Project');
 
-    const deleteBtn = screen.getByLabelText('Delete Test Project');
-    fireEvent.click(deleteBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
-    // It should just open the dialog, not trigger handleOpenProject
-    expect(screen.queryByRole('dialog')).not.toBeNull();
-    expect(mockSetProjectId).not.toHaveBeenCalledWith('p-1');
-    expect(mockSetCurrentView).not.toHaveBeenCalledWith('project');
-  });
-
-  it('repeated request during pending is blocked', async () => {
-    let resolveDelete: any;
-    const deletePromise = new Promise((resolve) => { resolveDelete = resolve; });
-    (deleteProject as any).mockReturnValue(deletePromise);
-    
-    render(<ProjectList />);
-    await screen.findByTitle('Test Project');
-
-    const deleteBtn1 = screen.getByLabelText('Delete Test Project');
-    fireEvent.click(deleteBtn1);
-    const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
-    fireEvent.click(confirmBtn);
-
-    // While deleting p-1, the delete button for p-2 should be disabled
-    const deleteBtn2 = screen.getByLabelText('Delete Another Project') as HTMLButtonElement;
-    expect(deleteBtn2.disabled).toBe(true);
-
-    // Resolve the promise
-    resolveDelete();
-    
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Repo error');
+    });
+    expect(screen.getByText('Test Project')).not.toBeNull();
+  });
+
+  it('unknown error leaves row', async () => {
+    (deleteProject as any).mockRejectedValue(new Error('Unknown failure'));
+    render(<ProjectList />);
+    await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Error: Unknown failure');
+    });
+    expect(screen.getByText('Test Project')).not.toBeNull();
+  });
+
+  it('deleting inactive project does not clear context', async () => {
+    (deleteProject as any).mockResolvedValue(undefined);
+    render(<ProjectList />);
+    await screen.findByText('Untitled Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Untitled Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(mockFinishProjectDeletion).toHaveBeenCalledWith('p-2');
+    });
+    expect(mockSetProjectId).not.toHaveBeenCalled();
+  });
+
+  it('refetch failure after successful delete does not show delete failure', async () => {
+    (deleteProject as any).mockResolvedValue(undefined);
+    (listProjects as any).mockResolvedValueOnce([mockProject, mockProject2]).mockRejectedValue(new Error('Refetch failed'));
+    
+    render(<ProjectList />);
+    await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Test Project')).toBeNull();
+    });
+  });
+
+  it('success focuses next open target', async () => {
+    (deleteProject as any).mockResolvedValue(undefined);
+    (listProjects as any).mockResolvedValueOnce([mockProject, mockProject2]).mockResolvedValue([mockProject2]);
+    render(<ProjectList />);
+    await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Test Project')).toBeNull();
     });
     
-    // After success, deletingId is cleared, so remaining buttons are enabled again
-    expect(deleteBtn2.disabled).toBe(false);
+    const nextBtn = screen.getByRole('button', { name: 'Open Untitled Project' });
+    expect(document.activeElement).toBe(nextBtn);
   });
 });

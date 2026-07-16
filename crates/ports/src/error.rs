@@ -12,6 +12,9 @@ pub enum PortError {
     #[error("Conflict: {resource} - {message}")]
     Conflict { resource: String, message: String },
 
+    #[error("Resource is busy: {message}")]
+    Busy { message: String },
+
     #[error("Invalid stored data in {entity_type} {entity_id}, field '{field}': {message}")]
     InvalidStoredData {
         entity_type: String,

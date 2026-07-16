@@ -36,10 +36,7 @@ impl DeleteProjectUseCase {
         let result = self
             .storage_uow
             .commit_project_delete(commit)
-            .await
-            .map_err(|e| ApplicationError::InvalidOperation {
-                message: format!("Failed to delete project: {}", e),
-            })?;
+            .await?;
 
         // 2. Perform runtime cleanup
         if let Err(e) = self

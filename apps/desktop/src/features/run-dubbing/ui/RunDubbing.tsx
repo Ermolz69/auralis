@@ -5,7 +5,7 @@ import { toast } from '@/shared/ui/toast';
 
 export const RunDubbing = () => {
   const [isStarting, setIsStarting] = useState(false);
-  const { project, setProject } = useProjectContext();
+  const { project, setProject, deletingProjectId } = useProjectContext();
 
   const handleStart = async () => {
     if (!project?.id) return;
@@ -23,7 +23,7 @@ export const RunDubbing = () => {
   };
 
   const isEligible = project?.status === 'ready_for_processing' || project?.status === 'failed';
-  const isDisabled = !project?.id || isStarting || !isEligible;
+  const isDisabled = !project?.id || isStarting || !isEligible || deletingProjectId === project.id;
 
   return (
     <Button variant="primary" onClick={handleStart} disabled={isDisabled}>

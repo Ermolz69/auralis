@@ -8,6 +8,8 @@ use serde::Serialize;
 pub enum CommandError {
     NotFound(String),
     Validation(String),
+    Conflict(String),
+    Busy(String),
     Repository(String),
     Internal(String),
 }
@@ -32,7 +34,8 @@ impl From<ApplicationError> for CommandError {
             },
             ApplicationError::Port(port_err) => match port_err {
                 PortError::NotFound { .. } => CommandError::NotFound(port_err.to_string()),
-                PortError::Conflict { .. } => CommandError::Validation(port_err.to_string()),
+                PortError::Conflict { .. } => CommandError::Conflict(port_err.to_string()),
+                PortError::Busy { .. } => CommandError::Busy(port_err.to_string()),
                 PortError::InvalidSource { .. } => CommandError::Validation(port_err.to_string()),
                 _ => CommandError::Repository(port_err.to_string()),
             },
@@ -55,5 +58,25 @@ impl From<ApplicationError> for CommandError {
             }
             ApplicationError::Unexpected(msg) => CommandError::Internal(msg),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_command_error_serialization() {
+        let not_found = CommandError::NotFound("project missing".into());
+        let json = serde_json::to_string(&not_found).unwrap();
+        assert_eq!(json, r#"{"code":"NOT_FOUND","message":"project missing"}"#);
+
+        let conflict = CommandError::Conflict("conflict error".into());
+        let json = serde_json::to_string(&conflict).unwrap();
+        assert_eq!(json, r#"{"code":"CONFLICT","message":"conflict error"}"#);
+
+        let busy = CommandError::Busy("database busy".into());
+        let json = serde_json::to_string(&busy).unwrap();
+        assert_eq!(json, r#"{"code":"BUSY","message":"database busy"}"#);
     }
 }
