@@ -14,4 +14,6 @@ pub struct OutboxRow {
     pub deduplication_key: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub aggregate_type: Option<String>,
+    pub aggregate_id: Option<String>,
 }

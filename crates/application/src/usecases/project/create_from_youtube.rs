@@ -34,6 +34,8 @@ pub struct CreateProjectFromYoutubeUseCase<
     subtitle_source: SSub,
     artifact_store: SStore,
     workspace_port: Arc<dyn TempWorkspacePort>,
+    locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
 }
 
 impl<
@@ -52,6 +54,8 @@ impl<
         subtitle_source: SSub,
         artifact_store: SStore,
         workspace_port: Arc<dyn TempWorkspacePort>,
+        locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+        job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     ) -> Self {
         Self {
             project_repo,
@@ -61,6 +65,8 @@ impl<
             subtitle_source,
             artifact_store,
             workspace_port,
+            locks,
+            job_runtime,
         }
     }
 
@@ -98,6 +104,8 @@ impl<
             self.subtitle_source.clone(),
             self.artifact_store.clone(),
             self.workspace_port.clone(),
+            self.locks.clone(),
+            self.job_runtime.clone(),
         );
         let req3 = StartMockPipelineRequest {
             project_id: proj.id().clone(),

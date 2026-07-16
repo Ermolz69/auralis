@@ -13,7 +13,7 @@ impl SqliteOutboxRepository {
                 locked_at = NULL,
                 locked_by = NULL,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-            WHERE id = ?
+            WHERE id = ? AND status = 'processing'
             "#,
         )
         .bind(&id_str)
@@ -56,7 +56,7 @@ impl SqliteOutboxRepository {
                     WHEN attempts + 1 >= 5 THEN next_attempt_at
                     ELSE strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+' || CAST(CAST(1 AS INTEGER) << (attempts + 1) AS TEXT) || ' minutes')
                 END
-            WHERE id = ?
+            WHERE id = ? AND status = 'processing'
             "#,
         )
         .bind(error)

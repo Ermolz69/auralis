@@ -65,7 +65,12 @@ pub(super) async fn update_job(
             updated_at = ?,
             started_at = ?,
             finished_at = ?
-        WHERE id = ?
+        WHERE id = ? AND project_id = ?
+          AND EXISTS (
+              SELECT 1 FROM projects
+              WHERE projects.id = jobs.project_id
+                AND projects.active_job_id = jobs.id
+          )
         "#,
     )
     .bind(row.title)
@@ -77,6 +82,7 @@ pub(super) async fn update_job(
     .bind(row.started_at)
     .bind(row.finished_at)
     .bind(row.id)
+    .bind(row.project_id)
     .execute(&mut **tx)
     .await
     .map_err(|e| PortError::Unexpected {

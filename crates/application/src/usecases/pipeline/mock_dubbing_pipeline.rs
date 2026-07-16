@@ -25,6 +25,7 @@ pub struct MockDubbingPipelineRunner<
     storage_uow: T,
     artifact_store: S,
     workspace_port: Arc<dyn TempWorkspacePort>,
+    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
 }
 
 impl<
@@ -41,6 +42,7 @@ impl<
         storage_uow: T,
         artifact_store: S,
         workspace_port: Arc<dyn TempWorkspacePort>,
+        job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     ) -> Self {
         Self {
             job_scheduler,
@@ -49,17 +51,42 @@ impl<
             storage_uow,
             artifact_store,
             workspace_port,
+            job_runtime,
         }
     }
 
     pub fn spawn(self, job_id: JobId, project_id: ProjectId) {
+        let (cancel_handle, token) = ports::cancellation::CancelHandle::new();
+        let (state_tx, state_rx) =
+            tokio::sync::watch::channel(ports::job_runtime_control::RuntimeState::Starting);
+
+        let runtime_clone = self.job_runtime.clone();
+        let job_id_clone = job_id.clone();
+
+        let runner = async move {
+            let _ = state_tx.send(ports::job_runtime_control::RuntimeState::Running);
+            self.run(job_id, project_id, token).await;
+            let _ = state_tx.send(ports::job_runtime_control::RuntimeState::Finished);
+        };
+
+        let join_handle = tokio::spawn(runner);
+        let abort_handle = join_handle.abort_handle();
+
+        // Register the task synchronously by spawning another short-lived task
         tokio::spawn(async move {
-            self.run(job_id, project_id).await;
+            runtime_clone
+                .register_runtime_task(job_id_clone, cancel_handle, state_rx, abort_handle)
+                .await;
         });
     }
 
     #[allow(clippy::collapsible_if)]
-    async fn run(&self, job_id: JobId, project_id: ProjectId) {
+    async fn run(
+        &self,
+        job_id: JobId,
+        project_id: ProjectId,
+        token: ports::cancellation::CancellationToken,
+    ) {
         let stages = vec![
             (DubbingPipelineStage::ValidateSource, 10, 500),
             (DubbingPipelineStage::FetchMetadata, 25, 600),
@@ -67,6 +94,10 @@ impl<
         ];
 
         for (stage, percent, delay_ms) in stages {
+            if token.is_cancelled() {
+                return;
+            }
+
             match self.job_scheduler.get_job(&job_id).await {
                 Ok(Some(job)) => {
                     if job.status == JobStatus::Cancelled {
@@ -89,7 +120,11 @@ impl<
                 .update_job_stage(&job_id, stage.clone(), progress)
                 .await;
 
-            sleep(Duration::from_millis(delay_ms)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+        }
+
+        if token.is_cancelled() {
+            return;
         }
 
         // ExtractOrGenerateTranscript stage (Real work: Subtitles Import)

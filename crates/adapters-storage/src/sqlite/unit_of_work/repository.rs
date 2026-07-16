@@ -4,8 +4,9 @@ use sqlx::SqlitePool;
 use domain::outbox::{OutboxMessage, OutboxPayload};
 use ports::error::PortError;
 use ports::transaction::{
-    CommitJobUpdate, CommitManagedSourceImport, CommitPipelineStart, CommitPipelineStartFailure,
-    CommitProjectDelete, CommitProjectDeleteResult, CommitStagedArtifactWrite,
+    ApplyTerminalLifecycle, CommitArtifactFinalize, CommitJobUpdate, CommitManagedSourceImport,
+    CommitPipelineStart, CommitPipelineStartFailure, CommitProjectDelete,
+    CommitProjectDeleteResult, CommitStagedArtifactWrite, CommitTerminalJobUpdate,
     CommitTranscriptImport, StorageUnitOfWork,
 };
 
@@ -38,6 +39,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         save_artifact(&mut tx, command.project.id(), &command.artifact).await?;
 
         let finalize_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
+            project_id: command.project.id().clone(),
             artifact_id: command.artifact.id.clone(),
             staging_key: command.staging_key,
             final_key: command.final_key,
@@ -68,6 +70,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         save_artifact(&mut tx, &command.project_id, &command.artifact).await?;
 
         let finalize_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
+            project_id: command.project_id.clone(),
             artifact_id: command.artifact.id.clone(),
             staging_key: command.staging_key,
             final_key: command.final_key,
@@ -101,6 +104,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         save_artifact(&mut tx, command.project.id(), &command.artifact).await?;
 
         let finalize_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
+            project_id: command.project.id().clone(),
             artifact_id: command.artifact.id.clone(),
             staging_key: command.staging_key,
             final_key: command.final_key,
@@ -177,6 +181,17 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         .fetch_all(&mut *tx)
         .await
         .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch artifacts", e))?;
+
+        // Cancel Existing Outbox
+        sqlx::query(
+            "UPDATE outbox_messages SET status = 'dead' WHERE aggregate_type = 'project' AND aggregate_id = ? AND status IN ('pending', 'processing')"
+        )
+        .bind(command.project_id.to_string())
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to cancel existing outbox messages", e)
+        })?;
 
         // 4. Insert outbox DeleteStorageKey for each StorageKey artifact
         for record in artifact_records {
@@ -367,6 +382,63 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         })?;
 
         Ok(res)
+    }
+
+    async fn commit_artifact_finalize(
+        &self,
+        command: CommitArtifactFinalize,
+    ) -> Result<(), PortError> {
+        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
+            message: format!("Failed to begin transaction: {}", e),
+        })?;
+
+        // 1. Verify Outbox Message is 'processing'
+        let outbox_result = sqlx::query(
+            "UPDATE outbox_messages SET status = 'done', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ? AND status = 'processing'",
+        )
+        .bind(command.message_id.to_string())
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to check outbox status", e))?;
+
+        if outbox_result.rows_affected() == 0 {
+            return Err(PortError::Conflict {
+                resource: "OutboxMessage".to_string(),
+                message: "Fencing conflict: Message not processing or not found".to_string(),
+            });
+        }
+
+        // 2. Verify artifact ownership and project, update to ready
+        let artifact_result = sqlx::query(
+            r#"
+            UPDATE artifacts 
+            SET state = 'ready', 
+                location_kind = 'managed_local_file', 
+                location_value = ?, 
+                ready_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+                updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') 
+            WHERE id = ? AND project_id = ?
+            "#,
+        )
+        .bind(command.ready_key.to_string())
+        .bind(command.artifact_id.to_string())
+        .bind(command.project_id.to_string())
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update artifact", e))?;
+
+        if artifact_result.rows_affected() == 0 {
+            return Err(PortError::Conflict {
+                resource: "Artifact".to_string(),
+                message: "Fencing conflict: Artifact not found for project".to_string(),
+            });
+        }
+
+        tx.commit().await.map_err(|e| PortError::Unexpected {
+            message: format!("Failed to commit finalize transaction: {}", e),
+        })?;
+
+        Ok(())
     }
 }
 
@@ -583,17 +655,19 @@ mod tests {
         // Note: With default busy_timeout=5000 in SqliteConnectOptions, it might wait 5s before failing if not configured properly,
         // but for testing, if it takes time and returns Busy, that's fine. We just want to ensure it maps to PortError::Busy.
         // However, we can use sqlx::query on a new connection with busy_timeout=0 if needed. But let's assume the UoW encounters Busy.
-        
+
         // Actually, to make it fast for test, we can configure a pool with busy_timeout=0, but we just use the provided pool.
         // We will run this and expect a Busy or timeout that maps to Unexpected.
         // If it maps to Unexpected (e.g. database is locked), wait, SQLITE_BUSY extended is usually 5 or SQLITE_BUSY_TIMEOUT (517 -> 5).
         // Let's just run it.
-        
+
         let result = uow.commit_project_delete(cmd).await;
 
         match result {
             Err(PortError::Busy { .. }) => {} // Success
-            Err(PortError::Unexpected { message }) if message.contains("database is locked") || message.contains("busy") => {
+            Err(PortError::Unexpected { message })
+                if message.contains("database is locked") || message.contains("busy") =>
+            {
                 panic!("Mapped to Unexpected instead of Busy: {}", message);
             }
             Err(e) => panic!("Expected Busy, got {:?}", e),

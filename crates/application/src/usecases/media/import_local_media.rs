@@ -38,8 +38,9 @@ pub struct ImportLocalMediaUseCase<
     storage_uow: Arc<dyn StorageUnitOfWork>,
     subtitle_source: V,
     artifact_store: S,
-    artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
     workspace_port: Arc<dyn TempWorkspacePort>,
+    locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
 }
 
 impl<
@@ -52,23 +53,25 @@ impl<
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         project_repo: R,
-        media_probe: P,
+        probe: P,
         job_scheduler: Arc<dyn JobSchedulerPort>,
         storage_uow: Arc<dyn StorageUnitOfWork>,
-        subtitle_source: V,
+        video_source: V,
         artifact_store: S,
-        artifact_index: Arc<dyn ports::artifact_index::ArtifactIndex>,
         workspace_port: Arc<dyn TempWorkspacePort>,
+        locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+        job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     ) -> Self {
         Self {
             project_repo,
-            media_probe,
+            media_probe: probe,
             job_scheduler,
             storage_uow,
-            subtitle_source,
+            subtitle_source: video_source,
             artifact_store,
-            artifact_index,
             workspace_port,
+            locks,
+            job_runtime,
         }
     }
 
@@ -133,19 +136,7 @@ impl<
             return Err(ApplicationError::Port(e));
         }
 
-        // 5. Fast-path finalization
-        let finalizer = crate::services::artifact_finalizer::ArtifactFinalizer::new(
-            self.artifact_index.clone(),
-            self.artifact_store.clone(),
-        );
-
-        finalizer
-            .finalize(
-                &staged_artifact.artifact.id,
-                &staged_artifact.staging_key,
-                &staged_artifact.final_key,
-            )
-            .await?;
+        // Fast-path finalization removed. It will be handled asynchronously by outbox worker.
 
         // 6. Transition project to ReadyForProcessing
         project.mark_ready_for_processing()?;
@@ -158,6 +149,8 @@ impl<
             self.subtitle_source.clone(),
             self.artifact_store.clone(),
             self.workspace_port.clone(),
+            self.locks.clone(),
+            self.job_runtime.clone(),
         );
 
         let pipeline_req = StartMockPipelineRequest {

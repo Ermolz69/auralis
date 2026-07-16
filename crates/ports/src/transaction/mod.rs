@@ -43,6 +43,10 @@ pub trait StorageUnitOfWork: Send + Sync {
         &self,
         command: ApplyTerminalLifecycle,
     ) -> Result<domain::project::status::TerminalTransitionResult, PortError>;
+    async fn commit_artifact_finalize(
+        &self,
+        command: CommitArtifactFinalize,
+    ) -> Result<(), PortError>;
 }
 
 #[async_trait]
@@ -96,5 +100,11 @@ impl<T: ?Sized + StorageUnitOfWork> StorageUnitOfWork for std::sync::Arc<T> {
         (**self)
             .apply_terminal_lifecycle_conditionally(command)
             .await
+    }
+    async fn commit_artifact_finalize(
+        &self,
+        command: CommitArtifactFinalize,
+    ) -> Result<(), PortError> {
+        (**self).commit_artifact_finalize(command).await
     }
 }

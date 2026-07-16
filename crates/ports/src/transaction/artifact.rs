@@ -59,3 +59,10 @@ pub struct CommitStagedArtifactWrite {
     pub final_key: String,
     pub temp_workspace_key: Option<domain::outbox::WorkspaceKey>,
 }
+
+pub struct CommitArtifactFinalize {
+    pub message_id: domain::outbox::OutboxMessageId,
+    pub project_id: ProjectId,
+    pub artifact_id: domain::media::ArtifactId,
+    pub ready_key: String,
+}

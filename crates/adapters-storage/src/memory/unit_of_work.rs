@@ -229,4 +229,11 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
 
         Ok(res)
     }
+
+    async fn commit_artifact_finalize(
+        &self,
+        _command: ports::transaction::CommitArtifactFinalize,
+    ) -> Result<(), PortError> {
+        Ok(())
+    }
 }

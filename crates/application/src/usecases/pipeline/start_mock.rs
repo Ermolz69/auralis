@@ -21,6 +21,8 @@ pub struct StartMockPipelineResponse {
     pub job: ScheduledJob,
 }
 
+use crate::usecases::project::lifecycle::ProjectLifecycleLocks;
+
 pub struct StartMockPipelineUseCase<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
@@ -32,6 +34,8 @@ pub struct StartMockPipelineUseCase<
     subtitle_source: V,
     artifact_store: S,
     workspace_port: Arc<dyn TempWorkspacePort>,
+    locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
 }
 
 impl<
@@ -45,9 +49,10 @@ impl<
         job_scheduler: Arc<dyn JobSchedulerPort>,
         storage_uow: Arc<dyn StorageUnitOfWork>,
         subtitle_source: V,
-
         artifact_store: S,
         workspace_port: Arc<dyn TempWorkspacePort>,
+        locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+        job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     ) -> Self {
         Self {
             project_repo,
@@ -56,6 +61,8 @@ impl<
             subtitle_source,
             artifact_store,
             workspace_port,
+            locks,
+            job_runtime,
         }
     }
 
@@ -63,6 +70,9 @@ impl<
         &self,
         request: StartMockPipelineRequest,
     ) -> Result<StartMockPipelineResponse, ApplicationError> {
+        let lock_arc = self.locks.get_lock(&request.project_id);
+        let _lock = lock_arc.lock().await;
+
         let mut project = self
             .project_repo
             .get(&request.project_id)
@@ -145,6 +155,7 @@ impl<
             self.storage_uow.clone(),
             self.artifact_store.clone(),
             self.workspace_port.clone(),
+            self.job_runtime.clone(),
         );
 
         runner.spawn(job.id.clone(), request.project_id.clone());
@@ -215,6 +226,7 @@ mod tests {
             MockSubtitleSource,
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -265,6 +277,7 @@ mod tests {
             MockSubtitleSource,
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -299,6 +312,7 @@ mod tests {
             MockSubtitleSource,
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -340,6 +354,7 @@ mod tests {
             MockSubtitleSource,
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -378,6 +393,7 @@ mod tests {
             MockSubtitleSource,
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -512,6 +528,7 @@ mod tests {
             MockSubtitleSource,
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),

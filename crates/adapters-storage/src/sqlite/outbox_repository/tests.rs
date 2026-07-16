@@ -12,16 +12,20 @@ async fn setup_db() -> SqlitePool {
             id TEXT PRIMARY KEY NOT NULL,
             kind TEXT NOT NULL,
             payload_json TEXT NOT NULL,
-            deduplication_key TEXT UNIQUE,
             status TEXT NOT NULL DEFAULT 'pending',
             attempts INTEGER NOT NULL DEFAULT 0,
             next_attempt_at TEXT NOT NULL,
             locked_at TEXT,
             locked_by TEXT,
             last_error TEXT,
+            deduplication_key TEXT UNIQUE,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            aggregate_type TEXT,
+            aggregate_id TEXT
         );
+        CREATE INDEX idx_outbox_aggregate_status ON outbox_messages(aggregate_type, aggregate_id, status);
+
         "#,
     )
     .execute(&pool)

@@ -1,19 +1,18 @@
+use domain::job::JobId;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
-
-use domain::job::JobId;
-
-use tokio::sync::oneshot;
+use tokio::sync::{RwLock, watch};
+use tokio::task::AbortHandle;
 
 pub struct JobRegistration {
-    pub cancel_handle: crate::cancellation::CancelHandle,
-    pub completion_rx: Option<oneshot::Receiver<()>>,
+    pub cancel_handle: ports::cancellation::CancelHandle,
+    pub state_rx: watch::Receiver<ports::job_runtime_control::RuntimeState>,
+    pub abort_handle: AbortHandle,
 }
 
 #[derive(Clone)]
 pub struct CancellationRegistry {
-    handles: Arc<RwLock<HashMap<JobId, JobRegistration>>>,
+    pub(crate) handles: Arc<RwLock<HashMap<JobId, JobRegistration>>>,
 }
 
 impl CancellationRegistry {
@@ -26,14 +25,16 @@ impl CancellationRegistry {
     pub async fn register(
         &self,
         id: JobId,
-        handle: crate::cancellation::CancelHandle,
-        completion_rx: Option<oneshot::Receiver<()>>,
+        cancel_handle: ports::cancellation::CancelHandle,
+        state_rx: watch::Receiver<ports::job_runtime_control::RuntimeState>,
+        abort_handle: AbortHandle,
     ) {
         self.handles.write().await.insert(
             id,
             JobRegistration {
-                cancel_handle: handle,
-                completion_rx,
+                cancel_handle,
+                state_rx,
+                abort_handle,
             },
         );
     }
@@ -46,20 +47,6 @@ impl CancellationRegistry {
         let handles = self.handles.read().await;
         if let Some(reg) = handles.get(id) {
             reg.cancel_handle.cancel();
-        }
-    }
-
-    pub async fn cancel_and_wait(&self, id: &JobId) {
-        let mut rx_to_wait = None;
-        {
-            let mut handles = self.handles.write().await;
-            if let Some(reg) = handles.get_mut(id) {
-                reg.cancel_handle.cancel();
-                rx_to_wait = reg.completion_rx.take();
-            }
-        }
-        if let Some(rx) = rx_to_wait {
-            let _ = rx.await;
         }
     }
 }

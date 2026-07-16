@@ -35,6 +35,9 @@ pub fn row_to_outbox_message(row: OutboxRow) -> Result<OutboxMessage, PortError>
     let created_at = parse_datetime(&row.created_at, "created_at")?;
     let updated_at = parse_datetime(&row.updated_at, "updated_at")?;
 
+    let aggregate_type: Option<String> = row.aggregate_type.clone();
+    let aggregate_id: Option<String> = row.aggregate_id.clone();
+
     Ok(OutboxMessage {
         id,
         payload,
@@ -47,6 +50,8 @@ pub fn row_to_outbox_message(row: OutboxRow) -> Result<OutboxMessage, PortError>
         deduplication_key: row.deduplication_key,
         created_at,
         updated_at,
+        aggregate_type,
+        aggregate_id,
     })
 }
 

@@ -31,8 +31,9 @@ pub(super) async fn save_outbox_message(
         r#"
         INSERT OR IGNORE INTO outbox_messages (
             id, kind, payload_json, status, attempts, next_attempt_at,
-            locked_at, locked_by, last_error, deduplication_key, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            locked_at, locked_by, last_error, deduplication_key, created_at, updated_at,
+            aggregate_type, aggregate_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(msg.id.to_string())
@@ -47,8 +48,12 @@ pub(super) async fn save_outbox_message(
     .bind(msg.deduplication_key.clone())
     .bind(msg.created_at.to_rfc3339())
     .bind(msg.updated_at.to_rfc3339())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_id.clone())
     .execute(&mut **tx)
     .await
-    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to add outbox message in tx", e))?;
+    .map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to add outbox message in tx", e)
+    })?;
     Ok(())
 }

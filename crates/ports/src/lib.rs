@@ -1,4 +1,5 @@
 pub mod artifact_index;
+pub mod cancellation;
 pub mod control;
 pub mod engine;
 pub mod error;

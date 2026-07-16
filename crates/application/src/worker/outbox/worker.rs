@@ -110,7 +110,10 @@ where
 
             report.claimed += 1;
 
-            let result = self.handler.process_payload(&message.payload).await;
+            let result = self
+                .handler
+                .process_payload(&message.id, &message.payload)
+                .await;
 
             match result {
                 Ok(_) => match self.outbox_repo.mark_done(&message.id).await {

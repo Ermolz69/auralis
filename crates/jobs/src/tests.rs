@@ -32,7 +32,13 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
     }
     async fn commit_staged_artifact_write(
         &self,
-        _c: CommitStagedArtifactWrite,
+        _command: ports::transaction::CommitStagedArtifactWrite,
+    ) -> Result<(), PortError> {
+        Ok(())
+    }
+    async fn commit_artifact_finalize(
+        &self,
+        _command: ports::transaction::CommitArtifactFinalize,
     ) -> Result<(), PortError> {
         Ok(())
     }

@@ -7,7 +7,6 @@ use ports::workspace::TempWorkspacePort;
 use std::sync::Arc;
 
 use crate::error::ApplicationError;
-use crate::services::artifact_finalizer::ArtifactFinalizer;
 
 pub struct PayloadHandler<S, I, U>
 where
@@ -28,25 +27,50 @@ where
     I: ArtifactIndex + Clone,
     U: StorageUnitOfWork,
 {
-    pub async fn process_payload(&self, payload: &OutboxPayload) -> Result<(), ApplicationError> {
+    pub async fn process_payload(
+        &self,
+        message_id: &domain::outbox::OutboxMessageId,
+        payload: &OutboxPayload,
+    ) -> Result<(), ApplicationError> {
         match payload {
             OutboxPayload::FinalizeStagedArtifact {
+                project_id,
                 artifact_id,
                 staging_key,
                 final_key,
             } => {
-                let finalizer = ArtifactFinalizer::new(
-                    self.artifact_index.clone(),
-                    self.artifact_store.clone(),
-                );
-
-                if !finalizer
-                    .finalize(artifact_id, staging_key, final_key)
-                    .await?
+                // 1. Perform persistent move
+                match self
+                    .artifact_store
+                    .finalize_staged_artifact(staging_key, final_key)
+                    .await
                 {
-                    // If it returns false, it means project/artifact was deleted
+                    Ok(_) => {}
+                    Err(ports::error::PortError::NotFound { .. }) => {
+                        // Staging file missing. We must assume it was already finalized.
+                    }
+                    Err(e) => return Err(e.into()),
+                }
+
+                // 2. Commit transaction with CAS
+                let cmd = ports::transaction::CommitArtifactFinalize {
+                    message_id: message_id.clone(),
+                    project_id: project_id.clone(),
+                    artifact_id: artifact_id.clone(),
+                    ready_key: final_key.clone(),
+                };
+
+                let commit_result = self.uow.commit_artifact_finalize(cmd).await;
+
+                if let Err(ports::error::PortError::Conflict { .. }) = commit_result {
+                    // Conflict means rows_affected == 0.
+                    // The project was deleted, or this was concurrently finalized, or cancelled.
+                    // We must compensate by deleting the final key since the DB rejected it.
+                    let _ = self.artifact_store.delete_storage_key(final_key).await;
                     return Ok(());
                 }
+
+                commit_result?;
             }
             OutboxPayload::DeleteStorageKey { storage_key } => {
                 self.artifact_store.delete_storage_key(storage_key).await?;

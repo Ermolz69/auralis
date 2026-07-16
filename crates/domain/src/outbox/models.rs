@@ -54,6 +54,7 @@ pub enum OutboxMessageStatus {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OutboxPayload {
     FinalizeStagedArtifact {
+        project_id: ProjectId,
         artifact_id: ArtifactId,
         staging_key: String,
         final_key: String,
@@ -74,6 +75,24 @@ pub enum OutboxPayload {
     },
 }
 
+impl OutboxPayload {
+    pub fn aggregate_info(&self) -> (Option<String>, Option<String>) {
+        match self {
+            OutboxPayload::FinalizeStagedArtifact { project_id, .. } => {
+                (Some("project".to_string()), Some(project_id.to_string()))
+            }
+            OutboxPayload::DeleteStorageKey { .. } => (None, None),
+            OutboxPayload::DeleteProjectArtifactDir { project_id } => {
+                (Some("project".to_string()), Some(project_id.to_string()))
+            }
+            OutboxPayload::DeleteWorkspaceFile { .. } => (None, None),
+            OutboxPayload::HandleTerminalJobState { project_id, .. } => {
+                (Some("project".to_string()), Some(project_id.to_string()))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutboxMessage {
     pub id: OutboxMessageId,
@@ -87,11 +106,14 @@ pub struct OutboxMessage {
     pub deduplication_key: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub aggregate_type: Option<String>,
+    pub aggregate_id: Option<String>,
 }
 
 impl OutboxMessage {
     pub fn new(payload: OutboxPayload) -> Self {
         let now = Utc::now();
+        let (aggregate_type, aggregate_id) = payload.aggregate_info();
         Self {
             id: OutboxMessageId::new(),
             payload,
@@ -104,6 +126,8 @@ impl OutboxMessage {
             deduplication_key: None,
             created_at: now,
             updated_at: now,
+            aggregate_type,
+            aggregate_id,
         }
     }
 }

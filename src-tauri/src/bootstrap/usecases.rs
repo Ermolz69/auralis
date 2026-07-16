@@ -68,6 +68,8 @@ pub fn setup_usecases(
         app,
     ));
 
+    let locks = Arc::new(application::usecases::project::lifecycle::ProjectLifecycleLocks::new());
+
     let usecases = AppUseCases {
         list_project_artifacts: ListProjectArtifactsUseCase::new(artifact_index.clone()),
         resolve_artifact_path: ResolveArtifactPathUseCase::new(
@@ -82,8 +84,9 @@ pub fn setup_usecases(
             storage_uow.clone(),
             ytdlp_adapter.clone(),
             artifact_store.clone(),
-            artifact_index.clone(),
             workspace_port.clone(),
+            locks.clone(),
+            job_runtime.clone(),
         ),
         create_project: CreateProjectUseCase::new(project_repo.clone()),
         create_project_from_youtube: CreateProjectFromYoutubeUseCase::new(
@@ -94,10 +97,16 @@ pub fn setup_usecases(
             ytdlp_adapter.clone(),
             artifact_store.clone(),
             workspace_port.clone(),
+            locks.clone(),
+            job_runtime.clone(),
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
-        delete_project: DeleteProjectUseCase::new(storage_uow.clone(), job_runtime.clone()),
+        delete_project: DeleteProjectUseCase::new(
+            storage_uow.clone(),
+            job_runtime.clone(),
+            locks.clone(),
+        ),
         start_mock_pipeline: StartMockPipelineUseCase::new(
             project_repo.clone(),
             job_scheduler.clone(),
@@ -105,6 +114,8 @@ pub fn setup_usecases(
             ytdlp_adapter.clone(),
             artifact_store.clone(),
             workspace_port.clone(),
+            locks.clone(),
+            job_runtime.clone(),
         ),
         get_transcript: GetTranscriptUseCase::new(project_repo.clone()),
         list_jobs: ListJobsUseCase::new(job_scheduler.clone()),
