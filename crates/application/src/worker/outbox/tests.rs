@@ -90,8 +90,9 @@ impl OutboxRepository for MockOutboxRepository {
 
     async fn prune_terminal_rows(
         &self,
-        _done_retention_days: u32,
-        _dead_retention_days: u32,
+        _done_before: chrono::DateTime<chrono::Utc>,
+        _dead_before: chrono::DateTime<chrono::Utc>,
+        _batch_limit: u32,
     ) -> Result<ports::repository::OutboxPruneReport, PortError> {
         Ok(ports::repository::OutboxPruneReport {
             done_deleted: 0,
@@ -329,6 +330,7 @@ fn create_worker(
         MockUow,
         Arc::new(MockEventPublisher),
         Arc::new(MockWorkspacePort),
+        super::maintenance::OutboxMaintenanceConfig::default_config(),
     )
 }
 

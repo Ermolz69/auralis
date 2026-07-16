@@ -49,9 +49,6 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             temp_workspace.clone(),
         );
         app.manage(outbox_shutdown);
-
-        let maintenance_shutdown = workers::spawn_storage_maintenance_worker(Arc::new(outbox_repo));
-        app.manage(maintenance_shutdown);
     }
 
     // 3. Build Job Scheduler

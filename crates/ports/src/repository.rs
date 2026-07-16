@@ -50,8 +50,9 @@ pub trait OutboxRepository: Send + Sync {
 
     async fn prune_terminal_rows(
         &self,
-        done_retention_days: u32,
-        dead_retention_days: u32,
+        done_before: chrono::DateTime<chrono::Utc>,
+        dead_before: chrono::DateTime<chrono::Utc>,
+        batch_limit: u32,
     ) -> Result<OutboxPruneReport, PortError>;
 }
 use std::sync::Arc;
@@ -113,11 +114,12 @@ where
 
     async fn prune_terminal_rows(
         &self,
-        done_retention_days: u32,
-        dead_retention_days: u32,
+        done_before: chrono::DateTime<chrono::Utc>,
+        dead_before: chrono::DateTime<chrono::Utc>,
+        batch_limit: u32,
     ) -> Result<OutboxPruneReport, PortError> {
         (**self)
-            .prune_terminal_rows(done_retention_days, dead_retention_days)
+            .prune_terminal_rows(done_before, dead_before, batch_limit)
             .await
     }
 }
