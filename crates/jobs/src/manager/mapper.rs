@@ -4,6 +4,7 @@ use ports::job_scheduler::ScheduledJob;
 pub fn map_job_to_scheduled(job: &Job) -> ScheduledJob {
     ScheduledJob {
         id: job.id().clone(),
+        revision: job.revision(),
         project_id: Some(job.project_id().clone()),
         title: job.title().to_string(),
         status: job.status().clone(),

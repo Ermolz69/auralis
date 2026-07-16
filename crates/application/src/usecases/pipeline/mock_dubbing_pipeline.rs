@@ -62,20 +62,33 @@ impl<
 
         let runtime_clone = self.job_runtime.clone();
         let job_id_clone = job_id.clone();
+        let project_id_clone = project_id.clone();
+
+        let span = tracing::info_span!("job_execution", job_id = %job_id, project_id = %project_id, action = "job_execution");
+        let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
+            span.clone(),
+            crate::observability::execution_summary::OperationSummary::JobExecution {
+                project_id: project_id.to_string(),
+                job_id: job_id.to_string(),
+                action: "job_execution",
+                status: "aborted".to_string(),
+            },
+        );
 
         let runner = async move {
             let _ = state_tx.send(ports::job_runtime_control::RuntimeState::Running);
-            self.run(job_id, project_id, token).await;
+            self.run(job_id_clone, project_id_clone, token, &mut guard)
+                .await;
             let _ = state_tx.send(ports::job_runtime_control::RuntimeState::Finished);
         };
 
-        let join_handle = tokio::spawn(runner);
+        let join_handle = tokio::spawn(tracing::Instrument::instrument(runner, span));
         let abort_handle = join_handle.abort_handle();
 
         // Register the task synchronously by spawning another short-lived task
         tokio::spawn(async move {
             runtime_clone
-                .register_runtime_task(job_id_clone, cancel_handle, state_rx, abort_handle)
+                .register_runtime_task(job_id, cancel_handle, state_rx, abort_handle)
                 .await;
         });
     }
@@ -86,6 +99,7 @@ impl<
         job_id: JobId,
         project_id: ProjectId,
         token: ports::cancellation::CancellationToken,
+        guard: &mut crate::observability::execution_summary::ExecutionSummaryGuard,
     ) {
         let stages = vec![
             (DubbingPipelineStage::ValidateSource, 10, 500),
@@ -95,16 +109,21 @@ impl<
 
         for (stage, percent, delay_ms) in stages {
             if token.is_cancelled() {
+                guard.summary.update_status("cancelled");
                 return;
             }
 
             match self.job_scheduler.get_job(&job_id).await {
                 Ok(Some(job)) => {
                     if job.status == JobStatus::Cancelled {
+                        guard.summary.update_status("cancelled");
                         return;
                     }
                 }
-                _ => return, // Cancelled or deleted
+                _ => {
+                    guard.summary.update_status("deleted");
+                    return;
+                }
             }
 
             let progress = JobProgress {
@@ -124,6 +143,7 @@ impl<
         }
 
         if token.is_cancelled() {
+            guard.summary.update_status("cancelled");
             return;
         }
 
@@ -131,10 +151,14 @@ impl<
         match self.job_scheduler.get_job(&job_id).await {
             Ok(Some(job)) => {
                 if job.status == JobStatus::Cancelled {
+                    guard.summary.update_status("cancelled");
                     return;
                 }
             }
-            _ => return,
+            _ => {
+                guard.summary.update_status("deleted");
+                return;
+            }
         }
 
         let _ = self
@@ -179,6 +203,7 @@ impl<
                         false,
                     )
                     .await;
+                guard.summary.update_status("failed");
                 return;
             }
         }
@@ -187,10 +212,14 @@ impl<
         match self.job_scheduler.get_job(&job_id).await {
             Ok(Some(job)) => {
                 if job.status == JobStatus::Cancelled {
+                    guard.summary.update_status("cancelled");
                     return;
                 }
             }
-            _ => return,
+            _ => {
+                guard.summary.update_status("deleted");
+                return;
+            }
         }
 
         // ExportResult stage
@@ -211,5 +240,6 @@ impl<
         sleep(Duration::from_millis(500)).await;
 
         let _ = self.job_scheduler.complete_job(&job_id).await;
+        guard.summary.update_status("completed");
     }
 }

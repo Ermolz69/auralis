@@ -24,6 +24,7 @@ export type JobProgress = {
 
 export type Job = {
   id: string;
+  revision: number;
   projectId: string | null;
   title: string;
   status: JobStatus;
@@ -34,8 +35,12 @@ export type Job = {
   updatedAt: string;
 };
 
+export type JobEventKind = 'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
+
 export type JobEvent = {
+  kind: JobEventKind;
   jobId: string;
+  revision: number;
   projectId: string | null;
   status: JobStatus;
   stage: JobStage | null;

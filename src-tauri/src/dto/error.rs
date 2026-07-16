@@ -31,6 +31,7 @@ impl From<ApplicationError> for CommandError {
                 DomainError::ValidationError(_) | DomainError::InvalidStateTransition { .. } => {
                     CommandError::Validation(domain_err.to_string())
                 }
+                DomainError::StateOverflow(_) => CommandError::Validation(domain_err.to_string()),
             },
             ApplicationError::Port(port_err) => match port_err {
                 PortError::NotFound { .. } => CommandError::NotFound(port_err.to_string()),

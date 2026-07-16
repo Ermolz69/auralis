@@ -19,6 +19,7 @@ tasks:
 
   runtime-println:
     cmds:
+      - node tools/scripts/check-runtime-println.test.mjs
       - node tools/scripts/check-runtime-println.mjs
 
   storage-fallbacks:

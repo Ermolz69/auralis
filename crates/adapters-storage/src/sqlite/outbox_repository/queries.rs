@@ -46,7 +46,7 @@ impl SqliteOutboxRepository {
                 SELECT 
                     id, kind, payload_json, status, attempts, 
                     next_attempt_at, locked_at, locked_by, last_error, deduplication_key, 
-                    created_at, updated_at
+                    created_at, updated_at, aggregate_type, aggregate_id
                 FROM outbox_messages
                 WHERE status IN ('pending', 'failed') AND next_attempt_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
                 ORDER BY created_at ASC
@@ -75,11 +75,15 @@ impl SqliteOutboxRepository {
                         // Diagnostic reason: e.g. mapping error, invalid payload JSON
                         let reason = format!("Corrupted outbox payload: {}", e);
                         // Mark as dead directly
-                        if let Err(err) = self.execute_mark_dead_raw(&id_raw, &reason).await {
+                        if let Err(_err) = self.execute_mark_dead_raw(&id_raw, &reason).await {
                             tracing::error!(
-                                "Failed to isolate corrupted outbox message {}: {}",
-                                id_raw,
-                                err
+                                error = %common::observability::redaction::DiagnosticError {
+                                    kind: "OutboxIsolationError",
+                                    code: None,
+                                    retryable: false,
+                                },
+                                message_id = %id_raw,
+                                "Failed to isolate corrupted outbox message"
                             );
                             isolation_errors += 1;
                             // Guarantee exit from fetch loop to avoid infinite loop on this row

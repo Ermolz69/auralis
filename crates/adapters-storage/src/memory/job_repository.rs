@@ -39,14 +39,21 @@ impl JobRepository for InMemoryJobRepository {
         Ok(lock.jobs.get(id).cloned())
     }
 
-    async fn save(&self, job: &Job) -> Result<(), PortError> {
-        let mut lock = self.db.lock().unwrap();
-        if !lock.jobs.contains_key(job.id()) {
-            return Err(PortError::NotFound {
+    async fn save(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {
+        let mut db = self.db.lock().unwrap();
+
+        let existing = db.jobs.get(job.id()).ok_or_else(|| PortError::Unexpected {
+            message: format!("Job {} not found during save", job.id()),
+        })?;
+
+        if existing.revision() != expected_revision {
+            return Err(PortError::Conflict {
                 resource: "Job".to_string(),
+                message: format!("Optimistic concurrency conflict for job id {}", job.id()),
             });
         }
-        lock.jobs.insert(job.id().clone(), job.clone());
+
+        db.jobs.insert(job.id().clone(), job.clone());
         Ok(())
     }
 

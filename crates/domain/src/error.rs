@@ -4,4 +4,6 @@ pub enum DomainError {
     InvalidStateTransition { from: String, to: String },
     #[error("Validation error: {0}")]
     ValidationError(String),
+    #[error("State overflow error: {0}")]
+    StateOverflow(String),
 }

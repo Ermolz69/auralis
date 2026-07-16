@@ -31,6 +31,7 @@ impl CommitPipelineStart {
 pub struct CommitPipelineStartFailure {
     pub project: Project,
     pub job: Job,
+    pub expected_job_revision: u64,
 }
 
 impl CommitPipelineStartFailure {

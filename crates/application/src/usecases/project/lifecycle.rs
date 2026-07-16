@@ -12,14 +12,22 @@ impl ProjectLifecycleLocks {
             locks: Mutex::new(HashMap::new()),
         }
     }
+}
 
+impl Default for ProjectLifecycleLocks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ProjectLifecycleLocks {
     pub fn get_lock(&self, project_id: &ProjectId) -> Arc<tokio::sync::Mutex<()>> {
         let mut locks = self.locks.lock().unwrap();
 
-        if let Some(weak_lock) = locks.get(project_id) {
-            if let Some(arc_lock) = weak_lock.upgrade() {
-                return arc_lock;
-            }
+        if let Some(weak_lock) = locks.get(project_id)
+            && let Some(arc_lock) = weak_lock.upgrade()
+        {
+            return arc_lock;
         }
 
         let new_lock = Arc::new(tokio::sync::Mutex::new(()));

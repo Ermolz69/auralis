@@ -203,7 +203,29 @@ mod tests {
         }
     }
 
-    use crate::test_utils::{MockArtifactIndex, MockArtifactStore};
+    use crate::test_utils::MockArtifactStore;
+
+    struct MockJobRuntimeControl;
+    #[async_trait::async_trait]
+    impl ports::job_runtime_control::JobRuntimeControlPort for MockJobRuntimeControl {
+        async fn cancel_and_evict_jobs(
+            &self,
+            _job_ids: &[domain::job::JobId],
+        ) -> Result<ports::job_runtime_control::RuntimeCleanupReport, ports::error::PortError>
+        {
+            Ok(ports::job_runtime_control::RuntimeCleanupReport {
+                jobs: std::collections::HashMap::new(),
+            })
+        }
+        async fn register_runtime_task(
+            &self,
+            _job_id: domain::job::JobId,
+            _cancel_handle: ports::cancellation::CancelHandle,
+            _state_rx: tokio::sync::watch::Receiver<ports::job_runtime_control::RuntimeState>,
+            _abort_handle: tokio::task::AbortHandle,
+        ) {
+        }
+    }
 
     #[tokio::test]
     async fn imports_local_media_and_starts_pipeline() {
@@ -220,8 +242,9 @@ mod tests {
             tx_gateway.clone(),
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
-            Arc::new(MockArtifactIndex::new()),
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -266,8 +289,9 @@ mod tests {
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
-            Arc::new(MockArtifactIndex::new()),
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
 
         let dir = tempdir().unwrap();
@@ -297,8 +321,9 @@ mod tests {
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
-            Arc::new(MockArtifactIndex::new()),
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -344,8 +369,9 @@ mod tests {
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
-            Arc::new(MockArtifactIndex::new()),
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
 
         let project = Project::new("Test Probe".to_string());
@@ -382,8 +408,9 @@ mod tests {
             std::sync::Arc::new(crate::test_utils::MockStorageUnitOfWork::new()),
             MockSubtitleSource,
             Arc::new(MockArtifactStore),
-            Arc::new(MockArtifactIndex::new()),
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
+            Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
 
         let mut project = Project::new("Test Probe".to_string());

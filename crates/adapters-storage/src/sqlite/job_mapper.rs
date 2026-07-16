@@ -10,6 +10,22 @@ pub fn row_to_job(row: JobRow) -> Result<Job, PortError> {
         message: format!("Failed to parse job id `{}`: {}", row.id, e),
     })?;
 
+    let revision = u64::try_from(row.revision).map_err(|e| PortError::InvalidStoredData {
+        entity_type: "Job".to_string(),
+        entity_id: row.id.clone(),
+        field: "revision".to_string(),
+        message: format!("Failed to parse revision `{}`: {}", row.revision, e),
+    })?;
+
+    if revision == 0 || revision > domain::job::MAX_JOB_REVISION {
+        return Err(PortError::InvalidStoredData {
+            entity_type: "Job".to_string(),
+            entity_id: row.id.clone(),
+            field: "revision".to_string(),
+            message: format!("Revision {} is out of bounds", revision),
+        });
+    }
+
     let project_id = ProjectId::from_str(&row.project_id).map_err(|e| PortError::Unexpected {
         message: format!("Failed to parse project id `{}`: {}", row.project_id, e),
     })?;
@@ -40,6 +56,7 @@ pub fn row_to_job(row: JobRow) -> Result<Job, PortError> {
 
     let snapshot = JobSnapshot {
         id,
+        revision,
         project_id,
         title: row.title,
         kind,
@@ -61,6 +78,13 @@ pub fn job_to_row_values(job: &Job) -> Result<JobRow, PortError> {
 
     let snapshot = job.to_snapshot();
 
+    let revision = i64::try_from(snapshot.revision).map_err(|e| PortError::InvalidStoredData {
+        entity_type: "Job".to_string(),
+        entity_id: snapshot.id.to_string(),
+        field: "revision".to_string(),
+        message: format!("Failed to convert revision `{}`: {}", snapshot.revision, e),
+    })?;
+
     let kind = serialize_enum(&snapshot.kind, "job.kind")?;
     let status = serialize_enum(&snapshot.status, "job.status")?;
     let stage = snapshot
@@ -76,6 +100,7 @@ pub fn job_to_row_values(job: &Job) -> Result<JobRow, PortError> {
 
     Ok(JobRow {
         id: snapshot.id.to_string(),
+        revision,
         project_id: snapshot.project_id.to_string(),
         title: snapshot.title,
         kind,

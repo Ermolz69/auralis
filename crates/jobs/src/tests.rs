@@ -11,8 +11,8 @@ use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::JobRepository;
 use ports::transaction::{
     ApplyTerminalLifecycle, CommitJobUpdate, CommitManagedSourceImport, CommitPipelineStart,
-    CommitPipelineStartFailure, CommitProjectDelete, CommitStagedArtifactWrite,
-    CommitTerminalJobUpdate, CommitTranscriptImport, StorageUnitOfWork,
+    CommitPipelineStartFailure, CommitProjectDelete, CommitTerminalJobUpdate,
+    CommitTranscriptImport, StorageUnitOfWork,
 };
 
 pub struct MockStorageUnitOfWork {
@@ -109,8 +109,21 @@ impl JobRepository for MockJobRepository {
         Ok(self.jobs.lock().await.get(id).cloned())
     }
 
-    async fn save(&self, job: &Job) -> Result<(), PortError> {
-        self.jobs.lock().await.insert(job.id().clone(), job.clone());
+    async fn save(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {
+        let mut db = self.jobs.lock().await;
+
+        let existing = db.get(job.id()).ok_or_else(|| PortError::Unexpected {
+            message: format!("Job {} not found during save", job.id()),
+        })?;
+
+        if existing.revision() != expected_revision {
+            return Err(PortError::Conflict {
+                resource: "Job".to_string(),
+                message: format!("Optimistic concurrency conflict for job id {}", job.id()),
+            });
+        }
+
+        db.insert(job.id().clone(), job.clone());
         Ok(())
     }
 
@@ -181,9 +194,9 @@ async fn test_deterministic_concurrent_updates() {
             tokio::time::sleep(Duration::from_millis(10)).await;
             self.inner.get(id).await
         }
-        async fn save(&self, job: &Job) -> Result<(), PortError> {
+        async fn save(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {
             tokio::time::sleep(Duration::from_millis(10)).await;
-            self.inner.save(job).await
+            self.inner.save(job, expected_revision).await
         }
         async fn list_by_project(
             &self,

@@ -119,7 +119,7 @@ impl LegacyDatabaseInspector {
             .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
 
         // The expected V0 columns for auralis handcrafted dev DB
-        let expected_cols = vec![
+        let expected_cols = [
             "id",
             "title",
             "status",

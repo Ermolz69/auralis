@@ -5,6 +5,7 @@ This document describes the lifecycle and removal plan for the `artifacts_json` 
 ## Status: Legacy / Deprecated
 
 The `artifacts_json` field is **not** part of the current domain model (`Project`).
+
 - It is a legacy field created in `0001_create_projects.sql`.
 - New repository flows and Unit of Work (UoW) implementations **must not** write to this field.
 - The only authorized reader is the `legacy backfill` process (`backfill_artifacts.rs`), which reads the JSON to migrate legacy artifacts to the new `artifacts` table.
@@ -20,6 +21,7 @@ The `artifacts_json` field is **not** part of the current domain model (`Project
 
 A follow-up task has been registered to completely drop the `artifacts_json` column from the database schema.
 **Conditions for column deletion**:
+
 - A "compatibility window" must pass, ensuring all supported deployments have passed through at least one bridge release that runs the backfill.
 - A preflight check must execute before the SQL migration ensuring:
   - There are no rows where `artifacts_json != '[]'`.

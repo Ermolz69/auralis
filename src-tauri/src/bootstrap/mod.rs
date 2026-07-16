@@ -13,10 +13,29 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
 
     // 0a. Initialize observability
-    let log_dir = app.path().app_log_dir().ok();
-    let guard =
-        crate::observability::init(crate::observability::config::ObservabilityConfig { log_dir });
+    let log_dir = match app.path().app_log_dir() {
+        Ok(dir) => crate::observability::config::LogDestination::Directory(dir),
+        Err(_) => crate::observability::config::LogDestination::Unavailable(
+            crate::observability::config::LogDestinationErrorKind::PathResolutionFailed,
+        ),
+    };
+
+    let is_debug = cfg!(debug_assertions);
+    let mut config =
+        crate::observability::config::ObservabilityConfig::for_build(log_dir, is_debug);
+    let sink = crate::observability::init::StderrDiagnosticSink;
+
+    if let Err(e) = config.validate() {
+        use crate::observability::init::DiagnosticSink;
+        sink.emit_warning(&format!("Invalid observability config: {}", e));
+        config.log_dir = crate::observability::config::LogDestination::Disabled;
+    }
+
+    let guard = crate::observability::init(config, &sink);
+    let mode_str = format!("{:?}", guard.active_mode);
     app.manage(guard);
+
+    tracing::info!(action = "observability_init", status = %mode_str, "Observability initialized");
 
     // 0. Compute workspace root
     let app_path = app.path();

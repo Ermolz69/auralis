@@ -17,7 +17,7 @@ pub trait ProjectRepository: Send + Sync {
 pub trait JobRepository: Send + Sync {
     async fn create(&self, job: Job) -> Result<Job, PortError>;
     async fn get(&self, id: &JobId) -> Result<Option<Job>, PortError>;
-    async fn save(&self, job: &Job) -> Result<(), PortError>;
+    async fn save(&self, job: &Job, expected_revision: u64) -> Result<(), PortError>;
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Job>, PortError>;
     async fn list_active(&self) -> Result<Vec<Job>, PortError>;
     async fn list_recent(&self, limit: usize) -> Result<Vec<Job>, PortError>;

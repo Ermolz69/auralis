@@ -3,6 +3,7 @@ use sqlx::FromRow;
 #[derive(Debug, FromRow)]
 pub struct JobRow {
     pub id: String,
+    pub revision: i64,
     pub project_id: String,
     pub title: String,
     pub kind: String,

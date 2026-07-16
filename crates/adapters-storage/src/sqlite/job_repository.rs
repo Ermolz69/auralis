@@ -27,12 +27,13 @@ impl JobRepository for SqliteJobRepository {
         sqlx::query(
             r#"
             INSERT INTO jobs (
-                id, project_id, title, kind, status, stage, progress_json, error_json,
+                id, revision, project_id, title, kind, status, stage, progress_json, error_json,
                 created_at, updated_at, started_at, finished_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(values.id)
+        .bind(values.revision)
         .bind(values.project_id)
         .bind(values.title)
         .bind(values.kind)
@@ -66,7 +67,7 @@ impl JobRepository for SqliteJobRepository {
     async fn get(&self, id: &JobId) -> Result<Option<Job>, PortError> {
         let row = sqlx::query_as::<_, JobRow>(
             r#"
-            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+            SELECT id, revision, project_id, title, kind, status, stage, progress_json, error_json,
                    created_at, updated_at, started_at, finished_at
             FROM jobs
             WHERE id = ?
@@ -82,7 +83,7 @@ impl JobRepository for SqliteJobRepository {
         row.map(row_to_job).transpose()
     }
 
-    async fn save(&self, job: &Job) -> Result<(), PortError> {
+    async fn save(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {
         let values = job_to_row_values(job)?;
 
         let result = sqlx::query(
@@ -97,8 +98,9 @@ impl JobRepository for SqliteJobRepository {
                 error_json = ?,
                 updated_at = ?,
                 started_at = ?,
-                finished_at = ?
-            WHERE id = ?
+                finished_at = ?,
+                revision = ?
+            WHERE id = ? AND revision = ?
             "#,
         )
         .bind(values.project_id)
@@ -111,7 +113,9 @@ impl JobRepository for SqliteJobRepository {
         .bind(values.updated_at)
         .bind(values.started_at)
         .bind(values.finished_at)
+        .bind(values.revision)
         .bind(values.id)
+        .bind(i64::try_from(expected_revision).unwrap_or(-1))
         .execute(&self.pool)
         .await
         .map_err(|e| PortError::Unexpected {
@@ -119,8 +123,9 @@ impl JobRepository for SqliteJobRepository {
         })?;
 
         if result.rows_affected() == 0 {
-            return Err(PortError::NotFound {
+            return Err(PortError::Conflict {
                 resource: "Job".to_string(),
+                message: format!("Optimistic concurrency conflict for job id {}", job.id()),
             });
         }
 
@@ -130,7 +135,7 @@ impl JobRepository for SqliteJobRepository {
     async fn list_by_project(&self, project_id: &ProjectId) -> Result<Vec<Job>, PortError> {
         let rows = sqlx::query_as::<_, JobRow>(
             r#"
-            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+            SELECT id, revision, project_id, title, kind, status, stage, progress_json, error_json,
                    created_at, updated_at, started_at, finished_at
             FROM jobs
             WHERE project_id = ?
@@ -150,7 +155,7 @@ impl JobRepository for SqliteJobRepository {
     async fn list_active(&self) -> Result<Vec<Job>, PortError> {
         let rows = sqlx::query_as::<_, JobRow>(
             r#"
-            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+            SELECT id, revision, project_id, title, kind, status, stage, progress_json, error_json,
                    created_at, updated_at, started_at, finished_at
             FROM jobs
             WHERE status IN ('pending', 'running', 'Pending', 'Running')
@@ -169,7 +174,7 @@ impl JobRepository for SqliteJobRepository {
     async fn list_recent(&self, limit: usize) -> Result<Vec<Job>, PortError> {
         let rows = sqlx::query_as::<_, JobRow>(
             r#"
-            SELECT id, project_id, title, kind, status, stage, progress_json, error_json,
+            SELECT id, revision, project_id, title, kind, status, stage, progress_json, error_json,
                    created_at, updated_at, started_at, finished_at
             FROM jobs
             ORDER BY created_at DESC

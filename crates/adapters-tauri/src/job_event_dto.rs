@@ -13,7 +13,9 @@ pub struct JobProgressDto {
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct JobEventDto {
+    pub kind: String,
     pub job_id: String,
+    pub revision: u64,
     pub project_id: Option<String>,
     pub status: String,
     pub stage: Option<String>,

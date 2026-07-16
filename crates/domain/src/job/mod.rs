@@ -16,5 +16,7 @@ pub use progress::JobProgress;
 pub use snapshot::JobSnapshot;
 pub use status::{JobStatus, TerminalOutcome};
 
+pub const MAX_JOB_REVISION: u64 = 9_007_199_254_740_991;
+
 #[cfg(test)]
 mod tests;

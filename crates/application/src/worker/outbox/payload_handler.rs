@@ -81,9 +81,13 @@ where
             OutboxPayload::DeleteWorkspaceFile { workspace_key } => {
                 if let Err(e) = self.workspace_port.delete_allocation(workspace_key).await {
                     tracing::error!(
+                        error = %common::observability::redaction::DiagnosticError {
+                            kind: "WorkspaceAllocationDeletionFailed",
+                            code: None,
+                            retryable: false,
+                        },
                         workspace_key = %workspace_key,
-                        "OutboxWorker: Failed to delete workspace allocation: {}",
-                        e
+                        "OutboxWorker: Failed to delete workspace allocation"
                     );
                     return Err(ApplicationError::InvalidOperation {
                         message: format!("Failed to delete workspace allocation: {}", e),

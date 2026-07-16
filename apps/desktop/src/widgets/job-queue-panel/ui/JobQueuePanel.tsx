@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../../shared/ui/card';
 import { Progress } from '../../../shared/ui/progress';
 import { Icon } from '../../../shared/ui/icon';
-import { listJobs, subscribeJobEvents, subscribeJobsInvalidated } from '@/entities/job';
-import type { Job } from '@/entities/job';
+import { useJobContext } from '@/entities/job';
 import { CancelJobButton } from '@/features/cancel-job';
-import { useProjectContext } from '@/entities/project';
 
 const formatStage = (stage: string | null) => {
   if (!stage) return '';
@@ -14,72 +11,8 @@ const formatStage = (stage: string | null) => {
 };
 
 export const JobQueuePanel = () => {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const { projectId } = useProjectContext();
-
-  useEffect(() => {
-    let cancelled = false;
-    let unlisten: (() => void) | undefined;
-
-    const setup = async () => {
-      try {
-        const initialJobs = await listJobs();
-        if (cancelled) return;
-        setJobs(initialJobs.filter((job) => job.projectId === projectId));
-
-        const fn = await subscribeJobEvents((event) => {
-          if (event.projectId !== projectId) return;
-
-          setJobs((current) => {
-            const index = current.findIndex((j) => j.id === event.jobId);
-            if (index >= 0) {
-              const newJobs = [...current];
-              newJobs[index] = {
-                ...newJobs[index],
-                status: event.status,
-                stage: event.stage,
-                progress: event.progress,
-                error: event.error ?? newJobs[index].error,
-              };
-              return newJobs;
-            } else {
-              // If new job, fetch all to get full details like title
-              listJobs()
-                .then((allJobs) => setJobs(allJobs.filter((j) => j.projectId === projectId)))
-                .catch(console.error);
-              return current;
-            }
-          });
-        });
-
-        const invalidatedFn = await subscribeJobsInvalidated(() => {
-          console.warn('Job events invalidated (lagged), refetching jobs');
-          listJobs()
-            .then((allJobs) => setJobs(allJobs.filter((j) => j.projectId === projectId)))
-            .catch(console.error);
-        });
-
-        if (cancelled) {
-          fn();
-          invalidatedFn();
-        } else {
-          unlisten = () => {
-            fn();
-            invalidatedFn();
-          };
-        }
-      } catch (e) {
-        console.error('Failed to setup JobQueuePanel', e);
-      }
-    };
-
-    setup();
-
-    return () => {
-      cancelled = true;
-      if (unlisten) unlisten();
-    };
-  }, [projectId]);
+  const { activeJobs, completedJobs } = useJobContext();
+  const jobs = [...activeJobs, ...completedJobs];
 
   return (
     <aside className="w-96 shrink-0 h-full bg-surface border-l border-muted p-6 flex flex-col gap-4 overflow-hidden">

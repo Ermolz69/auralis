@@ -81,7 +81,57 @@ where
         }
     }
 
-    pub async fn run_maintenance(
+    pub fn run_maintenance<'a>(
+        &'a self,
+        cancel_token: watch::Receiver<bool>,
+    ) -> impl std::future::Future<Output = OutboxMaintenanceReport> + 'a {
+        let span = tracing::info_span!("maintenance_run", action = "maintenance_run");
+        let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
+            span.clone(),
+            crate::observability::execution_summary::OperationSummary::Maintenance {
+                action: "maintenance_run",
+                status: "aborted".to_string(),
+                deleted_count: 0,
+                failed_count: 0,
+            },
+        );
+
+        async move {
+            let report = self.run_maintenance_inner(cancel_token).await;
+
+            let mut failed_count = 0;
+            if report.staging_cleanup_error.is_some() {
+                failed_count += 1;
+            }
+            if report.workspace_cleanup_error.is_some() {
+                failed_count += 1;
+            }
+            if report.prune_error.is_some() {
+                failed_count += 1;
+            }
+
+            let status = if report.cancelled {
+                "cancelled"
+            } else if failed_count > 0 {
+                "completed_with_errors"
+            } else {
+                "completed"
+            };
+
+            guard.update_summary(
+                crate::observability::execution_summary::OperationSummary::Maintenance {
+                    action: "maintenance_run",
+                    status: status.to_string(),
+                    deleted_count: (report.done_deleted + report.dead_deleted) as u64,
+                    failed_count,
+                },
+            );
+
+            report
+        }
+    }
+
+    async fn run_maintenance_inner(
         &self,
         cancel_token: watch::Receiver<bool>,
     ) -> OutboxMaintenanceReport {

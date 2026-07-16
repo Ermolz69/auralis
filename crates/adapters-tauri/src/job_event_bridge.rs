@@ -31,18 +31,39 @@ where
                 event_result = self.receiver.recv() => {
                     match event_result {
                         Ok(event) => {
-                            if let Err(e) = self.publisher.publish_job_event(&event) {
-                                tracing::error!(error = ?e, "failed to publish job event to frontend");
+                            if let Err(_e) = self.publisher.publish_job_event(&event) {
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "FrontendPublishError",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "failed to publish job event to frontend"
+                                );
                             }
 
-                            if let Err(e) = self.coordinator.handle(event).await {
-                                tracing::error!(error = ?e, "failed to handle job lifecycle event");
+                            if let Err(_e) = self.coordinator.handle(event).await {
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "LifecycleCoordinatorError",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "failed to handle job lifecycle event"
+                                );
                             }
                         }
                         Err(broadcast::error::RecvError::Lagged(skipped)) => {
                             tracing::warn!(skipped_events = skipped, "JobLifecycleWorker lagged behind, skipped events. Publishing invalidated event.");
-                            if let Err(e) = self.publisher.publish_invalidated() {
-                                tracing::error!(error = ?e, "failed to publish invalidated event to frontend");
+                            if let Err(_e) = self.publisher.publish_invalidated() {
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "FrontendPublishError",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "failed to publish invalidated event to frontend"
+                                );
                             }
                         }
                         Err(broadcast::error::RecvError::Closed) => {
@@ -107,8 +128,15 @@ impl TauriJobEventBridge {
     pub fn emitter(&self) -> Arc<dyn Fn(JobLifecycleEvent) + Send + Sync> {
         let tx = self.tx.clone();
         Arc::new(move |event: JobLifecycleEvent| {
-            if let Err(e) = tx.send(event) {
-                tracing::error!(error = ?e, "failed to send job lifecycle event to worker channel");
+            if let Err(_e) = tx.send(event) {
+                tracing::error!(
+                    error = %common::observability::redaction::DiagnosticError {
+                        kind: "ChannelSendError",
+                        code: None,
+                        retryable: false,
+                    },
+                    "failed to send job lifecycle event to worker channel"
+                );
             }
         })
     }
@@ -121,6 +149,7 @@ impl TauriJobEventBridge {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono;
     use domain::job::{JobId, JobProgress, JobStatus};
     use ports::error::PortError;
     use std::sync::{Arc, Mutex};
@@ -172,21 +201,35 @@ mod tests {
         let emitter = bridge.emitter();
 
         let event1 = JobLifecycleEvent {
-            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
-            job_id: JobId::new(),
-            project_id: None,
-            status: JobStatus::Running,
-            progress: JobProgress::initializing(),
-            error: None,
+            kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 1,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Running,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         };
 
         let event2 = JobLifecycleEvent {
-            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
-            job_id: JobId::new(),
-            project_id: None,
-            status: JobStatus::Completed,
-            progress: JobProgress::initializing(),
-            error: None,
+            kind: ports::job_scheduler::JobLifecycleEventKind::Completed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 2,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Completed,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         };
 
         // Send two events
@@ -198,8 +241,8 @@ mod tests {
 
         let emitted = frontend_pub.events.lock().unwrap().clone();
         assert_eq!(emitted.len(), 2);
-        assert_eq!(emitted[0].status, JobStatus::Running);
-        assert_eq!(emitted[1].status, JobStatus::Completed);
+        assert_eq!(emitted[0].job.status, JobStatus::Running);
+        assert_eq!(emitted[1].job.status, JobStatus::Completed);
 
         // Test shutdown
         let handle = bridge.take_handle().unwrap();
@@ -207,12 +250,19 @@ mod tests {
 
         // Try emitting after shutdown (should log error, but not panic)
         let event3 = JobLifecycleEvent {
-            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
-            job_id: JobId::new(),
-            project_id: None,
-            status: JobStatus::Failed,
-            progress: JobProgress::initializing(),
-            error: None,
+            kind: ports::job_scheduler::JobLifecycleEventKind::Failed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 3,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Failed,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         };
         emitter(event3);
     }
@@ -230,21 +280,35 @@ mod tests {
         *frontend_pub.fail_next.lock().unwrap() = true;
 
         let event1 = JobLifecycleEvent {
-            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
-            job_id: JobId::new(),
-            project_id: None,
-            status: JobStatus::Running,
-            progress: JobProgress::initializing(),
-            error: None,
+            kind: ports::job_scheduler::JobLifecycleEventKind::Started,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 1,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Running,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         };
 
         let event2 = JobLifecycleEvent {
-            stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
-            job_id: JobId::new(),
-            project_id: None,
-            status: JobStatus::Completed,
-            progress: JobProgress::initializing(),
-            error: None,
+            kind: ports::job_scheduler::JobLifecycleEventKind::Completed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 2,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Completed,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         };
 
         // Send events
@@ -256,7 +320,7 @@ mod tests {
         // The first event failed to publish, but the worker should have continued to process the second event
         let emitted = frontend_pub.events.lock().unwrap().clone();
         assert_eq!(emitted.len(), 1);
-        assert_eq!(emitted[0].status, JobStatus::Completed);
+        assert_eq!(emitted[0].job.status, JobStatus::Completed);
 
         let handle = bridge.take_handle().unwrap();
         handle.shutdown().await;
@@ -285,12 +349,19 @@ mod tests {
         // Fill the channel and overflow it
         for _ in 0..5 {
             let event = JobLifecycleEvent {
-                stage: None,
-                job_id: JobId::new(),
-                project_id: None,
-                status: JobStatus::Running,
-                progress: JobProgress::initializing(),
-                error: None,
+                kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
+                job: ports::job_scheduler::ScheduledJob {
+                    id: JobId::new(),
+                    revision: 1,
+                    title: "Test".to_string(),
+                    project_id: None,
+                    status: JobStatus::Running,
+                    stage: None,
+                    progress: JobProgress::initializing(),
+                    error: None,
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                },
             };
             let _ = tx.send(event);
         }

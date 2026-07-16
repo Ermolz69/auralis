@@ -35,6 +35,7 @@ impl JobSchedulerPort for MockJobScheduler {
     ) -> Result<ScheduledJob, PortError> {
         let job = ScheduledJob {
             id: JobId::new(),
+            revision: 0,
             project_id: request.project_id,
             title: request.title,
             status: domain::job::JobStatus::Pending,
@@ -59,6 +60,7 @@ impl JobSchedulerPort for MockJobScheduler {
         }
         let job = ScheduledJob {
             id: job_id.clone(),
+            revision: 0,
             project_id: None,
             title: "Mock Enqueued Job".to_string(),
             status: domain::job::JobStatus::Running,
@@ -95,6 +97,19 @@ impl JobSchedulerPort for MockJobScheduler {
     async fn list_jobs(&self) -> Result<Vec<ScheduledJob>, PortError> {
         let jobs = self.jobs.lock().await;
         Ok(jobs.clone())
+    }
+
+    async fn list_jobs_snapshot(
+        &self,
+        project_id: &domain::project::ProjectId,
+    ) -> Result<Vec<ScheduledJob>, PortError> {
+        let jobs = self.jobs.lock().await;
+        let filtered = jobs
+            .iter()
+            .filter(|j| j.project_id.as_ref() == Some(project_id))
+            .cloned()
+            .collect();
+        Ok(filtered)
     }
 
     async fn update_job_stage(

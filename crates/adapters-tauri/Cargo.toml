@@ -9,9 +9,11 @@ serde = { version = "1.0", features = ["derive"] }
 application = { path = "../application" }
 domain = { path = "../domain" }
 ports = { path = "../ports" }
+common = { version = "0.1.0", path = "../common" }
 async-trait = "0.1.89"
 tokio = { version = "1", features = ["sync"] }
 tracing = "0.1"
 
 [dev-dependencies]
 serde_json = "1.0.150"
+chrono = "0.4.38"

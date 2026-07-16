@@ -82,10 +82,26 @@ pub fn setup_storage(
 
         if report.has_blocking_failures() {
             for failure in &report.persistence_failures {
-                tracing::error!("Recovery persistence failure: {:?}", failure);
+                tracing::error!(
+                    error = %common::observability::redaction::DiagnosticError {
+                        kind: "RecoveryPersistenceFailure",
+                        code: None,
+                        retryable: false,
+                    },
+                    failure = ?failure,
+                    "Recovery persistence failure"
+                );
             }
             for violation in &report.unresolved_violations {
-                tracing::error!("Recovery unresolved violation: {:?}", violation);
+                tracing::error!(
+                    error = %common::observability::redaction::DiagnosticError {
+                        kind: "RecoveryUnresolvedViolation",
+                        code: None,
+                        retryable: false,
+                    },
+                    violation = ?violation,
+                    "Recovery unresolved violation"
+                );
             }
             return Err("Startup halted due to fatal state recovery issues.".into());
         }

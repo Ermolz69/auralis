@@ -1,7 +1,7 @@
 use super::error::DatabaseTransitionError;
 use super::manifest::{TransitionManifest, TransitionStage};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::fs::{self, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use uuid::Uuid;
@@ -81,20 +81,20 @@ impl TransitionLock {
                         }
 
                         // If the manifest exists, we check its stage. If it's Completed, it's a stale lock from a successful transition.
-                        if let Ok(manifest) = TransitionManifest::load(&data.manifest_path).await {
-                            if manifest.stage == TransitionStage::Completed {
-                                tracing::warn!(
-                                    "Found stale transition lock for a completed transition. Removing and retrying."
-                                );
-                                fs::remove_file(&lock_path).await.ok();
-                                fs::remove_file(&data.manifest_path).await.ok();
-                                return Box::pin(Self::try_acquire(
-                                    lock_path,
-                                    manifest_path,
-                                    operation_id,
-                                ))
-                                .await;
-                            }
+                        if let Ok(manifest) = TransitionManifest::load(&data.manifest_path).await
+                            && manifest.stage == TransitionStage::Completed
+                        {
+                            tracing::warn!(
+                                "Found stale transition lock for a completed transition. Removing and retrying."
+                            );
+                            fs::remove_file(&lock_path).await.ok();
+                            fs::remove_file(&data.manifest_path).await.ok();
+                            return Box::pin(Self::try_acquire(
+                                lock_path,
+                                manifest_path,
+                                operation_id,
+                            ))
+                            .await;
                         }
 
                         // Otherwise, it's a valid lock or an interrupted transition that we should recover.
@@ -104,8 +104,7 @@ impl TransitionLock {
                         // Corrupted lock file.
                         tracing::warn!("Found corrupted transition lock. Removing and retrying.");
                         fs::remove_file(&lock_path).await.ok();
-                        return Box::pin(Self::try_acquire(lock_path, manifest_path, operation_id))
-                            .await;
+                        Box::pin(Self::try_acquire(lock_path, manifest_path, operation_id)).await
                     }
                 }
             }

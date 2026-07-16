@@ -213,6 +213,12 @@ impl ports::artifact_index::ArtifactIndex for MockIndex {
 struct MockUow;
 #[async_trait]
 impl ports::transaction::StorageUnitOfWork for MockUow {
+    async fn commit_artifact_finalize(
+        &self,
+        _command: ports::transaction::CommitArtifactFinalize,
+    ) -> Result<(), ports::error::PortError> {
+        unimplemented!()
+    }
     async fn commit_transcript_import(
         &self,
         _command: ports::transaction::CommitTranscriptImport,

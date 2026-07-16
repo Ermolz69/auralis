@@ -9,6 +9,7 @@ use super::{JobError, JobId, JobKind, JobProgress, JobSnapshot, JobStatus};
 #[derive(Debug, Clone, PartialEq)]
 pub struct Job {
     id: JobId,
+    revision: u64,
     project_id: ProjectId,
     title: String,
     kind: JobKind,
@@ -27,6 +28,7 @@ impl Job {
         let now = Utc::now();
         Self {
             id: JobId::new(),
+            revision: 1,
             project_id,
             title,
             kind,
@@ -43,6 +45,10 @@ impl Job {
 
     pub fn id(&self) -> &JobId {
         &self.id
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     pub fn project_id(&self) -> &ProjectId {
@@ -96,6 +102,7 @@ impl Job {
                 to: "Running".to_string(),
             });
         }
+        self.bump_revision()?;
 
         let now = Utc::now();
         self.status = JobStatus::Running;
@@ -119,6 +126,7 @@ impl Job {
         }
 
         progress.validate()?;
+        self.bump_revision()?;
 
         self.stage = Some(stage);
         self.progress = progress;
@@ -134,6 +142,7 @@ impl Job {
                 to: "Completed".to_string(),
             });
         }
+        self.bump_revision()?;
 
         let now = Utc::now();
         self.status = JobStatus::Completed;
@@ -152,6 +161,7 @@ impl Job {
                 to: "Failed".to_string(),
             });
         }
+        self.bump_revision()?;
 
         let now = Utc::now();
         self.status = JobStatus::Failed;
@@ -173,6 +183,7 @@ impl Job {
                 to: "Cancelled".to_string(),
             });
         }
+        self.bump_revision()?;
 
         let now = Utc::now();
         self.status = JobStatus::Cancelled;
@@ -185,6 +196,7 @@ impl Job {
     pub fn to_snapshot(&self) -> JobSnapshot {
         JobSnapshot {
             id: self.id.clone(),
+            revision: self.revision,
             project_id: self.project_id.clone(),
             title: self.title.clone(),
             kind: self.kind.clone(),
@@ -202,6 +214,7 @@ impl Job {
     pub fn from_snapshot(snapshot: JobSnapshot) -> Self {
         Self {
             id: snapshot.id,
+            revision: snapshot.revision,
             project_id: snapshot.project_id,
             title: snapshot.title,
             kind: snapshot.kind,
@@ -214,6 +227,17 @@ impl Job {
             started_at: snapshot.started_at,
             finished_at: snapshot.finished_at,
         }
+    }
+
+    fn bump_revision(&mut self) -> Result<(), DomainError> {
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .filter(|&r| r <= super::MAX_JOB_REVISION)
+            .ok_or_else(|| {
+                DomainError::StateOverflow("Job revision exceeded maximum safe bound".to_string())
+            })?;
+        Ok(())
     }
 
     #[cfg(test)]

@@ -4,10 +4,9 @@ use sqlx::SqlitePool;
 use domain::outbox::{OutboxMessage, OutboxPayload};
 use ports::error::PortError;
 use ports::transaction::{
-    ApplyTerminalLifecycle, CommitArtifactFinalize, CommitJobUpdate, CommitManagedSourceImport,
-    CommitPipelineStart, CommitPipelineStartFailure, CommitProjectDelete,
-    CommitProjectDeleteResult, CommitStagedArtifactWrite, CommitTerminalJobUpdate,
-    CommitTranscriptImport, StorageUnitOfWork,
+    CommitArtifactFinalize, CommitJobUpdate, CommitManagedSourceImport, CommitPipelineStart,
+    CommitPipelineStartFailure, CommitProjectDelete, CommitProjectDeleteResult,
+    CommitStagedArtifactWrite, CommitTranscriptImport, StorageUnitOfWork,
 };
 
 use super::artifact_writes::save_artifact;
@@ -263,7 +262,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             message: format!("Failed to begin transaction: {}", e),
         })?;
 
-        update_job(&mut tx, &command.job).await?;
+        update_job(&mut tx, &command.job, command.expected_revision).await?;
 
         tx.commit().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to commit transaction: {}", e),
@@ -300,7 +299,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         })?;
 
         update_project(&mut tx, &command.project).await?;
-        update_job(&mut tx, &command.job).await?;
+        update_job(&mut tx, &command.job, command.expected_job_revision).await?;
 
         tx.commit().await.map_err(|e| PortError::Unexpected {
             message: format!("Failed to commit transaction: {}", e),
@@ -317,7 +316,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             message: format!("Failed to begin transaction: {}", e),
         })?;
 
-        update_job(&mut tx, &command.job).await?;
+        update_job(&mut tx, &command.job, command.expected_revision).await?;
 
         let mut outbox_msg = OutboxMessage::new(OutboxPayload::HandleTerminalJobState {
             job_id: command.job.id().clone(),
@@ -533,10 +532,12 @@ mod tests {
 
         match payload {
             OutboxPayload::FinalizeStagedArtifact {
+                project_id,
                 artifact_id,
                 staging_key,
                 final_key,
             } => {
+                assert_eq!(project_id, project.id().clone());
                 assert_eq!(artifact_id, artifact.id);
                 assert_eq!(staging_key, "staging_key");
                 assert_eq!(final_key, "final_key");

@@ -4,7 +4,6 @@ mod preflight_tests {
         DatabaseClassification, LegacyDatabaseInspector, LegacySchemaVersion,
     };
     use crate::sqlite::preflight::state_machine::TransitionStateMachine;
-    use sqlx::SqlitePool;
     use std::path::Path;
     use tempfile::tempdir;
     use tokio::fs;

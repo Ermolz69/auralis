@@ -7,6 +7,7 @@ use super::{JobError, JobId, JobKind, JobProgress, JobStatus};
 
 pub struct JobSnapshot {
     pub id: JobId,
+    pub revision: u64,
     pub project_id: ProjectId,
     pub title: String,
     pub kind: JobKind,

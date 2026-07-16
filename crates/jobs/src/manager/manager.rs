@@ -66,7 +66,7 @@ impl JobManager {
 
         let job = self.repo.create(job).await?;
         self.cache.insert(job.clone()).await;
-        self.emit_job_event(&job);
+        self.emit_job_event(&job, ports::job_scheduler::JobLifecycleEventKind::Created);
 
         Ok(job)
     }
@@ -119,6 +119,7 @@ impl JobManager {
     pub(super) async fn mutate_job<F>(
         &self,
         job_id: &DomainJobId,
+        kind: ports::job_scheduler::JobLifecycleEventKind,
         action: F,
     ) -> Result<Job, PortError>
     where
@@ -135,13 +136,15 @@ impl JobManager {
                 resource: format!("Job {}", job_id),
             })?;
 
+        let expected_revision = job.revision();
+
         action(&mut job).map_err(|e| PortError::Unexpected {
             message: e.to_string(),
         })?;
 
-        self.repo.save(&job).await?;
+        self.repo.save(&job, expected_revision).await?;
         self.cache.insert(job.clone()).await;
-        self.emit_job_event(&job);
+        self.emit_job_event(&job, kind);
 
         Ok(job)
     }
@@ -150,6 +153,7 @@ impl JobManager {
         &self,
         job_id: &DomainJobId,
         outcome: domain::job::TerminalOutcome,
+        kind: ports::job_scheduler::JobLifecycleEventKind,
         action: F,
     ) -> Result<Job, PortError>
     where
@@ -165,6 +169,8 @@ impl JobManager {
             .ok_or_else(|| PortError::NotFound {
                 resource: format!("Job {}", job_id),
             })?;
+
+        let expected_revision = job.revision();
 
         action(&mut job).map_err(|e| PortError::Unexpected {
             message: e.to_string(),
@@ -174,6 +180,7 @@ impl JobManager {
 
         let command = ports::transaction::CommitTerminalJobUpdate {
             job: job.clone(),
+            expected_revision,
             deduplication_key,
             project_id: job.project_id().clone(),
             outcome,
@@ -182,7 +189,7 @@ impl JobManager {
         self.storage_uow.commit_terminal_job_update(command).await?;
 
         self.cache.insert(job.clone()).await;
-        self.emit_job_event(&job);
+        self.emit_job_event(&job, kind);
 
         Ok(job)
     }
@@ -191,16 +198,16 @@ impl JobManager {
         self.cancellation_registry.unregister(id).await;
     }
 
-    pub(super) fn emit_job_event(&self, job: &Job) {
+    pub(super) fn emit_job_event(
+        &self,
+        job: &Job,
+        kind: ports::job_scheduler::JobLifecycleEventKind,
+    ) {
         let scheduled = map_job_to_scheduled(job);
 
         let event = JobLifecycleEvent {
-            job_id: scheduled.id,
-            project_id: scheduled.project_id,
-            status: scheduled.status,
-            stage: scheduled.stage,
-            progress: scheduled.progress,
-            error: scheduled.error,
+            kind,
+            job: scheduled,
         };
 
         if let Some(emitter) = &self.emitter {

@@ -128,7 +128,17 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
 
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
         let mut db = self.db.lock().unwrap();
-        if !db.jobs.contains_key(command.job.id()) {
+        if let Some(existing) = db.jobs.get(command.job.id()) {
+            if existing.revision() != command.expected_revision {
+                return Err(PortError::Conflict {
+                    resource: "Job".to_string(),
+                    message: format!(
+                        "Optimistic concurrency conflict for job id {}",
+                        command.job.id()
+                    ),
+                });
+            }
+        } else {
             return Err(PortError::NotFound {
                 resource: "Job".to_string(),
             });
@@ -172,7 +182,17 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
                 resource: "Project".to_string(),
             });
         }
-        if !db.jobs.contains_key(command.job.id()) {
+        if let Some(existing) = db.jobs.get(command.job.id()) {
+            if existing.revision() != command.expected_job_revision {
+                return Err(PortError::Conflict {
+                    resource: "Job".to_string(),
+                    message: format!(
+                        "Optimistic concurrency conflict for job id {}",
+                        command.job.id()
+                    ),
+                });
+            }
+        } else {
             return Err(PortError::NotFound {
                 resource: "Job".to_string(),
             });
@@ -189,7 +209,17 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         command: ports::transaction::CommitTerminalJobUpdate,
     ) -> Result<(), PortError> {
         let mut db = self.db.lock().unwrap();
-        if !db.jobs.contains_key(command.job.id()) {
+        if let Some(existing) = db.jobs.get(command.job.id()) {
+            if existing.revision() != command.expected_revision {
+                return Err(PortError::Conflict {
+                    resource: "Job".to_string(),
+                    message: format!(
+                        "Optimistic concurrency conflict for job id {}",
+                        command.job.id()
+                    ),
+                });
+            }
+        } else {
             return Err(PortError::NotFound {
                 resource: "Job".to_string(),
             });

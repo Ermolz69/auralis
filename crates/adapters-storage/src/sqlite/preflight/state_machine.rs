@@ -2,7 +2,7 @@ use super::error::DatabaseTransitionError;
 use super::inspector::{DatabaseClassification, LegacyDatabaseInspector};
 use super::lock::TransitionLock;
 use super::manifest::{TransitionManifest, TransitionStage};
-use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
+use sqlx::sqlite::SqliteConnectOptions;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use uuid::Uuid;
@@ -49,7 +49,7 @@ impl TransitionStateMachine {
                 let manifest_path = self.backup_dir.join("transition_manifest.json");
 
                 // If a lock is held, we check if we can resume.
-                let mut lock =
+                let lock =
                     TransitionLock::try_acquire(lock_path, manifest_path.clone(), Uuid::new_v4())
                         .await?;
 

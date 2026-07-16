@@ -18,6 +18,7 @@ pub struct StartDubbingJobRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledJob {
     pub id: JobId,
+    pub revision: u64,
     pub project_id: Option<ProjectId>,
     pub title: String,
     pub status: JobStatus,
@@ -43,6 +44,11 @@ pub trait JobSchedulerPort: Send + Sync {
 
     async fn list_jobs(&self) -> Result<Vec<ScheduledJob>, PortError>;
 
+    async fn list_jobs_snapshot(
+        &self,
+        project_id: &ProjectId,
+    ) -> Result<Vec<ScheduledJob>, PortError>;
+
     async fn update_job_stage(
         &self,
         job_id: &JobId,
@@ -61,13 +67,20 @@ pub trait JobSchedulerPort: Send + Sync {
     ) -> Result<ScheduledJob, PortError>;
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum JobLifecycleEventKind {
+    Created,
+    Started,
+    Progressed,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JobLifecycleEvent {
-    pub job_id: JobId,
-    pub project_id: Option<ProjectId>,
-    pub status: JobStatus,
-    pub stage: Option<DubbingPipelineStage>,
-    pub progress: JobProgress,
-    pub error: Option<String>,
+    pub kind: JobLifecycleEventKind,
+    pub job: ScheduledJob,
 }

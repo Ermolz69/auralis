@@ -39,20 +39,33 @@ pub fn map_stage(stage: &domain::dubbing::DubbingPipelineStage) -> String {
 pub struct JobEventDtoMapper;
 
 impl JobEventDtoMapper {
+    pub fn map_kind(kind: &ports::job_scheduler::JobLifecycleEventKind) -> String {
+        match kind {
+            ports::job_scheduler::JobLifecycleEventKind::Created => "created".to_string(),
+            ports::job_scheduler::JobLifecycleEventKind::Started => "started".to_string(),
+            ports::job_scheduler::JobLifecycleEventKind::Progressed => "progressed".to_string(),
+            ports::job_scheduler::JobLifecycleEventKind::Completed => "completed".to_string(),
+            ports::job_scheduler::JobLifecycleEventKind::Failed => "failed".to_string(),
+            ports::job_scheduler::JobLifecycleEventKind::Cancelled => "cancelled".to_string(),
+        }
+    }
+
     pub fn map(event: &JobLifecycleEvent) -> JobEventDto {
         JobEventDto {
-            job_id: event.job_id.to_string(),
-            project_id: event.project_id.as_ref().map(|id| id.to_string()),
-            status: map_status(&event.status),
-            stage: event.stage.as_ref().map(map_stage),
+            kind: Self::map_kind(&event.kind),
+            job_id: event.job.id.to_string(),
+            revision: event.job.revision,
+            project_id: event.job.project_id.as_ref().map(|id| id.to_string()),
+            status: map_status(&event.job.status),
+            stage: event.job.stage.as_ref().map(map_stage),
             progress: JobProgressDto {
-                percent: event.progress.percent,
-                message: event.progress.message.clone(),
-                current_step: event.progress.current_step.clone(),
-                processed_items: event.progress.processed_items,
-                total_items: event.progress.total_items,
+                percent: event.job.progress.percent,
+                message: event.job.progress.message.clone(),
+                current_step: event.job.progress.current_step.clone(),
+                processed_items: event.job.progress.processed_items,
+                total_items: event.job.progress.total_items,
             },
-            error: event.error.clone(),
+            error: event.job.error.clone(),
         }
     }
 }
@@ -60,6 +73,7 @@ impl JobEventDtoMapper {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono;
     use domain::dubbing::DubbingPipelineStage;
     use domain::job::{JobId, JobProgress, JobStatus};
     use domain::project::ProjectId;
@@ -68,18 +82,25 @@ mod tests {
     #[test]
     fn test_dto_serialization_contract() {
         let event = JobLifecycleEvent {
-            job_id: JobId::new(),
-            project_id: Some(ProjectId::new()),
-            status: JobStatus::Running,
-            stage: Some(DubbingPipelineStage::DownloadMedia),
-            progress: JobProgress {
-                percent: 50,
-                message: "Downloading".to_string(),
-                current_step: Some("video.mp4".to_string()),
-                processed_items: Some(1),
-                total_items: Some(2),
+            kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 1,
+                title: "Test".to_string(),
+                project_id: Some(ProjectId::new()),
+                status: JobStatus::Running,
+                stage: Some(DubbingPipelineStage::DownloadMedia),
+                progress: JobProgress {
+                    percent: 50,
+                    message: "Downloading".to_string(),
+                    current_step: Some("video.mp4".to_string()),
+                    processed_items: Some(1),
+                    total_items: Some(2),
+                },
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
             },
-            error: None,
         };
 
         let dto = JobEventDtoMapper::map(&event);
@@ -88,8 +109,10 @@ mod tests {
         assert_eq!(
             serialized,
             json!({
-                "jobId": event.job_id.to_string(),
-                "projectId": event.project_id.unwrap().to_string(),
+                "kind": "progressed",
+                "jobId": event.job.id.to_string(),
+                "revision": 1,
+                "projectId": event.job.project_id.unwrap().to_string(),
                 "status": "running",
                 "stage": "downloadMedia",
                 "progress": {
@@ -107,12 +130,19 @@ mod tests {
     #[test]
     fn test_dto_serialization_none_handling() {
         let event = JobLifecycleEvent {
-            job_id: JobId::new(),
-            project_id: None,
-            status: JobStatus::Pending,
-            stage: None,
-            progress: JobProgress::initializing(),
-            error: Some("Fail".to_string()),
+            kind: ports::job_scheduler::JobLifecycleEventKind::Failed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 1,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Pending,
+                stage: None,
+                progress: JobProgress::initializing(),
+                error: Some("Fail".to_string()),
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
         };
 
         let dto = JobEventDtoMapper::map(&event);
@@ -121,7 +151,9 @@ mod tests {
         assert_eq!(
             serialized,
             json!({
-                "jobId": event.job_id.to_string(),
+                "kind": "failed",
+                "jobId": event.job.id.to_string(),
+                "revision": 1,
                 "projectId": null,
                 "status": "pending",
                 "stage": null,

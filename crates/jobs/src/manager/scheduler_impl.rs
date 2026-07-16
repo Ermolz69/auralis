@@ -22,21 +22,28 @@ impl JobSchedulerPort for JobManager {
 
     async fn enqueue_existing_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
         let job = self
-            .mutate_job(job_id, |job| {
-                if job.status() == &domain::job::JobStatus::Running {
-                    return Ok(());
-                }
-                job.start()
-            })
+            .mutate_job(
+                job_id,
+                ports::job_scheduler::JobLifecycleEventKind::Started,
+                |job| {
+                    if job.status() == &domain::job::JobStatus::Running {
+                        return Ok(());
+                    }
+                    job.start()
+                },
+            )
             .await?;
         Ok(map_job_to_scheduled(&job))
     }
 
     async fn cancel_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
         let job = self
-            .mutate_job_terminal(job_id, domain::job::TerminalOutcome::Cancelled, |job| {
-                job.cancel()
-            })
+            .mutate_job_terminal(
+                job_id,
+                domain::job::TerminalOutcome::Cancelled,
+                ports::job_scheduler::JobLifecycleEventKind::Cancelled,
+                |job| job.cancel(),
+            )
             .await?;
         self.cancellation_registry.cancel(job_id).await;
         Ok(map_job_to_scheduled(&job))
@@ -59,16 +66,23 @@ impl JobSchedulerPort for JobManager {
         progress: domain::job::JobProgress,
     ) -> Result<ScheduledJob, PortError> {
         let job = self
-            .mutate_job(job_id, |job| job.advance(stage, progress))
+            .mutate_job(
+                job_id,
+                ports::job_scheduler::JobLifecycleEventKind::Progressed,
+                |job| job.advance(stage, progress),
+            )
             .await?;
         Ok(map_job_to_scheduled(&job))
     }
 
     async fn complete_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
         let job = self
-            .mutate_job_terminal(job_id, domain::job::TerminalOutcome::Completed, |job| {
-                job.mark_completed()
-            })
+            .mutate_job_terminal(
+                job_id,
+                domain::job::TerminalOutcome::Completed,
+                ports::job_scheduler::JobLifecycleEventKind::Completed,
+                |job| job.mark_completed(),
+            )
             .await?;
         Ok(map_job_to_scheduled(&job))
     }
@@ -81,10 +95,20 @@ impl JobSchedulerPort for JobManager {
         _retryable: bool,
     ) -> Result<ScheduledJob, PortError> {
         let job = self
-            .mutate_job_terminal(job_id, domain::job::TerminalOutcome::Failed, |job| {
-                job.mark_failed(domain::job::JobError::new(code, message, _retryable))
-            })
+            .mutate_job_terminal(
+                job_id,
+                domain::job::TerminalOutcome::Failed,
+                ports::job_scheduler::JobLifecycleEventKind::Failed,
+                |job| job.mark_failed(domain::job::JobError::new(code, message, _retryable)),
+            )
             .await?;
         Ok(map_job_to_scheduled(&job))
+    }
+    async fn list_jobs_snapshot(
+        &self,
+        project_id: &domain::project::ProjectId,
+    ) -> Result<Vec<ScheduledJob>, PortError> {
+        let jobs = self.repo.list_by_project(project_id).await?;
+        Ok(jobs.into_iter().map(|j| map_job_to_scheduled(&j)).collect())
     }
 }

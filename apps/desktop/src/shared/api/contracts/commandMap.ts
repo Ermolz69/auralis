@@ -41,6 +41,10 @@ export interface CommandMap {
     args: undefined;
     result: Job[];
   };
+  list_jobs_snapshot_cmd: {
+    args: { projectId: string };
+    result: Job[];
+  };
   cancel_job_cmd: {
     args: { jobId: string };
     result: Job;

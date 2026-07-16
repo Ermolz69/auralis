@@ -13,6 +13,7 @@ The SQLite connection manager (`connect_sqlite`) inspects the existing `sqlite_m
 ## Automatic Backup Process
 
 When a handcrafted dev database is detected, the application will:
+
 1. Close the SQLite connection.
 2. Rename the database files to include a backup timestamp:
    - `app.sqlite` -> `app.sqlite.backup_<timestamp>`
@@ -24,9 +25,10 @@ When a handcrafted dev database is detected, the application will:
 ## Restoring from Backup
 
 If you need to retrieve data from your legacy dev database:
+
 1. Stop the application.
 2. Locate the `.backup_<timestamp>` files in the same directory as the database (e.g. `~/.local/share/auralis/`).
 3. Rename them back to their original `.sqlite`, `.sqlite-wal`, and `.sqlite-shm` names.
-4. Note: The application will automatically back them up again on next startup unless you manually write a script to import the data into the new schema. 
+4. Note: The application will automatically back them up again on next startup unless you manually write a script to import the data into the new schema.
 
 Currently, **legacy dev data is not automatically imported into the new schema**. If you require the old data to be present in the new schema, an explicit importer script must be written to map the old rows to the new database structure.

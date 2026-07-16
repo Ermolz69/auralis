@@ -13,12 +13,13 @@ pub(super) async fn insert_job(
     sqlx::query(
         r#"
         INSERT INTO jobs (
-            id, project_id, title, kind, status, stage, progress_json, error_json, 
+            id, revision, project_id, title, kind, status, stage, progress_json, error_json, 
             created_at, updated_at, started_at, finished_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(row.id)
+    .bind(row.revision)
     .bind(row.project_id)
     .bind(row.title)
     .bind(row.kind)
@@ -51,12 +52,14 @@ pub(super) async fn insert_job(
 pub(super) async fn update_job(
     tx: &mut Transaction<'_, Sqlite>,
     job: &Job,
+    expected_revision: u64,
 ) -> Result<(), PortError> {
     let row = job_to_row_values(job)?;
 
     let result = sqlx::query(
         r#"
         UPDATE jobs SET
+            revision = ?,
             title = ?,
             status = ?,
             stage = ?,
@@ -65,7 +68,7 @@ pub(super) async fn update_job(
             updated_at = ?,
             started_at = ?,
             finished_at = ?
-        WHERE id = ? AND project_id = ?
+        WHERE id = ? AND project_id = ? AND revision = ?
           AND EXISTS (
               SELECT 1 FROM projects
               WHERE projects.id = jobs.project_id
@@ -73,6 +76,7 @@ pub(super) async fn update_job(
           )
         "#,
     )
+    .bind(row.revision)
     .bind(row.title)
     .bind(row.status)
     .bind(row.stage)
@@ -83,6 +87,7 @@ pub(super) async fn update_job(
     .bind(row.finished_at)
     .bind(row.id)
     .bind(row.project_id)
+    .bind(i64::try_from(expected_revision).unwrap_or(-1))
     .execute(&mut **tx)
     .await
     .map_err(|e| PortError::Unexpected {
@@ -90,8 +95,12 @@ pub(super) async fn update_job(
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(PortError::NotFound {
+        return Err(PortError::Conflict {
             resource: "Job".to_string(),
+            message: format!(
+                "Optimistic concurrency conflict for job id {} in uow",
+                job.id()
+            ),
         });
     }
 

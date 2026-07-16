@@ -21,8 +21,6 @@ pub struct StartMockPipelineResponse {
     pub job: ScheduledJob,
 }
 
-use crate::usecases::project::lifecycle::ProjectLifecycleLocks;
-
 pub struct StartMockPipelineUseCase<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
@@ -44,6 +42,7 @@ impl<
     S: ArtifactStore + Clone + 'static,
 > StartMockPipelineUseCase<R, V, S>
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         project_repo: R,
         job_scheduler: Arc<dyn JobSchedulerPort>,
@@ -111,6 +110,7 @@ impl<
                 // Compensation
                 let mut failed_project = project.clone();
                 let mut failed_job = job.clone();
+                let expected_job_revision = failed_job.revision();
 
                 failed_project.apply_terminal_transition(
                     failed_job.id(),
@@ -125,6 +125,7 @@ impl<
                 let failure_cmd = CommitPipelineStartFailure {
                     project: failed_project,
                     job: failed_job,
+                    expected_job_revision,
                 };
 
                 match self
@@ -199,6 +200,28 @@ mod tests {
     use crate::test_utils::MockArtifactStore;
     use adapters_storage::local::LocalTempWorkspace;
 
+    struct MockJobRuntimeControl;
+    #[async_trait::async_trait]
+    impl ports::job_runtime_control::JobRuntimeControlPort for MockJobRuntimeControl {
+        async fn cancel_and_evict_jobs(
+            &self,
+            _job_ids: &[domain::job::JobId],
+        ) -> Result<ports::job_runtime_control::RuntimeCleanupReport, ports::error::PortError>
+        {
+            Ok(ports::job_runtime_control::RuntimeCleanupReport {
+                jobs: std::collections::HashMap::new(),
+            })
+        }
+        async fn register_runtime_task(
+            &self,
+            _job_id: domain::job::JobId,
+            _cancel_handle: ports::cancellation::CancelHandle,
+            _state_rx: tokio::sync::watch::Receiver<ports::job_runtime_control::RuntimeState>,
+            _abort_handle: tokio::task::AbortHandle,
+        ) {
+        }
+    }
+
     #[tokio::test]
     async fn test_success_saves_project_processing_and_job_pending_running() {
         let project_repo = InMemoryProjectRepository::new(std::sync::Arc::new(
@@ -227,6 +250,7 @@ mod tests {
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
             Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -278,6 +302,7 @@ mod tests {
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
             Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -313,6 +338,7 @@ mod tests {
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
             Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -355,6 +381,7 @@ mod tests {
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
             Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -394,6 +421,7 @@ mod tests {
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
             Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),
@@ -442,6 +470,12 @@ mod tests {
         }
         #[async_trait]
         impl StorageUnitOfWork for FailCompUow {
+            async fn commit_artifact_finalize(
+                &self,
+                cmd: ports::transaction::CommitArtifactFinalize,
+            ) -> Result<(), PortError> {
+                self.inner.commit_artifact_finalize(cmd).await
+            }
             async fn commit_transcript_import(
                 &self,
                 cmd: ports::transaction::CommitTranscriptImport,
@@ -529,6 +563,7 @@ mod tests {
             MockArtifactStore,
             Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
             Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
+            Arc::new(MockJobRuntimeControl),
         );
         let request = StartMockPipelineRequest {
             project_id: project.id().clone(),

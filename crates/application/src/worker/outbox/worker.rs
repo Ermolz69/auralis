@@ -61,7 +61,45 @@ where
         }
     }
 
-    pub async fn process_pending_messages(
+    pub fn process_pending_messages<'a>(
+        &'a self,
+        limit: usize,
+    ) -> impl std::future::Future<Output = Result<OutboxBatchReport, ApplicationError>> + 'a {
+        let span = tracing::info_span!("outbox_batch", action = "process_pending_messages");
+        let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
+            span.clone(),
+            crate::observability::execution_summary::OperationSummary::OutboxBatch {
+                action: "process_pending_messages",
+                status: "aborted".to_string(),
+                failed_count: 0,
+            },
+        );
+
+        async move {
+            let res = self.process_pending_messages_inner(limit).await;
+            match &res {
+                Ok(report) => {
+                    let failed_count = report.corrupted + report.storage_errors + report.dead;
+                    let status = if failed_count > 0 {
+                        "completed_with_errors"
+                    } else {
+                        "completed"
+                    };
+                    guard.update_summary(
+                        crate::observability::execution_summary::OperationSummary::OutboxBatch {
+                            action: "process_pending_messages",
+                            status: status.to_string(),
+                            failed_count: failed_count as u64,
+                        },
+                    );
+                }
+                Err(_) => guard.summary.update_status("failed"),
+            }
+            res
+        }
+    }
+
+    async fn process_pending_messages_inner(
         &self,
         limit: usize,
     ) -> Result<OutboxBatchReport, ApplicationError> {
@@ -91,11 +129,15 @@ where
 
             let claimed = match claim_result {
                 Ok(c) => c,
-                Err(e) => {
+                Err(_e) => {
                     tracing::error!(
+                        error = %common::observability::redaction::DiagnosticError {
+                            kind: "OutboxClaimFailed",
+                            code: None,
+                            retryable: true,
+                        },
                         message_id = %message.id,
-                        "OutboxWorker: Failed to claim message: {}",
-                        e
+                        "OutboxWorker: Failed to claim message"
                     );
                     report.storage_errors += 1;
                     continue;
@@ -120,11 +162,15 @@ where
                     Ok(_) => {
                         report.completed += 1;
                     }
-                    Err(e) => {
+                    Err(_e) => {
                         tracing::error!(
+                            error = %common::observability::redaction::DiagnosticError {
+                                kind: "OutboxMarkDoneFailed",
+                                code: None,
+                                retryable: true,
+                            },
                             message_id = %message.id,
-                            "OutboxWorker: Failed to mark message as done: {}",
-                            e
+                            "OutboxWorker: Failed to mark message as done"
                         );
                         report.storage_errors += 1;
                     }
@@ -143,11 +189,15 @@ where
                                 report.retry_scheduled += 1;
                             }
                         }
-                        Err(db_err) => {
+                        Err(_db_err) => {
                             tracing::error!(
+                                error = %common::observability::redaction::DiagnosticError {
+                                    kind: "OutboxMarkFailedError",
+                                    code: None,
+                                    retryable: true,
+                                },
                                 message_id = %message.id,
-                                "OutboxWorker: Failed to mark message as failed: {}",
-                                db_err
+                                "OutboxWorker: Failed to mark message as failed"
                             );
                             report.storage_errors += 1;
                         }
@@ -195,8 +245,15 @@ where
                                 tracing::info!("OutboxWorker report: {}", report);
                             }
                         }
-                        Err(e) => {
-                            tracing::error!("OutboxWorker error: {}", e);
+                        Err(_e) => {
+                            tracing::error!(
+                                error = %common::observability::redaction::DiagnosticError {
+                                    kind: "OutboxProcessBatchFailed",
+                                    code: None,
+                                    retryable: true,
+                                },
+                                "OutboxWorker error"
+                            );
                         }
                     }
                 }
@@ -226,11 +283,25 @@ where
                         }
                         Err(e) => {
                             if e.is_panic() {
-                                tracing::error!("OutboxWorker: maintenance task panicked!");
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "OutboxMaintenancePanicked",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "OutboxWorker: maintenance task panicked!"
+                                );
                             } else if e.is_cancelled() {
                                 tracing::warn!("OutboxWorker: maintenance task was cancelled");
                             } else {
-                                tracing::error!("OutboxWorker: maintenance task failed: {}", e);
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "OutboxMaintenanceFailed",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "OutboxWorker: maintenance task failed"
+                                );
                             }
                         }
                     }

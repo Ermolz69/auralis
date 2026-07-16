@@ -21,8 +21,56 @@ impl RecoverInterruptedStateUseCase {
         Self { recovery_storage }
     }
 
-    pub async fn execute(&self) -> Result<RecoveryReport, ApplicationError> {
-        let snapshot = self.recovery_storage.load_snapshot().await.map_err(|e| {
+    pub fn execute(
+        &self,
+    ) -> impl std::future::Future<Output = Result<RecoveryReport, ApplicationError>> {
+        let span = tracing::info_span!("recovery", action = "recovery");
+        let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
+            span.clone(),
+            crate::observability::execution_summary::OperationSummary::Recovery {
+                action: "recovery",
+                status: "aborted".to_string(),
+                actions_applied: 0,
+                resolved_count: 0,
+                unresolved_count: 0,
+                failed_count: 0,
+            },
+        );
+
+        let storage = self.recovery_storage.clone();
+
+        async move {
+            let res = Self::execute_inner(storage).await;
+            match &res {
+                Ok(report) => {
+                    let failed_count =
+                        report.persistence_failures.len() + report.unresolved_violations.len();
+                    let status = if failed_count > 0 {
+                        "completed_with_errors"
+                    } else {
+                        "completed"
+                    };
+                    guard.update_summary(
+                        crate::observability::execution_summary::OperationSummary::Recovery {
+                            action: "recovery",
+                            status: status.to_string(),
+                            actions_applied: report.actions_applied as u64,
+                            resolved_count: report.resolved_violations.len() as u64,
+                            unresolved_count: report.unresolved_violations.len() as u64,
+                            failed_count: failed_count as u64,
+                        },
+                    );
+                }
+                Err(_) => guard.summary.update_status("failed"),
+            }
+            res
+        }
+    }
+
+    async fn execute_inner(
+        recovery_storage: Arc<dyn RecoveryStorage>,
+    ) -> Result<RecoveryReport, ApplicationError> {
+        let snapshot = recovery_storage.load_snapshot().await.map_err(|e| {
             ApplicationError::Unexpected(format!("Failed to load recovery snapshot: {}", e))
         })?;
 
@@ -61,7 +109,7 @@ impl RecoverInterruptedStateUseCase {
                     {
                         Err(e.to_string())
                     } else {
-                        self.recovery_storage
+                        recovery_storage
                             .commit_failed_interrupted_pair(FailInterruptedPairCommand {
                                 project,
                                 job,
@@ -93,7 +141,7 @@ impl RecoverInterruptedStateUseCase {
                     if let Err(e) = project.apply_terminal_transition(job.id(), outcome) {
                         Err(e.to_string())
                     } else {
-                        self.recovery_storage
+                        recovery_storage
                             .commit_reconciled_terminal_pair(ReconcileTerminalPairCommand {
                                 project,
                                 job,
@@ -125,7 +173,7 @@ impl RecoverInterruptedStateUseCase {
                         Err(e.to_string())
                     } else {
                         project.force_fail_legacy_recovery();
-                        self.recovery_storage
+                        recovery_storage
                             .commit_legacy_pair_fallback(FailLegacyPairFallbackCommand {
                                 project,
                                 job,
@@ -149,7 +197,7 @@ impl RecoverInterruptedStateUseCase {
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     project.force_fail_legacy_recovery(); // Equivalent to force failing due to missing job
-                    self.recovery_storage
+                    recovery_storage
                         .commit_failed_project_with_missing_linked_job(
                             FailProjectWithMissingLinkedJobCommand {
                                 project,
@@ -168,7 +216,7 @@ impl RecoverInterruptedStateUseCase {
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     project.force_fail_legacy_recovery();
-                    self.recovery_storage
+                    recovery_storage
                         .commit_failed_legacy_project_without_job(
                             FailLegacyProjectWithoutJobCommand {
                                 project,
@@ -190,7 +238,7 @@ impl RecoverInterruptedStateUseCase {
                     )) {
                         Err(e.to_string())
                     } else {
-                        self.recovery_storage
+                        recovery_storage
                             .commit_failed_orphan_job(FailOrphanJobCommand {
                                 job,
                                 expected_job_status,

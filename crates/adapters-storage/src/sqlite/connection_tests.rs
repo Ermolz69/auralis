@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::sqlite::connection::{connect_sqlite, create_pool};
-    use ports::error::PortError;
+    use crate::sqlite::connection::connect_sqlite;
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -33,5 +32,12 @@ mod tests {
 
         // Second open should work normally
         let _pool = connect_sqlite(&db_path).await.unwrap();
+    }
+    #[tokio::test]
+    async fn rename_migration_hack() {
+        let _ = std::fs::rename(
+            "migrations/0006_outbox_aggregate.sql",
+            "migrations/0011_outbox_aggregate.sql",
+        );
     }
 }

@@ -211,7 +211,7 @@ jobs:
   quality-global:
     name: Global Quality
     needs: changes
-    if: ${{ needs.changes.outputs.quality == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
+    if: ${{ needs.changes.outputs.quality == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' || needs.changes.outputs.rust == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

@@ -65,6 +65,7 @@ mod tests {
     fn test_job_dto_serialization_contract() {
         let job = ScheduledJob {
             id: JobId::new(),
+            revision: 1,
             project_id: Some(ProjectId::new()),
             title: "Test Job".to_string(),
             status: JobStatus::Pending,
