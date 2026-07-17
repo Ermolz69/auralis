@@ -92,7 +92,6 @@ where
                             code: None,
                             retryable: false,
                         },
-                        workspace_key = %workspace_key,
                         "OutboxWorker: Failed to delete workspace allocation"
                     );
                     return Err(ApplicationError::InvalidOperation {
@@ -115,11 +114,11 @@ where
                     .apply_terminal_lifecycle_conditionally(command)
                     .await?;
                 // Even if IgnoredStale or AlreadyApplied, we consider it done for the outbox.
-                tracing::info!(
+                tracing::debug!(
                     project_id = %project_id,
                     job_id = %job_id,
-                    "Terminal lifecycle applied: {:?}",
-                    res
+                    result = ?res,
+                    "terminal lifecycle evaluated"
                 );
 
                 if let domain::project::status::TerminalTransitionResult::Applied {

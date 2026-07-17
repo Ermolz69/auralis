@@ -79,8 +79,8 @@ where
 }
 
 pub struct JobEventBridgeHandle {
-    shutdown_tx: Option<oneshot::Sender<()>>,
-    worker_handle: Option<JoinHandle<()>>,
+    pub shutdown_tx: Option<oneshot::Sender<()>>,
+    pub worker_handle: Option<JoinHandle<()>>,
 }
 
 impl JobEventBridgeHandle {
@@ -100,43 +100,27 @@ impl Default for JobEventBridgeConfig {
     }
 }
 
-pub struct TauriJobEventBridge {
+pub struct PreparedJobEventBridge {
     tx: broadcast::Sender<JobLifecycleEvent>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+    shutdown_rx: Option<oneshot::Receiver<()>>,
+    receiver: Option<broadcast::Receiver<JobLifecycleEvent>>,
+}
+
+pub struct RunningJobEventBridge {
+    _tx: broadcast::Sender<JobLifecycleEvent>,
     handle: Option<JobEventBridgeHandle>,
 }
 
-impl TauriJobEventBridge {
-    pub fn new<P>(
-        publisher: P,
-        coordinator: Arc<JobLifecycleCoordinator>,
-        config: JobEventBridgeConfig,
-    ) -> Self
-    where
-        P: FrontendJobEventPublisher + 'static,
-    {
+impl PreparedJobEventBridge {
+    pub fn new(config: JobEventBridgeConfig) -> Self {
         let (tx, rx) = broadcast::channel(config.capacity);
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
-
-        let worker = JobLifecycleWorker {
-            publisher,
-            coordinator,
-            receiver: rx,
-            shutdown_rx,
-        };
-
-        // Using tokio::spawn which is the standard async_runtime backend
-        let worker_handle = tokio::spawn(async move {
-            worker.run().await;
-        });
-
-        let bridge_handle = JobEventBridgeHandle {
-            shutdown_tx: Some(shutdown_tx),
-            worker_handle: Some(worker_handle),
-        };
-
         Self {
             tx,
-            handle: Some(bridge_handle),
+            shutdown_tx: Some(shutdown_tx),
+            shutdown_rx: Some(shutdown_rx),
+            receiver: Some(rx),
         }
     }
 
@@ -156,6 +140,38 @@ impl TauriJobEventBridge {
         })
     }
 
+    pub fn start<P>(
+        mut self,
+        publisher: P,
+        coordinator: Arc<JobLifecycleCoordinator>,
+    ) -> RunningJobEventBridge
+    where
+        P: FrontendJobEventPublisher + 'static,
+    {
+        let worker = JobLifecycleWorker {
+            publisher,
+            coordinator,
+            receiver: self.receiver.take().unwrap(),
+            shutdown_rx: self.shutdown_rx.take().unwrap(),
+        };
+
+        let worker_handle = tokio::spawn(async move {
+            worker.run().await;
+        });
+
+        let bridge_handle = JobEventBridgeHandle {
+            shutdown_tx: self.shutdown_tx.take(),
+            worker_handle: Some(worker_handle),
+        };
+
+        RunningJobEventBridge {
+            _tx: self.tx,
+            handle: Some(bridge_handle),
+        }
+    }
+}
+
+impl RunningJobEventBridge {
     pub fn take_handle(&mut self) -> Option<JobEventBridgeHandle> {
         self.handle.take()
     }
@@ -164,25 +180,25 @@ impl TauriJobEventBridge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono;
     use domain::job::{JobId, JobProgress, JobStatus};
     use ports::error::PortError;
-    use std::sync::{Arc, Mutex};
-    use tokio::time::{Duration, sleep};
+    use std::sync::Mutex;
+    use std::time::Duration;
+    use tokio::time::sleep;
 
     #[derive(Clone)]
     struct MockFrontendPublisher {
         events: Arc<Mutex<Vec<JobLifecycleEvent>>>,
-        fail_next: Arc<Mutex<bool>>,
         invalidated_calls: Arc<Mutex<usize>>,
+        fail_next: Arc<Mutex<bool>>,
     }
 
     impl MockFrontendPublisher {
         fn new() -> Self {
             Self {
-                events: Arc::new(Mutex::new(vec![])),
-                fail_next: Arc::new(Mutex::new(false)),
+                events: Arc::new(Mutex::new(Vec::new())),
                 invalidated_calls: Arc::new(Mutex::new(0)),
+                fail_next: Arc::new(Mutex::new(false)),
             }
         }
     }
@@ -209,15 +225,11 @@ mod tests {
     #[tokio::test]
     async fn test_bridge_event_ordering_and_shutdown() {
         let coordinator = Arc::new(JobLifecycleCoordinator::new());
-
         let frontend_pub = MockFrontendPublisher::new();
-        let mut bridge = TauriJobEventBridge::new(
-            frontend_pub.clone(),
-            coordinator,
-            JobEventBridgeConfig::default(),
-        );
 
-        let emitter = bridge.emitter();
+        let prepared = PreparedJobEventBridge::new(JobEventBridgeConfig::default());
+        let emitter = prepared.emitter();
+        let mut running = prepared.start(frontend_pub.clone(), coordinator);
 
         let event1 = JobLifecycleEvent {
             kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
@@ -264,7 +276,7 @@ mod tests {
         assert_eq!(emitted[1].job.status, JobStatus::Completed);
 
         // Test shutdown
-        let handle = bridge.take_handle().unwrap();
+        let handle = running.take_handle().unwrap();
         let (tx, task) = handle.into_shutdown_parts();
         if let Some(tx) = tx {
             let _ = tx.send(());
@@ -272,38 +284,16 @@ mod tests {
         if let Some(task) = task {
             let _ = task.await;
         }
-
-        // Try emitting after shutdown (should log error, but not panic)
-        let event3 = JobLifecycleEvent {
-            kind: ports::job_scheduler::JobLifecycleEventKind::Failed,
-            job: ports::job_scheduler::ScheduledJob {
-                id: JobId::new(),
-                revision: 3,
-                title: "Test".to_string(),
-                project_id: None,
-                status: JobStatus::Failed,
-                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
-                progress: JobProgress::initializing(),
-                error: None,
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-            },
-        };
-        emitter(event3);
     }
 
     #[tokio::test]
     async fn test_bridge_processing_after_failure() {
         let coordinator = Arc::new(JobLifecycleCoordinator::new());
-
         let frontend_pub = MockFrontendPublisher::new();
-        let mut bridge = TauriJobEventBridge::new(
-            frontend_pub.clone(),
-            coordinator,
-            JobEventBridgeConfig::default(),
-        );
 
-        let emitter = bridge.emitter();
+        let prepared = PreparedJobEventBridge::new(JobEventBridgeConfig::default());
+        let emitter = prepared.emitter();
+        let mut running = prepared.start(frontend_pub.clone(), coordinator);
 
         // Make the first publish fail
         *frontend_pub.fail_next.lock().unwrap() = true;
@@ -351,7 +341,7 @@ mod tests {
         assert_eq!(emitted.len(), 1);
         assert_eq!(emitted[0].job.status, JobStatus::Completed);
 
-        let handle = bridge.take_handle().unwrap();
+        let handle = running.take_handle().unwrap();
         let (tx, task) = handle.into_shutdown_parts();
         if let Some(tx) = tx {
             let _ = tx.send(());

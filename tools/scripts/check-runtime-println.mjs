@@ -6,11 +6,18 @@ const IGNORED_DIRS = ['tests', 'examples', 'benches'];
 
 export async function checkFileContent(fullPath, content) {
     let hasError = false;
+    const normalizedPath = path.normalize(fullPath).replace(/\\/g, '/');
+    const isDiagnosticFile = normalizedPath.endsWith('src-tauri/src/observability/diagnostic.rs');
+    
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         if (line.includes('println!') || line.includes('eprintln!') || line.includes('dbg!')) {
             console.error(`Error: Found println!, eprintln! or dbg! in ${fullPath}:${i + 1}`);
+            console.error(`  ${line.trim()}`);
+            hasError = true;
+        } else if (!isDiagnosticFile && (line.includes('std::io::stderr') || line.includes('io::stderr') || line.includes('stderr()'))) {
+            console.error(`Error: Found direct stderr access in non-diagnostic file ${fullPath}:${i + 1}`);
             console.error(`  ${line.trim()}`);
             hasError = true;
         }

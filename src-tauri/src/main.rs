@@ -2,8 +2,8 @@
 
 fn main() {
     if let Err(e) = auralis_app::run() {
-        use std::io::Write;
-        let _ = writeln!(std::io::stderr(), "Auralis failed to start: {}", e);
+        use auralis_app::observability::diagnostic::{DiagnosticSink, StderrDiagnosticSink};
+        StderrDiagnosticSink.emit(e.diagnostic());
         std::process::exit(1);
     }
 }

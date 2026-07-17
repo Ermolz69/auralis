@@ -96,6 +96,10 @@ mod tests {
     fn test_sanitized_url() {
         let u = SanitizedUrl("https://user:pass@example.com/path?query=1#frag");
         assert_eq!(format!("{}", u), "https://example.com/path");
+        assert!(!format!("{}", u).contains("user"));
+        assert!(!format!("{}", u).contains("pass"));
+        assert!(!format!("{}", u).contains("query"));
+        assert!(!format!("{}", u).contains("frag"));
 
         let u_invalid = SanitizedUrl("not a url");
         assert_eq!(format!("{}", u_invalid), "<invalid-url>");
@@ -103,8 +107,10 @@ mod tests {
 
     #[test]
     fn test_sanitized_user_path() {
-        let p = SanitizedUserPath(Some(Path::new("/home/user/secret.txt")));
+        let p = SanitizedUserPath(Some(Path::new("/home/sensitive_name/secret.txt")));
         assert_eq!(format!("{}", p), "<user-path-redacted>");
+        assert!(!format!("{}", p).contains("sensitive_name"));
+        assert!(!format!("{}", p).contains("secret.txt"));
 
         let p_none = SanitizedUserPath(None);
         assert_eq!(format!("{}", p_none), "None");

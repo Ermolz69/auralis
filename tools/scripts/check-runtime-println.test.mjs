@@ -41,6 +41,42 @@ async function runTests() {
         assert.strictEqual(hasError, false, 'Expected tracing::error! to NOT trigger an error');
     }
 
+    // Test 5: File with std::io::stderr() in non-diagnostic file should fail
+    {
+        const content = `fn main() {
+            let mut s = std::io::stderr();
+        }`;
+        const hasError = await checkFileContent('test5.rs', content);
+        assert.strictEqual(hasError, true, 'Expected std::io::stderr to trigger an error in non-diagnostic file');
+    }
+
+    // Test 6: File with stderr() in non-diagnostic file should fail
+    {
+        const content = `fn main() {
+            let mut s = stderr();
+        }`;
+        const hasError = await checkFileContent('test6.rs', content);
+        assert.strictEqual(hasError, true, 'Expected stderr() to trigger an error in non-diagnostic file');
+    }
+
+    // Test 7: File with std::io::stderr() in diagnostic.rs should pass
+    {
+        const content = `fn main() {
+            let mut s = std::io::stderr();
+        }`;
+        const hasError = await checkFileContent('src-tauri/src/observability/diagnostic.rs', content);
+        assert.strictEqual(hasError, false, 'Expected std::io::stderr to pass in diagnostic.rs');
+    }
+
+    // Test 8: File with stderr() in diagnostic.rs should pass
+    {
+        const content = `fn main() {
+            let mut s = stderr();
+        }`;
+        const hasError = await checkFileContent('src-tauri\\src\\observability\\diagnostic.rs', content);
+        assert.strictEqual(hasError, false, 'Expected stderr() to pass in diagnostic.rs with windows path');
+    }
+
     console.log('All tests passed!');
 }
 
