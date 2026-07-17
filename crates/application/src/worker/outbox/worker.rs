@@ -312,16 +312,8 @@ where
 
                     if !maintenance_join_set.is_empty() {
                         tracing::info!("OutboxWorker: waiting for maintenance task to cancel gracefully...");
-                        let timeout = tokio::time::timeout(self.config.shutdown_timeout, async {
-                            while let Some(res) = maintenance_join_set.join_next().await {
-                                tracing::info!("OutboxWorker: maintenance shutdown report: {:?}", res);
-                            }
-                        });
-
-                        if timeout.await.is_err() {
-                            tracing::warn!("OutboxWorker: maintenance task did not shutdown gracefully, aborting");
-                            maintenance_join_set.abort_all();
-                            while maintenance_join_set.join_next().await.is_some() {}
+                        while let Some(res) = maintenance_join_set.join_next().await {
+                            tracing::info!("OutboxWorker: maintenance shutdown report: {:?}", res);
                         }
                     }
                     break;

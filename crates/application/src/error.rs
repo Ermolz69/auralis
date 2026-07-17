@@ -26,6 +26,9 @@ pub enum ApplicationError {
     #[error("Unexpected error: {0}")]
     Unexpected(String),
 
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
     #[error("Operation failed: {primary}, and cleanup also failed: {cleanup_report:?}")]
     OperationFailedWithCleanup {
         primary: Box<ApplicationError>,

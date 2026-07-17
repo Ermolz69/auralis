@@ -6,6 +6,10 @@ pub(super) async fn save_outbox_message(
     tx: &mut Transaction<'_, Sqlite>,
     msg: &OutboxMessage,
 ) -> Result<(), PortError> {
+    fn format_db_timestamp(value: domain::chrono::DateTime<domain::chrono::Utc>) -> String {
+        value.to_rfc3339_opts(domain::chrono::SecondsFormat::Secs, true)
+    }
+
     let kind = msg.payload.clone();
     let kind_str = match &kind {
         OutboxPayload::FinalizeStagedArtifact { .. } => "finalize_staged_artifact",
@@ -41,13 +45,13 @@ pub(super) async fn save_outbox_message(
     .bind(payload_json)
     .bind(status_str)
     .bind(msg.attempts)
-    .bind(msg.next_attempt_at.to_rfc3339())
-    .bind(msg.locked_at.map(|dt| dt.to_rfc3339()))
+    .bind(format_db_timestamp(msg.next_attempt_at))
+    .bind(msg.locked_at.map(format_db_timestamp))
     .bind(msg.locked_by.clone())
     .bind(msg.last_error.clone())
     .bind(msg.deduplication_key.clone())
-    .bind(msg.created_at.to_rfc3339())
-    .bind(msg.updated_at.to_rfc3339())
+    .bind(format_db_timestamp(msg.created_at))
+    .bind(format_db_timestamp(msg.updated_at))
     .bind(msg.aggregate_type.clone())
     .bind(msg.aggregate_id.clone())
     .execute(&mut **tx)

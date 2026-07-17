@@ -19,7 +19,8 @@ impl SqliteOutboxRepository {
                 last_error = 'Timeout during processing (stale lock reclaimed)',
                 locked_at = NULL,
                 locked_by = NULL,
-                next_attempt_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+                next_attempt_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+                updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
             WHERE status = 'processing' 
               AND locked_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-5 minutes')
             "#,

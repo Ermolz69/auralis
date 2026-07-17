@@ -58,6 +58,7 @@ impl From<ApplicationError> for CommandError {
                 dto
             }
             ApplicationError::Unexpected(msg) => CommandError::Internal(msg),
+            ApplicationError::Configuration(msg) => CommandError::Internal(format!("Configuration error: {}", msg)),
         }
     }
 }

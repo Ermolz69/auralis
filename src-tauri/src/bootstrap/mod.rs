@@ -9,7 +9,10 @@ use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
 use std::sync::Arc;
 use tauri::{App, Manager};
 
-pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+pub fn setup(
+    app: &mut App,
+    outbox_config: application::worker::outbox::maintenance::OutboxMaintenanceConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
 
     // 0a. Initialize observability
@@ -33,7 +36,9 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
     let guard = crate::observability::init(config, &sink);
     let mode_str = format!("{:?}", guard.active_mode);
-    app.manage(guard);
+    app.manage(crate::state::ManagedTracingGuard(std::sync::Mutex::new(
+        Some(guard),
+    )));
 
     tracing::info!(action = "observability_init", status = %mode_str, "Observability initialized");
 
@@ -66,8 +71,15 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             services.storage_uow.clone(),
             Arc::new(publisher.clone()),
             temp_workspace.clone(),
+            outbox_config,
         );
-        app.manage(outbox_shutdown);
+        app.manage(crate::state::ManagedOutboxWorker(std::sync::Mutex::new(
+            Some(outbox_shutdown),
+        )));
+    } else {
+        app.manage(crate::state::ManagedOutboxWorker(std::sync::Mutex::new(
+            None,
+        )));
     }
 
     // 3. Build Job Scheduler
@@ -78,7 +90,9 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 4. Register State
-    app.manage(event_bridge.take_handle().unwrap());
+    app.manage(crate::state::ManagedJobEventBridge(std::sync::Mutex::new(
+        Some(event_bridge.take_handle().unwrap()),
+    )));
 
     // 5. Build and register AppUseCases
     usecases::setup_usecases(

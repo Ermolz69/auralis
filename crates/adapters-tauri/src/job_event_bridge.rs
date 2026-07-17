@@ -78,14 +78,13 @@ where
 }
 
 pub struct JobEventBridgeHandle {
-    shutdown_tx: oneshot::Sender<()>,
-    worker_handle: JoinHandle<()>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+    worker_handle: Option<JoinHandle<()>>,
 }
 
 impl JobEventBridgeHandle {
-    pub async fn shutdown(self) {
-        let _ = self.shutdown_tx.send(());
-        let _ = self.worker_handle.await;
+    pub fn into_shutdown_parts(mut self) -> (Option<oneshot::Sender<()>>, Option<JoinHandle<()>>) {
+        (self.shutdown_tx.take(), self.worker_handle.take())
     }
 }
 
@@ -115,8 +114,8 @@ impl TauriJobEventBridge {
         });
 
         let bridge_handle = JobEventBridgeHandle {
-            shutdown_tx,
-            worker_handle,
+            shutdown_tx: Some(shutdown_tx),
+            worker_handle: Some(worker_handle),
         };
 
         Self {
@@ -246,7 +245,13 @@ mod tests {
 
         // Test shutdown
         let handle = bridge.take_handle().unwrap();
-        handle.shutdown().await;
+        let (tx, task) = handle.into_shutdown_parts();
+        if let Some(tx) = tx {
+            let _ = tx.send(());
+        }
+        if let Some(task) = task {
+            let _ = task.await;
+        }
 
         // Try emitting after shutdown (should log error, but not panic)
         let event3 = JobLifecycleEvent {
@@ -323,7 +328,13 @@ mod tests {
         assert_eq!(emitted[0].job.status, JobStatus::Completed);
 
         let handle = bridge.take_handle().unwrap();
-        handle.shutdown().await;
+        let (tx, task) = handle.into_shutdown_parts();
+        if let Some(tx) = tx {
+            let _ = tx.send(());
+        }
+        if let Some(task) = task {
+            let _ = task.await;
+        }
     }
 
     #[tokio::test]
