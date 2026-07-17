@@ -10,3 +10,7 @@ domain = { version = "0.1.0", path = "../domain" }
 serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.18"
 tokio = { version = "1.52.4", features = ["sync", "rt"] }
+
+[lints]
+workspace = true
+

@@ -21,19 +21,23 @@ export const ProjectList = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const { 
-    projectId: currentProjectId, 
-    setProjectId, 
-    setProject, 
-    deletingProjectId, 
-    beginProjectDeletion, 
-    finishProjectDeletion 
+  const {
+    projectId: currentProjectId,
+    setProjectId,
+    setProject,
+    deletingProjectId,
+    beginProjectDeletion,
+    finishProjectDeletion,
   } = useProjectContext();
   const { setCurrentView } = useNavigation();
 
   const fetchGenerationRef = useRef(0);
-  const pendingFocusTargetRef = useRef<{ deletedIndex: number; deletedProjectId: string; reason: 'success' | 'cancel' | 'error' } | null>(null);
-  
+  const pendingFocusTargetRef = useRef<{
+    deletedIndex: number;
+    deletedProjectId: string;
+    reason: 'success' | 'cancel' | 'error';
+  } | null>(null);
+
   // Refs for focusing elements
   const deleteButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const openButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -42,7 +46,7 @@ export const ProjectList = () => {
   const fetchProjects = useCallback(async () => {
     fetchGenerationRef.current += 1;
     const currentGen = fetchGenerationRef.current;
-    
+
     try {
       const data = await listProjects();
       if (currentGen === fetchGenerationRef.current) {
@@ -112,8 +116,8 @@ export const ProjectList = () => {
   const executeDelete = async () => {
     if (!projectToDelete) return;
     const project = projectToDelete;
-    const deletedIndex = projects.findIndex(p => p.id === project.id);
-    
+    const deletedIndex = projects.findIndex((p) => p.id === project.id);
+
     if (!beginProjectDeletion(project.id)) {
       setProjectToDelete(null);
       return;
@@ -123,7 +127,7 @@ export const ProjectList = () => {
 
     try {
       await deleteProject(project.id);
-      
+
       // Success (Ok mapped locally)
       setProjects((prev) => prev.filter((p) => p.id !== project.id));
       if (currentProjectId === project.id) {
@@ -131,33 +135,48 @@ export const ProjectList = () => {
         setProject(null);
         setCurrentView('home');
       }
-      
-      pendingFocusTargetRef.current = { deletedIndex, deletedProjectId: project.id, reason: 'success' };
-      
+
+      pendingFocusTargetRef.current = {
+        deletedIndex,
+        deletedProjectId: project.id,
+        reason: 'success',
+      };
+
       // Separate Refetch
       await fetchProjects();
-      
     } catch (error) {
       const errorMessage = isCommandError(error) ? error.message : String(error);
       const errorCode = isCommandError(error) ? error.code : 'UNKNOWN';
-      
+
       if (errorCode === 'NOT_FOUND') {
-         setProjects((prev) => prev.filter((p) => p.id !== project.id));
-         if (currentProjectId === project.id) {
-           setProjectId(null);
-           setProject(null);
-           setCurrentView('home');
-         }
-         pendingFocusTargetRef.current = { deletedIndex, deletedProjectId: project.id, reason: 'success' };
-         await fetchProjects();
-         toast.success('Project was already removed');
+        setProjects((prev) => prev.filter((p) => p.id !== project.id));
+        if (currentProjectId === project.id) {
+          setProjectId(null);
+          setProject(null);
+          setCurrentView('home');
+        }
+        pendingFocusTargetRef.current = {
+          deletedIndex,
+          deletedProjectId: project.id,
+          reason: 'success',
+        };
+        await fetchProjects();
+        toast.success('Project was already removed');
       } else if (errorCode === 'CONFLICT' || errorCode === 'BUSY') {
-         pendingFocusTargetRef.current = { deletedIndex, deletedProjectId: project.id, reason: 'error' };
-         toast.warning(errorMessage);
-         await fetchProjects();
+        pendingFocusTargetRef.current = {
+          deletedIndex,
+          deletedProjectId: project.id,
+          reason: 'error',
+        };
+        toast.warning(errorMessage);
+        await fetchProjects();
       } else {
-         pendingFocusTargetRef.current = { deletedIndex, deletedProjectId: project.id, reason: 'error' };
-         toast.error(errorMessage);
+        pendingFocusTargetRef.current = {
+          deletedIndex,
+          deletedProjectId: project.id,
+          reason: 'error',
+        };
+        toast.error(errorMessage);
       }
     } finally {
       finishProjectDeletion(project.id);
@@ -166,8 +185,12 @@ export const ProjectList = () => {
 
   const cancelDelete = () => {
     if (projectToDelete) {
-      const idx = projects.findIndex(p => p.id === projectToDelete.id);
-      pendingFocusTargetRef.current = { deletedIndex: idx, deletedProjectId: projectToDelete.id, reason: 'cancel' };
+      const idx = projects.findIndex((p) => p.id === projectToDelete.id);
+      pendingFocusTargetRef.current = {
+        deletedIndex: idx,
+        deletedProjectId: projectToDelete.id,
+        reason: 'cancel',
+      };
     }
     setProjectToDelete(null);
   };
@@ -184,7 +207,8 @@ export const ProjectList = () => {
         <DialogHeader>
           <DialogTitle>Delete Project</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete the project "{projectToDelete?.title}"? This action cannot be undone.
+            Are you sure you want to delete the project "{projectToDelete?.title}"? This action
+            cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -197,14 +221,18 @@ export const ProjectList = () => {
         </DialogFooter>
         <DialogClose />
       </Dialog>
-      <h3 ref={headingRef} tabIndex={-1} className="text-sm font-semibold text-muted uppercase tracking-wider mb-2 text-left focus:outline-none focus:text-text">
+      <h3
+        ref={headingRef}
+        tabIndex={-1}
+        className="text-sm font-semibold text-muted uppercase tracking-wider mb-2 text-left focus:outline-none focus:text-text"
+      >
         Recent Projects
       </h3>
       <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
         {projects.map((project) => {
           const displayTitle = project.title || 'Untitled Project';
           const isDeleting = deletingProjectId === project.id;
-          
+
           return (
             <Card
               key={project.id}
@@ -243,7 +271,7 @@ export const ProjectList = () => {
                   {new Date(project.updatedAt).toLocaleDateString()}
                 </div>
               </button>
-              
+
               <div className="pr-4 shrink-0 flex items-center">
                 <Button
                   ref={(el) => {

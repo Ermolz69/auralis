@@ -44,10 +44,11 @@ pub fn setup(
 
     // 0. Compute workspace root
     let app_path = app.path();
-    let workspace_root = app_path
-        .app_cache_dir()
-        .unwrap_or_else(|_| app_path.app_data_dir().unwrap())
-        .join("workspaces");
+    let workspace_root = match app_path.app_cache_dir() {
+        Ok(dir) => dir,
+        Err(_) => app_path.app_data_dir()?,
+    }
+    .join("workspaces");
     std::fs::create_dir_all(&workspace_root)?;
 
     // 1. Setup storage and workers
@@ -87,11 +88,14 @@ pub fn setup(
         services.job_repo.clone(),
         services.storage_uow.clone(),
         event_bridge.emitter(),
-    );
+    )?;
 
     // 4. Register State
+    let bridge_handle = event_bridge
+        .take_handle()
+        .ok_or("Failed to spawn event bridge")?;
     app.manage(crate::state::ManagedJobEventBridge(std::sync::Mutex::new(
-        Some(event_bridge.take_handle().unwrap()),
+        Some(bridge_handle),
     )));
 
     // 5. Build and register AppUseCases

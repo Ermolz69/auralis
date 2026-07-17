@@ -41,17 +41,21 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
             if (deletingProjectIdRef.current === projectId) {
               return; // Do not fetch if currently deleting
             }
-            
+
             fetchGenerationRef.current += 1;
             const currentGen = fetchGenerationRef.current;
 
             try {
               const updatedProject = await invoke('get_project_cmd', { projectId });
-              
-              if (cancelled || currentGen !== fetchGenerationRef.current || projectId !== event.payload.projectId) {
+
+              if (
+                cancelled ||
+                currentGen !== fetchGenerationRef.current ||
+                projectId !== event.payload.projectId
+              ) {
                 return;
               }
-              
+
               if (deletingProjectIdRef.current === projectId) {
                 return;
               }
@@ -59,7 +63,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
               setProject(updatedProject);
             } catch (e) {
               if (cancelled || currentGen !== fetchGenerationRef.current) return;
-              
+
               if (isCommandError(e) && e.code === 'NOT_FOUND') {
                 setProject(null);
                 console.warn('Project no longer exists:', e.message);
@@ -89,11 +93,17 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [projectId]);
 
   return (
-    <ProjectContext.Provider value={{
-      projectId, setProjectId,
-      project, setProject,
-      deletingProjectId, beginProjectDeletion, finishProjectDeletion
-    }}>
+    <ProjectContext.Provider
+      value={{
+        projectId,
+        setProjectId,
+        project,
+        setProject,
+        deletingProjectId,
+        beginProjectDeletion,
+        finishProjectDeletion,
+      }}
+    >
       {children}
     </ProjectContext.Provider>
   );

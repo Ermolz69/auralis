@@ -31,7 +31,12 @@ vi.mock('@/shared/api/tauri', () => ({
 }));
 
 vi.mock('@/shared/ui/dialog', () => ({
-  Dialog: ({ open, children }: any) => (open ? <div role="dialog" data-testid="mock-dialog">{children}</div> : null),
+  Dialog: ({ open, children }: any) =>
+    open ? (
+      <div role="dialog" data-testid="mock-dialog">
+        {children}
+      </div>
+    ) : null,
   DialogHeader: ({ children }: any) => <div>{children}</div>,
   DialogTitle: ({ children }: any) => <h2>{children}</h2>,
   DialogDescription: ({ children }: any) => <p>{children}</p>,
@@ -65,11 +70,11 @@ describe('ProjectList', () => {
   let mockSetCurrentView: Mock;
   let mockBeginProjectDeletion: Mock;
   let mockFinishProjectDeletion: Mock;
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
     cleanup();
-    
+
     mockSetProjectId = vi.fn();
     mockSetProject = vi.fn();
     mockSetCurrentView = vi.fn();
@@ -126,9 +131,9 @@ describe('ProjectList', () => {
     await screen.findByText('Test Project');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
-    
+
     mockBeginProjectDeletion.mockReturnValueOnce(true).mockReturnValueOnce(false);
-    
+
     const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
     fireEvent.click(confirmBtn);
     fireEvent.click(confirmBtn);
@@ -151,7 +156,7 @@ describe('ProjectList', () => {
     const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
     expect((openBtn as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(openBtn);
-    
+
     expect(mockSetProjectId).not.toHaveBeenCalled();
   });
 
@@ -213,8 +218,10 @@ describe('ProjectList', () => {
 
   it('refetch failure after successful delete does not show delete failure', async () => {
     (deleteProject as any).mockResolvedValue(undefined);
-    (listProjects as any).mockResolvedValueOnce([mockProject, mockProject2]).mockRejectedValue(new Error('Refetch failed'));
-    
+    (listProjects as any)
+      .mockResolvedValueOnce([mockProject, mockProject2])
+      .mockRejectedValue(new Error('Refetch failed'));
+
     render(<ProjectList />);
     await screen.findByText('Test Project');
 
@@ -228,7 +235,9 @@ describe('ProjectList', () => {
 
   it('success focuses next open target', async () => {
     (deleteProject as any).mockResolvedValue(undefined);
-    (listProjects as any).mockResolvedValueOnce([mockProject, mockProject2]).mockResolvedValue([mockProject2]);
+    (listProjects as any)
+      .mockResolvedValueOnce([mockProject, mockProject2])
+      .mockResolvedValue([mockProject2]);
     render(<ProjectList />);
     await screen.findByText('Test Project');
 
@@ -238,7 +247,7 @@ describe('ProjectList', () => {
     await waitFor(() => {
       expect(screen.queryByText('Test Project')).toBeNull();
     });
-    
+
     const nextBtn = screen.getByRole('button', { name: 'Open Untitled Project' });
     expect(document.activeElement).toBe(nextBtn);
   });

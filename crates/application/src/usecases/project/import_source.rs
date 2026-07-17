@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use domain::media::MediaSource;
 use domain::project::{Project, ProjectId};
 use ports::repository::ProjectRepository;

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 // Module is defined externally as tests.rs
 use crate::sqlite::recovery::pair_writes::commit_failed_interrupted_pair;

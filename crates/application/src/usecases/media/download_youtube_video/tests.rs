@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::test_support::{FailingVideoSourceAdapter, MockArtifactStore};
 use super::usecase::{DownloadYoutubeVideoRequest, DownloadYoutubeVideoUseCase};
 

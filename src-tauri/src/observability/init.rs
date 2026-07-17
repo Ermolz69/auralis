@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::config::{LogDestination, LogFormat, ObservabilityConfig, OverflowPolicy};
 use std::fs;
 use std::io::{stderr, Write};

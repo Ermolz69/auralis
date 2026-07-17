@@ -6,8 +6,6 @@ export async function listJobs(): Promise<Job[]> {
   return invoke('list_jobs_cmd');
 }
 
-
-
 export async function cancelJob(jobId: string): Promise<Job> {
   return invoke('cancel_job_cmd', { jobId });
 }

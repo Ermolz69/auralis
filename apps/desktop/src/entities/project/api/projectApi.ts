@@ -20,4 +20,3 @@ export async function listProjects(): Promise<Project[]> {
 export async function deleteProject(projectId: string): Promise<void> {
   await invoke('delete_project_cmd', { projectId });
 }
-

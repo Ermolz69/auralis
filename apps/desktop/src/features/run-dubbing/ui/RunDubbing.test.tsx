@@ -2,8 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { RunDubbing } from './RunDubbing';
-import { ProjectContext } from '@/entities/project/model/context';
-import type { Project } from '@/entities/project/model/types';
+import { ProjectContext, type Project } from '@/entities/project';
 
 const mockProject: Project = {
   id: 'test-id',
@@ -22,17 +21,19 @@ describe('RunDubbing', () => {
 
   it('is disabled during project deletion', () => {
     render(
-      <ProjectContext.Provider value={{
-        projectId: mockProject.id,
-        project: mockProject,
-        setProjectId: vi.fn(),
-        setProject: vi.fn(),
-        deletingProjectId: mockProject.id,
-        beginProjectDeletion: vi.fn(),
-        finishProjectDeletion: vi.fn(),
-      }}>
+      <ProjectContext.Provider
+        value={{
+          projectId: mockProject.id,
+          project: mockProject,
+          setProjectId: vi.fn(),
+          setProject: vi.fn(),
+          deletingProjectId: mockProject.id,
+          beginProjectDeletion: vi.fn(),
+          finishProjectDeletion: vi.fn(),
+        }}
+      >
         <RunDubbing />
-      </ProjectContext.Provider>
+      </ProjectContext.Provider>,
     );
 
     const btn = screen.getByRole('button', { name: /run dubbing/i });
@@ -41,17 +42,19 @@ describe('RunDubbing', () => {
 
   it('is enabled when project is eligible and not deleting', () => {
     render(
-      <ProjectContext.Provider value={{
-        projectId: mockProject.id,
-        project: mockProject,
-        setProjectId: vi.fn(),
-        setProject: vi.fn(),
-        deletingProjectId: null,
-        beginProjectDeletion: vi.fn(),
-        finishProjectDeletion: vi.fn(),
-      }}>
+      <ProjectContext.Provider
+        value={{
+          projectId: mockProject.id,
+          project: mockProject,
+          setProjectId: vi.fn(),
+          setProject: vi.fn(),
+          deletingProjectId: null,
+          beginProjectDeletion: vi.fn(),
+          finishProjectDeletion: vi.fn(),
+        }}
+      >
         <RunDubbing />
-      </ProjectContext.Provider>
+      </ProjectContext.Provider>,
     );
 
     const btn = screen.getByRole('button', { name: /run dubbing/i });

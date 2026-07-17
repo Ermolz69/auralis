@@ -47,13 +47,7 @@ import contract from '../../../../../../tests/fixtures/job_contract.json';
 // We hardcode the exhaustive list of statuses and stages here
 // to ensure the TS union types match the cross-language contract exactly.
 // If the contract adds a new stage, this test will fail until TS is updated.
-const statuses: JobStatus[] = [
-  'pending',
-  'running',
-  'completed',
-  'failed',
-  'cancelled',
-];
+const statuses: JobStatus[] = ['pending', 'running', 'completed', 'failed', 'cancelled'];
 
 const stages: JobStage[] = [
   'validateSource',
@@ -82,7 +76,7 @@ test('Job Contracts match the cross-language statuses and stages', () => {
   for (const stage of contract.stages) {
     expect(stages).toContain(stage as JobStage);
   }
-  
+
   // Verify example payload can be typed as JobEvent
   const example: JobEvent = contract.examplePayload as JobEvent;
   expect(example.status).toBe('running');

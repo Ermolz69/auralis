@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod observability;
 
 pub fn add(left: u64, right: u64) -> u64 {

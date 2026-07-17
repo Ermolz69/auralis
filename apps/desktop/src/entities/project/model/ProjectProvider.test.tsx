@@ -27,7 +27,7 @@ describe('ProjectProvider', () => {
 
   it('ignores project-updated event if deletingProjectId matches', async () => {
     let contextValue: any;
-    
+
     // Setup listener mock to capture the callback
     let eventCallback: any;
     (listen as any).mockImplementation((event: string, cb: any) => {
@@ -37,8 +37,12 @@ describe('ProjectProvider', () => {
 
     render(
       <ProjectProvider>
-        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
-      </ProjectProvider>
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
+      </ProjectProvider>,
     );
 
     // Set a project and start deleting it
@@ -48,7 +52,7 @@ describe('ProjectProvider', () => {
 
     // Let the effect run and register the listener
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     act(() => {

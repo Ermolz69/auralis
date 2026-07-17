@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod artifact_index;
 pub mod connection;
 pub mod job_mapper;

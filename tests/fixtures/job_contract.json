@@ -1,11 +1,5 @@
 {
-  "statuses": [
-    "pending",
-    "running",
-    "completed",
-    "failed",
-    "cancelled"
-  ],
+  "statuses": ["pending", "running", "completed", "failed", "cancelled"],
   "stages": [
     "validateSource",
     "inspectSubtitles",

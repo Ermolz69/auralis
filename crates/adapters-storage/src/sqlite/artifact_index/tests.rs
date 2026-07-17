@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::repository::SqliteArtifactIndex;
 use super::test_support::{make_artifact, setup_db};
 use crate::sqlite::{SqliteProjectRepository, connect_sqlite};

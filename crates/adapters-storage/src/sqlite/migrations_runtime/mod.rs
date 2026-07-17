@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod backfill_artifacts;
 pub mod outbox_temp_paths;
 

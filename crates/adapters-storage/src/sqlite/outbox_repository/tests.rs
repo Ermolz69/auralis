@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::SqliteOutboxRepository;
 use domain::outbox::{OutboxMessage, OutboxMessageId, OutboxPayload};
 use domain::project::ProjectId;
@@ -423,7 +424,7 @@ async fn outbox_prune_terminal_rows() {
 
     let old_time = domain::chrono::Utc::now() - domain::chrono::Duration::days(10);
     let recent_time = domain::chrono::Utc::now() - domain::chrono::Duration::days(1);
-    
+
     let old_time_str = old_time.to_rfc3339_opts(domain::chrono::SecondsFormat::Secs, true);
     let recent_time_str = recent_time.to_rfc3339_opts(domain::chrono::SecondsFormat::Secs, true);
 
@@ -440,10 +441,14 @@ async fn outbox_prune_terminal_rows() {
         ('dead2', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
         ('dead3', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
         ('pend1', 'x', '{}', 'pending', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?)
-        "#
+        "#,
     )
-    .bind(&old_time_str).bind(&old_time_str).bind(&recent_time_str)
-    .bind(&old_time_str).bind(&old_time_str).bind(&recent_time_str)
+    .bind(&old_time_str)
+    .bind(&old_time_str)
+    .bind(&recent_time_str)
+    .bind(&old_time_str)
+    .bind(&old_time_str)
+    .bind(&recent_time_str)
     .bind(&old_time_str)
     .execute(&pool)
     .await
@@ -453,19 +458,28 @@ async fn outbox_prune_terminal_rows() {
     let dead_cutoff = domain::chrono::Utc::now() - domain::chrono::Duration::days(5);
 
     // limit = 1 per status
-    let report = repo.prune_terminal_rows(done_cutoff, dead_cutoff, 1).await.unwrap();
+    let report = repo
+        .prune_terminal_rows(done_cutoff, dead_cutoff, 1)
+        .await
+        .unwrap();
     assert_eq!(report.done_deleted, 1);
     assert_eq!(report.dead_deleted, 1);
 
     // limit = 10 (should delete remaining 1 of each old)
-    let report2 = repo.prune_terminal_rows(done_cutoff, dead_cutoff, 10).await.unwrap();
+    let report2 = repo
+        .prune_terminal_rows(done_cutoff, dead_cutoff, 10)
+        .await
+        .unwrap();
     assert_eq!(report2.done_deleted, 1);
     assert_eq!(report2.dead_deleted, 1);
 
     use sqlx::Row;
     let count: i64 = sqlx::query("SELECT COUNT(*) as c FROM outbox_messages")
-        .fetch_one(&pool).await.unwrap().get("c");
-    
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+        .get("c");
+
     // 3 remain: done3, dead3, pend1
     assert_eq!(count, 3);
 }

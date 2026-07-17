@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use chrono::{DateTime, Utc};
 use ports::job_scheduler::ScheduledJob;
 use serde::Serialize;

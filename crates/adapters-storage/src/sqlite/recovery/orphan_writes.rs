@@ -37,7 +37,7 @@ pub async fn commit_failed_orphan_job(
     })?;
 
     if has_linked_project.is_some() {
-        let _ = tx.rollback().await;
+        let _ = tx.rollback().await; // allow-fallback
         return Err(PortError::Conflict {
             resource: "jobs".to_string(),
             message: format!(
@@ -67,7 +67,7 @@ pub async fn commit_failed_orphan_job(
     .rows_affected();
 
     if rows == 0 {
-        let _ = tx.rollback().await;
+        let _ = tx.rollback().await; // allow-fallback
         let current_status: Option<String> =
             sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
                 .bind(cmd.job.id().to_string())

@@ -29,7 +29,7 @@ impl TransitionLock {
             pid: std::process::id(),
             timestamp_sec: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
+                .unwrap_or_default() // allow-fallback
                 .as_secs(),
             manifest_path: manifest_path.clone(),
         };

@@ -8,3 +8,7 @@ domain = { path = "../domain" }
 ports = { path = "../ports" }
 async-trait = "0.1.89"
 uuid = { version = "1.12.1", features = ["v4"] }
+
+[lints]
+workspace = true
+

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::sqlite::migrations_runtime::outbox_temp_paths::migrate_delete_temp_paths;
 use serde_json::json;
 use sqlx::Row;

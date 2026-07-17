@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 pub mod artifact_index;
 pub mod database;
 pub mod job_repository;

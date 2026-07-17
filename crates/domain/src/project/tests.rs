@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use crate::error::DomainError;
 use crate::job::{JobId, TerminalOutcome};
 use crate::media::MediaSource;

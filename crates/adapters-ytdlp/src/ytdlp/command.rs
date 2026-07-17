@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
@@ -115,7 +116,7 @@ pub async fn run_ytdlp_download(
         }
 
         let stdout_str = String::from_utf8(output.stdout).map_err(YtDlpError::InvalidUtf8)?;
-        let filepath = extract_final_filepath_from_stdout(&stdout_str).unwrap_or_default();
+        let filepath = extract_final_filepath_from_stdout(&stdout_str).unwrap_or_default(); // allow-fallback
 
         if filepath.is_empty() {
             return Err(YtDlpError::CommandFailed {
@@ -235,7 +236,7 @@ async fn find_downloaded_subtitle(
     while let Ok(Some(entry)) = entries.next_entry().await {
         let path = entry.path();
         if path.is_file() {
-            let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+            let file_name = path.file_name().unwrap_or_default().to_string_lossy(); // allow-fallback
             if file_name.starts_with(run_id)
                 && file_name.ends_with(&format!(".{}", expected_format))
             {

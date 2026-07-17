@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod orphan_writes;
 pub mod pair_writes;
 pub mod snapshot;

@@ -22,3 +22,7 @@ adapters-model = { path = "../adapters-model" }
 adapters-ffmpeg = { path = "../adapters-ffmpeg" }
 tempfile = "3.10"
 chrono = "0.4.45"
+
+[lints]
+workspace = true
+

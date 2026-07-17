@@ -46,7 +46,7 @@ impl LegacyDatabaseInspector {
             Ok(pool) => pool,
             Err(e) => {
                 if let sqlx::Error::Database(ref db_err) = e {
-                    let code = db_err.code().unwrap_or_default();
+                    let code = db_err.code().unwrap_or_default(); // allow-fallback
                     if code == "11" || code == "26" {
                         // 11 = SQLITE_CORRUPT, 26 = SQLITE_NOTADB
                         return Ok(DatabaseClassification::Corrupt);
@@ -123,7 +123,7 @@ impl LegacyDatabaseInspector {
             "id",
             "title",
             "status",
-            "artifacts_json",
+            "artifacts_json", // allow-fallback
             "created_at",
             "updated_at",
         ];

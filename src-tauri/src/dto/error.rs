@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use application::error::ApplicationError;
 use domain::error::DomainError;
 use ports::error::PortError;

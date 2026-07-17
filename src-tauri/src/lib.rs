@@ -4,16 +4,32 @@ pub mod dto;
 pub mod observability;
 pub mod state;
 
+#[derive(Debug)]
+pub enum StartupError {
+    Configuration(application::error::ApplicationError),
+    TauriBuild(tauri::Error),
+}
+
+impl std::fmt::Display for StartupError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StartupError::Configuration(e) => write!(f, "Configuration error: {}", e),
+            StartupError::TauriBuild(e) => write!(f, "Tauri build error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for StartupError {}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run() -> Result<(), StartupError> {
     let outbox_config =
         application::worker::outbox::maintenance::OutboxMaintenanceConfig::default_config();
     if let Err(e) = outbox_config.validate() {
-        eprintln!("Fatal error: Invalid OutboxMaintenanceConfig: {:?}", e);
-        std::process::exit(1);
+        return Err(StartupError::Configuration(e));
     }
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             bootstrap::setup(app, outbox_config)?;
@@ -36,12 +52,15 @@ pub fn run() {
             commands::media::import_local_media_cmd
         ])
         .build(tauri::generate_context!())
-        .expect("error while building tauri application")
-        .run(|app_handle, event| {
-            if let tauri::RunEvent::Exit = event {
-                tauri::async_runtime::block_on(shutdown_runtime(app_handle));
-            }
-        });
+        .map_err(StartupError::TauriBuild)?;
+
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            tauri::async_runtime::block_on(shutdown_runtime(app_handle));
+        }
+    });
+
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -67,11 +86,11 @@ async fn shutdown_runtime(app_handle: &tauri::AppHandle) -> RuntimeShutdownRepor
 
     let outbox_handle_opt = app_handle
         .try_state::<ManagedOutboxWorker>()
-        .and_then(|state| state.0.lock().unwrap().take());
+        .and_then(|state| state.0.lock().unwrap_or_else(|e| e.into_inner()).take());
 
     let bridge_handle_opt = app_handle
         .try_state::<ManagedJobEventBridge>()
-        .and_then(|state| state.0.lock().unwrap().take());
+        .and_then(|state| state.0.lock().unwrap_or_else(|e| e.into_inner()).take());
 
     let mut outbox_outcome = WorkerOutcome::AlreadyStopped;
     let mut bridge_outcome = WorkerOutcome::AlreadyStopped;
@@ -172,7 +191,7 @@ async fn shutdown_runtime(app_handle: &tauri::AppHandle) -> RuntimeShutdownRepor
     tracing::info!(report = ?report, "shutdown_runtime: bounded shutdown completed");
 
     if let Some(state) = app_handle.try_state::<ManagedTracingGuard>() {
-        let _ = state.0.lock().unwrap().take();
+        let _ = state.0.lock().unwrap_or_else(|e| e.into_inner()).take();
     }
 
     report

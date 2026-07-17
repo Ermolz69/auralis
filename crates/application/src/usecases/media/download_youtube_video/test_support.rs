@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use async_trait::async_trait;
 use domain::media::{Artifact, ArtifactId, ArtifactKind, ArtifactLocation, MediaSource};
 use domain::project::ProjectId;

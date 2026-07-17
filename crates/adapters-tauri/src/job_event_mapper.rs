@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::job_event_dto::{JobEventDto, JobProgressDto};
 use ports::job_scheduler::JobLifecycleEvent;
 

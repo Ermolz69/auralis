@@ -1,4 +1,5 @@
-export type CommandErrorCode = 'NOT_FOUND' | 'VALIDATION' | 'CONFLICT' | 'BUSY' | 'REPOSITORY' | 'INTERNAL';
+export type CommandErrorCode =
+  'NOT_FOUND' | 'VALIDATION' | 'CONFLICT' | 'BUSY' | 'REPOSITORY' | 'INTERNAL';
 
 export interface CommandError {
   code: CommandErrorCode;
@@ -6,7 +7,12 @@ export interface CommandError {
 }
 
 const VALID_ERROR_CODES = new Set<string>([
-  'NOT_FOUND', 'VALIDATION', 'CONFLICT', 'BUSY', 'REPOSITORY', 'INTERNAL'
+  'NOT_FOUND',
+  'VALIDATION',
+  'CONFLICT',
+  'BUSY',
+  'REPOSITORY',
+  'INTERNAL',
 ]);
 
 export function isCommandError(error: unknown): error is CommandError {

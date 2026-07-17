@@ -33,3 +33,7 @@ common = { path = "../crates/common" }
 
 [dev-dependencies]
 tempfile = "3.17.1"
+
+[lints]
+workspace = true
+

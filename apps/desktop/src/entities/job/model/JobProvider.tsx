@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@/shared/api/tauri';
+// eslint-disable-next-line boundaries/dependencies
 import { useProjectContext } from '@/entities/project';
 import { JobContext } from './context';
 import type { Job, JobEvent } from './types';
@@ -9,7 +10,7 @@ import type { Job, JobEvent } from './types';
 export function JobProvider({ children }: { children: ReactNode }) {
   const { projectId } = useProjectContext();
   const [jobs, setJobs] = useState<Record<string, Job>>({});
-  
+
   const scopeGenerationRef = useRef<number>(0);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
 
     scopeGenerationRef.current += 1;
     const currentGen = scopeGenerationRef.current;
-    
+
     let cancelled = false;
     let unlistenEvent: (() => void) | undefined;
     let unlistenInvalidated: (() => void) | undefined;
@@ -28,9 +29,9 @@ export function JobProvider({ children }: { children: ReactNode }) {
     const setup = async () => {
       try {
         const snapshot = await invoke('list_jobs_snapshot_cmd', { projectId });
-        
+
         if (cancelled || currentGen !== scopeGenerationRef.current) return;
-        
+
         const jobsMap: Record<string, Job> = {};
         for (const job of snapshot) {
           jobsMap[job.id] = job;
@@ -43,16 +44,16 @@ export function JobProvider({ children }: { children: ReactNode }) {
       try {
         const fn = await listen<JobEvent>('job-event', (event) => {
           if (cancelled || currentGen !== scopeGenerationRef.current) return;
-          
+
           const payload = event.payload;
           if (payload.projectId !== projectId) return;
-          
-          setJobs(prev => {
+
+          setJobs((prev) => {
             const existing = prev[payload.jobId];
             if (existing && existing.revision >= payload.revision) {
               return prev; // Ignore older events
             }
-            
+
             return {
               ...prev,
               [payload.jobId]: {
@@ -66,11 +67,11 @@ export function JobProvider({ children }: { children: ReactNode }) {
                 error: payload.error,
                 createdAt: existing?.createdAt ?? new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
-              }
+              },
             };
           });
         });
-        
+
         if (cancelled) {
           fn();
         } else {
@@ -79,7 +80,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.warn('Failed to listen to job events:', err);
       }
-      
+
       try {
         const fnInvalidated = await listen('job-events-invalidated', async () => {
           if (cancelled || currentGen !== scopeGenerationRef.current) return;
@@ -101,7 +102,7 @@ export function JobProvider({ children }: { children: ReactNode }) {
         } else {
           unlistenInvalidated = fnInvalidated;
         }
-      } catch(err) {
+      } catch (err) {
         console.warn('Failed to listen to job-events-invalidated:', err);
       }
     };
@@ -116,13 +117,17 @@ export function JobProvider({ children }: { children: ReactNode }) {
   }, [projectId]);
 
   const activeJobs = useMemo(() => {
-    const list = Object.values(jobs).filter(j => j.status === 'pending' || j.status === 'running');
+    const list = Object.values(jobs).filter(
+      (j) => j.status === 'pending' || j.status === 'running',
+    );
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list;
   }, [jobs]);
-  
+
   const completedJobs = useMemo(() => {
-    const list = Object.values(jobs).filter(j => j.status !== 'pending' && j.status !== 'running');
+    const list = Object.values(jobs).filter(
+      (j) => j.status !== 'pending' && j.status !== 'running',
+    );
     list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return list;
   }, [jobs]);

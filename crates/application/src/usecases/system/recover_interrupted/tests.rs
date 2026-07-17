@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 // Module is defined externally as tests.rs
 use async_trait::async_trait;

@@ -108,7 +108,7 @@ pub async fn commit_failed_interrupted_pair(
                 ));
 
         if !job_ok || !proj_ok {
-            let _ = tx.rollback().await;
+            let _ = tx.rollback().await; // allow-fallback
             return Err(PortError::Conflict {
                 resource: "pair".to_string(),
                 message: format!(
@@ -120,7 +120,7 @@ pub async fn commit_failed_interrupted_pair(
         }
 
         if job_affected == 0 && project_affected == 0 {
-            let _ = tx.rollback().await;
+            let _ = tx.rollback().await; // allow-fallback
             return Ok(RecoveryApplyResult::AlreadyApplied);
         }
     }
@@ -152,7 +152,7 @@ pub async fn commit_reconciled_terminal_pair(
             })?;
 
     if current_job_status != Some(expected_job_status.clone()) {
-        let _ = tx.rollback().await;
+        let _ = tx.rollback().await; // allow-fallback
         return Err(PortError::Conflict {
             resource: "projects".to_string(),
             message: format!(
@@ -189,7 +189,7 @@ pub async fn commit_reconciled_terminal_pair(
     .rows_affected();
 
     if rows == 0 {
-        let _ = tx.rollback().await;
+        let _ = tx.rollback().await; // allow-fallback
         let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
             "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
         )
@@ -309,7 +309,7 @@ pub async fn commit_legacy_pair_fallback(
                 ));
 
         if !job_ok || !proj_ok {
-            let _ = tx.rollback().await;
+            let _ = tx.rollback().await; // allow-fallback
             return Err(PortError::Conflict {
                 resource: "pair".to_string(),
                 message: format!(
@@ -321,7 +321,7 @@ pub async fn commit_legacy_pair_fallback(
         }
 
         if job_affected == 0 && project_affected == 0 {
-            let _ = tx.rollback().await;
+            let _ = tx.rollback().await; // allow-fallback
             return Ok(RecoveryApplyResult::AlreadyApplied);
         }
     }
@@ -365,7 +365,7 @@ pub async fn commit_failed_project_with_missing_linked_job(
     .rows_affected();
 
     if rows == 0 {
-        let _ = tx.rollback().await;
+        let _ = tx.rollback().await; // allow-fallback
         let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
             "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
         )
@@ -432,7 +432,7 @@ pub async fn commit_failed_legacy_project_without_job(
     .rows_affected();
 
     if rows == 0 {
-        let _ = tx.rollback().await;
+        let _ = tx.rollback().await; // allow-fallback
         let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
             "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
         )

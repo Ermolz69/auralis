@@ -21,11 +21,11 @@ impl WorkspaceKey {
         }
 
         // Check for Windows drive letters like "C:/"
-        if key.len() >= 2 && key.chars().nth(1) == Some(':') {
-            let first = key.chars().next().unwrap();
-            if first.is_ascii_alphabetic() {
-                return Err("WorkspaceKey cannot contain Windows drive letters".to_string());
-            }
+        if key.len() >= 2
+            && key.chars().nth(1) == Some(':')
+            && key.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+        {
+            return Err("WorkspaceKey cannot contain Windows drive letters".to_string());
         }
 
         // Check components

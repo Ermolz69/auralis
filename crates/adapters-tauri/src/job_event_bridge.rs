@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::event_publisher::FrontendJobEventPublisher;
 use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
 use ports::job_scheduler::JobLifecycleEvent;

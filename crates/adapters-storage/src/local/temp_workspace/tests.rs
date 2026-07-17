@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::LocalTempWorkspace;
 use domain::outbox::WorkspaceKey;
 use filetime::{FileTime, set_file_mtime};

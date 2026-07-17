@@ -35,7 +35,8 @@ export type Job = {
   updatedAt: string;
 };
 
-export type JobEventKind = 'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
+export type JobEventKind =
+  'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
 
 export type JobEvent = {
   kind: JobEventKind;

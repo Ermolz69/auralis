@@ -66,7 +66,7 @@ impl TransitionStateMachine {
                 } else {
                     let timestamp = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
+                        .unwrap_or_default() // allow-fallback
                         .as_secs();
                     let op_id = Uuid::new_v4();
 
@@ -204,7 +204,7 @@ impl TransitionStateMachine {
             }
         }
 
-        self.sync_directory(&tmp_backup_dir).await;
+        self.sync_directory(&tmp_backup_dir).await?;
 
         // Quick check
         let backup_db_path = tmp_backup_dir.join(&manifest.database_name);
@@ -240,13 +240,13 @@ impl TransitionStateMachine {
             .await
             .map_err(|e| DatabaseTransitionError::BackupFailed(e.to_string()))?;
 
-        self.sync_directory(&tmp_backup_dir).await;
+        self.sync_directory(&tmp_backup_dir).await?;
 
         // Rename
         fs::rename(&tmp_backup_dir, &manifest.backup_directory)
             .await
             .map_err(|e| DatabaseTransitionError::BackupFailed(e.to_string()))?;
-        self.sync_directory(&self.backup_dir).await;
+        self.sync_directory(&self.backup_dir).await?;
 
         Ok(())
     }
@@ -368,8 +368,8 @@ impl TransitionStateMachine {
                 .map_err(|_| DatabaseTransitionError::IncompleteTransition)?;
         }
 
-        self.sync_directory(&manifest.quarantine_directory).await;
-        self.sync_directory(parent).await;
+        self.sync_directory(&manifest.quarantine_directory).await?;
+        self.sync_directory(parent).await?;
 
         Ok(())
     }
@@ -386,7 +386,7 @@ impl TransitionStateMachine {
             .await
             .map_err(|_| DatabaseTransitionError::IncompleteTransition)?;
 
-        self.sync_directory(parent).await;
+        self.sync_directory(parent).await?;
 
         Ok(())
     }
@@ -403,13 +403,20 @@ impl TransitionStateMachine {
         Ok(())
     }
 
-    async fn sync_directory(&self, _path: &Path) {
+    #[allow(unused_variables)]
+    async fn sync_directory(&self, path: &Path) -> Result<(), DatabaseTransitionError> {
         #[cfg(target_family = "unix")]
         {
-            if let Ok(dir) = std::fs::File::open(path) {
-                let _ = dir.sync_data();
-            }
+            let dir = std::fs::File::open(path)
+                .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
+            dir.sync_data()
+                .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
         }
-        // Best effort for other platforms
+        #[cfg(not(target_family = "unix"))]
+        {
+            // Directory sync is intentionally a no-op on non-Unix platforms
+            // as it is not consistently supported or necessary in the same way.
+        }
+        Ok(())
     }
 }
