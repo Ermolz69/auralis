@@ -217,7 +217,7 @@ impl ports::transaction::StorageUnitOfWork for MockUow {
     async fn commit_artifact_finalize(
         &self,
         _command: ports::transaction::CommitArtifactFinalize,
-    ) -> Result<(), ports::error::PortError> {
+    ) -> Result<ports::transaction::CommitArtifactFinalizeResult, ports::error::PortError> {
         unimplemented!()
     }
     async fn commit_transcript_import(
@@ -337,7 +337,7 @@ fn create_worker(
         MockUow,
         Arc::new(MockEventPublisher),
         Arc::new(MockWorkspacePort),
-        super::maintenance::OutboxMaintenanceConfig::default_config(),
+        super::maintenance::OutboxMaintenanceConfig::try_default().unwrap(),
     )
 }
 

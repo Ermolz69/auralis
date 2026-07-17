@@ -45,7 +45,11 @@ impl JobSchedulerPort for JobManager {
                 |job| job.cancel(),
             )
             .await?;
-        self.cancellation_registry.cancel(job_id).await;
+        if let Some(crate::manager::runtime_registry::JobRuntimeEntry::Attached { task, .. }) =
+            self.runtime_registry.lock_entries().get(job_id)
+        {
+            task.cancel.cancel();
+        }
         Ok(map_job_to_scheduled(&job))
     }
 
@@ -103,12 +107,5 @@ impl JobSchedulerPort for JobManager {
             )
             .await?;
         Ok(map_job_to_scheduled(&job))
-    }
-    async fn list_jobs_snapshot(
-        &self,
-        project_id: &domain::project::ProjectId,
-    ) -> Result<Vec<ScheduledJob>, PortError> {
-        let jobs = self.repo.list_by_project(project_id).await?;
-        Ok(jobs.into_iter().map(|j| map_job_to_scheduled(&j)).collect())
     }
 }

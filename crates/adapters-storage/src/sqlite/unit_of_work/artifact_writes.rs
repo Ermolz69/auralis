@@ -39,8 +39,6 @@ pub(super) async fn save_artifact(
     .bind(values.ready_at)
     .execute(&mut **tx)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to add artifact in tx: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to add artifact in tx", e))?;
     Ok(())
 }

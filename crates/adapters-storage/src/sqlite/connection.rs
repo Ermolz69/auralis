@@ -14,9 +14,7 @@ pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError>
         .max_connections(5)
         .connect_with(options)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to connect to sqlite db: {}", e),
-        })
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to connect to sqlite db", e))
 }
 
 pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, PortError> {
@@ -31,8 +29,9 @@ pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, Po
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to run sqlite migrations: {}", e),
+        .map_err(|e| PortError::Storage {
+            operation: "run_sqlite_migrations",
+            message: e.to_string(),
         })?;
 
     // Note: Runtime backfills must be run manually after this function,

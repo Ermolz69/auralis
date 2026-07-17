@@ -1,5 +1,6 @@
 use crate::bootstrap::usecases::AppUseCases;
-use crate::dto::job::JobDto;
+use adapters_tauri::dto::job::JobDto;
+use adapters_tauri::dto::mapper::map_job_dto;
 use application::usecases::job::cancel::CancelJobRequest;
 use application::usecases::job::list::ListJobsRequest;
 
@@ -22,7 +23,11 @@ pub async fn list_jobs_cmd(usecases: State<'_, Arc<AppUseCases>>) -> Result<Vec<
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok(res.jobs.into_iter().map(|job| JobDto::from(&job)).collect())
+    let mut dtos = Vec::with_capacity(res.jobs.len());
+    for job in res.jobs {
+        dtos.push(map_job_dto(&job).map_err(|e| e.to_string())?);
+    }
+    Ok(dtos)
 }
 
 #[command]
@@ -39,5 +44,24 @@ pub async fn cancel_job_cmd(
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok(JobDto::from(&res.job))
+    map_job_dto(&res.job).map_err(|e| e.to_string())
+}
+
+#[command]
+pub async fn list_jobs_snapshot_cmd(
+    project_id: String,
+    query_port: State<'_, Arc<dyn ports::job_query::JobQueryPort>>,
+) -> Result<Vec<JobDto>, String> {
+    let id = domain::project::ProjectId::from_str(&project_id).map_err(|e| e.to_string())?;
+
+    let jobs = query_port
+        .list_jobs_snapshot(&id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut dtos = Vec::with_capacity(jobs.len());
+    for job in jobs {
+        dtos.push(adapters_tauri::dto::mapper::map_job_dto(&job).map_err(|e| e.to_string())?);
+    }
+    Ok(dtos)
 }

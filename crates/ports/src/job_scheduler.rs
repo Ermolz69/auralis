@@ -44,11 +44,6 @@ pub trait JobSchedulerPort: Send + Sync {
 
     async fn list_jobs(&self) -> Result<Vec<ScheduledJob>, PortError>;
 
-    async fn list_jobs_snapshot(
-        &self,
-        project_id: &ProjectId,
-    ) -> Result<Vec<ScheduledJob>, PortError>;
-
     async fn update_job_stage(
         &self,
         job_id: &JobId,

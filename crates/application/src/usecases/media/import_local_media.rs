@@ -218,13 +218,27 @@ mod tests {
                 jobs: std::collections::HashMap::new(),
             })
         }
-        async fn register_runtime_task(
+        async fn reserve(
             &self,
             _job_id: domain::job::JobId,
-            _cancel_handle: ports::cancellation::CancelHandle,
-            _state_rx: tokio::sync::watch::Receiver<ports::job_runtime_control::RuntimeState>,
-            _abort_handle: tokio::task::AbortHandle,
-        ) {
+            _project_id: domain::project::ProjectId,
+        ) -> Result<(), ports::error::PortError> {
+            Ok(())
+        }
+        async fn attach_task(
+            &self,
+            _job_id: domain::job::JobId,
+            _task: ports::job_runtime_control::RuntimeTask,
+        ) -> Result<(), ports::job_runtime_control::AttachTaskError> {
+            Ok(())
+        }
+        fn finish_now(&self, _job_id: &domain::job::JobId) {}
+        async fn rollback_runtime_start(
+            &self,
+            _job_id: &domain::job::JobId,
+        ) -> Result<ports::job_runtime_control::RuntimeCleanupOutcome, ports::error::PortError>
+        {
+            Ok(ports::job_runtime_control::RuntimeCleanupOutcome::ReservationRemoved)
         }
     }
 

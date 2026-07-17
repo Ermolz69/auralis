@@ -42,9 +42,7 @@ pub(super) async fn insert_job(
                 message: format!("Job with id {} already exists", job.id()),
             };
         }
-        PortError::Unexpected {
-            message: format!("Failed to insert job in tx: {}", e),
-        }
+        crate::sqlite::helpers::map_sqlite_error("insert_job", e)
     })?;
     Ok(())
 }
@@ -90,9 +88,7 @@ pub(super) async fn update_job(
     .bind(i64::try_from(expected_revision).unwrap_or(-1))
     .execute(&mut **tx)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to update job in tx: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update job in tx", e))?;
 
     if result.rows_affected() == 0 {
         return Err(PortError::Conflict {

@@ -19,8 +19,9 @@ pub(super) async fn save_outbox_message(
         OutboxPayload::HandleTerminalJobState { .. } => "handle_terminal_job_state",
     };
 
-    let payload_json = serde_json::to_string(&msg.payload).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to serialize outbox payload: {}", e),
+    let payload_json = serde_json::to_string(&msg.payload).map_err(|e| PortError::Storage {
+        operation: "serialize_outbox_payload",
+        message: e.to_string(),
     })?;
 
     let status_str = match msg.status {
@@ -33,11 +34,17 @@ pub(super) async fn save_outbox_message(
 
     sqlx::query(
         r#"
-        INSERT OR IGNORE INTO outbox_messages (
+        INSERT INTO outbox_messages (
             id, kind, payload_json, status, attempts, next_attempt_at,
             locked_at, locked_by, last_error, deduplication_key, created_at, updated_at,
             aggregate_type, aggregate_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) 
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE 
+            (? != 'project' AND ? != 'job')
+            OR (? = 'project' AND EXISTS (SELECT 1 FROM projects WHERE id = ?))
+            OR (? = 'job' AND EXISTS (SELECT 1 FROM jobs WHERE id = ?))
+        ON CONFLICT(id) DO NOTHING
         "#,
     )
     .bind(msg.id.to_string())
@@ -52,6 +59,12 @@ pub(super) async fn save_outbox_message(
     .bind(msg.deduplication_key.clone())
     .bind(format_db_timestamp(msg.created_at))
     .bind(format_db_timestamp(msg.updated_at))
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_id.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_id.clone())
     .bind(msg.aggregate_type.clone())
     .bind(msg.aggregate_id.clone())
     .execute(&mut **tx)

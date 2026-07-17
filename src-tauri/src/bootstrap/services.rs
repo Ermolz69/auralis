@@ -9,6 +9,7 @@ use std::sync::Arc;
 pub struct RuntimeServices {
     pub project_repo: RuntimeProjectRepository,
     pub job_repo: Arc<dyn JobRepository>,
+    pub job_query: Arc<dyn ports::job_query::JobQueryPort>,
     pub artifact_index: RuntimeArtifactIndex,
     pub artifact_store: RuntimeArtifactStore,
     pub storage_uow: RuntimeStorageUnitOfWork,

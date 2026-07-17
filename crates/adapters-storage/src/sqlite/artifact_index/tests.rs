@@ -149,9 +149,9 @@ async fn test_corrupted_location_kind_returns_error() {
     let result = index.get(&artifact.id).await;
     assert!(result.is_err(), "Expected error due to corrupted kind");
     match result.unwrap_err() {
-        ports::error::PortError::Unexpected { message } => {
+        ports::error::PortError::InvalidStoredData { message, .. } => {
             assert!(message.contains("Invalid artifact kind"));
         }
-        _ => panic!("Expected Unexpected PortError"),
+        _ => panic!("Expected InvalidStoredData PortError"),
     }
 }

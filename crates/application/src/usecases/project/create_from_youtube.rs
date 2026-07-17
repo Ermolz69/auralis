@@ -107,6 +107,7 @@ impl<
             self.locks.clone(),
             self.job_runtime.clone(),
         );
+
         let req3 = StartMockPipelineRequest {
             project_id: proj.id().clone(),
         };

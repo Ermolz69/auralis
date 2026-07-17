@@ -1,4 +1,4 @@
-use crate::job_event_dto::{ProjectUpdatedDto, TranscriptReadyDto};
+use crate::dto::job_event::{ProjectUpdatedDto, TranscriptReadyDto};
 use async_trait::async_trait;
 use ports::error::PortError;
 use ports::events::AppEventPublisher;
@@ -29,7 +29,10 @@ impl FrontendJobEventPublisher for TauriEventPublisher {
         &self,
         event: &ports::job_scheduler::JobLifecycleEvent,
     ) -> Result<(), PortError> {
-        let dto = crate::job_event_mapper::JobEventDtoMapper::map(event);
+        let dto =
+            crate::dto::mapper::map_job_event_dto(event).map_err(|e| PortError::Unexpected {
+                message: e.to_string(),
+            })?;
         self.app
             .emit("job-event", dto)
             .map_err(|e| PortError::Unexpected {

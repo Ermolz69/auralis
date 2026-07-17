@@ -60,7 +60,10 @@ function checkFile(filePath) {
     if (line.includes('artifacts_json')) {
       const isAllowedFile = 
         filePath.replace(/\\/g, '/').includes('/sqlite/migrations_runtime/backfill_artifacts.rs') ||
-        filePath.replace(/\\/g, '/').includes('/sqlite/migrations_runtime/tests.rs');
+        filePath.replace(/\\/g, '/').includes('/sqlite/migrations_runtime/tests.rs') ||
+        filePath.replace(/\\/g, '/').includes('/sqlite/preflight/tests.rs') ||
+        filePath.replace(/\\/g, '/').includes('/sqlite/preflight/inspector.rs') ||
+        filePath.replace(/\\/g, '/').includes('/sqlite/preflight/state_machine.rs');
         
       if (!isAllowedFile) {
         console.error(`[ERROR] Legacy artifacts_json used outside of migration runtime at ${filePath}:${i + 1}`);

@@ -38,7 +38,7 @@ impl From<&Project> for ProjectDto {
     }
 }
 
-use crate::dto::job::JobDto;
+use adapters_tauri::dto::job::JobDto;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

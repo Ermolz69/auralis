@@ -35,4 +35,8 @@ impl CancelHandle {
     pub fn cancel(&self) {
         self.is_cancelled.store(true, Ordering::SeqCst);
     }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.is_cancelled.load(Ordering::SeqCst)
+    }
 }

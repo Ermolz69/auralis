@@ -9,14 +9,16 @@ use ports::recovery::{
 fn serialize_enum<T: serde::Serialize>(val: &T) -> Result<String, PortError> {
     serde_json::to_string(val)
         .map(|s| s.trim_matches('"').to_string())
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to serialize enum: {}", e),
+        .map_err(|e| PortError::Storage {
+            operation: "serialize_enum",
+            message: e.to_string(),
         })
 }
 
 fn serialize_json<T: serde::Serialize>(val: &T) -> Result<String, PortError> {
-    serde_json::to_string(val).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to serialize json: {}", e),
+    serde_json::to_string(val).map_err(|e| PortError::Storage {
+        operation: "serialize_json",
+        message: e.to_string(),
     })
 }
 
@@ -24,9 +26,10 @@ pub async fn commit_failed_interrupted_pair(
     pool: &SqlitePool,
     cmd: FailInterruptedPairCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin tx: {}", e),
-    })?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to begin tx", e))?;
 
     let expected_job_status = serialize_enum(&cmd.expected_job_status)?;
 
@@ -135,9 +138,10 @@ pub async fn commit_reconciled_terminal_pair(
     pool: &SqlitePool,
     cmd: ReconcileTerminalPairCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin tx: {}", e),
-    })?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to begin tx", e))?;
 
     // Check job still terminal and unchanged
     let expected_job_status = serialize_enum(&cmd.expected_job_status)?;
@@ -227,9 +231,10 @@ pub async fn commit_legacy_pair_fallback(
     pool: &SqlitePool,
     cmd: FailLegacyPairFallbackCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin tx: {}", e),
-    })?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to begin tx", e))?;
 
     let expected_job_status = serialize_enum(&cmd.expected_job_status)?;
 
@@ -336,9 +341,10 @@ pub async fn commit_failed_project_with_missing_linked_job(
     pool: &SqlitePool,
     cmd: FailProjectWithMissingLinkedJobCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin tx: {}", e),
-    })?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to begin tx", e))?;
 
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 
@@ -404,9 +410,10 @@ pub async fn commit_failed_legacy_project_without_job(
     pool: &SqlitePool,
     cmd: FailLegacyProjectWithoutJobCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin tx: {}", e),
-    })?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to begin tx", e))?;
 
     let expected_project_status = serialize_enum(&cmd.expected_project_status)?;
 

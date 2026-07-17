@@ -43,7 +43,8 @@ pub async fn create_project_from_youtube_cmd(
 
     Ok(CreateProjectResponse {
         project: ProjectDto::from(&response.project),
-        job: crate::dto::job::JobDto::from(&response.job),
+        job: adapters_tauri::dto::mapper::map_job_dto(&response.job)
+            .map_err(|e| CommandError::Validation(e.to_string()))?,
     })
 }
 
@@ -142,6 +143,7 @@ pub async fn start_project_mock_pipeline_cmd(
 
     Ok(CreateProjectResponse {
         project: ProjectDto::from(&response.project),
-        job: crate::dto::job::JobDto::from(&response.job),
+        job: adapters_tauri::dto::mapper::map_job_dto(&response.job)
+            .map_err(|e| CommandError::Validation(e.to_string()))?,
     })
 }

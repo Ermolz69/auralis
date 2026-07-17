@@ -23,9 +23,7 @@ pub async fn get_ready_artifact(
     .bind(id.to_string())
     .fetch_optional(pool)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to fetch artifact: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("get_ready_artifact", e))?;
 
     row.map(row_to_artifact).transpose()
 }
@@ -39,9 +37,7 @@ pub async fn artifact_exists(pool: &SqlitePool, id: &ArtifactId) -> Result<bool,
     .bind(id.to_string())
     .fetch_one(pool)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to check artifact existence: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("artifact_exists", e))?;
 
     Ok(exists)
 }
@@ -62,9 +58,7 @@ pub async fn list_ready_by_project(
     .bind(project_id.to_string())
     .fetch_all(pool)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to list artifacts by project: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("list_ready_artifacts_by_project", e))?;
 
     let mut artifacts = Vec::new();
     for row in rows {
@@ -93,9 +87,7 @@ pub async fn list_ready_by_project_and_kind(
     .bind(kind_str)
     .fetch_all(pool)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to list artifacts by project and kind: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("list_ready_artifacts_by_project_and_kind", e))?;
 
     let mut artifacts = Vec::new();
     for row in rows {

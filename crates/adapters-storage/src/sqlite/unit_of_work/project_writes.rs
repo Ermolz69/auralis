@@ -38,9 +38,7 @@ pub(super) async fn update_project(
     .bind(row.id)
     .execute(&mut **tx)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to update project in tx: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update project in tx", e))?;
 
     if result.rows_affected() == 0 {
         return Err(PortError::NotFound {

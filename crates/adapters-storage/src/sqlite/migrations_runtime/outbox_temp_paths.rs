@@ -32,8 +32,8 @@ pub async fn migrate_delete_temp_paths(
     )
     .fetch_all(&mut **tx)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to fetch legacy temp path messages: {}", e),
+    .map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to fetch legacy temp path messages", e)
     })?;
 
     for (id, payload_json) in rows {

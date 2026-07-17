@@ -33,13 +33,14 @@ pub fn artifact_to_row_values(
 }
 
 pub fn row_to_artifact(row: ArtifactRow) -> Result<Artifact, PortError> {
-    let id = ArtifactId::from_str(&row.id).map_err(|e| PortError::Unexpected {
-        message: format!("Invalid artifact ID {}: {}", row.id, e),
-    })?;
+    let id = parse_artifact_id(&row.id)?;
 
     let kind_json = serde_json::Value::String(row.kind);
     let kind: ArtifactKind =
-        serde_json::from_value(kind_json).map_err(|e| PortError::Unexpected {
+        serde_json::from_value(kind_json).map_err(|e| PortError::InvalidStoredData {
+            entity_type: "artifact".to_string(),
+            entity_id: row.id.clone(),
+            field: "kind".to_string(),
             message: format!("Invalid artifact kind: {}", e),
         })?;
 
@@ -47,7 +48,10 @@ pub fn row_to_artifact(row: ArtifactRow) -> Result<Artifact, PortError> {
         "LocalPath" => ArtifactLocation::LocalPath(row.location_value),
         "StorageKey" => ArtifactLocation::StorageKey(row.location_value),
         other => {
-            return Err(PortError::Unexpected {
+            return Err(PortError::InvalidStoredData {
+                entity_type: "artifact".to_string(),
+                entity_id: row.id.clone(),
+                field: "location_kind".to_string(),
                 message: format!("Invalid location kind: {}", other),
             });
         }
@@ -55,31 +59,19 @@ pub fn row_to_artifact(row: ArtifactRow) -> Result<Artifact, PortError> {
 
     let state_json = serde_json::Value::String(row.state);
     let state: domain::media::ArtifactState =
-        serde_json::from_value(state_json).map_err(|e| PortError::Unexpected {
+        serde_json::from_value(state_json).map_err(|e| PortError::InvalidStoredData {
+            entity_type: "artifact".to_string(),
+            entity_id: row.id.clone(),
+            field: "state".to_string(),
             message: format!("Invalid artifact state: {}", e),
         })?;
 
-    let created_at = chrono::DateTime::parse_from_rfc3339(&row.created_at)
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Invalid created_at date {}: {}", row.created_at, e),
-        })?
-        .with_timezone(&chrono::Utc);
-
-    let updated_at = chrono::DateTime::parse_from_rfc3339(&row.updated_at)
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Invalid updated_at date {}: {}", row.updated_at, e),
-        })?
-        .with_timezone(&chrono::Utc);
+    let created_at = parse_datetime(&row.created_at, &row.id, "created_at")?;
+    let updated_at = parse_datetime(&row.updated_at, &row.id, "updated_at")?;
 
     let ready_at = row
         .ready_at
-        .map(|s| {
-            chrono::DateTime::parse_from_rfc3339(&s)
-                .map_err(|e| PortError::Unexpected {
-                    message: format!("Invalid ready_at date {}: {}", s, e),
-                })
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-        })
+        .map(|s| parse_datetime(&s, &row.id, "ready_at"))
         .transpose()?;
 
     Ok(Artifact {
@@ -92,4 +84,28 @@ pub fn row_to_artifact(row: ArtifactRow) -> Result<Artifact, PortError> {
         updated_at,
         ready_at,
     })
+}
+
+fn parse_artifact_id(value: &str) -> Result<ArtifactId, PortError> {
+    ArtifactId::from_str(value).map_err(|e| PortError::InvalidStoredData {
+        entity_type: "artifact".to_string(),
+        entity_id: value.to_string(),
+        field: "id".to_string(),
+        message: format!("Invalid artifact ID: {}", e),
+    })
+}
+
+fn parse_datetime(
+    value: &str,
+    artifact_id: &str,
+    field: &'static str,
+) -> Result<chrono::DateTime<chrono::Utc>, PortError> {
+    chrono::DateTime::parse_from_rfc3339(value)
+        .map_err(|e| PortError::InvalidStoredData {
+            entity_type: "artifact".to_string(),
+            entity_id: artifact_id.to_string(),
+            field: field.to_string(),
+            message: format!("Invalid datetime {}: {}", value, e),
+        })
+        .map(|dt| dt.with_timezone(&chrono::Utc))
 }

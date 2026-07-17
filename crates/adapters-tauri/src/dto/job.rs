@@ -1,6 +1,7 @@
+use domain::chrono::{DateTime, Utc};
 use serde::Serialize;
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct JobProgressDto {
     pub percent: u8,
@@ -10,28 +11,17 @@ pub struct JobProgressDto {
     pub total_items: Option<u64>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct JobEventDto {
-    pub kind: String,
-    pub job_id: String,
+pub struct JobDto {
+    pub id: String,
     pub revision: u64,
     pub project_id: Option<String>,
+    pub title: String,
     pub status: String,
     pub stage: Option<String>,
     pub progress: JobProgressDto,
     pub error: Option<String>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectUpdatedDto {
-    pub project_id: String,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct TranscriptReadyDto {
-    pub project_id: String,
-    pub job_id: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }

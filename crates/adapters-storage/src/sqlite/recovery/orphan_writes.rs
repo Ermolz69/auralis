@@ -6,14 +6,16 @@ use ports::recovery::{FailOrphanJobCommand, RecoveryApplyResult};
 fn serialize_enum<T: serde::Serialize>(val: &T) -> Result<String, PortError> {
     serde_json::to_string(val)
         .map(|s| s.trim_matches('"').to_string())
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to serialize enum: {}", e),
+        .map_err(|e| PortError::Storage {
+            operation: "serialize_enum",
+            message: e.to_string(),
         })
 }
 
 fn serialize_json<T: serde::Serialize>(val: &T) -> Result<String, PortError> {
-    serde_json::to_string(val).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to serialize json: {}", e),
+    serde_json::to_string(val).map_err(|e| PortError::Storage {
+        operation: "serialize_json",
+        message: e.to_string(),
     })
 }
 
@@ -21,9 +23,10 @@ pub async fn commit_failed_orphan_job(
     pool: &SqlitePool,
     cmd: FailOrphanJobCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin tx: {}", e),
-    })?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to begin tx", e))?;
 
     // Check that NO Processing project links to this job via active_job_id
     let has_linked_project: Option<i64> = sqlx::query_scalar(

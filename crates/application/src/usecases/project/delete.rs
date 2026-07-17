@@ -82,7 +82,7 @@ impl DeleteProjectUseCase {
     ) -> Result<(usize, usize), ApplicationError> {
         let project_id = &request.project_id;
 
-        let lock_arc = locks.get_lock(project_id);
+        let lock_arc = locks.get_lock(project_id)?;
         let _lock = lock_arc.lock().await;
 
         // 1. Execute transaction
@@ -106,7 +106,7 @@ impl DeleteProjectUseCase {
                     .filter(|(_, status)| {
                         matches!(
                             status,
-                            ports::job_runtime_control::JobCleanupStatus::AbortUnconfirmed
+                            ports::job_runtime_control::RuntimeCleanupOutcome::Unconfirmed
                         )
                     })
                     .map(|(id, _)| id.to_string())

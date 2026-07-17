@@ -30,8 +30,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: CommitTranscriptImport,
     ) -> Result<(), PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         update_project(&mut tx, &command.project).await?;
@@ -51,8 +51,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             save_outbox_message(&mut tx, &del_msg).await?;
         }
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(())
@@ -62,8 +62,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         save_artifact(&mut tx, &command.project_id, &command.artifact).await?;
@@ -82,8 +82,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             save_outbox_message(&mut tx, &del_msg).await?;
         }
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(())
@@ -95,8 +95,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
     ) -> Result<(), PortError> {
         command.validate()?;
 
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         update_project(&mut tx, &command.project).await?;
@@ -110,8 +110,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         });
         save_outbox_message(&mut tx, &finalize_msg).await?;
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(())
@@ -174,7 +174,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         // 3. Query StorageKeys of artifacts for the project
         let artifact_records = sqlx::query(
-            "SELECT id, storage_key FROM artifacts WHERE project_id = ? AND storage_key IS NOT NULL",
+            "SELECT id, storage_key FROM artifacts WHERE project_id = ? AND storage_key IS NOT NULL ORDER BY id ASC",
         )
         .bind(command.project_id.to_string())
         .fetch_all(&mut *tx)
@@ -182,9 +182,15 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch artifacts", e))?;
 
         // Cancel Existing Outbox
+        let now = domain::chrono::Utc::now();
+        let timestamp = crate::sqlite::helpers::format_db_timestamp(now);
+        let error_json = r#"{"reason": "obsolete due to project deletion"}"#;
+
         sqlx::query(
-            "UPDATE outbox_messages SET status = 'dead' WHERE aggregate_type = 'project' AND aggregate_id = ? AND status IN ('pending', 'processing')"
+            "UPDATE outbox_messages SET status = 'dead', updated_at = ?, last_error = ? WHERE aggregate_type = 'project' AND aggregate_id = ? AND status IN ('pending', 'processing')"
         )
+        .bind(timestamp)
+        .bind(error_json)
         .bind(command.project_id.to_string())
         .execute(&mut *tx)
         .await
@@ -258,14 +264,14 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
     }
 
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         update_job(&mut tx, &command.job, command.expected_revision).await?;
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(())
@@ -274,15 +280,15 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
     async fn commit_pipeline_start(&self, command: CommitPipelineStart) -> Result<(), PortError> {
         command.validate()?;
 
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         update_project(&mut tx, &command.project).await?;
         insert_job(&mut tx, &command.job).await?;
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(())
@@ -294,15 +300,15 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
     ) -> Result<(), PortError> {
         command.validate()?;
 
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         update_project(&mut tx, &command.project).await?;
         update_job(&mut tx, &command.job, command.expected_job_revision).await?;
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(())
@@ -312,8 +318,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: ports::transaction::CommitTerminalJobUpdate,
     ) -> Result<(), PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         update_job(&mut tx, &command.job, command.expected_revision).await?;
@@ -327,8 +333,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         save_outbox_message(&mut tx, &outbox_msg).await?;
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(())
@@ -338,8 +344,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: ports::transaction::ApplyTerminalLifecycle,
     ) -> Result<domain::project::status::TerminalTransitionResult, PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         let row = sqlx::query_as::<_, crate::sqlite::project_row::ProjectRow>(
@@ -348,15 +354,13 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         .bind(command.project_id.to_string())
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to fetch project: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch project", e))?;
 
         let row = match row {
             Some(r) => r,
             None => {
-                return Err(PortError::Unexpected {
-                    message: "Project not found".to_string(),
+                return Err(PortError::NotFound {
+                    resource: format!("Project {}", command.project_id),
                 });
             }
         };
@@ -365,7 +369,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         let res = project
             .apply_terminal_transition(&command.job_id, command.outcome)
-            .map_err(|e| PortError::Unexpected {
+            .map_err(|e| PortError::Conflict {
+                resource: "Project Transition".to_string(),
                 message: e.to_string(),
             })?;
 
@@ -376,8 +381,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             update_project(&mut tx, &project).await?;
         }
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
         })?;
 
         Ok(res)
@@ -386,28 +391,48 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
     async fn commit_artifact_finalize(
         &self,
         command: CommitArtifactFinalize,
-    ) -> Result<(), PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction: {}", e),
+    ) -> Result<ports::transaction::CommitArtifactFinalizeResult, PortError> {
+        let mut tx = self.pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
-        // 1. Verify Outbox Message is 'processing'
-        let outbox_result = sqlx::query(
-            "UPDATE outbox_messages SET status = 'done', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ? AND status = 'processing'",
+        // 1. Check current outbox status
+        use sqlx::Row;
+        let outbox_status = sqlx::query("SELECT status FROM outbox_messages WHERE id = ?")
+            .bind(command.message_id.to_string())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to check outbox status", e)
+            })?;
+
+        if let Some(row) = outbox_status {
+            let status: String = row.try_get("status").unwrap_or_default();
+            if status == "dead" {
+                return Ok(
+                    ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted,
+                );
+            }
+            if status == "done" {
+                return Ok(ports::transaction::CommitArtifactFinalizeResult::AlreadyFinalized);
+            }
+            if status != "processing" {
+                return Ok(ports::transaction::CommitArtifactFinalizeResult::Conflict);
+            }
+        } else {
+            return Ok(ports::transaction::CommitArtifactFinalizeResult::Conflict);
+        }
+
+        // 2. Mark as done
+        sqlx::query(
+            "UPDATE outbox_messages SET status = 'done', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
         )
         .bind(command.message_id.to_string())
         .execute(&mut *tx)
         .await
-        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to check outbox status", e))?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update outbox message", e))?;
 
-        if outbox_result.rows_affected() == 0 {
-            return Err(PortError::Conflict {
-                resource: "OutboxMessage".to_string(),
-                message: "Fencing conflict: Message not processing or not found".to_string(),
-            });
-        }
-
-        // 2. Verify artifact ownership and project, update to ready
+        // 3. Verify artifact ownership and project, update to ready
         let artifact_result = sqlx::query(
             r#"
             UPDATE artifacts 
@@ -427,17 +452,18 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update artifact", e))?;
 
         if artifact_result.rows_affected() == 0 {
-            return Err(PortError::Conflict {
-                resource: "Artifact".to_string(),
-                message: "Fencing conflict: Artifact not found for project".to_string(),
-            });
+            // Artifact not found or project deleted. Rollback tx.
+            let _ = tx.rollback().await;
+            return Ok(
+                ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted,
+            );
         }
 
-        tx.commit().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to commit finalize transaction: {}", e),
+        tx.commit().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to commit finalize transaction", e)
         })?;
 
-        Ok(())
+        Ok(ports::transaction::CommitArtifactFinalizeResult::Committed)
     }
 }
 

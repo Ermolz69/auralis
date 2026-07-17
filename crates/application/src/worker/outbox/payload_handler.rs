@@ -60,17 +60,23 @@ where
                     ready_key: final_key.clone(),
                 };
 
-                let commit_result = self.uow.commit_artifact_finalize(cmd).await;
+                let commit_result = self.uow.commit_artifact_finalize(cmd).await?;
 
-                if let Err(ports::error::PortError::Conflict { .. }) = commit_result {
-                    // Conflict means rows_affected == 0.
-                    // The project was deleted, or this was concurrently finalized, or cancelled.
-                    // We must compensate by deleting the final key since the DB rejected it.
-                    let _ = self.artifact_store.delete_storage_key(final_key).await;
-                    return Ok(());
+                match commit_result {
+                    ports::transaction::CommitArtifactFinalizeResult::Committed => {
+                        // Success
+                    }
+                    ports::transaction::CommitArtifactFinalizeResult::AlreadyFinalized => {
+                        // Success, was finalized by another retry
+                    }
+                    ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted => {
+                        // Project deleted -> Delete the final_key
+                        let _ = self.artifact_store.delete_storage_key(final_key).await;
+                    }
+                    ports::transaction::CommitArtifactFinalizeResult::Conflict => {
+                        // Conflict (e.g. outbox message not found). Do nothing to final_key to be safe.
+                    }
                 }
-
-                commit_result?;
             }
             OutboxPayload::DeleteStorageKey { storage_key } => {
                 self.artifact_store.delete_storage_key(storage_key).await?;

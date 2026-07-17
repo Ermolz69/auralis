@@ -55,9 +55,7 @@ impl ProjectRepository for SqliteProjectRepository {
                     message: format!("Project with id {} already exists", project.id()),
                 };
             }
-            PortError::Unexpected {
-                message: format!("Failed to create project: {}", e),
-            }
+            crate::sqlite::helpers::map_sqlite_error("create_project", e)
         })?;
 
         Ok(project)
@@ -77,9 +75,7 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(id.to_string())
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to fetch project: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("get_project", e))?;
 
         row.map(row_to_project).transpose()
     }
@@ -116,9 +112,7 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(values.id)
         .execute(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to save project: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("save_project", e))?;
 
         if result.rows_affected() == 0 {
             return Err(PortError::NotFound {
@@ -142,9 +136,7 @@ impl ProjectRepository for SqliteProjectRepository {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to list projects: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("list_projects", e))?;
 
         let mut projects = Vec::new();
         for row in rows {
@@ -159,9 +151,7 @@ impl ProjectRepository for SqliteProjectRepository {
             .bind(id.to_string())
             .execute(&self.pool)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to delete project: {}", e),
-            })?;
+            .map_err(|e| crate::sqlite::helpers::map_sqlite_error("delete_project", e))?;
         Ok(())
     }
 }

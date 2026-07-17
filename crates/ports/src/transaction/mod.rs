@@ -46,7 +46,7 @@ pub trait StorageUnitOfWork: Send + Sync {
     async fn commit_artifact_finalize(
         &self,
         command: CommitArtifactFinalize,
-    ) -> Result<(), PortError>;
+    ) -> Result<CommitArtifactFinalizeResult, PortError>;
 }
 
 #[async_trait]
@@ -104,7 +104,7 @@ impl<T: ?Sized + StorageUnitOfWork> StorageUnitOfWork for std::sync::Arc<T> {
     async fn commit_artifact_finalize(
         &self,
         command: CommitArtifactFinalize,
-    ) -> Result<(), PortError> {
+    ) -> Result<CommitArtifactFinalizeResult, PortError> {
         (**self).commit_artifact_finalize(command).await
     }
 }

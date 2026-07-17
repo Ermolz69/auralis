@@ -46,13 +46,13 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
     async fn commit_artifact_finalize(
         &self,
         _command: ports::transaction::CommitArtifactFinalize,
-    ) -> Result<(), PortError> {
+    ) -> Result<ports::transaction::CommitArtifactFinalizeResult, PortError> {
         if self.should_fail {
             return Err(PortError::Unexpected {
                 message: "Mock transaction failure".to_string(),
             });
         }
-        Ok(())
+        Ok(ports::transaction::CommitArtifactFinalizeResult::Committed)
     }
     async fn commit_transcript_import(
         &self,

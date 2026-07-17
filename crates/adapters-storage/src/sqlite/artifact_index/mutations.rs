@@ -42,9 +42,7 @@ pub async fn upsert_artifact(
     .bind(values.ready_at)
     .execute(pool)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to add artifact: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("upsert_artifact", e))?;
 
     Ok(())
 }
@@ -54,9 +52,7 @@ pub async fn delete_artifact(pool: &SqlitePool, id: &ArtifactId) -> Result<(), P
         .bind(id.to_string())
         .execute(pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to delete artifact: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("delete_artifact", e))?;
     Ok(())
 }
 
@@ -83,9 +79,7 @@ pub async fn update_artifact_state(
     .bind(id.to_string())
     .execute(pool)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: format!("Failed to update artifact state: {}", e),
-    })?;
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("update_artifact_state", e))?;
 
     Ok(())
 }

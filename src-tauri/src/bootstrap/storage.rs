@@ -19,9 +19,11 @@ pub fn setup_storage(
             adapters_storage::memory::InMemoryDatabase::new(),
         ));
         let project_repo = Arc::new(InMemoryProjectRepository::new(db.clone()));
-        let job_repo = Arc::new(adapters_storage::memory::InMemoryJobRepository::new(
+        let memory_job_repo = Arc::new(adapters_storage::memory::InMemoryJobRepository::new(
             db.clone(),
         ));
+        let job_repo: Arc<dyn JobRepository> = memory_job_repo.clone();
+        let job_query: Arc<dyn ports::job_query::JobQueryPort> = memory_job_repo;
         let artifact_index = Arc::new(InMemoryArtifactIndex::new());
         let artifact_store = Arc::new(LocalArtifactStore::new(
             std::env::temp_dir().join("auralis-memory-artifacts"),
@@ -30,7 +32,8 @@ pub fn setup_storage(
         Ok((
             RuntimeServices {
                 project_repo: project_repo.clone(),
-                job_repo: job_repo.clone(),
+                job_repo,
+                job_query,
                 artifact_index: artifact_index.clone(),
                 artifact_store: artifact_store.clone(),
                 storage_uow: Arc::new(adapters_storage::memory::InMemoryStorageUnitOfWork::new(
@@ -63,7 +66,9 @@ pub fn setup_storage(
         let idx: crate::state::RuntimeArtifactIndex =
             Arc::new(SqliteArtifactIndex::new(pool.clone()));
 
-        let job_repo: Arc<dyn JobRepository> = Arc::new(SqliteJobRepository::new(pool.clone()));
+        let sqlite_job_repo = Arc::new(SqliteJobRepository::new(pool.clone()));
+        let job_repo: Arc<dyn JobRepository> = sqlite_job_repo.clone();
+        let job_query: Arc<dyn ports::job_query::JobQueryPort> = sqlite_job_repo;
 
         let recovery_storage =
             Arc::new(adapters_storage::sqlite::recovery::SqliteRecoveryStorage::new(pool.clone()));
@@ -127,6 +132,7 @@ pub fn setup_storage(
             RuntimeServices {
                 project_repo: repo,
                 job_repo,
+                job_query,
                 artifact_index: idx,
                 artifact_store: store,
                 storage_uow: tx_gateway,

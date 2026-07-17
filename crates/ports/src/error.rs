@@ -1,5 +1,11 @@
 #[derive(Debug, thiserror::Error)]
 pub enum PortError {
+    #[error("Storage operation failed during {operation}: {message}")]
+    Storage {
+        operation: &'static str,
+        message: String,
+    },
+
     #[error("I/O error: {message}")]
     Io { message: String },
 

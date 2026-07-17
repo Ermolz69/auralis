@@ -30,6 +30,13 @@ impl InMemoryStorageUnitOfWork {
             artifact_store,
         }
     }
+
+    fn lock_db(&self) -> Result<std::sync::MutexGuard<'_, InMemoryDatabase>, PortError> {
+        self.db.lock().map_err(|_| PortError::Storage {
+            operation: "lock_in_memory_uow",
+            message: "Mutex poisoned".to_string(),
+        })
+    }
 }
 
 #[async_trait]
@@ -38,7 +45,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: CommitTranscriptImport,
     ) -> Result<(), PortError> {
-        let mut db = self.db.lock().unwrap();
+        let mut db = self.lock_db()?;
         if !db.projects.contains_key(command.project.id()) {
             return Err(PortError::NotFound {
                 resource: "Project".to_string(),
@@ -81,7 +88,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         artifact.state = domain::media::ArtifactState::Ready;
 
         {
-            let mut db = self.db.lock().unwrap();
+            let mut db = self.lock_db()?;
             if !db.projects.contains_key(command.project.id()) {
                 return Err(PortError::NotFound {
                     resource: "Project".to_string(),
@@ -102,7 +109,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: CommitProjectDelete,
     ) -> Result<CommitProjectDeleteResult, PortError> {
-        let mut db = self.db.lock().unwrap();
+        let mut db = self.lock_db()?;
 
         if !db.projects.contains_key(&command.project_id) {
             return Err(PortError::NotFound {
@@ -127,7 +134,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
     }
 
     async fn commit_job_update(&self, command: CommitJobUpdate) -> Result<(), PortError> {
-        let mut db = self.db.lock().unwrap();
+        let mut db = self.lock_db()?;
         if let Some(existing) = db.jobs.get(command.job.id()) {
             if existing.revision() != command.expected_revision {
                 return Err(PortError::Conflict {
@@ -151,7 +158,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
     async fn commit_pipeline_start(&self, command: CommitPipelineStart) -> Result<(), PortError> {
         command.validate()?;
 
-        let mut db = self.db.lock().unwrap();
+        let mut db = self.lock_db()?;
         if !db.projects.contains_key(command.project.id()) {
             return Err(PortError::NotFound {
                 resource: "Project".to_string(),
@@ -176,7 +183,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
     ) -> Result<(), PortError> {
         command.validate()?;
 
-        let mut db = self.db.lock().unwrap();
+        let mut db = self.lock_db()?;
         if !db.projects.contains_key(command.project.id()) {
             return Err(PortError::NotFound {
                 resource: "Project".to_string(),
@@ -208,7 +215,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: ports::transaction::CommitTerminalJobUpdate,
     ) -> Result<(), PortError> {
-        let mut db = self.db.lock().unwrap();
+        let mut db = self.lock_db()?;
         if let Some(existing) = db.jobs.get(command.job.id()) {
             if existing.revision() != command.expected_revision {
                 return Err(PortError::Conflict {
@@ -234,18 +241,19 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: ports::transaction::ApplyTerminalLifecycle,
     ) -> Result<domain::project::status::TerminalTransitionResult, PortError> {
-        let mut db = self.db.lock().unwrap();
-        let project =
-            db.projects
-                .get(&command.project_id)
-                .ok_or_else(|| PortError::Unexpected {
-                    message: "Project not found".to_string(),
-                })?;
+        let mut db = self.lock_db()?;
+        let project = db
+            .projects
+            .get(&command.project_id)
+            .ok_or_else(|| PortError::NotFound {
+                resource: format!("Project {}", command.project_id),
+            })?;
 
         let mut updated_project = project.clone();
         let res = updated_project
             .apply_terminal_transition(&command.job_id, command.outcome)
-            .map_err(|e| PortError::Unexpected {
+            .map_err(|e| PortError::Conflict {
+                resource: "Project Transition".to_string(),
                 message: e.to_string(),
             })?;
 
@@ -263,7 +271,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
     async fn commit_artifact_finalize(
         &self,
         _command: ports::transaction::CommitArtifactFinalize,
-    ) -> Result<(), PortError> {
-        Ok(())
+    ) -> Result<ports::transaction::CommitArtifactFinalizeResult, PortError> {
+        Ok(ports::transaction::CommitArtifactFinalizeResult::Committed)
     }
 }

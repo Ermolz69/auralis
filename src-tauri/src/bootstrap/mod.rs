@@ -62,7 +62,11 @@ pub fn setup(
     let publisher = TauriEventPublisher::new(app_handle.clone());
     let coordinator = Arc::new(JobLifecycleCoordinator::new());
 
-    let mut event_bridge = TauriJobEventBridge::new(publisher.clone(), coordinator);
+    let mut event_bridge = TauriJobEventBridge::new(
+        publisher.clone(),
+        coordinator,
+        adapters_tauri::JobEventBridgeConfig::default(),
+    );
 
     if let Some(outbox_repo) = outbox_repo_opt {
         let outbox_shutdown = workers::spawn_outbox_worker(
@@ -109,6 +113,8 @@ pub fn setup(
         temp_workspace,
         job_manager.clone() as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     );
+
+    app.manage(services.job_query);
 
     Ok(())
 }

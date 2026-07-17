@@ -10,8 +10,8 @@ use super::super::project_mapper::row_to_project;
 use super::super::project_row::ProjectRow;
 
 pub async fn load_snapshot(pool: &SqlitePool) -> Result<RecoverySnapshot, PortError> {
-    let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin transaction for snapshot: {}", e),
+    let mut tx = pool.begin().await.map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction for snapshot", e)
     })?;
 
     // 1. Load all Processing projects
@@ -19,8 +19,8 @@ pub async fn load_snapshot(pool: &SqlitePool) -> Result<RecoverySnapshot, PortEr
         sqlx::query_as("SELECT * FROM projects WHERE status = 'Processing'")
             .fetch_all(&mut *tx)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to fetch processing projects: {}", e),
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to fetch processing projects", e)
             })?;
 
     let mut processing_projects = Vec::new();
@@ -54,8 +54,8 @@ pub async fn load_snapshot(pool: &SqlitePool) -> Result<RecoverySnapshot, PortEr
         sqlx::query_as("SELECT * FROM jobs WHERE status IN ('Pending', 'Running')")
             .fetch_all(&mut *tx)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to fetch active jobs: {}", e),
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to fetch active jobs", e)
             })?;
 
     let mut active_jobs = Vec::new();
@@ -65,8 +65,8 @@ pub async fn load_snapshot(pool: &SqlitePool) -> Result<RecoverySnapshot, PortEr
         }
     }
 
-    tx.commit().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to commit read transaction: {}", e),
+    tx.commit().await.map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to commit read transaction", e)
     })?;
 
     Ok(RecoverySnapshot {

@@ -65,9 +65,7 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
     let rows = sqlx::query("SELECT id, artifacts_json, created_at FROM projects WHERE artifacts_json IS NOT NULL AND artifacts_json != '[]'")
         .fetch_all(pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to fetch projects for artifact backfill: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch projects for artifact backfill", e))?;
 
     for row in rows {
         let project_id: String = match row.try_get("id") {
@@ -145,8 +143,8 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
             continue;
         }
 
-        let mut tx = pool.begin().await.map_err(|e| PortError::Unexpected {
-            message: format!("Failed to begin transaction for backfill: {}", e),
+        let mut tx = pool.begin().await.map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction for backfill", e)
         })?;
 
         let mut project_artifacts_migrated = 0;
@@ -340,21 +338,21 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
 
     // Phase 3: Table Rebuild & Column Deletion
     // Acquire a single dedicated connection
-    let mut conn = pool.acquire().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to acquire connection for rebuild: {}", e),
+    let mut conn = pool.acquire().await.map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to acquire connection for rebuild", e)
     })?;
 
     // Disable foreign keys on this specific connection
     sqlx::query("PRAGMA foreign_keys = OFF")
         .execute(&mut *conn)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to disable foreign keys: {}", e),
+        .map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to disable foreign keys", e)
         })?;
 
     // Perform the rebuild inside a transaction on this connection
-    let mut tx = conn.begin().await.map_err(|e| PortError::Unexpected {
-        message: format!("Failed to begin transaction for rebuild: {}", e),
+    let mut tx = conn.begin().await.map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction for rebuild", e)
     })?;
 
     let rebuild_result = async {
@@ -413,8 +411,8 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
 
     match rebuild_result {
         Ok(_) => {
-            tx.commit().await.map_err(|e| PortError::Unexpected {
-                message: format!("Failed to commit rebuild transaction: {}", e),
+            tx.commit().await.map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to commit rebuild transaction", e)
             })?;
         }
         Err(e) => {
@@ -438,8 +436,8 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
     sqlx::query("PRAGMA foreign_keys = ON")
         .execute(&mut *conn)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to re-enable foreign keys: {}", e),
+        .map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to re-enable foreign keys", e)
         })?;
 
     Ok(report)

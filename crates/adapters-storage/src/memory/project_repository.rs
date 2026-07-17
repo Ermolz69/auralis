@@ -17,12 +17,19 @@ impl InMemoryProjectRepository {
     pub fn new(db: Arc<Mutex<InMemoryDatabase>>) -> Self {
         Self { db }
     }
+
+    fn lock_db(&self) -> Result<std::sync::MutexGuard<'_, InMemoryDatabase>, PortError> {
+        self.db.lock().map_err(|_| PortError::Storage {
+            operation: "lock_in_memory_db",
+            message: "Mutex poisoned".to_string(),
+        })
+    }
 }
 
 #[async_trait]
 impl ProjectRepository for InMemoryProjectRepository {
     async fn create(&self, project: Project) -> Result<Project, PortError> {
-        let mut lock = self.db.lock().unwrap();
+        let mut lock = self.lock_db()?;
         if lock.projects.contains_key(project.id()) {
             return Err(PortError::Conflict {
                 resource: "Project".to_string(),
@@ -34,12 +41,12 @@ impl ProjectRepository for InMemoryProjectRepository {
     }
 
     async fn get(&self, id: &ProjectId) -> Result<Option<Project>, PortError> {
-        let lock = self.db.lock().unwrap();
+        let lock = self.lock_db()?;
         Ok(lock.projects.get(id).cloned())
     }
 
     async fn save(&self, project: &Project) -> Result<(), PortError> {
-        let mut lock = self.db.lock().unwrap();
+        let mut lock = self.lock_db()?;
         if !lock.projects.contains_key(project.id()) {
             return Err(PortError::NotFound {
                 resource: "Project".to_string(),
@@ -50,12 +57,12 @@ impl ProjectRepository for InMemoryProjectRepository {
     }
 
     async fn list(&self) -> Result<Vec<Project>, PortError> {
-        let lock = self.db.lock().unwrap();
+        let lock = self.lock_db()?;
         Ok(lock.projects.values().cloned().collect())
     }
 
     async fn delete(&self, id: &ProjectId) -> Result<(), PortError> {
-        let mut lock = self.db.lock().unwrap();
+        let mut lock = self.lock_db()?;
         lock.projects.remove(id);
         Ok(())
     }

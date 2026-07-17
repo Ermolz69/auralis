@@ -40,8 +40,8 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
     async fn commit_artifact_finalize(
         &self,
         _command: ports::transaction::CommitArtifactFinalize,
-    ) -> Result<(), PortError> {
-        Ok(())
+    ) -> Result<ports::transaction::CommitArtifactFinalizeResult, PortError> {
+        Ok(ports::transaction::CommitArtifactFinalizeResult::Committed)
     }
     async fn commit_managed_source_import(
         &self,

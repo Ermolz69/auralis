@@ -5,53 +5,45 @@ use std::str::FromStr;
 use super::project_row::ProjectRow;
 
 pub fn row_to_project(row: ProjectRow) -> Result<Project, PortError> {
-    let id = ProjectId::from_str(&row.id).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to parse project id `{}`: {}", row.id, e),
-    })?;
+    let id = parse_project_id(&row.id)?;
 
     let title = row.title;
 
-    let status = parse_json(&format!("\"{}\"", row.status), "status")?;
+    let status = parse_json_field(&format!("\"{}\"", row.status), &row.id, "status")?;
 
     let source = row
         .source_json
-        .map(|s| parse_json(&s, "source_json"))
+        .map(|s| parse_json_field(&s, &row.id, "source_json"))
         .transpose()?;
     let metadata = row
         .metadata_json
-        .map(|s| parse_json(&s, "metadata_json"))
+        .map(|s| parse_json_field(&s, &row.id, "metadata_json"))
         .transpose()?;
     let source_language = row
         .source_language
-        .map(|s| parse_json(&s, "source_language"))
+        .map(|s| parse_json_field(&s, &row.id, "source_language"))
         .transpose()?;
     let target_language = row
         .target_language
-        .map(|s| parse_json(&s, "target_language"))
+        .map(|s| parse_json_field(&s, &row.id, "target_language"))
         .transpose()?;
     let transcript = row
         .transcript_json
-        .map(|s| parse_json(&s, "transcript_json"))
+        .map(|s| parse_json_field(&s, &row.id, "transcript_json"))
         .transpose()?;
 
     let active_job_id = row
         .active_job_id
-        .map(|id| domain::job::JobId::from_str(&id))
-        .transpose()
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to parse active_job_id: {}", e),
-        })?;
+        .map(|id_str| parse_job_id(&id_str, &row.id, "active_job_id"))
+        .transpose()?;
 
     let last_terminal_job_id = row
         .last_terminal_job_id
-        .map(|id| domain::job::JobId::from_str(&id))
-        .transpose()
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to parse last_terminal_job_id: {}", e),
-        })?;
+        .map(|id_str| parse_job_id(&id_str, &row.id, "last_terminal_job_id"))
+        .transpose()?;
 
-    let created_at = parse_datetime(&row.created_at, "created_at")?;
-    let updated_at = parse_datetime(&row.updated_at, "updated_at")?;
+    let created_at = parse_datetime(&row.created_at, &row.id, "created_at")?;
+    let updated_at = parse_datetime(&row.updated_at, &row.id, "updated_at")?;
 
     let snapshot = ProjectSnapshot {
         id,
@@ -68,12 +60,17 @@ pub fn row_to_project(row: ProjectRow) -> Result<Project, PortError> {
         updated_at,
     };
 
-    Project::from_snapshot(snapshot).map_err(|e| PortError::Unexpected {
+    Project::from_snapshot(snapshot).map_err(|e| PortError::InvalidStoredData {
+        entity_type: "project".to_string(),
+        entity_id: row.id.clone(),
+        field: "domain_validation".to_string(),
         message: format!("Failed to build project from snapshot: {:?}", e),
     })
 }
 
 pub fn project_to_row_values(project: &Project) -> Result<ProjectRow, PortError> {
+    use super::helpers::serialize_json;
+
     let snapshot = project.to_snapshot();
 
     let status = serialize_json(&snapshot.status, "status")?
@@ -117,22 +114,52 @@ pub fn project_to_row_values(project: &Project) -> Result<ProjectRow, PortError>
     })
 }
 
-fn parse_json<T: serde::de::DeserializeOwned>(value: &str, field: &str) -> Result<T, PortError> {
-    serde_json::from_str(value).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to deserialize field `{}`: {}", field, e),
+fn parse_project_id(value: &str) -> Result<ProjectId, PortError> {
+    ProjectId::from_str(value).map_err(|e| PortError::InvalidStoredData {
+        entity_type: "project".to_string(),
+        entity_id: value.to_string(),
+        field: "id".to_string(),
+        message: format!("Failed to parse project id: {}", e),
     })
 }
 
-fn serialize_json<T: serde::Serialize>(value: &T, field: &str) -> Result<String, PortError> {
-    serde_json::to_string(value).map_err(|e| PortError::Unexpected {
-        message: format!("Failed to serialize field `{}`: {}", field, e),
+fn parse_job_id(
+    value: &str,
+    project_id: &str,
+    field: &'static str,
+) -> Result<domain::job::JobId, PortError> {
+    domain::job::JobId::from_str(value).map_err(|e| PortError::InvalidStoredData {
+        entity_type: "project".to_string(),
+        entity_id: project_id.to_string(),
+        field: field.to_string(),
+        message: format!("Failed to parse job id `{}`: {}", value, e),
     })
 }
 
-fn parse_datetime(value: &str, field: &str) -> Result<chrono::DateTime<chrono::Utc>, PortError> {
+fn parse_json_field<T: serde::de::DeserializeOwned>(
+    value: &str,
+    project_id: &str,
+    field: &'static str,
+) -> Result<T, PortError> {
+    super::helpers::deserialize_json(value, field).map_err(|e| PortError::InvalidStoredData {
+        entity_type: "project".to_string(),
+        entity_id: project_id.to_string(),
+        field: field.to_string(),
+        message: format!("Failed to deserialize {}: {}", field, e),
+    })
+}
+
+fn parse_datetime(
+    value: &str,
+    project_id: &str,
+    field: &'static str,
+) -> Result<chrono::DateTime<chrono::Utc>, PortError> {
     chrono::DateTime::parse_from_rfc3339(value)
         .map(|dt| dt.with_timezone(&chrono::Utc))
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to parse field `{}` as datetime: {}", field, e),
+        .map_err(|e| PortError::InvalidStoredData {
+            entity_type: "project".to_string(),
+            entity_id: project_id.to_string(),
+            field: field.to_string(),
+            message: format!("Failed to parse datetime: {}", e),
         })
 }

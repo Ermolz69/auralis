@@ -16,18 +16,22 @@ pub struct OutboxMaintenanceConfig {
 }
 
 impl OutboxMaintenanceConfig {
-    pub fn default_config() -> Self {
-        Self {
+    pub fn try_default() -> Result<Self, crate::error::ApplicationError> {
+        Ok(Self {
             interval: Duration::from_secs(3600),
             staging_max_age: Duration::from_secs(86400),
             workspace_max_age: Duration::from_secs(86400),
-            done_retention: domain::chrono::TimeDelta::try_days(7).unwrap(),
-            dead_retention: domain::chrono::TimeDelta::try_days(30).unwrap(),
+            done_retention: domain::chrono::TimeDelta::try_days(7).ok_or_else(|| {
+                crate::error::ApplicationError::Configuration("Invalid done_retention".into())
+            })?,
+            dead_retention: domain::chrono::TimeDelta::try_days(30).ok_or_else(|| {
+                crate::error::ApplicationError::Configuration("Invalid dead_retention".into())
+            })?,
             per_status_batch_limit: 500,
             max_batches: 10,
             run_on_startup: true,
             shutdown_timeout: Duration::from_secs(30),
-        }
+        })
     }
 
     pub fn validate(&self) -> Result<(), crate::error::ApplicationError> {

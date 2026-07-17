@@ -99,19 +99,6 @@ impl JobSchedulerPort for MockJobScheduler {
         Ok(jobs.clone())
     }
 
-    async fn list_jobs_snapshot(
-        &self,
-        project_id: &domain::project::ProjectId,
-    ) -> Result<Vec<ScheduledJob>, PortError> {
-        let jobs = self.jobs.lock().await;
-        let filtered = jobs
-            .iter()
-            .filter(|j| j.project_id.as_ref() == Some(project_id))
-            .cloned()
-            .collect();
-        Ok(filtered)
-    }
-
     async fn update_job_stage(
         &self,
         job_id: &JobId,
@@ -159,5 +146,21 @@ impl JobSchedulerPort for MockJobScheduler {
         Err(PortError::NotFound {
             resource: format!("Job {}", job_id),
         })
+    }
+}
+
+#[async_trait]
+impl ports::job_query::JobQueryPort for MockJobScheduler {
+    async fn list_jobs_snapshot(
+        &self,
+        project_id: &domain::project::ProjectId,
+    ) -> Result<Vec<ScheduledJob>, PortError> {
+        let jobs = self.jobs.lock().await;
+        let filtered = jobs
+            .iter()
+            .filter(|j| j.project_id.as_ref() == Some(project_id))
+            .cloned()
+            .collect();
+        Ok(filtered)
     }
 }

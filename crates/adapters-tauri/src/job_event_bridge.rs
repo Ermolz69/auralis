@@ -89,17 +89,32 @@ impl JobEventBridgeHandle {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct JobEventBridgeConfig {
+    pub capacity: usize,
+}
+
+impl Default for JobEventBridgeConfig {
+    fn default() -> Self {
+        Self { capacity: 256 }
+    }
+}
+
 pub struct TauriJobEventBridge {
     tx: broadcast::Sender<JobLifecycleEvent>,
     handle: Option<JobEventBridgeHandle>,
 }
 
 impl TauriJobEventBridge {
-    pub fn new<P>(publisher: P, coordinator: Arc<JobLifecycleCoordinator>) -> Self
+    pub fn new<P>(
+        publisher: P,
+        coordinator: Arc<JobLifecycleCoordinator>,
+        config: JobEventBridgeConfig,
+    ) -> Self
     where
         P: FrontendJobEventPublisher + 'static,
     {
-        let (tx, rx) = broadcast::channel(JOB_EVENT_CHANNEL_CAPACITY);
+        let (tx, rx) = broadcast::channel(config.capacity);
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
         let worker = JobLifecycleWorker {
@@ -196,7 +211,11 @@ mod tests {
         let coordinator = Arc::new(JobLifecycleCoordinator::new());
 
         let frontend_pub = MockFrontendPublisher::new();
-        let mut bridge = TauriJobEventBridge::new(frontend_pub.clone(), coordinator);
+        let mut bridge = TauriJobEventBridge::new(
+            frontend_pub.clone(),
+            coordinator,
+            JobEventBridgeConfig::default(),
+        );
 
         let emitter = bridge.emitter();
 
@@ -278,7 +297,11 @@ mod tests {
         let coordinator = Arc::new(JobLifecycleCoordinator::new());
 
         let frontend_pub = MockFrontendPublisher::new();
-        let mut bridge = TauriJobEventBridge::new(frontend_pub.clone(), coordinator);
+        let mut bridge = TauriJobEventBridge::new(
+            frontend_pub.clone(),
+            coordinator,
+            JobEventBridgeConfig::default(),
+        );
 
         let emitter = bridge.emitter();
 

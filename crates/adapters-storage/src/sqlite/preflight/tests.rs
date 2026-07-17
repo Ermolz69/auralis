@@ -25,7 +25,7 @@ mod preflight_tests {
                 id TEXT PRIMARY KEY NOT NULL,
                 title TEXT NOT NULL,
                 status TEXT NOT NULL,
-                artifacts_json TEXT NOT NULL, // allow-fallback
+                artifacts_json TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )",
@@ -35,7 +35,7 @@ mod preflight_tests {
         .unwrap();
 
         // Insert a test row
-        sqlx::query("INSERT INTO projects (id, title, status, artifacts_json, created_at, updated_at) VALUES ('123', 'Test Project', 'draft', '[]', '2026', '2026')") // allow-fallback
+        sqlx::query("INSERT INTO projects (id, title, status, artifacts_json, created_at, updated_at) VALUES ('123', 'Test Project', 'draft', '[]', '2026', '2026')")
             .execute(&pool)
             .await.unwrap();
 

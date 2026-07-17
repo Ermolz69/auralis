@@ -56,9 +56,7 @@ impl JobRepository for SqliteJobRepository {
                     message: format!("Job with id {} already exists", job.id()),
                 };
             }
-            PortError::Unexpected {
-                message: format!("Failed to create job: {}", e),
-            }
+            crate::sqlite::helpers::map_sqlite_error("create_job", e)
         })?;
 
         Ok(job)
@@ -76,9 +74,7 @@ impl JobRepository for SqliteJobRepository {
         .bind(id.to_string())
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to fetch job: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("get_job", e))?;
 
         row.map(row_to_job).transpose()
     }
@@ -118,9 +114,7 @@ impl JobRepository for SqliteJobRepository {
         .bind(i64::try_from(expected_revision).unwrap_or(-1))
         .execute(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to save job: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("save_job", e))?;
 
         if result.rows_affected() == 0 {
             return Err(PortError::Conflict {
@@ -145,9 +139,7 @@ impl JobRepository for SqliteJobRepository {
         .bind(project_id.to_string())
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to list jobs by project: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("list_jobs_by_project", e))?;
 
         rows.into_iter().map(row_to_job).collect()
     }
@@ -164,9 +156,7 @@ impl JobRepository for SqliteJobRepository {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to list active jobs: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("list_active_jobs", e))?;
 
         rows.into_iter().map(row_to_job).collect()
     }
@@ -184,10 +174,49 @@ impl JobRepository for SqliteJobRepository {
         .bind(limit as i64)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| PortError::Unexpected {
-            message: format!("Failed to list recent jobs: {}", e),
-        })?;
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("list_recent_jobs", e))?;
 
         rows.into_iter().map(row_to_job).collect()
+    }
+}
+
+#[async_trait]
+impl ports::job_query::JobQueryPort for SqliteJobRepository {
+    async fn list_jobs_snapshot(
+        &self,
+        project_id: &ProjectId,
+    ) -> Result<Vec<ports::job_scheduler::ScheduledJob>, PortError> {
+        let rows = sqlx::query_as::<_, JobRow>(
+            r#"
+            SELECT id, revision, project_id, title, kind, status, stage, progress_json, error_json,
+                   created_at, updated_at, started_at, finished_at
+            FROM jobs
+            WHERE project_id = ?
+            "#,
+        )
+        .bind(project_id.to_string())
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("list_jobs_snapshot", e))?;
+
+        let mut jobs = Vec::with_capacity(rows.len());
+        for row in rows {
+            let job = row_to_job(row)?;
+            let snap = job.to_snapshot();
+            jobs.push(ports::job_scheduler::ScheduledJob {
+                id: snap.id,
+                revision: snap.revision,
+                project_id: Some(snap.project_id),
+                title: snap.title,
+                status: snap.status,
+                stage: snap.stage,
+                progress: snap.progress,
+                error: snap.error.map(|e| e.message),
+                created_at: snap.created_at,
+                updated_at: snap.updated_at,
+            });
+        }
+
+        Ok(jobs)
     }
 }

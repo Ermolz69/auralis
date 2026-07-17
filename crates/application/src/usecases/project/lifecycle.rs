@@ -1,4 +1,5 @@
 use domain::project::ProjectId;
+use ports::error::PortError;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, Weak};
 
@@ -21,13 +22,19 @@ impl Default for ProjectLifecycleLocks {
 }
 
 impl ProjectLifecycleLocks {
-    pub fn get_lock(&self, project_id: &ProjectId) -> Arc<tokio::sync::Mutex<()>> {
-        let mut locks = self.locks.lock().unwrap();
+    pub fn get_lock(
+        &self,
+        project_id: &ProjectId,
+    ) -> Result<Arc<tokio::sync::Mutex<()>>, PortError> {
+        let mut locks = self.locks.lock().map_err(|_| PortError::Storage {
+            operation: "lock_project_lifecycle",
+            message: "Mutex poisoned".to_string(),
+        })?;
 
         if let Some(weak_lock) = locks.get(project_id)
             && let Some(arc_lock) = weak_lock.upgrade()
         {
-            return arc_lock;
+            return Ok(arc_lock);
         }
 
         let new_lock = Arc::new(tokio::sync::Mutex::new(()));
@@ -39,6 +46,6 @@ impl ProjectLifecycleLocks {
             locks.retain(|_, weak| weak.strong_count() > 0);
         }
 
-        new_lock
+        Ok(new_lock)
     }
 }

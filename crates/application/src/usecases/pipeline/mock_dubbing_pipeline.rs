@@ -2,7 +2,7 @@ use crate::usecases::transcript::import_youtube_subtitles::{
     ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesUseCase,
 };
 use domain::dubbing::DubbingPipelineStage;
-use domain::job::{JobId, JobProgress, JobStatus};
+use domain::job::{JobId, JobProgress};
 use domain::project::ProjectId;
 use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::ProjectRepository;
@@ -11,7 +11,7 @@ use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
 use ports::workspace::TempWorkspacePort;
 use std::sync::Arc;
-use tokio::time::{Duration, sleep};
+use tokio::time::Duration;
 
 pub struct MockDubbingPipelineRunner<
     R: ProjectRepository + Clone + 'static,
@@ -25,7 +25,7 @@ pub struct MockDubbingPipelineRunner<
     storage_uow: T,
     artifact_store: S,
     workspace_port: Arc<dyn TempWorkspacePort>,
-    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+    _job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
 }
 
 impl<
@@ -51,56 +51,18 @@ impl<
             storage_uow,
             artifact_store,
             workspace_port,
-            job_runtime,
+            _job_runtime: job_runtime,
         }
     }
 
-    pub fn spawn(self, job_id: JobId, project_id: ProjectId) {
-        let (cancel_handle, token) = ports::cancellation::CancelHandle::new();
-        let (state_tx, state_rx) =
-            tokio::sync::watch::channel(ports::job_runtime_control::RuntimeState::Starting);
-
-        let runtime_clone = self.job_runtime.clone();
-        let job_id_clone = job_id.clone();
-        let project_id_clone = project_id.clone();
-
-        let span = tracing::info_span!("job_execution", job_id = %job_id, project_id = %project_id, action = "job_execution");
-        let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
-            span.clone(),
-            crate::observability::execution_summary::OperationSummary::JobExecution {
-                project_id: project_id.to_string(),
-                job_id: job_id.to_string(),
-                action: "job_execution",
-                status: "aborted".to_string(),
-            },
-        );
-
-        let runner = async move {
-            let _ = state_tx.send(ports::job_runtime_control::RuntimeState::Running);
-            self.run(job_id_clone, project_id_clone, token, &mut guard)
-                .await;
-            let _ = state_tx.send(ports::job_runtime_control::RuntimeState::Finished);
-        };
-
-        let join_handle = tokio::spawn(tracing::Instrument::instrument(runner, span));
-        let abort_handle = join_handle.abort_handle();
-
-        // Register the task synchronously by spawning another short-lived task
-        tokio::spawn(async move {
-            runtime_clone
-                .register_runtime_task(job_id, cancel_handle, state_rx, abort_handle)
-                .await;
-        });
-    }
-
     #[allow(clippy::collapsible_if)]
-    async fn run(
+    pub async fn run(
         &self,
         job_id: JobId,
         project_id: ProjectId,
         token: ports::cancellation::CancellationToken,
         guard: &mut crate::observability::execution_summary::ExecutionSummaryGuard,
-    ) {
+    ) -> ports::job_runtime_control::RuntimeTaskOutcome {
         let stages = vec![
             (DubbingPipelineStage::ValidateSource, 10, 500),
             (DubbingPipelineStage::FetchMetadata, 25, 600),
@@ -110,20 +72,7 @@ impl<
         for (stage, percent, delay_ms) in stages {
             if token.is_cancelled() {
                 guard.summary.update_status("cancelled");
-                return;
-            }
-
-            match self.job_scheduler.get_job(&job_id).await {
-                Ok(Some(job)) => {
-                    if job.status == JobStatus::Cancelled {
-                        guard.summary.update_status("cancelled");
-                        return;
-                    }
-                }
-                _ => {
-                    guard.summary.update_status("deleted");
-                    return;
-                }
+                return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
             }
 
             let progress = JobProgress {
@@ -134,34 +83,48 @@ impl<
                 total_items: None,
             };
 
-            let _ = self
+            if let Err(e) = self
                 .job_scheduler
                 .update_job_stage(&job_id, stage.clone(), progress)
-                .await;
-
-            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-        }
-
-        if token.is_cancelled() {
-            guard.summary.update_status("cancelled");
-            return;
-        }
-
-        // ExtractOrGenerateTranscript stage (Real work: Subtitles Import)
-        match self.job_scheduler.get_job(&job_id).await {
-            Ok(Some(job)) => {
-                if job.status == JobStatus::Cancelled {
-                    guard.summary.update_status("cancelled");
-                    return;
+                .await
+            {
+                match e {
+                    ports::error::PortError::NotFound { .. } => {
+                        guard.summary.update_status("deleted");
+                        return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+                    }
+                    ports::error::PortError::Conflict { .. } => {
+                        guard.summary.update_status("conflict");
+                        return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed;
+                    }
+                    _ => {
+                        // Storage / other
+                        guard.summary.update_status("storage_error");
+                        let _ = self
+                            .job_scheduler
+                            .fail_job(&job_id, "STORAGE_ERROR".into(), e.to_string(), false)
+                            .await;
+                        return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed;
+                    }
                 }
             }
-            _ => {
-                guard.summary.update_status("deleted");
-                return;
+
+            // Before I/O check
+            if token.is_cancelled() {
+                guard.summary.update_status("cancelled");
+                return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+
+            // After I/O check
+            if token.is_cancelled() {
+                guard.summary.update_status("cancelled");
+                return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
             }
         }
 
-        let _ = self
+        if let Err(e) = self
             .job_scheduler
             .update_job_stage(
                 &job_id,
@@ -174,7 +137,16 @@ impl<
                     total_items: None,
                 },
             )
-            .await;
+            .await
+        {
+            match e {
+                ports::error::PortError::NotFound { .. } => {
+                    guard.summary.update_status("deleted");
+                    return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+                }
+                _ => return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed,
+            }
+        }
 
         let import_use_case = ImportYoutubeSubtitlesUseCase::new(
             Arc::new(self.project_repo.clone()),
@@ -204,26 +176,16 @@ impl<
                     )
                     .await;
                 guard.summary.update_status("failed");
-                return;
+                return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed;
             }
         }
 
-        // Check cancellation again
-        match self.job_scheduler.get_job(&job_id).await {
-            Ok(Some(job)) => {
-                if job.status == JobStatus::Cancelled {
-                    guard.summary.update_status("cancelled");
-                    return;
-                }
-            }
-            _ => {
-                guard.summary.update_status("deleted");
-                return;
-            }
+        if token.is_cancelled() {
+            guard.summary.update_status("cancelled");
+            return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
         }
 
-        // ExportResult stage
-        let _ = self
+        if let Err(e) = self
             .job_scheduler
             .update_job_stage(
                 &job_id,
@@ -236,10 +198,28 @@ impl<
                     total_items: None,
                 },
             )
-            .await;
-        sleep(Duration::from_millis(500)).await;
+            .await
+        {
+            match e {
+                ports::error::PortError::NotFound { .. } => {
+                    return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+                }
+                _ => return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed,
+            }
+        }
 
-        let _ = self.job_scheduler.complete_job(&job_id).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        if let Err(e) = self.job_scheduler.complete_job(&job_id).await {
+            match e {
+                ports::error::PortError::NotFound { .. } => {
+                    return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+                }
+                _ => return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed,
+            }
+        }
+
         guard.summary.update_status("completed");
+        ports::job_runtime_control::RuntimeTaskOutcome::Completed
     }
 }

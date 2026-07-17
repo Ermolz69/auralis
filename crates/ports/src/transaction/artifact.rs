@@ -66,3 +66,11 @@ pub struct CommitArtifactFinalize {
     pub artifact_id: domain::media::ArtifactId,
     pub ready_key: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommitArtifactFinalizeResult {
+    Committed,
+    ObsoleteBecauseProjectDeleted,
+    Conflict,
+    AlreadyFinalized,
+}
