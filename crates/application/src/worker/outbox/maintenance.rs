@@ -84,11 +84,20 @@ impl OutboxMaintenanceConfig {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MaintenanceStepOutcome {
+    #[default]
+    NotStarted,
+    Succeeded,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct OutboxMaintenanceReport {
-    pub staging_cleanup_error: Option<String>,
-    pub workspace_cleanup_error: Option<String>,
-    pub prune_error: Option<String>,
+    pub staging_cleanup: MaintenanceStepOutcome,
+    pub workspace_cleanup: MaintenanceStepOutcome,
+    pub pruning: MaintenanceStepOutcome,
     pub done_deleted: usize,
     pub dead_deleted: usize,
     pub batches_run: u32,
@@ -125,6 +134,14 @@ where
         &'a self,
         cancel_token: watch::Receiver<bool>,
     ) -> impl std::future::Future<Output = OutboxMaintenanceReport> + 'a {
+        self.run_maintenance_at(domain::chrono::Utc::now(), cancel_token)
+    }
+
+    pub(crate) fn run_maintenance_at<'a>(
+        &'a self,
+        now: domain::chrono::DateTime<domain::chrono::Utc>,
+        cancel_token: watch::Receiver<bool>,
+    ) -> impl std::future::Future<Output = OutboxMaintenanceReport> + 'a {
         let span = tracing::info_span!("maintenance_run", action = "maintenance_run");
         let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
             span.clone(),
@@ -137,16 +154,16 @@ where
         );
 
         async move {
-            let report = self.run_maintenance_inner(cancel_token).await;
+            let report = self.run_maintenance_inner_at(now, cancel_token).await;
 
             let mut failed_count = 0;
-            if report.staging_cleanup_error.is_some() {
+            if report.staging_cleanup == MaintenanceStepOutcome::Failed {
                 failed_count += 1;
             }
-            if report.workspace_cleanup_error.is_some() {
+            if report.workspace_cleanup == MaintenanceStepOutcome::Failed {
                 failed_count += 1;
             }
-            if report.prune_error.is_some() {
+            if report.pruning == MaintenanceStepOutcome::Failed {
                 failed_count += 1;
             }
 
@@ -171,12 +188,12 @@ where
         }
     }
 
-    async fn run_maintenance_inner(
+    async fn run_maintenance_inner_at(
         &self,
+        now: domain::chrono::DateTime<domain::chrono::Utc>,
         cancel_token: watch::Receiver<bool>,
     ) -> OutboxMaintenanceReport {
         let mut report = OutboxMaintenanceReport::default();
-        let now = domain::chrono::Utc::now();
         let done_before = now - self.config.done_retention;
         let dead_before = now - self.config.dead_retention;
 
@@ -186,12 +203,22 @@ where
         }
 
         // 1. Staging janitor
-        if let Err(e) = self
+        report.staging_cleanup = MaintenanceStepOutcome::NotStarted;
+        if *cancel_token.borrow() {
+            report.cancelled = true;
+            return report;
+        }
+        match self
             .artifact_store
             .cleanup_stale_staging(self.config.staging_max_age)
             .await
         {
-            report.staging_cleanup_error = Some(e.to_string());
+            Ok(_) => {
+                report.staging_cleanup = MaintenanceStepOutcome::Succeeded;
+            }
+            Err(_) => {
+                report.staging_cleanup = MaintenanceStepOutcome::Failed;
+            }
         }
 
         if *cancel_token.borrow() {
@@ -200,18 +227,31 @@ where
         }
 
         // 2. Workspace janitor
-        if let Err(e) = self
+        report.workspace_cleanup = MaintenanceStepOutcome::NotStarted;
+        match self
             .workspace_provider
             .cleanup_stale_allocations(self.config.workspace_max_age)
             .await
         {
-            report.workspace_cleanup_error = Some(e.to_string());
+            Ok(_) => {
+                report.workspace_cleanup = MaintenanceStepOutcome::Succeeded;
+            }
+            Err(_) => {
+                report.workspace_cleanup = MaintenanceStepOutcome::Failed;
+            }
+        }
+
+        if *cancel_token.borrow() {
+            report.cancelled = true;
+            return report;
         }
 
         // 3. Pruning loop
+        report.pruning = MaintenanceStepOutcome::NotStarted;
         for _ in 0..self.config.max_batches {
             if *cancel_token.borrow() {
                 report.cancelled = true;
+                report.pruning = MaintenanceStepOutcome::Cancelled;
                 break;
             }
 
@@ -223,6 +263,7 @@ where
                 .await
             {
                 Ok(prune_report) => {
+                    report.pruning = MaintenanceStepOutcome::Succeeded;
                     report.done_deleted += prune_report.done_deleted;
                     report.dead_deleted += prune_report.dead_deleted;
                     report.batches_run += 1;
@@ -233,8 +274,8 @@ where
                         break;
                     }
                 }
-                Err(e) => {
-                    report.prune_error = Some(e.to_string());
+                Err(_) => {
+                    report.pruning = MaintenanceStepOutcome::Failed;
                     break;
                 }
             }

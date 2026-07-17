@@ -418,68 +418,331 @@ async fn mark_dead_failure_breaks_fetch_loop() {
 }
 
 #[tokio::test]
-async fn outbox_prune_terminal_rows() {
+async fn outbox_prune_terminal_rows_comprehensive() {
     let pool = setup_db().await;
     let repo = SqliteOutboxRepository::new(pool.clone());
 
-    let old_time = domain::chrono::Utc::now() - domain::chrono::Duration::days(10);
-    let recent_time = domain::chrono::Utc::now() - domain::chrono::Duration::days(1);
+    // 1. Test "strict < cutoff"
+    let cutoff_str = "2026-07-17T20:00:00Z";
+    let cutoff = chrono::DateTime::parse_from_rfc3339(cutoff_str)
+        .unwrap()
+        .with_timezone(&chrono::Utc);
 
-    let old_time_str = old_time.to_rfc3339_opts(domain::chrono::SecondsFormat::Secs, true);
-    let recent_time_str = recent_time.to_rfc3339_opts(domain::chrono::SecondsFormat::Secs, true);
-
-    // 2 done (old), 1 done (recent), 2 dead (old), 1 dead (recent), 1 pending (old)
     sqlx::query(
         r#"
         INSERT INTO outbox_messages (
             id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at
         ) VALUES 
-        ('done1', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
-        ('done2', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
-        ('done3', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
-        ('dead1', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
-        ('dead2', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
-        ('dead3', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?),
-        ('pend1', 'x', '{}', 'pending', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', ?)
+        ('done_exact', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2026-07-17T20:00:00Z'),
+        ('done_older', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2026-07-17T19:59:59Z')
         "#,
     )
-    .bind(&old_time_str)
-    .bind(&old_time_str)
-    .bind(&recent_time_str)
-    .bind(&old_time_str)
-    .bind(&old_time_str)
-    .bind(&recent_time_str)
-    .bind(&old_time_str)
     .execute(&pool)
     .await
     .unwrap();
 
-    let done_cutoff = domain::chrono::Utc::now() - domain::chrono::Duration::days(5);
-    let dead_cutoff = domain::chrono::Utc::now() - domain::chrono::Duration::days(5);
+    let report = repo.prune_terminal_rows(cutoff, cutoff, 10).await.unwrap();
+    assert_eq!(report.done_deleted, 1);
+    assert_eq!(report.dead_deleted, 0);
 
-    // limit = 1 per status
-    let report = repo
-        .prune_terminal_rows(done_cutoff, dead_cutoff, 1)
+    use sqlx::Row;
+    let count: i64 =
+        sqlx::query("SELECT COUNT(*) as c FROM outbox_messages WHERE id = 'done_exact'")
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+            .get("c");
+    assert_eq!(
+        count, 1,
+        "done_exact should NOT be deleted (strict < cutoff)"
+    );
+
+    // Clean up
+    sqlx::query("DELETE FROM outbox_messages")
+        .execute(&pool)
         .await
         .unwrap();
-    assert_eq!(report.done_deleted, 1);
-    assert_eq!(report.dead_deleted, 1);
 
-    // limit = 10 (should delete remaining 1 of each old)
-    let report2 = repo
+    // 2. Test "separate done/dead cutoff"
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at
+        ) VALUES 
+        ('done1', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2026-07-17T15:00:00Z'),
+        ('dead1', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2026-07-17T10:00:00Z')
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let done_cutoff = chrono::DateTime::parse_from_rfc3339("2026-07-17T16:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let dead_cutoff = chrono::DateTime::parse_from_rfc3339("2026-07-17T09:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+
+    let report = repo
         .prune_terminal_rows(done_cutoff, dead_cutoff, 10)
         .await
         .unwrap();
-    assert_eq!(report2.done_deleted, 1);
-    assert_eq!(report2.dead_deleted, 1);
+    assert_eq!(
+        report.done_deleted, 1,
+        "done1 should be deleted (15:00 < 16:00)"
+    );
+    assert_eq!(
+        report.dead_deleted, 0,
+        "dead1 should NOT be deleted (10:00 is not < 09:00)"
+    );
 
-    use sqlx::Row;
+    // Clean up
+    sqlx::query("DELETE FROM outbox_messages")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 3. Test "per-status limit" and "deterministic order"
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at
+        ) VALUES 
+        ('done_c', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z'),
+        ('done_a', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z'),
+        ('done_b', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z'),
+        ('dead_b', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z'),
+        ('dead_a', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z')
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let cutoff = chrono::DateTime::parse_from_rfc3339("2026-07-17T20:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+
+    // limit = 1 per status
+    let report = repo.prune_terminal_rows(cutoff, cutoff, 1).await.unwrap();
+    assert_eq!(report.done_deleted, 1);
+    assert_eq!(report.dead_deleted, 1);
+
+    // Verify deterministic order: smallest ID has been deleted
+    let remaining_done: Vec<String> = sqlx::query_as::<_, (String,)>(
+        "SELECT id FROM outbox_messages WHERE status = 'done' ORDER BY id ASC",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap()
+    .into_iter()
+    .map(|r| r.0)
+    .collect();
+    assert_eq!(
+        remaining_done,
+        vec!["done_b".to_string(), "done_c".to_string()]
+    ); // done_a deleted!
+
+    let remaining_dead: Vec<String> = sqlx::query_as::<_, (String,)>(
+        "SELECT id FROM outbox_messages WHERE status = 'dead' ORDER BY id ASC",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap()
+    .into_iter()
+    .map(|r| r.0)
+    .collect();
+    assert_eq!(remaining_dead, vec!["dead_b".to_string()]); // dead_a deleted!
+
+    // Clean up
+    sqlx::query("DELETE FROM outbox_messages")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 4. Test "pending/processing/failed не удаляются"
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at
+        ) VALUES 
+        ('pend1', 'x', '{}', 'pending', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z'),
+        ('proc1', 'x', '{}', 'processing', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z'),
+        ('fail1', 'x', '{}', 'failed', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z')
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let report = repo.prune_terminal_rows(cutoff, cutoff, 10).await.unwrap();
+    assert_eq!(report.done_deleted, 0);
+    assert_eq!(report.dead_deleted, 0);
+
     let count: i64 = sqlx::query("SELECT COUNT(*) as c FROM outbox_messages")
         .fetch_one(&pool)
         .await
         .unwrap()
         .get("c");
+    assert_eq!(
+        count, 3,
+        "None of pending, processing, failed should be deleted"
+    );
 
-    // 3 remain: done3, dead3, pend1
-    assert_eq!(count, 3);
+    // Clean up
+    sqlx::query("DELETE FROM outbox_messages")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 5. Test "rollback при втором delete"
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at
+        ) VALUES 
+        ('done1', 'x', '{}', 'done', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z'),
+        ('dead1', 'x', '{}', 'dead', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z')
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Create a trigger that fails delete ON dead rows
+    sqlx::query(
+        r#"
+        CREATE TRIGGER prevent_delete_dead BEFORE DELETE ON outbox_messages
+        FOR EACH ROW WHEN OLD.status = 'dead'
+        BEGIN
+            SELECT RAISE(ABORT, 'Simulated dead prune fail');
+        END;
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let result = repo.prune_terminal_rows(cutoff, cutoff, 10).await;
+    assert!(
+        result.is_err(),
+        "Prune must return error due to trigger on dead delete"
+    );
+
+    // Verify transaction rollback: both done1 and dead1 must still exist!
+    let count: i64 = sqlx::query("SELECT COUNT(*) as c FROM outbox_messages")
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+        .get("c");
+    assert_eq!(count, 2, "Both rows must remain due to rollback");
+
+    // Clean up trigger
+    sqlx::query("DROP TRIGGER prevent_delete_dead")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM outbox_messages")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 6. Test "terminal updates меняют updated_at"
+    let msg1_id = OutboxMessageId::new();
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at
+        ) VALUES 
+        (?, 'x', '{}', 'processing', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z')
+        "#,
+    )
+    .bind(msg1_id.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    repo.mark_done(&msg1_id).await.unwrap();
+
+    let updated_at: String =
+        sqlx::query_as::<_, (String,)>("SELECT updated_at FROM outbox_messages WHERE id = ?")
+            .bind(msg1_id.to_string())
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+            .0;
+    assert_ne!(
+        updated_at, "2020-01-01T12:00:00Z",
+        "updated_at must change on status update to done"
+    );
+
+    sqlx::query("DELETE FROM outbox_messages")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 7. Test failed -> dead (attempts = 4)
+    let msg2_id = OutboxMessageId::new();
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at
+        ) VALUES 
+        (?, 'x', '{}', 'processing', 4, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z')
+        "#,
+    )
+    .bind(msg2_id.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    repo.mark_failed(&msg2_id, "error").await.unwrap();
+
+    let (status, attempts, updated_at): (String, i64, String) =
+        sqlx::query_as("SELECT status, attempts, updated_at FROM outbox_messages WHERE id = ?")
+            .bind(msg2_id.to_string())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(status, "dead");
+    assert_eq!(attempts, 5);
+    assert_ne!(updated_at, "2020-01-01T12:00:00Z");
+
+    sqlx::query("DELETE FROM outbox_messages")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 8. Test "stale-lock reclaim меняет updated_at" (with valid payload)
+    let msg = OutboxMessage::new(OutboxPayload::DeleteProjectArtifactDir {
+        project_id: ProjectId::new(),
+    });
+    let payload_json = serde_json::to_string(&msg.payload).unwrap();
+    sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at, locked_at, locked_by, created_at, updated_at
+        ) VALUES 
+        (?, 'delete_project_artifact_dir', ?, 'processing', 0, '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z', 'worker1', '2020-01-01T00:00:00Z', '2020-01-01T12:00:00Z')
+        "#,
+    )
+    .bind(msg.id.to_string())
+    .bind(payload_json)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Reclaim should trigger
+    let pending = repo.fetch_pending(10).await.unwrap();
+    assert_eq!(pending.messages.len(), 1);
+
+    let (status, updated_at): (String, String) =
+        sqlx::query_as("SELECT status, updated_at FROM outbox_messages WHERE id = ?")
+            .bind(msg.id.to_string())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(status, "pending");
+    assert_ne!(updated_at, "2020-01-01T12:00:00Z");
 }

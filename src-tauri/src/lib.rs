@@ -69,9 +69,11 @@ pub fn run() -> Result<(), AppRunError> {
     let shutdown_report = std::sync::Arc::new(std::sync::Mutex::new(None));
     let shutdown_report_clone = shutdown_report.clone();
 
+    let shutdown_timeout = outbox_config.shutdown_timeout;
+
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .setup(move |app| {
             bootstrap::setup(app, outbox_config, validated_settings)?;
             Ok(())
         })
@@ -96,12 +98,30 @@ pub fn run() -> Result<(), AppRunError> {
         .map_err(AppRunError::TauriBuild)?;
 
     app.run(move |app_handle, event| {
-        if let tauri::RunEvent::Exit = event {
-            let report = tauri::async_runtime::block_on(shutdown_runtime(app_handle));
+        if let RuntimeLifecycleAction::FinalShutdown = classify_run_event(&event) {
+            use crate::state::{ManagedJobEventBridge, ManagedOutboxWorker, ManagedTracingGuard};
+            use tauri::Manager;
+
+            let outbox = app_handle
+                .try_state::<ManagedOutboxWorker>()
+                .and_then(|state| state.take());
+
+            let bridge = app_handle
+                .try_state::<ManagedJobEventBridge>()
+                .and_then(|state| state.take());
+
+            let tracing = app_handle
+                .try_state::<ManagedTracingGuard>()
+                .and_then(|state| state.take());
+
+            let workers_report =
+                tauri::async_runtime::block_on(shutdown_runtime(outbox, bridge, shutdown_timeout));
+            let final_report = finalize_runtime_shutdown(workers_report, tracing);
+
             let mut guard = shutdown_report_clone
                 .lock()
                 .unwrap_or_else(|e| e.into_inner());
-            *guard = Some(report);
+            *guard = Some(final_report);
         }
     });
 
@@ -118,6 +138,29 @@ pub fn run() -> Result<(), AppRunError> {
             }
         }
         None => Err(AppRunError::ShutdownNotObserved),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RuntimeLifecycleAction {
+    Ignore,
+    FinalShutdown,
+}
+
+pub(crate) fn classify_run_event(event: &tauri::RunEvent) -> RuntimeLifecycleAction {
+    match event {
+        tauri::RunEvent::Exit => RuntimeLifecycleAction::FinalShutdown,
+        _ => RuntimeLifecycleAction::Ignore,
+    }
+}
+
+pub trait TracingShutdown {
+    fn shutdown(self, timeout: std::time::Duration) -> TracingShutdownOutcome;
+}
+
+impl TracingShutdown for crate::observability::init::TracingGuard {
+    fn shutdown(self, timeout: std::time::Duration) -> TracingShutdownOutcome {
+        crate::observability::init::TracingGuard::shutdown(self, timeout)
     }
 }
 
@@ -157,6 +200,18 @@ impl TracingShutdownOutcome {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorkerShutdownReport {
+    pub outbox_outcome: WorkerOutcome,
+    pub bridge_outcome: WorkerOutcome,
+}
+
+impl WorkerShutdownReport {
+    pub fn is_graceful(&self) -> bool {
+        self.outbox_outcome.is_graceful() && self.bridge_outcome.is_graceful()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RuntimeShutdownReport {
     pub outbox_outcome: WorkerOutcome,
     pub bridge_outcome: WorkerOutcome,
@@ -171,53 +226,54 @@ impl RuntimeShutdownReport {
     }
 }
 
-async fn shutdown_runtime(app_handle: &tauri::AppHandle) -> RuntimeShutdownReport {
-    use crate::state::{ManagedJobEventBridge, ManagedOutboxWorker, ManagedTracingGuard};
-    use tauri::Manager;
+pub const TRACING_FLUSH_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
 
+pub fn finalize_runtime_shutdown<T: TracingShutdown>(
+    workers: WorkerShutdownReport,
+    tracing: Option<T>,
+) -> RuntimeShutdownReport {
     tracing::info!(
-        action = "shutdown_runtime_started",
-        "shutdown_runtime: initiating bounded shutdown"
+        action = "workers_shutdown_completed",
+        outbox_outcome = ?workers.outbox_outcome,
+        bridge_outcome = ?workers.bridge_outcome,
+        "shutdown_handles: workers finished, initiating tracing flush"
     );
 
-    let outbox_handle = app_handle
-        .try_state::<ManagedOutboxWorker>()
-        .and_then(|state| state.take());
+    let tracing_outcome = if let Some(guard) = tracing {
+        guard.shutdown(TRACING_FLUSH_TIMEOUT)
+    } else {
+        TracingShutdownOutcome::NotOwned
+    };
 
-    let bridge_handle = app_handle
-        .try_state::<ManagedJobEventBridge>()
-        .and_then(|state| state.take());
-
-    let tracing_guard = app_handle
-        .try_state::<ManagedTracingGuard>()
-        .and_then(|state| state.take());
-
-    shutdown_handles(outbox_handle, bridge_handle, tracing_guard).await
+    RuntimeShutdownReport {
+        outbox_outcome: workers.outbox_outcome,
+        bridge_outcome: workers.bridge_outcome,
+        tracing_outcome,
+    }
 }
 
-pub async fn shutdown_handles(
-    outbox_handle: Option<crate::bootstrap::workers::OutboxWorkerHandle>,
-    bridge_handle: Option<adapters_tauri::job_event_bridge::JobEventBridgeHandle>,
-    tracing_guard: Option<crate::observability::init::TracingGuard>,
-) -> RuntimeShutdownReport {
-    // 1. Start overall deadline
-    let deadline = tokio::time::sleep(std::time::Duration::from_secs(5));
+pub async fn shutdown_runtime(
+    outbox: Option<crate::bootstrap::workers::OutboxWorkerHandle>,
+    bridge: Option<adapters_tauri::job_event_bridge::JobEventBridgeHandle>,
+    timeout: std::time::Duration,
+) -> WorkerShutdownReport {
+    // 1. Start overall deadline before sending signals
+    let deadline = tokio::time::sleep(timeout);
     tokio::pin!(deadline);
 
     let mut outbox_outcome = WorkerOutcome::AlreadyStopped;
     let mut bridge_outcome = WorkerOutcome::AlreadyStopped;
 
     let mut outbox_task = None;
-    if let Some(handle) = outbox_handle {
+    if let Some(handle) = outbox {
         let (tx, task) = handle.into_shutdown_parts();
         if let Some(tx) = tx {
-            tokio::select! {
-                res = tx.send(()) => {
-                    if res.is_err() {
-                        outbox_outcome = WorkerOutcome::SignalFailed;
-                    }
-                }
-                _ = &mut deadline => {
+            // Signal outbox via try_send
+            // Note: Since this channel is used only for shutdown, Full is treated as a success
+            match tx.try_send(()) {
+                Ok(_) => {}
+                Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {}
+                Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
                     outbox_outcome = WorkerOutcome::SignalFailed;
                 }
             }
@@ -226,7 +282,7 @@ pub async fn shutdown_handles(
     }
 
     let mut bridge_task = None;
-    if let Some(handle) = bridge_handle {
+    if let Some(handle) = bridge {
         let (tx, task) = handle.into_shutdown_parts();
         if let Some(tx) = tx {
             if tx.send(()).is_err() {
@@ -244,7 +300,7 @@ pub async fn shutdown_handles(
             _ = &mut deadline => {
                 tracing::warn!(
                     action = "shutdown_timeout",
-                    "shutdown_handles: global deadline reached, aborting remaining tasks"
+                    "shutdown_runtime: global deadline reached, aborting remaining tasks"
                 );
                 if let Some(ref task) = outbox_task {
                     task.abort();
@@ -281,42 +337,15 @@ pub async fn shutdown_handles(
     if let Some(task) = outbox_task {
         let res = task.await;
         update_outcome(&mut outbox_outcome, res);
-        if !matches!(
-            outbox_outcome,
-            WorkerOutcome::SignalFailed | WorkerOutcome::JoinFailed
-        ) {
-            outbox_outcome = WorkerOutcome::Aborted;
-        }
     }
     if let Some(task) = bridge_task {
         let res = task.await;
         update_outcome(&mut bridge_outcome, res);
-        if !matches!(
-            bridge_outcome,
-            WorkerOutcome::SignalFailed | WorkerOutcome::JoinFailed
-        ) {
-            bridge_outcome = WorkerOutcome::Aborted;
-        }
     }
 
-    // Log final worker shutdown message before flushing tracing
-    tracing::info!(
-        action = "workers_shutdown_completed",
-        outbox_outcome = ?outbox_outcome,
-        bridge_outcome = ?bridge_outcome,
-        "shutdown_handles: workers finished, initiating tracing flush"
-    );
-
-    let tracing_outcome = if let Some(guard) = tracing_guard {
-        guard.shutdown(std::time::Duration::from_millis(500))
-    } else {
-        TracingShutdownOutcome::Flushed
-    };
-
-    RuntimeShutdownReport {
+    WorkerShutdownReport {
         outbox_outcome,
         bridge_outcome,
-        tracing_outcome,
     }
 }
 

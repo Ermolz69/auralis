@@ -1,6 +1,8 @@
 use super::*;
 use crate::observability::config::ObservabilitySettings;
 use crate::observability::error::ObservabilityValidationError;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
@@ -66,7 +68,7 @@ fn test_runtime_shutdown_report_graceful_logic() {
 }
 
 #[tokio::test]
-async fn test_shutdown_handles_graceful() {
+async fn test_shutdown_runtime_graceful() {
     // Spawn graceful outbox worker
     let (outbox_tx, mut outbox_rx) = mpsc::channel(1);
     let outbox_task = tokio::spawn(async move {
@@ -87,15 +89,18 @@ async fn test_shutdown_handles_graceful() {
         worker_handle: Some(bridge_task),
     };
 
-    let report = shutdown_handles(Some(outbox_handle), Some(bridge_handle), None).await;
+    let report = shutdown_runtime(
+        Some(outbox_handle),
+        Some(bridge_handle),
+        Duration::from_secs(5),
+    )
+    .await;
     assert_eq!(report.outbox_outcome, WorkerOutcome::Graceful);
     assert_eq!(report.bridge_outcome, WorkerOutcome::Graceful);
-    assert_eq!(report.tracing_outcome, TracingShutdownOutcome::Flushed);
-    assert!(report.is_graceful());
 }
 
 #[tokio::test]
-async fn test_shutdown_handles_signal_failure() {
+async fn test_shutdown_runtime_signal_failure() {
     // Construct outbox handle with closed channel to simulate signal failure
     let (outbox_tx, _) = mpsc::channel(1); // dropped rx
     let outbox_task = tokio::spawn(async move {});
@@ -104,7 +109,70 @@ async fn test_shutdown_handles_signal_failure() {
         shutdown_tx: Some(outbox_tx),
     };
 
-    let report = shutdown_handles(Some(outbox_handle), None, None).await;
+    let report = shutdown_runtime(Some(outbox_handle), None, Duration::from_secs(5)).await;
     assert_eq!(report.outbox_outcome, WorkerOutcome::SignalFailed);
     assert_eq!(report.bridge_outcome, WorkerOutcome::AlreadyStopped);
+}
+
+#[tokio::test]
+async fn test_shutdown_runtime_timeout_abort() {
+    // Outbox task ignores signal and hangs
+    let (outbox_tx, mut outbox_rx) = mpsc::channel(1);
+    let outbox_task = tokio::spawn(async move {
+        let _ = outbox_rx.recv().await;
+        std::future::pending::<()>().await;
+    });
+    let outbox_handle = crate::bootstrap::workers::OutboxWorkerHandle {
+        worker_task: Some(outbox_task),
+        shutdown_tx: Some(outbox_tx),
+    };
+
+    // Call with short timeout
+    let report = shutdown_runtime(Some(outbox_handle), None, Duration::from_millis(50)).await;
+    assert_eq!(report.outbox_outcome, WorkerOutcome::Aborted);
+    assert_eq!(report.bridge_outcome, WorkerOutcome::AlreadyStopped);
+}
+
+#[test]
+fn test_classify_run_event() {
+    assert_eq!(
+        classify_run_event(&tauri::RunEvent::Exit),
+        RuntimeLifecycleAction::FinalShutdown
+    );
+    assert_eq!(
+        classify_run_event(&tauri::RunEvent::Ready),
+        RuntimeLifecycleAction::Ignore
+    );
+}
+
+struct MockTracingShutdown {
+    called: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl TracingShutdown for MockTracingShutdown {
+    fn shutdown(self, _timeout: std::time::Duration) -> TracingShutdownOutcome {
+        self.called.store(true, std::sync::atomic::Ordering::SeqCst);
+        TracingShutdownOutcome::Flushed
+    }
+}
+
+#[test]
+fn test_finalize_runtime_shutdown_tracing() {
+    let called = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let workers = WorkerShutdownReport {
+        outbox_outcome: WorkerOutcome::Graceful,
+        bridge_outcome: WorkerOutcome::Graceful,
+    };
+
+    let report = finalize_runtime_shutdown(
+        workers,
+        Some(MockTracingShutdown {
+            called: called.clone(),
+        }),
+    );
+
+    assert!(called.load(std::sync::atomic::Ordering::SeqCst));
+    assert_eq!(report.outbox_outcome, WorkerOutcome::Graceful);
+    assert_eq!(report.bridge_outcome, WorkerOutcome::Graceful);
+    assert_eq!(report.tracing_outcome, TracingShutdownOutcome::Flushed);
 }

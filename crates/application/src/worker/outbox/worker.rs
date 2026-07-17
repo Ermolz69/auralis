@@ -238,6 +238,20 @@ where
 
         loop {
             tokio::select! {
+                biased;
+
+                _ = shutdown_rx.recv() => {
+                    tracing::info!("OutboxWorker shutting down...");
+                    let _ = cancel_tx.send(true);
+
+                    if !maintenance_join_set.is_empty() {
+                        tracing::info!("OutboxWorker: waiting for maintenance task to cancel gracefully...");
+                        while let Some(res) = maintenance_join_set.join_next().await {
+                            tracing::info!("OutboxWorker: maintenance shutdown report: {:?}", res);
+                        }
+                    }
+                    break;
+                }
                 _ = interval.tick() => {
                     match self.process_pending_messages(10).await {
                         Ok(report) => {
@@ -305,18 +319,6 @@ where
                             }
                         }
                     }
-                }
-                _ = shutdown_rx.recv() => {
-                    tracing::info!("OutboxWorker shutting down...");
-                    let _ = cancel_tx.send(true);
-
-                    if !maintenance_join_set.is_empty() {
-                        tracing::info!("OutboxWorker: waiting for maintenance task to cancel gracefully...");
-                        while let Some(res) = maintenance_join_set.join_next().await {
-                            tracing::info!("OutboxWorker: maintenance shutdown report: {:?}", res);
-                        }
-                    }
-                    break;
                 }
             }
         }

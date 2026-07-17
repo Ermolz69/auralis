@@ -1,10 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::Duration;
 
 use async_trait::async_trait;
+use tokio::sync::{Notify, watch};
 
 use crate::worker::outbox::OutboxWorker;
+use crate::worker::outbox::maintenance::{MaintenanceCoordinator, MaintenanceStepOutcome};
 use domain::outbox::{OutboxMessage, OutboxMessageId, OutboxPayload, WorkspaceKey};
 use domain::project::ProjectId;
 use ports::error::PortError;
@@ -19,6 +22,8 @@ struct MockOutboxRepository {
     pub mark_processing_result: Arc<Mutex<Result<bool, PortError>>>,
     pub mark_done_result: Arc<Mutex<Result<(), PortError>>>,
     pub mark_failed_result: Arc<Mutex<Result<(), PortError>>>,
+    pub prune_calls: Arc<Mutex<usize>>,
+    pub prune_result: Arc<Mutex<Result<ports::repository::OutboxPruneReport, PortError>>>,
 }
 
 impl Default for MockOutboxRepository {
@@ -30,6 +35,11 @@ impl Default for MockOutboxRepository {
             mark_processing_result: Arc::new(Mutex::new(Ok(true))),
             mark_done_result: Arc::new(Mutex::new(Ok(()))),
             mark_failed_result: Arc::new(Mutex::new(Ok(()))),
+            prune_calls: Arc::new(Mutex::new(0)),
+            prune_result: Arc::new(Mutex::new(Ok(ports::repository::OutboxPruneReport {
+                done_deleted: 0,
+                dead_deleted: 0,
+            }))),
         }
     }
 }
@@ -59,7 +69,7 @@ impl OutboxRepository for MockOutboxRepository {
             Ok(b) => Ok(*b),
             Err(e) => Err(PortError::Io {
                 message: e.to_string(),
-            }), // Clone error
+            }),
         }
     }
 
@@ -95,16 +105,38 @@ impl OutboxRepository for MockOutboxRepository {
         _dead_before: chrono::DateTime<chrono::Utc>,
         _batch_limit: u32,
     ) -> Result<ports::repository::OutboxPruneReport, PortError> {
-        Ok(ports::repository::OutboxPruneReport {
-            done_deleted: 0,
-            dead_deleted: 0,
-        })
+        *self.prune_calls.lock().unwrap() += 1;
+        let res = self.prune_result.lock().unwrap();
+        match &*res {
+            Ok(r) => Ok(ports::repository::OutboxPruneReport {
+                done_deleted: r.done_deleted,
+                dead_deleted: r.dead_deleted,
+            }),
+            Err(e) => Err(PortError::Io {
+                message: e.to_string(),
+            }),
+        }
     }
 }
 
-// Dummy struct for ArtifactStore, ArtifactIndex, StorageUnitOfWork
-#[derive(Clone, Default)]
-struct MockStore;
+#[derive(Clone)]
+struct MockStore {
+    cleanup_calls: Arc<Mutex<usize>>,
+    cleanup_res: Arc<Mutex<Result<(), PortError>>>,
+    // Optional Notify gate to pause maintenance in overlap tests
+    gate: Option<Arc<Notify>>,
+}
+
+impl Default for MockStore {
+    fn default() -> Self {
+        Self {
+            cleanup_calls: Arc::new(Mutex::new(0)),
+            cleanup_res: Arc::new(Mutex::new(Ok(()))),
+            gate: None,
+        }
+    }
+}
+
 #[async_trait]
 impl ports::storage::ArtifactStore for MockStore {
     async fn stage_owned_temp_file(
@@ -157,7 +189,16 @@ impl ports::storage::ArtifactStore for MockStore {
         &self,
         _max_age: std::time::Duration,
     ) -> Result<(), ports::error::PortError> {
-        Ok(())
+        *self.cleanup_calls.lock().unwrap() += 1;
+        if let Some(ref g) = self.gate {
+            g.notified().await;
+        }
+        match &*self.cleanup_res.lock().unwrap() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(PortError::Io {
+                message: e.to_string(),
+            }),
+        }
     }
 }
 
@@ -295,8 +336,23 @@ impl ports::events::AppEventPublisher for MockEventPublisher {
     }
 }
 
-#[derive(Default)]
-struct MockWorkspacePort;
+#[derive(Clone)]
+struct MockWorkspacePort {
+    cleanup_calls: Arc<Mutex<usize>>,
+    cleanup_res: Arc<Mutex<Result<ports::workspace::WorkspaceCleanupReport, PortError>>>,
+}
+
+impl Default for MockWorkspacePort {
+    fn default() -> Self {
+        Self {
+            cleanup_calls: Arc::new(Mutex::new(0)),
+            cleanup_res: Arc::new(Mutex::new(Ok(ports::workspace::WorkspaceCleanupReport {
+                deleted_count: 0,
+                failed_count: 0,
+            }))),
+        }
+    }
+}
 
 #[async_trait]
 impl ports::workspace::TempWorkspacePort for MockWorkspacePort {
@@ -309,7 +365,7 @@ impl ports::workspace::TempWorkspacePort for MockWorkspacePort {
     }
 
     async fn delete_allocation(&self, _key: &WorkspaceKey) -> Result<(), PortError> {
-        Ok(()) // Success for outbox tests
+        Ok(())
     }
 
     async fn resolve_key(&self, _key: &WorkspaceKey) -> Result<std::path::PathBuf, PortError> {
@@ -320,10 +376,16 @@ impl ports::workspace::TempWorkspacePort for MockWorkspacePort {
         &self,
         _age_threshold: std::time::Duration,
     ) -> Result<ports::workspace::WorkspaceCleanupReport, PortError> {
-        Ok(ports::workspace::WorkspaceCleanupReport {
-            deleted_count: 0,
-            failed_count: 0,
-        })
+        *self.cleanup_calls.lock().unwrap() += 1;
+        match &*self.cleanup_res.lock().unwrap() {
+            Ok(report) => Ok(ports::workspace::WorkspaceCleanupReport {
+                deleted_count: report.deleted_count,
+                failed_count: report.failed_count,
+            }),
+            Err(e) => Err(PortError::Io {
+                message: e.to_string(),
+            }),
+        }
     }
 }
 
@@ -332,11 +394,11 @@ fn create_worker(
 ) -> OutboxWorker<MockOutboxRepository, MockStore, MockIndex, MockUow> {
     OutboxWorker::new(
         repo,
-        MockStore,
+        MockStore::default(),
         MockIndex,
         MockUow,
         Arc::new(MockEventPublisher),
-        Arc::new(MockWorkspacePort),
+        Arc::new(MockWorkspacePort::default()),
         super::maintenance::OutboxMaintenanceConfig::try_default().unwrap(),
     )
 }
@@ -376,7 +438,6 @@ async fn worker_handles_claim_conflict() {
             workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
         }));
 
-    // Claim fails legitimately (someone else got it)
     *repo.mark_processing_result.lock().unwrap() = Ok(false);
 
     let worker = create_worker(repo.clone());
@@ -402,7 +463,6 @@ async fn worker_handles_claim_error() {
             workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
         }));
 
-    // DB error on claim
     *repo.mark_processing_result.lock().unwrap() = Err(PortError::Io {
         message: "db down".to_string(),
     });
@@ -429,7 +489,6 @@ async fn worker_handles_mark_done_error() {
         }));
 
     *repo.mark_processing_result.lock().unwrap() = Ok(true);
-    // DB error on mark done
     *repo.mark_done_result.lock().unwrap() = Err(PortError::Io {
         message: "db down".to_string(),
     });
@@ -439,9 +498,309 @@ async fn worker_handles_mark_done_error() {
 
     assert_eq!(report.fetched, 1);
     assert_eq!(report.claimed, 1);
-    assert_eq!(report.completed, 0); // Not completed successfully from our point of view
+    assert_eq!(report.completed, 0);
     assert_eq!(report.storage_errors, 1);
 
     assert_eq!(*repo.mark_done_calls.lock().unwrap(), 1);
     assert_eq!(*repo.mark_failed_calls.lock().unwrap(), 0);
+}
+
+// ==========================================
+// MaintenanceCoordinator Tests
+// ==========================================
+
+#[tokio::test]
+async fn test_coordinator_step_failures() {
+    let repo = MockOutboxRepository::default();
+    let store = MockStore::default();
+    let workspace = MockWorkspacePort::default();
+
+    // Force staging janitor error
+    *store.cleanup_res.lock().unwrap() = Err(PortError::Io {
+        message: "staging fail".to_string(),
+    });
+
+    // Force pruning error
+    *repo.prune_result.lock().unwrap() = Err(PortError::Io {
+        message: "prune fail".to_string(),
+    });
+
+    let config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    let coordinator = MaintenanceCoordinator::new(repo, store, Arc::new(workspace), config);
+
+    let (_, cancel_rx) = watch::channel(false);
+    let report = coordinator.run_maintenance(cancel_rx).await;
+
+    assert_eq!(report.staging_cleanup, MaintenanceStepOutcome::Failed);
+    assert_eq!(report.workspace_cleanup, MaintenanceStepOutcome::Succeeded);
+    assert_eq!(report.pruning, MaintenanceStepOutcome::Failed);
+    assert!(!report.cancelled);
+}
+
+#[tokio::test]
+async fn test_coordinator_max_batches() {
+    let repo = MockOutboxRepository::default();
+    let store = MockStore::default();
+    let workspace = MockWorkspacePort::default();
+
+    // Returning a full batch to keep pruning loop going
+    *repo.prune_result.lock().unwrap() = Ok(ports::repository::OutboxPruneReport {
+        done_deleted: 500, // equal to per_status_batch_limit
+        dead_deleted: 500,
+    });
+
+    let config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    let coordinator = MaintenanceCoordinator::new(repo.clone(), store, Arc::new(workspace), config);
+
+    let (_, cancel_rx) = watch::channel(false);
+    let report = coordinator.run_maintenance(cancel_rx).await;
+
+    assert_eq!(report.batches_run, 10); // max_batches = 10
+    assert_eq!(*repo.prune_calls.lock().unwrap(), 10);
+    assert_eq!(report.pruning, MaintenanceStepOutcome::Succeeded);
+}
+
+#[tokio::test]
+async fn test_coordinator_cancellation() {
+    let repo = MockOutboxRepository::default();
+    let store = MockStore::default();
+    let workspace = MockWorkspacePort::default();
+
+    *repo.prune_result.lock().unwrap() = Ok(ports::repository::OutboxPruneReport {
+        done_deleted: 500,
+        dead_deleted: 500,
+    });
+
+    let config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    let coordinator = MaintenanceCoordinator::new(repo, store, Arc::new(workspace), config);
+
+    let (cancel_tx, cancel_rx) = watch::channel(false);
+
+    // Cancel after 2 batches by checking calls or spawning and cancelling asynchronously
+    let handle = tokio::spawn(async move { coordinator.run_maintenance(cancel_rx).await });
+
+    // Let the loop start
+    tokio::task::yield_now().await;
+    let _ = cancel_tx.send(true);
+
+    let report = handle.await.unwrap();
+    assert!(report.cancelled);
+    assert!(report.batches_run < 10);
+}
+
+#[tokio::test]
+async fn test_coordinator_separate_cutoffs() {
+    let repo = MockOutboxRepository::default();
+    let store = MockStore::default();
+    let workspace = MockWorkspacePort::default();
+
+    let config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    let coordinator = MaintenanceCoordinator::new(repo.clone(), store, Arc::new(workspace), config);
+
+    let (_, cancel_rx) = watch::channel(false);
+    let now = chrono::DateTime::parse_from_rfc3339("2026-07-17T20:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+
+    let _report = coordinator.run_maintenance_at(now, cancel_rx).await;
+
+    // Verify pruning calls were made
+    assert_eq!(*repo.prune_calls.lock().unwrap(), 1);
+}
+
+// ==========================================
+// OutboxWorker::run_loop Tests
+// ==========================================
+
+#[tokio::test(start_paused = true)]
+async fn test_run_loop_startup_maintenance() {
+    let repo = MockOutboxRepository::default();
+    let store = MockStore::default();
+    let workspace = MockWorkspacePort::default();
+
+    let mut config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    config.run_on_startup = true;
+    config.interval = Duration::from_secs(10);
+
+    let worker = Arc::new(OutboxWorker::new(
+        repo.clone(),
+        store.clone(),
+        MockIndex,
+        MockUow,
+        Arc::new(MockEventPublisher),
+        Arc::new(workspace.clone()),
+        config,
+    ));
+
+    let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
+    let worker_clone = worker.clone();
+    let handle = tokio::spawn(async move {
+        worker_clone.run_loop(shutdown_rx).await;
+    });
+
+    // Advance time slightly to let startup tasks run
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Startup maintenance must be executed exactly once
+    assert_eq!(*store.cleanup_calls.lock().unwrap(), 1);
+    assert_eq!(*workspace.cleanup_calls.lock().unwrap(), 1);
+
+    // Shutdown worker gracefully
+    let _ = shutdown_tx.send(()).await;
+    let _ = handle.await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_run_loop_interval_ticks() {
+    let repo = MockOutboxRepository::default();
+    let store = MockStore::default();
+    let workspace = MockWorkspacePort::default();
+
+    let mut config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    config.run_on_startup = false;
+    config.interval = Duration::from_secs(10);
+
+    let worker = Arc::new(OutboxWorker::new(
+        repo.clone(),
+        store.clone(),
+        MockIndex,
+        MockUow,
+        Arc::new(MockEventPublisher),
+        Arc::new(workspace.clone()),
+        config,
+    ));
+
+    let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
+    let worker_clone = worker.clone();
+    let handle = tokio::spawn(async move {
+        worker_clone.run_loop(shutdown_rx).await;
+    });
+
+    // Let the spawned task initialize and build maintenance_interval at t = 0
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Advance 5 seconds - no maintenance because start_on_startup is false, and interval is 10s
+    tokio::time::advance(Duration::from_secs(5)).await;
+    assert_eq!(*store.cleanup_calls.lock().unwrap(), 0);
+
+    // Advance to 10 seconds (first interval tick)
+    tokio::time::advance(Duration::from_secs(5)).await;
+    // Let tasks spawn and run
+    tokio::time::sleep(Duration::from_millis(10)).await;
+    assert_eq!(*store.cleanup_calls.lock().unwrap(), 1);
+
+    // Shutdown worker
+    let _ = shutdown_tx.send(()).await;
+    let _ = handle.await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_run_loop_overlap_prevention() {
+    let repo = MockOutboxRepository::default();
+    let gate = Arc::new(Notify::new());
+
+    // Store is gated to pause maintenance during cleanup
+    let store = MockStore {
+        gate: Some(gate.clone()),
+        ..Default::default()
+    };
+    let workspace = MockWorkspacePort::default();
+
+    let mut config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    config.run_on_startup = true;
+    config.interval = Duration::from_secs(10);
+
+    let worker = Arc::new(OutboxWorker::new(
+        repo.clone(),
+        store.clone(),
+        MockIndex,
+        MockUow,
+        Arc::new(MockEventPublisher),
+        Arc::new(workspace.clone()),
+        config,
+    ));
+
+    let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
+    let worker_clone = worker.clone();
+    let handle = tokio::spawn(async move {
+        worker_clone.run_loop(shutdown_rx).await;
+    });
+
+    // Yield to let startup maintenance begin and hit the Notify gate
+    tokio::time::sleep(Duration::from_millis(10)).await;
+    assert_eq!(*store.cleanup_calls.lock().unwrap(), 1);
+
+    // Advance past the maintenance interval (10 seconds)
+    tokio::time::advance(Duration::from_secs(10)).await;
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    // The second maintenance tick should NOT spawn a new task (overlap prevention)
+    assert_eq!(*store.cleanup_calls.lock().unwrap(), 1);
+
+    // Release gate to let the first maintenance run finish
+    gate.notify_one();
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    // Shutdown worker
+    let _ = shutdown_tx.send(()).await;
+    let _ = handle.await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_run_loop_delivery_during_maintenance() {
+    let repo = MockOutboxRepository::default();
+    let gate = Arc::new(Notify::new());
+
+    let store = MockStore {
+        gate: Some(gate.clone()),
+        ..Default::default()
+    };
+    let workspace = MockWorkspacePort::default();
+
+    let mut config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    config.run_on_startup = true;
+    config.interval = Duration::from_secs(10);
+
+    let worker = Arc::new(OutboxWorker::new(
+        repo.clone(),
+        store.clone(),
+        MockIndex,
+        MockUow,
+        Arc::new(MockEventPublisher),
+        Arc::new(workspace.clone()),
+        config,
+    ));
+
+    let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
+    let worker_clone = worker.clone();
+    let handle = tokio::spawn(async move {
+        worker_clone.run_loop(shutdown_rx).await;
+    });
+
+    // Startup maintenance starts and blocks
+    tokio::time::sleep(Duration::from_millis(10)).await;
+    assert_eq!(*store.cleanup_calls.lock().unwrap(), 1);
+
+    // Prepare outbox messages for delivery loop (ticks every 5 seconds)
+    repo.messages_to_return
+        .lock()
+        .unwrap()
+        .push(OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile {
+            workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
+        }));
+
+    // Advance 5 seconds to trigger delivery tick
+    tokio::time::advance(Duration::from_secs(5)).await;
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    // Delivery must process messages even if maintenance is blocked/running
+    assert_eq!(*repo.mark_done_calls.lock().unwrap(), 1);
+
+    // Release gate
+    gate.notify_one();
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    // Shutdown worker
+    let _ = shutdown_tx.send(()).await;
+    let _ = handle.await;
 }
