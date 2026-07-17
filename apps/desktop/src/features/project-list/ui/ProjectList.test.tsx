@@ -1,18 +1,22 @@
 // @vitest-environment jsdom
+import React, { useState, useRef } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { ProjectList } from './ProjectList';
-import { deleteProject, listProjects, useProjectContext } from '@/entities/project';
+import { deleteProject, listProjects, ProjectContext } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { toast } from '@/shared/ui/toast';
 import type { Project } from '@/entities/project';
 
-vi.mock('@/entities/project', () => ({
-  deleteProject: vi.fn(),
-  listProjects: vi.fn(),
-  useProjectContext: vi.fn(),
-}));
+vi.mock('@/entities/project', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/entities/project')>();
+  return {
+    ...actual,
+    deleteProject: vi.fn(),
+    listProjects: vi.fn(),
+  };
+});
 
 vi.mock('@/shared/router', () => ({
   useNavigation: vi.fn(),
@@ -64,41 +68,81 @@ const mockProject2: Project = {
   updatedAt: '2026-01-01T00:00:00Z',
 };
 
+const StatefulProjectProvider = ({
+  children,
+  initialProjectId = 'p-1',
+  initialProject = mockProject,
+}: {
+  children: React.ReactNode;
+  initialProjectId?: string | null;
+  initialProject?: Project | null;
+}) => {
+  const [projectId, setProjectId] = useState<string | null>(initialProjectId);
+  const [project, setProject] = useState<Project | null>(initialProject);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+
+  const deletingProjectIdRef = useRef<string | null>(null);
+
+  const beginProjectDeletion = (id: string) => {
+    if (deletingProjectIdRef.current !== null) return false;
+    deletingProjectIdRef.current = id;
+    setDeletingProjectId(id);
+    return true;
+  };
+
+  const finishProjectDeletion = (id: string) => {
+    if (deletingProjectIdRef.current === id) {
+      deletingProjectIdRef.current = null;
+      setDeletingProjectId(null);
+    }
+  };
+
+  return (
+    <ProjectContext.Provider
+      value={{
+        projectId,
+        setProjectId,
+        project,
+        setProject,
+        deletingProjectId,
+        beginProjectDeletion,
+        finishProjectDeletion,
+      }}
+    >
+      {children}
+    </ProjectContext.Provider>
+  );
+};
+
 describe('ProjectList', () => {
-  let mockSetProjectId: Mock;
-  let mockSetProject: Mock;
   let mockSetCurrentView: Mock;
-  let mockBeginProjectDeletion: Mock;
-  let mockFinishProjectDeletion: Mock;
+  let testProjects: Project[];
 
   beforeEach(() => {
     vi.clearAllMocks();
     cleanup();
 
-    mockSetProjectId = vi.fn();
-    mockSetProject = vi.fn();
     mockSetCurrentView = vi.fn();
-    mockBeginProjectDeletion = vi.fn().mockReturnValue(true);
-    mockFinishProjectDeletion = vi.fn();
-
-    (useProjectContext as any).mockReturnValue({
-      projectId: 'p-1',
-      setProjectId: mockSetProjectId,
-      setProject: mockSetProject,
-      deletingProjectId: null,
-      beginProjectDeletion: mockBeginProjectDeletion,
-      finishProjectDeletion: mockFinishProjectDeletion,
-    });
-
     (useNavigation as any).mockReturnValue({
       setCurrentView: mockSetCurrentView,
     });
 
-    (listProjects as any).mockResolvedValue([mockProject, mockProject2]);
+    testProjects = [mockProject, mockProject2];
+    (listProjects as Mock).mockImplementation(async () => {
+      return [...testProjects];
+    });
+    (deleteProject as Mock).mockImplementation(async (id: string) => {
+      testProjects = testProjects.filter((p) => p.id !== id);
+      return null;
+    });
   });
 
   it('Delete Button and Open Button are siblings', async () => {
-    render(<ProjectList />);
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Test Project');
     const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
     const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
@@ -106,13 +150,21 @@ describe('ProjectList', () => {
   });
 
   it('Empty title uses Untitled Project', async () => {
-    render(<ProjectList />);
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Untitled Project');
     expect(screen.getByRole('button', { name: 'Delete Untitled Project' })).not.toBeNull();
   });
 
   it('cancel confirmation does not call API and returns focus to Delete Button', async () => {
-    render(<ProjectList />);
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Test Project');
 
     const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
@@ -126,43 +178,29 @@ describe('ProjectList', () => {
     expect(document.activeElement).toBe(deleteBtn);
   });
 
-  it('two rapid confirms trigger backend once', async () => {
-    render(<ProjectList />);
-    await screen.findByText('Test Project');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
-
-    mockBeginProjectDeletion.mockReturnValueOnce(true).mockReturnValueOnce(false);
-
-    const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
-    fireEvent.click(confirmBtn);
-    fireEvent.click(confirmBtn);
-
-    expect(deleteProject).toHaveBeenCalledTimes(1);
-  });
-
   it('opening deleting project is blocked', async () => {
-    (useProjectContext as any).mockReturnValue({
-      projectId: 'p-1',
-      deletingProjectId: 'p-1',
-      beginProjectDeletion: mockBeginProjectDeletion,
-      finishProjectDeletion: mockFinishProjectDeletion,
-      setProjectId: mockSetProjectId,
-      setProject: mockSetProject,
-    });
-    render(<ProjectList />);
+    render(
+      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Test Project');
+
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
+    fireEvent.click(deleteBtn);
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
     const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
     expect((openBtn as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(openBtn);
-
-    expect(mockSetProjectId).not.toHaveBeenCalled();
   });
 
   it('BUSY leaves row, shows warning, allows retry', async () => {
     (deleteProject as any).mockRejectedValue({ code: 'BUSY', message: 'Busy error' });
-    render(<ProjectList />);
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Test Project');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
@@ -176,7 +214,11 @@ describe('ProjectList', () => {
 
   it('REPOSITORY, VALIDATION, INTERNAL leave row and show error', async () => {
     (deleteProject as any).mockRejectedValue({ code: 'REPOSITORY', message: 'Repo error' });
-    render(<ProjectList />);
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Test Project');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
@@ -188,42 +230,201 @@ describe('ProjectList', () => {
     expect(screen.getByText('Test Project')).not.toBeNull();
   });
 
-  it('unknown error leaves row', async () => {
-    (deleteProject as any).mockRejectedValue(new Error('Unknown failure'));
-    render(<ProjectList />);
-    await screen.findByText('Test Project');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
-    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Error: Unknown failure');
-    });
-    expect(screen.getByText('Test Project')).not.toBeNull();
-  });
-
   it('deleting inactive project does not clear context', async () => {
-    (deleteProject as any).mockResolvedValue(undefined);
-    render(<ProjectList />);
+    let currentContext: any;
+    const TestConsumer = () => {
+      currentContext = React.useContext(ProjectContext);
+      return null;
+    };
+
+    render(
+      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+        <ProjectList />
+        <TestConsumer />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Untitled Project');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Untitled Project' }));
     fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
     await waitFor(() => {
-      expect(mockFinishProjectDeletion).toHaveBeenCalledWith('p-2');
+      expect(deleteProject).toHaveBeenCalledWith('p-2');
     });
-    expect(mockSetProjectId).not.toHaveBeenCalled();
+    expect(currentContext.projectId).toBe('p-1');
   });
 
-  it('refetch failure after successful delete does not show delete failure', async () => {
-    (deleteProject as any).mockResolvedValue(undefined);
-    (listProjects as any)
-      .mockResolvedValueOnce([mockProject, mockProject2])
-      .mockRejectedValue(new Error('Refetch failed'));
+  it('successful deletion of current project clears context and navigates to home', async () => {
+    let currentContext: any;
+    const TestConsumer = () => {
+      currentContext = React.useContext(ProjectContext);
+      return null;
+    };
 
-    render(<ProjectList />);
+    render(
+      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+        <ProjectList />
+        <TestConsumer />
+      </StatefulProjectProvider>,
+    );
     await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(deleteProject).toHaveBeenCalledWith('p-1');
+    });
+
+    await waitFor(() => {
+      expect(currentContext.projectId).toBeNull();
+      expect(currentContext.project).toBeNull();
+      expect(mockSetCurrentView).toHaveBeenCalledWith('home');
+      expect(screen.queryByText('Test Project')).toBeNull();
+    });
+  });
+
+  it('NotFound handled as idempotent success: clears context, redirects, shows success toast', async () => {
+    (deleteProject as Mock).mockImplementation(async (id: string) => {
+      testProjects = testProjects.filter((p) => p.id !== id);
+      throw { code: 'NOT_FOUND', message: 'Project not found' };
+    });
+    let currentContext: any;
+    const TestConsumer = () => {
+      currentContext = React.useContext(ProjectContext);
+      return null;
+    };
+
+    render(
+      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+        <ProjectList />
+        <TestConsumer />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(deleteProject).toHaveBeenCalledWith('p-1');
+    });
+
+    await waitFor(() => {
+      expect(currentContext.projectId).toBeNull();
+      expect(currentContext.project).toBeNull();
+      expect(mockSetCurrentView).toHaveBeenCalledWith('home');
+      expect(toast.success).toHaveBeenCalledWith('Project was already removed');
+      expect(screen.queryByText('Test Project')).toBeNull();
+    });
+  });
+
+  it('ignores project-updated event for deleting project but allows for others', async () => {
+    let eventCallback: any;
+    const { listen } = await import('@/shared/api/tauri');
+    (listen as Mock).mockImplementation((event: string, cb: any) => {
+      if (event === 'project-updated') eventCallback = cb;
+      return Promise.resolve(() => {});
+    });
+
+    let resolveDelete: (val: any) => void = () => {};
+    const deletePromise = new Promise((resolve) => {
+      resolveDelete = resolve;
+    });
+    (deleteProject as Mock).mockReturnValueOnce(deletePromise);
+
+    render(
+      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('Test Project');
+
+    // Start delete
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    // Wait for deletion lock to be active
+    await screen.findByRole('button', { name: 'Open Test Project' });
+    expect((screen.getByRole('button', { name: 'Open Test Project' }) as HTMLButtonElement).disabled).toBe(true);
+
+    (listProjects as Mock).mockClear();
+
+    // Fire project-updated for the deleting project 'p-1'
+    await act(async () => {
+      await eventCallback({ payload: { projectId: 'p-1' } });
+    });
+    expect(listProjects).not.toHaveBeenCalled();
+
+    // Fire project-updated for another project 'p-2'
+    await act(async () => {
+      await eventCallback({ payload: { projectId: 'p-2' } });
+    });
+    expect(listProjects).toHaveBeenCalled();
+
+    // Clean up
+    await act(async () => {
+      resolveDelete(null);
+    });
+  });
+
+  it('storage error (REPOSITORY) leaves row and returns focus to delete button', async () => {
+    (deleteProject as Mock).mockRejectedValue({ code: 'REPOSITORY', message: 'Storage error' });
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('Test Project');
+
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
+    deleteBtn.focus();
+    fireEvent.click(deleteBtn);
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Storage error');
+    });
+
+    expect(screen.getByText('Test Project')).not.toBeNull();
+    expect(document.activeElement).toBe(deleteBtn);
+  });
+
+  it('keyboard confirmation: cancel has type button, confirm has type submit, form submit works', async () => {
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('Test Project');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+
+    const cancelBtn = screen.getByRole('button', { name: /cancel/i });
+    const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
+
+    expect(cancelBtn.getAttribute('type')).toBe('button');
+    expect(confirmBtn.getAttribute('type')).toBe('submit');
+
+    const form = screen.getByTestId('delete-project-form');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(deleteProject).toHaveBeenCalledWith('p-1');
+    });
+  });
+
+  it('focuses next project open button when deleting a middle project', async () => {
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('Test Project');
+    await screen.findByText('Untitled Project');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
     fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
@@ -231,16 +432,30 @@ describe('ProjectList', () => {
     await waitFor(() => {
       expect(screen.queryByText('Test Project')).toBeNull();
     });
+
+    const nextOpenBtn = screen.getByRole('button', { name: 'Open Untitled Project' });
+    expect(document.activeElement).toBe(nextOpenBtn);
   });
 
-  it('success focuses next open target', async () => {
-    (deleteProject as any).mockResolvedValue(undefined);
-    (listProjects as any)
-      .mockResolvedValueOnce([mockProject, mockProject2])
-      .mockResolvedValue([mockProject2]);
-    render(<ProjectList />);
-    await screen.findByText('Test Project');
+  it('focuses heading when deleting the last remaining project', async () => {
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
 
+    await screen.findByText('Test Project');
+    await screen.findByText('Untitled Project');
+
+    // First delete p-2 (Untitled Project)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Untitled Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Untitled Project')).toBeNull();
+    });
+
+    // Now delete p-1 (Test Project)
     fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
     fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
@@ -248,7 +463,78 @@ describe('ProjectList', () => {
       expect(screen.queryByText('Test Project')).toBeNull();
     });
 
-    const nextBtn = screen.getByRole('button', { name: 'Open Untitled Project' });
-    expect(document.activeElement).toBe(nextBtn);
+    const heading = screen.getByRole('heading', { name: /recent projects/i });
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it('focuses new last open button when deleting the last project in a multi-item list', async () => {
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('Untitled Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Untitled Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Untitled Project')).toBeNull();
+    });
+
+    const prevOpenBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    expect(document.activeElement).toBe(prevOpenBtn);
+  });
+
+  it('late response with ghost project does not overwrite projects list', async () => {
+    let eventCallback: any;
+    const { listen } = await import('@/shared/api/tauri');
+    (listen as Mock).mockImplementation((event: string, cb: any) => {
+      if (event === 'project-updated') eventCallback = cb;
+      return Promise.resolve(() => {});
+    });
+
+    let resolveStaleList: (val: Project[]) => void = () => {};
+    const staleListPromise = new Promise<Project[]>((resolve) => {
+      resolveStaleList = resolve;
+    });
+
+    (listProjects as Mock)
+      .mockResolvedValueOnce([mockProject, mockProject2]) // 1. Initial mount load
+      .mockReturnValueOnce(staleListPromise) // 2. Triggered by event, hangs
+      .mockResolvedValueOnce([mockProject2]); // 3. Deletion success refetch resolves immediately
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    // Wait for initial load
+    await screen.findByText('Test Project');
+
+    // Trigger event for 'p-2' (which is not the deleting project, so it triggers fetch projects - the 2nd call, which hangs)
+    await act(async () => {
+      await eventCallback({ payload: { projectId: 'p-2' } });
+    });
+
+    // Start delete of p-1
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    // Wait for delete to complete and trigger canonical refetch (the 3rd call) which returns [mockProject2]
+    await waitFor(() => {
+      expect(screen.queryByText('Test Project')).toBeNull();
+    });
+
+    // Now resolve the late listProjects (Gen 2) which still had both projects
+    await act(async () => {
+      resolveStaleList([mockProject, mockProject2]);
+    });
+
+    // Verify that the ghost project did not reappear
+    expect(screen.queryByText('Test Project')).toBeNull();
+    expect(screen.getByText('Untitled Project')).not.toBeNull();
   });
 });

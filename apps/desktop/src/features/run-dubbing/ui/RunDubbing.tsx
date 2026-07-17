@@ -8,7 +8,7 @@ export const RunDubbing = () => {
   const { project, setProject, deletingProjectId } = useProjectContext();
 
   const handleStart = async () => {
-    if (!project?.id) return;
+    if (!project?.id || deletingProjectId !== null || isStarting) return;
 
     setIsStarting(true);
     try {
@@ -23,7 +23,7 @@ export const RunDubbing = () => {
   };
 
   const isEligible = project?.status === 'ready_for_processing' || project?.status === 'failed';
-  const isDisabled = !project?.id || isStarting || !isEligible || deletingProjectId === project.id;
+  const isDisabled = !project?.id || isStarting || !isEligible || deletingProjectId !== null;
 
   return (
     <Button variant="primary" onClick={handleStart} disabled={isDisabled}>

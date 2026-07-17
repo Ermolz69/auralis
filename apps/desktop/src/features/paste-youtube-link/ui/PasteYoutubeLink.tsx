@@ -3,7 +3,7 @@ import { Button } from '../../../shared/ui/button';
 import { usePasteYoutubeLink } from '../model/usePasteYoutubeLink';
 
 export const PasteYoutubeLink = () => {
-  const { url, setUrl, startProject, isStarting, error } = usePasteYoutubeLink();
+  const { url, setUrl, startProject, isStarting, isBlockedByDeletion, error } = usePasteYoutubeLink();
 
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -14,9 +14,9 @@ export const PasteYoutubeLink = () => {
           className="flex-1"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          disabled={isStarting}
+          disabled={isStarting || isBlockedByDeletion}
         />
-        <Button variant="primary" size="lg" onClick={startProject} disabled={isStarting || !url}>
+        <Button variant="primary" size="lg" onClick={startProject} disabled={isStarting || !url || isBlockedByDeletion}>
           {isStarting ? 'Starting...' : 'Start Project'}
         </Button>
       </div>

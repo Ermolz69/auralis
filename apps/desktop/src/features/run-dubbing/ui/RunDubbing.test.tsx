@@ -60,4 +60,44 @@ describe('RunDubbing', () => {
     const btn = screen.getByRole('button', { name: /run dubbing/i });
     expect((btn as HTMLButtonElement).disabled).toBe(false);
   });
+
+  it('is disabled when another project is being deleted and re-enables after it finishes', () => {
+    const { rerender } = render(
+      <ProjectContext.Provider
+        value={{
+          projectId: mockProject.id,
+          project: mockProject,
+          setProjectId: vi.fn(),
+          setProject: vi.fn(),
+          deletingProjectId: 'other-id', // other project is being deleted
+          beginProjectDeletion: vi.fn(),
+          finishProjectDeletion: vi.fn(),
+        }}
+      >
+        <RunDubbing />
+      </ProjectContext.Provider>,
+    );
+
+    const btn = screen.getByRole('button', { name: /run dubbing/i });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+
+    // Re-render with deletingProjectId cleared (deletion finished)
+    rerender(
+      <ProjectContext.Provider
+        value={{
+          projectId: mockProject.id,
+          project: mockProject,
+          setProjectId: vi.fn(),
+          setProject: vi.fn(),
+          deletingProjectId: null, // deletion finished
+          beginProjectDeletion: vi.fn(),
+          finishProjectDeletion: vi.fn(),
+        }}
+      >
+        <RunDubbing />
+      </ProjectContext.Provider>,
+    );
+
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+  });
 });

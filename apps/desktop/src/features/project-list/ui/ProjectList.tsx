@@ -38,10 +38,24 @@ export const ProjectList = () => {
     reason: 'success' | 'cancel' | 'error';
   } | null>(null);
 
+  // Sync refs during render to prevent stale windows
+  const deletingProjectIdRef = useRef(deletingProjectId);
+  deletingProjectIdRef.current = deletingProjectId;
+
+  const currentProjectIdRef = useRef(currentProjectId);
+  currentProjectIdRef.current = currentProjectId;
+
   // Refs for focusing elements
   const deleteButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const openButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  const clearProjectContextIfCurrent = (deletedProjectId: string) => {
+    if (currentProjectIdRef.current !== deletedProjectId) return;
+    setProjectId(null);
+    setProject(null);
+    setCurrentView('home');
+  };
 
   const fetchProjects = useCallback(async () => {
     fetchGenerationRef.current += 1;
@@ -67,7 +81,12 @@ export const ProjectList = () => {
     let unlistenProject: (() => void) | undefined;
     const setupListeners = async () => {
       try {
-        unlistenProject = await listen('project-updated', () => fetchProjects());
+        unlistenProject = await listen<{ projectId: string }>('project-updated', (event) => {
+          if (event.payload.projectId === deletingProjectIdRef.current) {
+            return;
+          }
+          void fetchProjects();
+        });
       } catch (e) {
         console.warn('Failed to setup Tauri listeners:', e);
       }
@@ -99,17 +118,17 @@ export const ProjectList = () => {
       }
     }
     pendingFocusTargetRef.current = null;
-  }, [projects]);
+  });
 
   const handleOpenProject = (project: Project) => {
-    if (deletingProjectId === project.id) return;
+    if (deletingProjectIdRef.current !== null) return;
     setProjectId(project.id);
     setProject(project);
     setCurrentView('project');
   };
 
   const handleDeleteClick = (project: Project) => {
-    if (deletingProjectId) return;
+    if (deletingProjectIdRef.current !== null) return;
     setProjectToDelete(project);
   };
 
@@ -123,24 +142,21 @@ export const ProjectList = () => {
       return;
     }
 
+    // Invalidate already running list requests by incrementing fetchGen immediately after lock acquisition
+    fetchGenerationRef.current += 1;
+
     setProjectToDelete(null); // Close dialog
 
     try {
       await deleteProject(project.id);
-
-      // Success (Ok mapped locally)
-      setProjects((prev) => prev.filter((p) => p.id !== project.id));
-      if (currentProjectId === project.id) {
-        setProjectId(null);
-        setProject(null);
-        setCurrentView('home');
-      }
 
       pendingFocusTargetRef.current = {
         deletedIndex,
         deletedProjectId: project.id,
         reason: 'success',
       };
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+      clearProjectContextIfCurrent(project.id);
 
       // Separate Refetch
       await fetchProjects();
@@ -149,17 +165,14 @@ export const ProjectList = () => {
       const errorCode = isCommandError(error) ? error.code : 'UNKNOWN';
 
       if (errorCode === 'NOT_FOUND') {
-        setProjects((prev) => prev.filter((p) => p.id !== project.id));
-        if (currentProjectId === project.id) {
-          setProjectId(null);
-          setProject(null);
-          setCurrentView('home');
-        }
         pendingFocusTargetRef.current = {
           deletedIndex,
           deletedProjectId: project.id,
           reason: 'success',
         };
+        setProjects((prev) => prev.filter((p) => p.id !== project.id));
+        clearProjectContextIfCurrent(project.id);
+
         await fetchProjects();
         toast.success('Project was already removed');
       } else if (errorCode === 'CONFLICT' || errorCode === 'BUSY') {
@@ -204,22 +217,31 @@ export const ProjectList = () => {
   return (
     <div className="w-full flex flex-col gap-3 mt-8">
       <Dialog open={!!projectToDelete} onOpenChange={(open) => !open && cancelDelete()}>
-        <DialogHeader>
-          <DialogTitle>Delete Project</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete the project "{projectToDelete?.title}"? This action
-            cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="ghost" onClick={cancelDelete}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={executeDelete} loading={deletingProjectId !== null}>
-            Confirm Delete
-          </Button>
-        </DialogFooter>
-        <DialogClose />
+        <form
+          data-testid="delete-project-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void executeDelete();
+          }}
+          className="contents"
+        >
+          <DialogHeader>
+            <DialogTitle>Delete Project</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the project "{projectToDelete?.title}"? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={cancelDelete}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="danger" loading={deletingProjectId !== null}>
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+          <DialogClose />
+        </form>
       </Dialog>
       <h3
         ref={headingRef}
@@ -247,7 +269,7 @@ export const ProjectList = () => {
                 }}
                 className="flex-1 flex items-center gap-3 p-4 text-left w-full h-full focus:outline-none focus:bg-bg/50"
                 onClick={() => handleOpenProject(project)}
-                disabled={isDeleting}
+                disabled={deletingProjectId !== null}
                 aria-label={`Open ${displayTitle}`}
               >
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">

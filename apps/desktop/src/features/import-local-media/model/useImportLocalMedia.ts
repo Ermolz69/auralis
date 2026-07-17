@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useProjectContext, createProject } from '@/entities/project';
 import { importLocalMedia } from '@/entities/media';
@@ -8,10 +8,16 @@ import { useNavigation } from '@/shared/router';
 export function useImportLocalMedia() {
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setProjectId, setProject } = useProjectContext();
+  const { deletingProjectId, setProjectId, setProject } = useProjectContext();
   const { setCurrentView } = useNavigation();
 
+  const deletingProjectIdRef = useRef(deletingProjectId);
+  deletingProjectIdRef.current = deletingProjectId;
+
+  const isBlockedByDeletion = deletingProjectId !== null;
+
   const handleImport = async () => {
+    if (deletingProjectId !== null || isImporting) return;
     setError(null);
     try {
       // 1. Open file dialog
@@ -25,8 +31,8 @@ export function useImportLocalMedia() {
         ],
       });
 
-      if (!selected || typeof selected !== 'string') {
-        return; // User cancelled
+      if (!selected || typeof selected !== 'string' || deletingProjectIdRef.current !== null) {
+        return; // User cancelled or deletion started while dialog was open
       }
 
       setIsImporting(true);
@@ -55,6 +61,7 @@ export function useImportLocalMedia() {
   return {
     handleImport,
     isImporting,
+    isBlockedByDeletion,
     error,
   };
 }

@@ -8,12 +8,14 @@ export function usePasteYoutubeLink() {
   const [url, setUrl] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setProjectId, setProject } = useProjectContext();
+  const { deletingProjectId, setProjectId, setProject } = useProjectContext();
   const { setCurrentView } = useNavigation();
+
+  const isBlockedByDeletion = deletingProjectId !== null;
 
   // We can return the created project/job if the component needs to redirect or update global state
   const startProject = async (): Promise<{ project: Project; job: Job } | null> => {
-    if (!url) return null;
+    if (!url || isStarting || deletingProjectId !== null) return null;
 
     setIsStarting(true);
     setError(null);
@@ -37,7 +39,7 @@ export function usePasteYoutubeLink() {
     setUrl,
     startProject,
     isStarting,
-
+    isBlockedByDeletion,
     error,
   };
 }

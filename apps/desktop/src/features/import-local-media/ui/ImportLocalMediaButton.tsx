@@ -2,13 +2,13 @@ import { Button } from '../../../shared/ui/button';
 import { useImportLocalMedia } from '../model/useImportLocalMedia';
 
 export function ImportLocalMediaButton() {
-  const { handleImport, isImporting, error } = useImportLocalMedia();
+  const { handleImport, isImporting, isBlockedByDeletion, error } = useImportLocalMedia();
 
   return (
     <div className="flex flex-col items-center">
       <Button
         onClick={handleImport}
-        disabled={isImporting}
+        disabled={isImporting || isBlockedByDeletion}
         loading={isImporting}
         variant="secondary"
         size="lg"

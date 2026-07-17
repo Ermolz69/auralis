@@ -16,6 +16,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const beginProjectDeletion = (id: string) => {
     if (deletingProjectIdRef.current !== null) return false;
+    fetchGenerationRef.current += 1;
     deletingProjectIdRef.current = id;
     setDeletingProjectId(id);
     return true;
