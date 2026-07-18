@@ -26,12 +26,7 @@ impl ImportCleanupCoordinator {
     pub async fn cleanup_workspace(&self, key: &WorkspaceKey) -> crate::error::CleanupReport {
         let mut report = crate::error::CleanupReport::new();
         if let Err(e) = self.workspace_port.delete_allocation(key).await {
-            report.add_failure(
-                crate::error::CleanupTarget::Workspace {
-                    key: key.to_string(),
-                },
-                e,
-            );
+            report.add_failure(crate::error::CleanupTarget::workspace(key.to_string()), e);
         }
         report
     }
@@ -45,19 +40,12 @@ impl ImportCleanupCoordinator {
         let mut report = crate::error::CleanupReport::new();
 
         if let Err(e) = self.artifact_store.delete_storage_key(staging_key).await {
-            report.add_failure(
-                crate::error::CleanupTarget::Staging {
-                    key: staging_key.to_string(),
-                },
-                e,
-            );
+            report.add_failure(crate::error::CleanupTarget::staging(staging_key), e);
         }
 
         if let Err(e) = self.workspace_port.delete_allocation(workspace_key).await {
             report.add_failure(
-                crate::error::CleanupTarget::Workspace {
-                    key: workspace_key.to_string(),
-                },
+                crate::error::CleanupTarget::workspace(workspace_key.to_string()),
                 e,
             );
         }

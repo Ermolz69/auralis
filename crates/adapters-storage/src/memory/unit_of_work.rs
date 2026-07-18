@@ -88,25 +88,45 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         Ok(())
     }
 
+    /// NOTE: Memory UoW provides test/compile parity only and does not claim transactional equivalence with SQLite.
     async fn commit_managed_source_import(
         &self,
         command: ports::transaction::CommitManagedSourceImport,
     ) -> Result<(), PortError> {
-        // Synchronously finalize artifact for dev mode
-        self.artifact_store
-            .finalize_staged_artifact(&command.staging_key, &command.final_key)
-            .await?;
+        command.validate()?;
 
-        let mut artifact = command.artifact;
-        artifact.state = domain::media::ArtifactState::Ready;
+        let artifact = command.artifact;
 
         {
             let mut db = self.lock_db()?;
-            if !db.projects.contains_key(command.project.id()) {
-                return Err(PortError::NotFound {
-                    resource: "Project".to_string(),
+            let existing =
+                db.projects
+                    .get(command.project.id())
+                    .ok_or_else(|| PortError::NotFound {
+                        resource: format!("Project {}", command.project.id()),
+                    })?;
+
+            if existing.status() != &domain::project::ProjectStatus::Draft {
+                return Err(PortError::Conflict {
+                    resource: format!("Project {}", command.project.id()),
+                    message: "Project is not in Draft status".to_string(),
                 });
             }
+
+            if existing.active_job_id().is_some() {
+                return Err(PortError::Conflict {
+                    resource: format!("Project {}", command.project.id()),
+                    message: "Project has active job".to_string(),
+                });
+            }
+
+            if existing.updated_at() != command.original_updated_at {
+                return Err(PortError::Conflict {
+                    resource: format!("Project {}", command.project.id()),
+                    message: "updated_at mismatch".to_string(),
+                });
+            }
+
             db.projects
                 .insert(command.project.id().clone(), command.project.clone());
         }

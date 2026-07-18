@@ -27,12 +27,8 @@ pub struct AppUseCases {
     pub resolve_artifact_path:
         ResolveArtifactPathUseCase<RuntimeArtifactIndex, RuntimeArtifactStore>,
     pub probe_local_media: ProbeLocalMediaUseCase<FfprobeAdapter>,
-    pub import_local_media: ImportLocalMediaUseCase<
-        RuntimeProjectRepository,
-        FfprobeAdapter,
-        YtDlpAdapter,
-        RuntimeArtifactStore,
-    >,
+    pub import_local_media:
+        ImportLocalMediaUseCase<RuntimeProjectRepository, FfprobeAdapter, RuntimeArtifactStore>,
     pub create_project: CreateProjectUseCase<RuntimeProjectRepository>,
     pub create_project_from_youtube: CreateProjectFromYoutubeUseCase<
         RuntimeProjectRepository,
@@ -80,13 +76,9 @@ pub fn setup_usecases(
         import_local_media: ImportLocalMediaUseCase::new(
             project_repo.clone(),
             probe.clone(),
-            job_scheduler.clone(),
             storage_uow.clone(),
-            ytdlp_adapter.clone(),
             artifact_store.clone(),
-            workspace_port.clone(),
             locks.clone(),
-            job_runtime.clone(),
         ),
         create_project: CreateProjectUseCase::new(project_repo.clone()),
         create_project_from_youtube: CreateProjectFromYoutubeUseCase::new(

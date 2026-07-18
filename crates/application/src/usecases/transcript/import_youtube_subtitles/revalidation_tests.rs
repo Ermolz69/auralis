@@ -63,19 +63,9 @@ async fn test_workspace_error_composites_with_primary_error() {
     } = err
     {
         assert!(matches!(*primary, ApplicationError::Port(_))); // The initial transaction failure
-        assert_eq!(cleanup_report.failures.len(), 2);
-
-        // Ensure both failures are reported
-        let has_workspace_err = cleanup_report
-            .failures
-            .iter()
-            .any(|f| matches!(f.target, crate::error::CleanupTarget::Workspace { .. }));
-        let has_staging_err = cleanup_report
-            .failures
-            .iter()
-            .any(|f| matches!(f.target, crate::error::CleanupTarget::Staging { .. }));
-        assert!(has_workspace_err);
-        assert!(has_staging_err);
+        assert_eq!(cleanup_report.len(), 2);
+        assert_eq!(cleanup_report.workspace_failure_count(), 1);
+        assert_eq!(cleanup_report.staging_failure_count(), 1);
     } else {
         panic!("Expected OperationFailedWithCleanup, got {:?}", err);
     }
