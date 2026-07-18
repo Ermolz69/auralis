@@ -3,6 +3,7 @@ pub mod error;
 pub mod inspector;
 pub mod lock;
 pub mod manifest;
+pub mod stages;
 pub mod state_machine;
 
 #[cfg(test)]

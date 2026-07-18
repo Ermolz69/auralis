@@ -9,8 +9,14 @@ pub enum DatabaseTransitionError {
     BackupValidationFailed(String),
     FreshDatabaseCreationFailed(String),
     IncompleteTransition,
+    IncompleteTransitionWith(String),
     InspectionFailed(String),
-    TransitionLocked,
+    LiveTransitionLock,
+    StaleLockReclaimFailed(String),
+    CorruptTransitionLock(String),
+    CorruptTransitionState(String),
+    ResumeMismatch(String),
+    CleanupFailed(String),
     TransitionRecoveryFailed(String),
     NewDatabaseValidationFailed(String),
 }
@@ -39,11 +45,33 @@ impl fmt::Display for DatabaseTransitionError {
             DatabaseTransitionError::IncompleteTransition => {
                 write!(f, "Database transition is incomplete.")
             }
+            DatabaseTransitionError::IncompleteTransitionWith(err) => {
+                write!(f, "Database transition is incomplete: {}", err)
+            }
             DatabaseTransitionError::InspectionFailed(err) => {
                 write!(f, "Failed to inspect database schema: {}", err)
             }
-            DatabaseTransitionError::TransitionLocked => {
+            DatabaseTransitionError::LiveTransitionLock => {
                 write!(f, "Transition lock is currently held by another process.")
+            }
+            DatabaseTransitionError::StaleLockReclaimFailed(err) => {
+                write!(f, "Failed to reclaim stale transition lock: {}", err)
+            }
+            DatabaseTransitionError::CorruptTransitionLock(err) => {
+                write!(f, "Transition lock is corrupt: {}", err)
+            }
+            DatabaseTransitionError::CorruptTransitionState(err) => {
+                write!(f, "Transition state is corrupt: {}", err)
+            }
+            DatabaseTransitionError::ResumeMismatch(err) => {
+                write!(
+                    f,
+                    "Transition resume state does not match filesystem: {}",
+                    err
+                )
+            }
+            DatabaseTransitionError::CleanupFailed(err) => {
+                write!(f, "Failed to clean up completed transition state: {}", err)
             }
             DatabaseTransitionError::TransitionRecoveryFailed(err) => {
                 write!(
