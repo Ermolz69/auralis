@@ -94,4 +94,18 @@ impl ArtifactStore for MockArtifactStore {
     async fn delete_project_dir(&self, _project_id: &ProjectId) -> Result<(), PortError> {
         Ok(())
     }
+
+    async fn stage_owned_workspace_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        _workspace_port: &dyn ports::workspace::TempWorkspacePort,
+        _allocation_key: &domain::outbox::WorkspaceKey,
+        _relative_file: &str,
+        filename_hint: Option<&str>,
+    ) -> Result<StagedArtifact, PortError> {
+        let dummy_path = Path::new("/mock/path");
+        self.stage_owned_temp_file(project_id, kind, dummy_path, filename_hint)
+            .await
+    }
 }

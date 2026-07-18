@@ -15,6 +15,7 @@ tempfile = "3.10"
 bytes = "1.12.1"
 tracing = "0.1.44"
 futures = "0.3.32"
+tokio-util = "0.7"
 
 [dev-dependencies]
 adapters-storage = { path = "../adapters-storage" }

@@ -1,21 +1,24 @@
-use std::sync::Arc;
-
-use domain::project::ProjectId;
-use domain::transcript::Transcript;
-use ports::repository::ProjectRepository;
-use ports::source::{DownloadSubtitleRequest, SubtitleSourcePort};
-use ports::storage::ArtifactStore;
-use ports::transaction::{CommitTranscriptImport, StorageUnitOfWork};
-use ports::workspace::TempWorkspacePort;
-
-use super::cleanup::ImportCleanupCoordinator;
-use super::vtt_parser::parse_vtt;
+use super::{
+    cleanup::ImportCleanupCoordinator,
+    vtt_parser::{parse_vtt, select_best_subtitle_track},
+};
 use crate::error::ApplicationError;
+use domain::{project::ProjectId, transcript::Transcript};
+use ports::{
+    repository::ProjectRepository,
+    source::{DownloadSubtitleRequest, SubtitleSourcePort},
+    storage::ArtifactStore,
+    transaction::{CommitTranscriptImport, StorageUnitOfWork},
+    workspace::TempWorkspacePort,
+};
+use std::sync::Arc;
 
 pub struct ImportYoutubeSubtitlesRequest {
     pub project_id: ProjectId,
     pub preferred_languages: Vec<String>,
     pub allow_auto_generated: bool,
+    pub cancellation_token: tokio_util::sync::CancellationToken,
+    pub job_id: domain::job::JobId,
 }
 
 pub struct ImportYoutubeSubtitlesResponse {
@@ -49,47 +52,11 @@ impl ImportYoutubeSubtitlesUseCase {
         }
     }
 
-    async fn handle_workspace_failure(
-        &self,
-        alloc_key: &domain::outbox::WorkspaceKey,
-        primary_err: ApplicationError,
-    ) -> ApplicationError {
-        let report = self.cleanup_coordinator.cleanup_workspace(alloc_key).await;
-        if report.is_empty() {
-            primary_err
-        } else {
-            ApplicationError::OperationFailedWithCleanup {
-                primary: Box::new(primary_err),
-                cleanup_report: report,
-            }
-        }
-    }
-
-    async fn handle_all_failure(
-        &self,
-        staging_key: &str,
-        alloc_key: &domain::outbox::WorkspaceKey,
-        primary_err: ApplicationError,
-    ) -> ApplicationError {
-        let report = self
-            .cleanup_coordinator
-            .cleanup_all(staging_key, alloc_key)
-            .await;
-        if report.is_empty() {
-            primary_err
-        } else {
-            ApplicationError::OperationFailedWithCleanup {
-                primary: Box::new(primary_err),
-                cleanup_report: report,
-            }
-        }
-    }
-
     pub async fn execute(
         &self,
         request: ImportYoutubeSubtitlesRequest,
     ) -> Result<ImportYoutubeSubtitlesResponse, ApplicationError> {
-        let mut project = self
+        let project = self
             .project_repo
             .get(&request.project_id)
             .await?
@@ -108,42 +75,11 @@ impl ImportYoutubeSubtitlesUseCase {
             });
         }
 
-        let is_vtt = |t: &domain::media::SubtitleTrack| t.format.as_deref() == Some("vtt");
-
-        // Pick best subtitle track
-        let mut best_track = None;
-        for lang in &request.preferred_languages {
-            if let Some(track) = subtitles
-                .iter()
-                .find(|t| &t.language == lang && !t.is_auto_generated && is_vtt(t))
-            {
-                best_track = Some(track);
-                break;
-            }
-        }
-
-        if best_track.is_none() && request.allow_auto_generated {
-            for lang in &request.preferred_languages {
-                if let Some(track) = subtitles
-                    .iter()
-                    .find(|t| &t.language == lang && t.is_auto_generated && is_vtt(t))
-                {
-                    best_track = Some(track);
-                    break;
-                }
-            }
-        }
-
-        if best_track.is_none() {
-            best_track = subtitles.iter().find(|t| !t.is_auto_generated && is_vtt(t));
-            if best_track.is_none() && request.allow_auto_generated {
-                best_track = subtitles.iter().find(|t| is_vtt(t));
-            }
-        }
-
-        let best_track = best_track.ok_or_else(|| ApplicationError::InvalidOperation {
-            message: "No suitable subtitles found".to_string(),
-        })?;
+        let best_track = select_best_subtitle_track(
+            &subtitles,
+            &request.preferred_languages,
+            request.allow_auto_generated,
+        )?;
 
         let alloc = self
             .workspace_port
@@ -156,15 +92,31 @@ impl ImportYoutubeSubtitlesUseCase {
             target_directory: alloc.absolute_path.clone(),
         };
 
-        let artifact = match self
-            .subtitle_source
-            .download_subtitle(download_request)
-            .await
-        {
-            Ok(a) => a,
-            Err(e) => {
-                return Err(self
-                    .handle_workspace_failure(&alloc.workspace_key, e.into())
+        if request.cancellation_token.is_cancelled() {
+            return Err(self
+                .cleanup_coordinator
+                .handle_workspace_failure(
+                    &alloc.workspace_key,
+                    ports::error::PortError::Cancelled.into(),
+                )
+                .await);
+        }
+
+        let download_fut = self.subtitle_source.download_subtitle(download_request);
+        let artifact = tokio::select! {
+            res = download_fut => {
+                match res {
+                    Ok(a) => a,
+                    Err(e) => {
+                        return Err(self.cleanup_coordinator
+                            .handle_workspace_failure(&alloc.workspace_key, e.into())
+                            .await);
+                    }
+                }
+            }
+            _ = request.cancellation_token.cancelled() => {
+                return Err(self.cleanup_coordinator
+                    .handle_workspace_failure(&alloc.workspace_key, ports::error::PortError::Cancelled.into())
                     .await);
             }
         };
@@ -173,6 +125,7 @@ impl ImportYoutubeSubtitlesUseCase {
             domain::media::ArtifactLocation::LocalPath(p) => std::path::PathBuf::from(p),
             _ => {
                 return Err(self
+                    .cleanup_coordinator
                     .handle_workspace_failure(
                         &alloc.workspace_key,
                         ApplicationError::InvalidOperation {
@@ -183,16 +136,41 @@ impl ImportYoutubeSubtitlesUseCase {
             }
         };
 
-        let vtt_content = match tokio::fs::read_to_string(&vtt_path).await {
-            Ok(content) => content,
-            Err(e) => {
+        let filename = match vtt_path.file_name() {
+            Some(name) => name.to_string_lossy().into_owned(),
+            None => {
                 return Err(self
+                    .cleanup_coordinator
                     .handle_workspace_failure(
                         &alloc.workspace_key,
                         ApplicationError::InvalidOperation {
-                            message: format!("Failed to read vtt file: {}", e),
+                            message: "Invalid subtitle filename".to_string(),
                         },
                     )
+                    .await);
+            }
+        };
+
+        if request.cancellation_token.is_cancelled() {
+            return Err(self
+                .cleanup_coordinator
+                .handle_workspace_failure(
+                    &alloc.workspace_key,
+                    ports::error::PortError::Cancelled.into(),
+                )
+                .await);
+        }
+
+        let vtt_content = match self
+            .workspace_port
+            .read_workspace_file_to_string(&alloc.workspace_key, &filename, 10 * 1024 * 1024)
+            .await
+        {
+            Ok(content) => content,
+            Err(e) => {
+                return Err(self
+                    .cleanup_coordinator
+                    .handle_workspace_failure(&alloc.workspace_key, e.into())
                     .await);
             }
         };
@@ -200,16 +178,31 @@ impl ImportYoutubeSubtitlesUseCase {
         let transcript = match parse_vtt(&vtt_content, &best_track.language) {
             Ok(t) => t,
             Err(e) => {
-                return Err(self.handle_workspace_failure(&alloc.workspace_key, e).await);
+                return Err(self
+                    .cleanup_coordinator
+                    .handle_workspace_failure(&alloc.workspace_key, e)
+                    .await);
             }
         };
 
+        if request.cancellation_token.is_cancelled() {
+            return Err(self
+                .cleanup_coordinator
+                .handle_workspace_failure(
+                    &alloc.workspace_key,
+                    ports::error::PortError::Cancelled.into(),
+                )
+                .await);
+        }
+
         let staged = match self
             .artifact_store
-            .stage_owned_temp_file(
+            .stage_owned_workspace_file(
                 &request.project_id,
                 domain::media::ArtifactKind::OriginalSubtitle,
-                &vtt_path,
+                self.workspace_port.as_ref(),
+                &alloc.workspace_key,
+                &filename,
                 Some("subtitles.vtt"),
             )
             .await
@@ -217,25 +210,81 @@ impl ImportYoutubeSubtitlesUseCase {
             Ok(s) => s,
             Err(e) => {
                 return Err(self
+                    .cleanup_coordinator
                     .handle_workspace_failure(&alloc.workspace_key, e.into())
                     .await);
             }
         };
 
-        project.set_transcript(transcript.clone());
+        if request.cancellation_token.is_cancelled() {
+            return Err(self
+                .cleanup_coordinator
+                .handle_all_failure(
+                    &staged.staging_key,
+                    &alloc.workspace_key,
+                    ports::error::PortError::Cancelled.into(),
+                )
+                .await);
+        }
+
+        let mut current_project = match self.project_repo.get(&request.project_id).await {
+            Ok(Some(p)) => p,
+            Ok(None) => {
+                let err = ApplicationError::ProjectNotFound(request.project_id.clone());
+                return Err(self
+                    .cleanup_coordinator
+                    .handle_all_failure(&staged.staging_key, &alloc.workspace_key, err)
+                    .await);
+            }
+            Err(e) => {
+                return Err(self
+                    .cleanup_coordinator
+                    .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
+                    .await);
+            }
+        };
+
+        let err_msg = if current_project.status() != &domain::project::ProjectStatus::Processing {
+            Some("Project status is not Processing")
+        } else if current_project.active_job_id() != Some(&request.job_id) {
+            Some("Active job ID mismatch")
+        } else if current_project.source() != Some(source) {
+            Some("Project source changed")
+        } else {
+            None
+        };
+        if let Some(msg) = err_msg {
+            let err = ApplicationError::InvalidOperation {
+                message: msg.to_string(),
+            };
+            return Err(self
+                .cleanup_coordinator
+                .handle_all_failure(&staged.staging_key, &alloc.workspace_key, err)
+                .await);
+        }
+
+        let expected_project_updated_at = current_project.updated_at();
+        let expected_status = current_project.status().clone();
+        let expected_active_job_id = current_project.active_job_id().cloned();
+
+        current_project.set_transcript(transcript.clone());
 
         if let Err(e) = self
             .storage_uow
             .commit_transcript_import(CommitTranscriptImport {
-                project,
+                project: current_project,
                 artifact: staged.artifact,
                 staging_key: staged.staging_key.clone(),
                 final_key: staged.final_key,
                 temp_workspace_key: Some(alloc.workspace_key.clone()),
+                expected_project_updated_at,
+                expected_status,
+                expected_active_job_id,
             })
             .await
         {
             return Err(self
+                .cleanup_coordinator
                 .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
                 .await);
         }

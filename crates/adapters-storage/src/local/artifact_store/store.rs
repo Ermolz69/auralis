@@ -81,4 +81,20 @@ impl ArtifactStore for LocalArtifactStore {
     async fn cleanup_stale_staging(&self, max_age: std::time::Duration) -> Result<(), PortError> {
         cleanup::cleanup_stale_staging(&self.base_dir, max_age).await
     }
+
+    async fn stage_owned_workspace_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        workspace_port: &dyn ports::workspace::TempWorkspacePort,
+        allocation_key: &domain::outbox::WorkspaceKey,
+        relative_file: &str,
+        filename_hint: Option<&str>,
+    ) -> Result<ports::storage::StagedArtifact, PortError> {
+        let source_path = workspace_port
+            .resolve_child_path(allocation_key, relative_file)
+            .await?;
+        self.stage_owned_temp_file(project_id, kind, &source_path, filename_hint)
+            .await
+    }
 }

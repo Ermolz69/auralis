@@ -195,7 +195,9 @@ async fn run_with_scheduler(scheduler: Arc<MatrixScheduler>) -> RuntimeTaskOutco
             None,
         )
         .unwrap();
+    let job_id = JobId::new();
     project.mark_ready_for_processing().unwrap();
+    project.start_processing(job_id.clone()).unwrap();
     let project_id = project.id().clone();
     project_repo.create(project).await.unwrap();
 
@@ -220,9 +222,7 @@ async fn run_with_scheduler(scheduler: Arc<MatrixScheduler>) -> RuntimeTaskOutco
         },
     );
 
-    runner
-        .run(JobId::new(), project_id, token, &mut guard)
-        .await
+    runner.run(job_id, project_id, token, &mut guard).await
 }
 
 fn scheduled(job_id: &JobId, status: JobStatus) -> ScheduledJob {
