@@ -10,7 +10,9 @@ use crate::error::PortError;
 pub enum RuntimeTaskOutcome {
     Completed,
     Cancelled,
+    DeletedNoOp,
     ApplicationFailed,
+    RecoveryRequired,
     Panicked,
 }
 
