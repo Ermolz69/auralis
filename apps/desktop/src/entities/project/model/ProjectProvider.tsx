@@ -5,18 +5,35 @@ import { invoke } from '@/shared/api/tauri';
 import { isCommandError } from '@/shared/api/contracts';
 import { ProjectContext } from './context';
 import type { Project } from './types';
+import type { OperationToken } from './context';
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectIdState] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [operationGeneration, setOperationGeneration] = useState<number>(0);
 
   const deletingProjectIdRef = useRef<string | null>(null);
-  const fetchGenerationRef = useRef<number>(0);
+  const operationGenerationRef = useRef<number>(0);
+  const currentProjectIdRef = useRef<string | null>(null);
+
+  const invalidateOperations = () => {
+    const nextGeneration = operationGenerationRef.current + 1;
+    operationGenerationRef.current = nextGeneration;
+    setOperationGeneration(nextGeneration);
+  };
+
+  const setProjectId = (id: string | null) => {
+    if (id !== currentProjectIdRef.current) {
+      currentProjectIdRef.current = id;
+      invalidateOperations();
+      setProjectIdState(id);
+    }
+  };
 
   const beginProjectDeletion = (id: string) => {
     if (deletingProjectIdRef.current !== null) return false;
-    fetchGenerationRef.current += 1;
+    invalidateOperations();
     deletingProjectIdRef.current = id;
     setDeletingProjectId(id);
     return true;
@@ -29,41 +46,56 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const captureToken = (): OperationToken => {
+    return { generation: operationGenerationRef.current };
+  };
+
+  const validateToken = (token: OperationToken): boolean => {
+    return deletingProjectIdRef.current === null && token.generation === operationGenerationRef.current;
+  };
+
   useEffect(() => {
     if (!projectId) return;
 
     let cancelled = false;
     let unlisten: (() => void) | undefined;
+    let listenerFetchSequence = 0;
 
     const setupListener = async () => {
       try {
         const fn = await listen<{ projectId: string }>('project-updated', async (event) => {
           if (event.payload.projectId === projectId) {
-            if (deletingProjectIdRef.current === projectId) {
-              return; // Do not fetch if currently deleting
+            if (deletingProjectIdRef.current !== null) {
+              return;
             }
 
-            fetchGenerationRef.current += 1;
-            const currentGen = fetchGenerationRef.current;
+            const token = captureToken();
+            const currentFetchSeq = ++listenerFetchSequence;
 
             try {
               const updatedProject = await invoke('get_project_cmd', { projectId });
 
               if (
                 cancelled ||
-                currentGen !== fetchGenerationRef.current ||
-                projectId !== event.payload.projectId
+                currentFetchSeq !== listenerFetchSequence ||
+                !validateToken(token) ||
+                currentProjectIdRef.current !== projectId ||
+                event.payload.projectId !== projectId
               ) {
-                return;
-              }
-
-              if (deletingProjectIdRef.current === projectId) {
                 return;
               }
 
               setProject(updatedProject);
             } catch (e) {
-              if (cancelled || currentGen !== fetchGenerationRef.current) return;
+              if (
+                cancelled ||
+                currentFetchSeq !== listenerFetchSequence ||
+                !validateToken(token) ||
+                currentProjectIdRef.current !== projectId ||
+                event.payload.projectId !== projectId
+              ) {
+                return;
+              }
 
               if (isCommandError(e) && e.code === 'NOT_FOUND') {
                 setProject(null);
@@ -103,9 +135,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         deletingProjectId,
         beginProjectDeletion,
         finishProjectDeletion,
+        operationGeneration,
+        captureToken,
+        validateToken,
       }}
     >
       {children}
     </ProjectContext.Provider>
   );
 }
+
