@@ -1,7 +1,7 @@
 use crate::sqlite::helpers;
 use domain::media::ArtifactLocation;
 use ports::error::PortError;
-use sqlx::{Connection, Row, SqlitePool};
+use sqlx::{Row, SqlitePool};
 
 #[derive(Debug, serde::Serialize)]
 pub struct BackfillIssue {
@@ -28,34 +28,14 @@ pub struct BackfillReport {
 pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
     let mut report = BackfillReport::default();
 
-    // Check if runtime_migrations table exists (might be fresh DB)
-    let has_runtime_migrations: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('runtime_migrations')")
-            .fetch_one(pool)
-            .await
-            .unwrap_or(0);
-
-    if has_runtime_migrations == 0 {
-        // If the table doesn't exist, this is an unexpected state (migrations didn't run).
-        // Let it fall through, the query later might fail, but let's check column first.
-    } else {
-        let marker_exists: bool =
-            sqlx::query("SELECT 1 FROM runtime_migrations WHERE id = 'artifacts_json_dropped_v1'")
-                .fetch_optional(pool)
-                .await
-                .unwrap_or(None)
-                .is_some();
-        if marker_exists {
-            return Ok(report);
-        }
-    }
-
     let has_column: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM pragma_table_info('projects') WHERE name = 'artifacts_json'",
     )
     .fetch_one(pool)
     .await
-    .unwrap_or(0);
+    .map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to check artifacts_json column", e)
+    })?;
 
     if has_column == 0 {
         return Ok(report);
@@ -242,14 +222,28 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
             }
 
             // Check if location is already taken by another ID
-            let loc_conflict = sqlx::query_scalar::<_, String>(
+            let loc_conflict_res = sqlx::query_scalar::<_, String>(
                 "SELECT id FROM artifacts WHERE location_kind = ? AND location_value = ?",
             )
             .bind(&location_kind)
             .bind(&location_value)
             .fetch_optional(&mut *tx)
-            .await
-            .unwrap_or(None);
+            .await;
+
+            let loc_conflict = match loc_conflict_res {
+                Ok(opt) => opt,
+                Err(e) => {
+                    report.issues.push(BackfillIssue {
+                        project_id: project_id.clone(),
+                        artifact_identifier: artifact.id.to_string(),
+                        category: "database_error".to_string(),
+                        field: "location_check".to_string(),
+                        message: format!("Failed to check location conflict: {}", e),
+                    });
+                    has_errors = true;
+                    break;
+                }
+            };
 
             if loc_conflict.is_some() {
                 report.issues.push(BackfillIssue {
@@ -296,6 +290,42 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
             project_artifacts_migrated += 1;
         }
 
+        if !has_errors {
+            let update_res = sqlx::query(
+                "UPDATE projects SET artifacts_json = '[]' WHERE id = ? AND artifacts_json = ?",
+            )
+            .bind(&project_id)
+            .bind(&artifacts_json)
+            .execute(&mut *tx)
+            .await;
+
+            match update_res {
+                Ok(result) => {
+                    if result.rows_affected() != 1 {
+                        report.issues.push(BackfillIssue {
+                            project_id: project_id.clone(),
+                            artifact_identifier: "root".to_string(),
+                            category: "conflict".to_string(),
+                            field: "artifacts_json".to_string(),
+                            message: "Optimistic lock failed: project was modified or deleted"
+                                .to_string(),
+                        });
+                        has_errors = true;
+                    }
+                }
+                Err(e) => {
+                    report.issues.push(BackfillIssue {
+                        project_id: project_id.clone(),
+                        artifact_identifier: "root".to_string(),
+                        category: "database_error".to_string(),
+                        field: "clear_json".to_string(),
+                        message: format!("Failed to clear legacy JSON: {}", e),
+                    });
+                    has_errors = true;
+                }
+            }
+        }
+
         if has_errors {
             report.failed_projects += 1;
             if let Err(e) = tx.rollback().await {
@@ -335,110 +365,6 @@ pub async fn run(pool: &SqlitePool) -> Result<BackfillReport, PortError> {
             ),
         });
     }
-
-    // Phase 3: Table Rebuild & Column Deletion
-    // Acquire a single dedicated connection
-    let mut conn = pool.acquire().await.map_err(|e| {
-        crate::sqlite::helpers::map_sqlite_error("Failed to acquire connection for rebuild", e)
-    })?;
-
-    // Disable foreign keys on this specific connection
-    sqlx::query("PRAGMA foreign_keys = OFF")
-        .execute(&mut *conn)
-        .await
-        .map_err(|e| {
-            crate::sqlite::helpers::map_sqlite_error("Failed to disable foreign keys", e)
-        })?;
-
-    // Perform the rebuild inside a transaction on this connection
-    let mut tx = conn.begin().await.map_err(|e| {
-        crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction for rebuild", e)
-    })?;
-
-    let rebuild_result = async {
-        sqlx::query(
-            r#"
-            CREATE TABLE projects_new (
-                id TEXT PRIMARY KEY NOT NULL,
-                title TEXT NOT NULL,
-                status TEXT NOT NULL,
-                source_json TEXT,
-                metadata_json TEXT,
-                source_language TEXT,
-                target_language TEXT,
-                transcript_json TEXT,
-                active_job_id TEXT,
-                last_terminal_job_id TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            "#,
-        )
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(
-            r#"
-            INSERT INTO projects_new (
-                id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, created_at, updated_at
-            )
-            SELECT 
-                id, title, status, source_json, metadata_json, source_language, target_language, transcript_json, active_job_id, last_terminal_job_id, created_at, updated_at
-            FROM projects
-            "#,
-        )
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query("DROP TABLE projects").execute(&mut *tx).await?;
-        sqlx::query("ALTER TABLE projects_new RENAME TO projects").execute(&mut *tx).await?;
-
-        sqlx::query("CREATE INDEX idx_projects_updated_at ON projects(updated_at)").execute(&mut *tx).await?;
-        sqlx::query("CREATE INDEX idx_projects_status ON projects(status)").execute(&mut *tx).await?;
-
-        let fk_violations = sqlx::query("PRAGMA foreign_key_check").fetch_all(&mut *tx).await?;
-        if !fk_violations.is_empty() {
-            return Err(sqlx::Error::Protocol("Foreign key check failed after rebuild".to_string()));
-        }
-
-        sqlx::query("INSERT INTO runtime_migrations (id, applied_at) VALUES ('artifacts_json_dropped_v1', datetime('now'))")
-            .execute(&mut *tx)
-            .await?;
-
-        Ok::<(), sqlx::Error>(())
-    }
-    .await;
-
-    match rebuild_result {
-        Ok(_) => {
-            tx.commit().await.map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to commit rebuild transaction", e)
-            })?;
-        }
-        Err(e) => {
-            tx.rollback().await.map_err(|re| PortError::Unexpected {
-                message: format!(
-                    "Failed to rollback rebuild transaction after error {}: {}",
-                    e, re
-                ),
-            })?;
-            // Must re-enable foreign keys before returning connection to pool!
-            let _ = sqlx::query("PRAGMA foreign_keys = ON")
-                .execute(&mut *conn)
-                .await;
-            return Err(PortError::Unexpected {
-                message: format!("Table rebuild failed: {}", e),
-            });
-        }
-    }
-
-    // Re-enable foreign keys on this specific connection before returning to pool
-    sqlx::query("PRAGMA foreign_keys = ON")
-        .execute(&mut *conn)
-        .await
-        .map_err(|e| {
-            crate::sqlite::helpers::map_sqlite_error("Failed to re-enable foreign keys", e)
-        })?;
 
     Ok(report)
 }
