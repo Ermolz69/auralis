@@ -13,18 +13,30 @@ export function initializeStore(projectId: string | null): JobStoreState {
 }
 
 export type JobStoreAction =
-  | { type: 'SWITCH_PROJECT'; projectId: string | null }
-  | { type: 'INITIALIZATION_CYCLE' }
-  | { type: 'LISTENERS_FAILED' }
-  | { type: 'LISTENERS_REGISTERED' }
-  | { type: 'FETCH_STARTED' }
+  | { type: 'SWITCH_PROJECT'; projectId: string | null; generation: number }
+  | { type: 'INITIALIZATION_CYCLE'; generation: number }
+  | { type: 'LISTENERS_FAILED'; generation: number }
+  | { type: 'LISTENERS_REGISTERED'; generation: number }
+  | { type: 'FETCH_STARTED'; generation: number }
   | { type: 'SNAPSHOT_RESOLVED'; generation: number; projectId: string | null; jobs: JobDto[] }
-  | { type: 'FETCH_FAILED' }
-  | { type: 'EVENT_RECEIVED'; event: JobEventDto }
-  | { type: 'INVALIDATION_RECEIVED' }
-  | { type: 'CLEAR_PENDING_REFETCH' };
+  | { type: 'FETCH_FAILED'; generation: number }
+  | { type: 'EVENT_RECEIVED'; event: JobEventDto; generation: number }
+  | { type: 'INVALIDATION_RECEIVED'; generation: number }
+  | { type: 'CLEAR_PENDING_REFETCH'; generation: number };
 
 export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): JobStoreState {
+  const isStartingAction = action.type === 'SWITCH_PROJECT' || action.type === 'INITIALIZATION_CYCLE';
+  
+  if (isStartingAction) {
+    if (action.generation <= state.generation) {
+      return state;
+    }
+  } else {
+    if (action.generation !== state.generation) {
+      return state;
+    }
+  }
+
   switch (action.type) {
     case 'SWITCH_PROJECT':
       return {
@@ -33,14 +45,16 @@ export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): J
         jobs: {},
         buffer: [],
         pendingRefetch: false,
-        generation: state.generation + 1,
+        generation: action.generation,
       };
 
     case 'INITIALIZATION_CYCLE':
       return {
         ...state,
         phase: 'initializing',
-        generation: state.generation + 1,
+        generation: action.generation,
+        buffer: [],
+        pendingRefetch: false,
       };
 
     case 'LISTENERS_FAILED':
@@ -59,7 +73,7 @@ export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): J
       return state;
 
     case 'SNAPSHOT_RESOLVED': {
-      if (action.generation !== state.generation || action.projectId !== state.scopeProjectId) {
+      if (action.projectId !== state.scopeProjectId) {
         return state;
       }
 

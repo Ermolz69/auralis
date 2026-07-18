@@ -32,11 +32,13 @@ export function validateJobDto(job: unknown): job is JobDto {
   return true;
 }
 
+const VALID_EVENT_KINDS = new Set(['created', 'started', 'progressed', 'completed', 'failed', 'cancelled']);
+
 export function validateJobEventDto(event: unknown): event is JobEventDto {
   if (!event || typeof event !== 'object') return false;
   const e = event as Record<string, unknown>;
   
-  if (typeof e.kind !== 'string') return false;
+  if (typeof e.kind !== 'string' || !VALID_EVENT_KINDS.has(e.kind)) return false;
   if (!validateJobDto(e.job)) return false;
   
   return true;
