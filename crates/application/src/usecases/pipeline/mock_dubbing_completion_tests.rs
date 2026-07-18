@@ -121,7 +121,9 @@ async fn completion_failure_requires_recovery_without_fail_job_overwrite() {
             None,
         )
         .unwrap();
+    let job_id = JobId::new();
     project.mark_ready_for_processing().unwrap();
+    project.start_processing(job_id.clone()).unwrap();
     let project_id = project.id().clone();
     project_repo.create(project).await.unwrap();
 
@@ -146,9 +148,7 @@ async fn completion_failure_requires_recovery_without_fail_job_overwrite() {
         },
     );
 
-    let outcome = runner
-        .run(JobId::new(), project_id, token, &mut guard)
-        .await;
+    let outcome = runner.run(job_id, project_id, token, &mut guard).await;
     assert_eq!(outcome, RuntimeTaskOutcome::RecoveryRequired);
     assert!(fail_records.lock().await.is_empty());
 }

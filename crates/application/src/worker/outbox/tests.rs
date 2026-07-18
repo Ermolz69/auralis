@@ -148,6 +148,17 @@ impl ports::storage::ArtifactStore for MockStore {
     ) -> Result<ports::storage::StagedArtifact, ports::error::PortError> {
         unimplemented!()
     }
+    async fn stage_owned_workspace_file(
+        &self,
+        _project_id: &ProjectId,
+        _kind: domain::media::ArtifactKind,
+        _workspace_port: &dyn ports::workspace::TempWorkspacePort,
+        _allocation_key: &domain::outbox::WorkspaceKey,
+        _relative_file: &str,
+        _filename_hint: Option<&str>,
+    ) -> Result<ports::storage::StagedArtifact, ports::error::PortError> {
+        unimplemented!()
+    }
     async fn import_external_file(
         &self,
         _project_id: &ProjectId,
@@ -386,6 +397,23 @@ impl ports::workspace::TempWorkspacePort for MockWorkspacePort {
                 message: e.to_string(),
             }),
         }
+    }
+
+    async fn read_workspace_file_to_string(
+        &self,
+        _allocation_key: &WorkspaceKey,
+        _relative_file: &str,
+        _max_bytes: u64,
+    ) -> Result<String, PortError> {
+        unimplemented!()
+    }
+
+    async fn resolve_child_path(
+        &self,
+        _key: &WorkspaceKey,
+        _relative_file: &str,
+    ) -> Result<std::path::PathBuf, PortError> {
+        unimplemented!()
     }
 }
 

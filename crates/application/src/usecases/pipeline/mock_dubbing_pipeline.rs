@@ -164,18 +164,45 @@ impl<
             self.workspace_port.clone(),
         );
 
-        match await_or_cancel(
-            &token,
-            import_use_case.execute(ImportYoutubeSubtitlesRequest {
+        let tokio_token = tokio_util::sync::CancellationToken::new();
+        let tokio_token_clone = tokio_token.clone();
+        let token_clone = token.clone();
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = token_clone.cancelled() => {
+                    tokio_token_clone.cancel();
+                }
+                _ = tokio_token_clone.cancelled() => {}
+            }
+        });
+
+        match import_use_case
+            .execute(ImportYoutubeSubtitlesRequest {
                 project_id: project_id.clone(),
                 preferred_languages: vec!["en".to_string(), "ru".to_string(), "uk".to_string()],
                 allow_auto_generated: true,
-            }),
-        )
-        .await
+                cancellation_token: tokio_token,
+                job_id: job_id.clone(),
+            })
+            .await
         {
-            Ok(Ok(_)) => {}
-            Ok(Err(_)) => {
+            Ok(_) => {}
+            Err(e) => {
+                if token.is_cancelled() {
+                    let is_cleanup_fail = match &e {
+                        crate::error::ApplicationError::OperationFailedWithCleanup {
+                            cleanup_report,
+                            ..
+                        } => !cleanup_report.failures.is_empty(),
+                        _ => false,
+                    };
+                    if is_cleanup_fail {
+                        guard.summary.update_status("cleanup_failed");
+                        return RuntimeTaskOutcome::RecoveryRequired;
+                    }
+                    guard.summary.update_status("cancelled");
+                    return RuntimeTaskOutcome::Cancelled;
+                }
                 return terminalize_runner_failure(
                     self.job_scheduler.as_ref(),
                     &job_id,
@@ -184,7 +211,6 @@ impl<
                 )
                 .await;
             }
-            Err(outcome) => return outcome,
         }
 
         if token.is_cancelled() {

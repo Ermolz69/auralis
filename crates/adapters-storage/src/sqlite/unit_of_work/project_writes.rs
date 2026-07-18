@@ -51,6 +51,91 @@ pub(super) async fn update_project(
     Ok(())
 }
 
+pub(super) async fn update_project_conditional(
+    tx: &mut Transaction<'_, Sqlite>,
+    project: &Project,
+    expected_updated_at: chrono::DateTime<chrono::Utc>,
+    expected_status: &domain::project::ProjectStatus,
+    expected_active_job_id: Option<&domain::job::JobId>,
+) -> Result<(), PortError> {
+    let row = project_to_row_values(project)?;
+
+    let expected_status_str = serde_json::to_string(expected_status)
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Failed to serialize status: {}", e),
+        })?
+        .trim_matches('"')
+        .to_string();
+
+    let expected_active_job_id_str = expected_active_job_id.map(|id| id.to_string());
+
+    let result = sqlx::query(
+        r#"
+        UPDATE projects SET
+            title = ?,
+            status = ?,
+            source_json = ?,
+            metadata_json = ?,
+            source_language = ?,
+            target_language = ?,
+            transcript_json = ?,
+            active_job_id = ?,
+            last_terminal_job_id = ?,
+            updated_at = ?
+        WHERE id = ?
+          AND updated_at = ?
+          AND status = ?
+          AND (active_job_id = ? OR (active_job_id IS NULL AND ? IS NULL))
+        "#,
+    )
+    .bind(row.title)
+    .bind(row.status)
+    .bind(row.source_json)
+    .bind(row.metadata_json)
+    .bind(row.source_language)
+    .bind(row.target_language)
+    .bind(row.transcript_json)
+    .bind(row.active_job_id)
+    .bind(row.last_terminal_job_id)
+    .bind(row.updated_at)
+    .bind(row.id.clone())
+    .bind(expected_updated_at.to_rfc3339())
+    .bind(expected_status_str)
+    .bind(expected_active_job_id_str.clone())
+    .bind(expected_active_job_id_str)
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to update project conditionally in tx", e)
+    })?;
+
+    if result.rows_affected() == 0 {
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?)")
+            .bind(&row.id)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error(
+                    "Failed to check project existence conditionally",
+                    e,
+                )
+            })?;
+
+        if exists {
+            return Err(PortError::Conflict {
+                resource: "Project".to_string(),
+                message: "Project state changed concurrently".to_string(),
+            });
+        } else {
+            return Err(PortError::NotFound {
+                resource: "Project".to_string(),
+            });
+        }
+    }
+
+    Ok(())
+}
+
 pub(super) async fn delete_project(
     tx: &mut Transaction<'_, Sqlite>,
     project_id: &domain::project::ProjectId,

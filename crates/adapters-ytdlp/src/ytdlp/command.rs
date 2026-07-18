@@ -14,6 +14,7 @@ pub async fn run_ytdlp_dump_json(
 ) -> Result<String, YtDlpError> {
     for candidate in candidates {
         let child = match Command::new(candidate)
+            .arg("--ignore-config")
             .arg("--dump-json")
             .arg("--no-playlist")
             .arg(url)
@@ -69,6 +70,7 @@ pub async fn run_ytdlp_download(
 ) -> Result<PathBuf, YtDlpError> {
     for candidate in candidates {
         let child = match Command::new(candidate)
+            .arg("--ignore-config")
             .arg("--no-playlist")
             .arg("--no-warnings")
             .arg("--windows-filenames")
@@ -159,6 +161,7 @@ pub async fn run_ytdlp_download_subtitle(
         let mut command = Command::new(candidate);
 
         command
+            .arg("--ignore-config")
             .arg("--skip-download")
             .arg("--no-playlist")
             .arg("--no-warnings")

@@ -126,3 +126,48 @@ fn remove_vtt_tags(text: &str) -> String {
     }
     result
 }
+
+pub fn select_best_subtitle_track(
+    subtitles: &[domain::media::SubtitleTrack],
+    preferred_languages: &[String],
+    allow_auto_generated: bool,
+) -> Result<domain::media::SubtitleTrack, ApplicationError> {
+    let is_vtt = |t: &domain::media::SubtitleTrack| t.format.as_deref() == Some("vtt");
+
+    let mut best_track = None;
+    for lang in preferred_languages {
+        if let Some(track) = subtitles
+            .iter()
+            .find(|t| &t.language == lang && !t.is_auto_generated && is_vtt(t))
+        {
+            best_track = Some(track.clone());
+            break;
+        }
+    }
+
+    if best_track.is_none() && allow_auto_generated {
+        for lang in preferred_languages {
+            if let Some(track) = subtitles
+                .iter()
+                .find(|t| &t.language == lang && t.is_auto_generated && is_vtt(t))
+            {
+                best_track = Some(track.clone());
+                break;
+            }
+        }
+    }
+
+    if best_track.is_none() {
+        best_track = subtitles
+            .iter()
+            .find(|t| !t.is_auto_generated && is_vtt(t))
+            .cloned();
+        if best_track.is_none() && allow_auto_generated {
+            best_track = subtitles.iter().find(|t| is_vtt(t)).cloned();
+        }
+    }
+
+    best_track.ok_or_else(|| ApplicationError::InvalidOperation {
+        message: "No suitable subtitles found".to_string(),
+    })
+}

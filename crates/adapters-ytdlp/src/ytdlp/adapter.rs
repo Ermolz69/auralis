@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use async_trait::async_trait;
 use std::path::PathBuf;
-use url::Url;
 
 use domain::media::{MediaMetadata, MediaSource};
 use ports::error::PortError;
@@ -49,17 +48,7 @@ impl VideoSourcePort for YtDlpAdapter {
             }
         };
 
-        let parsed = Url::parse(url_str).map_err(|_| PortError::InvalidSource {
-            message: format!("invalid URL: {}", url_str),
-        })?;
-
-        let host = parsed.host_str().unwrap_or("");
-        if !host.contains("youtube.com") && !host.contains("youtu.be") {
-            return Err(PortError::InvalidSource {
-                message: "only youtube.com / youtu.be are supported right now".to_string(),
-            });
-        }
-
+        super::validation::validate_url(url_str)?;
         Ok(())
     }
 
@@ -116,6 +105,8 @@ impl VideoSourcePort for YtDlpAdapter {
             }
             .into());
         }
+
+        super::containment::verify_containment(&request.target_dir, &path)?;
 
         Ok(domain::media::Artifact {
             id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
@@ -197,11 +188,11 @@ impl SubtitleSourcePort for YtDlpAdapter {
         let path = match result {
             Ok(p) => p,
             Err(e) => {
-                // Try to clean up the directory if download failed
-                let _ = tokio::fs::remove_dir_all(&request.target_directory).await;
                 return Err(e.into());
             }
         };
+
+        super::containment::verify_containment(&request.target_directory, &path)?;
 
         Ok(domain::media::Artifact {
             id: domain::media::ArtifactId::new(),

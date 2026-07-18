@@ -8,6 +8,9 @@ pub struct CommitTranscriptImport {
     pub staging_key: String,
     pub final_key: String,
     pub temp_workspace_key: Option<domain::outbox::WorkspaceKey>,
+    pub expected_project_updated_at: chrono::DateTime<chrono::Utc>,
+    pub expected_status: domain::project::ProjectStatus,
+    pub expected_active_job_id: Option<domain::job::JobId>,
 }
 
 pub struct CommitManagedSourceImport {
