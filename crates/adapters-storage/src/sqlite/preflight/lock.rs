@@ -6,6 +6,8 @@ use tokio::fs::{self, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use uuid::Uuid;
 
+pub const TRANSITION_LOCK_STALE_AFTER_SECS: u64 = 15 * 60;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransitionLockData {
     pub operation_id: Uuid,
@@ -33,7 +35,8 @@ impl TransitionLock {
                 .as_secs(),
             manifest_path: manifest_path.clone(),
         };
-        let data_bytes = serde_json::to_vec(&lock_data).unwrap();
+        let data_bytes = serde_json::to_vec(&lock_data)
+            .map_err(|e| DatabaseTransitionError::TransitionRecoveryFailed(e.to_string()))?;
 
         match OpenOptions::new()
             .write(true)
@@ -51,68 +54,67 @@ impl TransitionLock {
                 Ok(Self { lock_path })
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                // Lock exists. Read it.
-                let mut existing_lock = fs::File::open(&lock_path)
-                    .await
-                    .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
-                let mut content = Vec::new();
-                existing_lock
-                    .read_to_end(&mut content)
-                    .await
-                    .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
+                let existing_data = read_existing_lock(&lock_path).await?;
+                let age = current_timestamp_sec().saturating_sub(existing_data.timestamp_sec);
+                let owner_is_current_process = existing_data.pid == std::process::id();
+                if owner_is_current_process || age < TRANSITION_LOCK_STALE_AFTER_SECS {
+                    return Err(DatabaseTransitionError::LiveTransitionLock);
+                }
 
-                let existing_data: Result<TransitionLockData, _> = serde_json::from_slice(&content);
-
-                match existing_data {
-                    Ok(data) => {
-                        // Check if manifest exists and what stage it is in.
-                        // If the manifest doesn't exist, the previous process died immediately after creating the lock.
-                        if !data.manifest_path.exists() {
-                            tracing::warn!(
-                                "Found stale transition lock with no manifest. Removing and retrying."
-                            );
-                            fs::remove_file(&lock_path).await.ok();
-                            return Box::pin(Self::try_acquire(
-                                lock_path,
-                                manifest_path,
-                                operation_id,
-                            ))
-                            .await;
-                        }
-
-                        // If the manifest exists, we check its stage. If it's Completed, it's a stale lock from a successful transition.
-                        if let Ok(manifest) = TransitionManifest::load(&data.manifest_path).await
-                            && manifest.stage == TransitionStage::Completed
+                if existing_data.manifest_path.exists() {
+                    match TransitionManifest::load(&existing_data.manifest_path).await {
+                        Ok(manifest)
+                            if manifest.stage != TransitionStage::Completed
+                                && age < TRANSITION_LOCK_STALE_AFTER_SECS * 2 =>
                         {
-                            tracing::warn!(
-                                "Found stale transition lock for a completed transition. Removing and retrying."
-                            );
-                            fs::remove_file(&lock_path).await.ok();
-                            fs::remove_file(&data.manifest_path).await.ok();
-                            return Box::pin(Self::try_acquire(
-                                lock_path,
-                                manifest_path,
-                                operation_id,
-                            ))
-                            .await;
+                            return Err(DatabaseTransitionError::LiveTransitionLock);
                         }
-
-                        // Otherwise, it's a valid lock or an interrupted transition that we should recover.
-                        Err(DatabaseTransitionError::TransitionLocked)
-                    }
-                    Err(_) => {
-                        // Corrupted lock file.
-                        tracing::warn!("Found corrupted transition lock. Removing and retrying.");
-                        fs::remove_file(&lock_path).await.ok();
-                        Box::pin(Self::try_acquire(lock_path, manifest_path, operation_id)).await
+                        Ok(_) => {}
+                        Err(err) => return Err(err),
                     }
                 }
+
+                fs::remove_file(&lock_path)
+                    .await
+                    .map_err(|e| DatabaseTransitionError::StaleLockReclaimFailed(e.to_string()))?;
+                Box::pin(Self::try_acquire(lock_path, manifest_path, operation_id)).await
             }
             Err(e) => Err(DatabaseTransitionError::InspectionFailed(e.to_string())),
         }
     }
 
-    pub async fn release(self) {
-        let _ = fs::remove_file(&self.lock_path).await;
+    pub async fn release(self) -> Result<(), DatabaseTransitionError> {
+        match fs::remove_file(&self.lock_path).await {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(DatabaseTransitionError::CleanupFailed(e.to_string())),
+        }
     }
+}
+
+async fn read_existing_lock(path: &PathBuf) -> Result<TransitionLockData, DatabaseTransitionError> {
+    let mut existing_lock = fs::File::open(path)
+        .await
+        .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
+    let mut content = Vec::new();
+    existing_lock
+        .read_to_end(&mut content)
+        .await
+        .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
+
+    let data: TransitionLockData = serde_json::from_slice(&content)
+        .map_err(|e| DatabaseTransitionError::CorruptTransitionLock(e.to_string()))?;
+    if data.pid == 0 || data.timestamp_sec == 0 {
+        return Err(DatabaseTransitionError::CorruptTransitionLock(
+            "lock payload is missing required owner fields".to_string(),
+        ));
+    }
+    Ok(data)
+}
+
+fn current_timestamp_sec() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default() // allow-fallback
+        .as_secs()
 }

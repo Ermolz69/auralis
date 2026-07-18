@@ -1,34 +1,93 @@
-# Legacy Dev Database Migration
+# Legacy Dev Database Transition
 
-When developing Auralis, early databases were handcrafted without SQLx migrations. To prevent data loss or catastrophic failures during startup on an old dev database, the application performs a **preflight check** during SQLite connection initialization.
+Early Auralis development databases were created by hand, before SQLx migrations.
+Startup runs a SQLite preflight transition so those legacy databases are never
+overwritten silently.
 
-## Preflight Check Logic
+The transition does not import legacy rows into the managed schema. It preserves
+the old database in a durable backup and activates a fresh SQLx-managed database.
 
-The SQLite connection manager (`connect_sqlite`) inspects the existing `sqlite_master` table:
+## Detection
 
-1. **Migrated Database**: If the `_sqlx_migrations` table exists, the application proceeds with normal SQLx migrations (`sqlx::migrate!`).
-2. **Handcrafted Database**: If `_sqlx_migrations` is missing but the `projects` table exists, the application identifies it as a legacy dev database.
-3. **Unknown Schema**: If neither table exists but there are other user-defined tables, the application aborts to avoid overwriting unrelated data.
+Startup inspects the database read-only:
 
-## Automatic Backup Process
+- Missing, empty, or already SQLx-managed databases continue normally.
+- The known handcrafted V0 schema is transitioned.
+- Unknown schemas fail closed.
+- Corrupt SQLite files fail as corrupt databases.
+- If a transition manifest exists, startup resumes from the manifest before
+  applying any missing-database early return.
 
-When a handcrafted dev database is detected, the application will:
+## Filesystem Layout
 
-1. Close the SQLite connection.
-2. Rename the database files to include a backup timestamp:
-   - `app.sqlite` -> `app.sqlite.backup_<timestamp>`
-   - `app.sqlite-wal` -> `app.sqlite-wal.backup_<timestamp>`
-   - `app.sqlite-shm` -> `app.sqlite-shm.backup_<timestamp>`
-3. Emit a warning log indicating the backup path.
-4. Recreate a fresh database and apply all current SQLx migrations.
+For `app.sqlite`, the transition uses:
 
-## Restoring from Backup
+- `app.sqlite.lock` as the short-lived transition owner lock.
+- `backups/transition_manifest.json` as the durable resume manifest.
+- `backups/auralis-<timestamp>-<operation-id>/` as the preserved legacy backup.
+- `backups/auralis-<timestamp>-<operation-id>/app.sqlite` plus optional
+  `app.sqlite-wal` and `app.sqlite-shm`.
+- `backups/auralis-<timestamp>-<operation-id>/manifest.json` as the backup copy
+  of the transition manifest.
+- `app.sqlite.new-<operation-id>` as the prepared managed database before
+  activation.
+- `backups/quarantine-<timestamp>-<operation-id>/` as temporary quarantine for
+  the old live database files.
 
-If you need to retrieve data from your legacy dev database:
+The backup directory is never deleted by transition rollback or cleanup.
+
+## Ownership And Staleness
+
+The lock payload contains the operation id, owner pid, timestamp, and manifest
+path. Startup validates the payload before acting on it.
+
+- A live owner is not stolen.
+- A corrupt lock is a typed failure and is not removed automatically.
+- A stale lock may be reclaimed only after the configured staleness window.
+- Reclaim failure is reported as a typed startup failure.
+- The lock is not held during long copy, migration, or rename operations; durable
+  resume is driven by the manifest and filesystem checks.
+
+The current staleness contract is `15 minutes`.
+
+## Resume Matrix
+
+| Durable stage | Expected filesystem state | Next action |
+| --- | --- | --- |
+| `Started` | Legacy DB still live; manifest exists | Checkpoint legacy DB, create and validate backup |
+| `BackupFinalized` | Backup exists and validates; legacy DB still live | Prepare fresh SQLx database |
+| `NewDatabaseReady` | Backup exists; legacy DB live; new DB exists and validates | Move legacy DB files to quarantine |
+| `OldDatabaseQuarantined` | Legacy DB quarantined; new DB still staged | Rename new DB into active database path |
+| `NewDatabaseActivated` | Active DB is SQLx-managed; backup still exists | Remove quarantine and transition manifest |
+
+Each stage is repeatable. On resume, the implementation checks the actual file
+state first and either performs the next idempotent operation or returns a typed
+resume mismatch.
+
+## Failure Contract
+
+Startup failures are typed and sanitized:
+
+- live transition lock;
+- stale lock reclaim failure;
+- corrupt lock payload;
+- corrupt transition manifest or path escape;
+- resume/filesystem mismatch;
+- cleanup failure;
+- backup, migration, and validation failures.
+
+Manifest paths are validated so transition state cannot move or remove files
+outside the database directory and its `backups` root. Manifest database names
+must be plain filenames.
+
+## Restoring From Backup
+
+To inspect or restore legacy data:
 
 1. Stop the application.
-2. Locate the `.backup_<timestamp>` files in the same directory as the database (e.g. `~/.local/share/auralis/`).
-3. Rename them back to their original `.sqlite`, `.sqlite-wal`, and `.sqlite-shm` names.
-4. Note: The application will automatically back them up again on next startup unless you manually write a script to import the data into the new schema.
+2. Open the preserved directory under `backups/auralis-<timestamp>-<operation-id>/`.
+3. Use the contained `app.sqlite` with optional WAL/SHM files as the legacy
+   source.
 
-Currently, **legacy dev data is not automatically imported into the new schema**. If you require the old data to be present in the new schema, an explicit importer script must be written to map the old rows to the new database structure.
+An importer from handcrafted V0 into the managed schema is intentionally out of
+scope for this transition.
