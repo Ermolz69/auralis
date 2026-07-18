@@ -41,7 +41,7 @@ pub(super) async fn save_outbox_message(
         ) 
         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         WHERE 
-            (? != 'project' AND ? != 'job')
+            (? IS NOT 'project' AND ? IS NOT 'job')
             OR (? = 'project' AND EXISTS (SELECT 1 FROM projects WHERE id = ?))
             OR (? = 'job' AND EXISTS (SELECT 1 FROM jobs WHERE id = ?))
         ON CONFLICT(id) DO NOTHING

@@ -326,6 +326,53 @@ async fn mark_done_fails_if_already_done_or_missing() {
 }
 
 #[tokio::test]
+async fn mark_done_is_idempotent_on_done_and_dead() {
+    let pool = setup_db().await;
+    let repo = SqliteOutboxRepository::new(pool.clone());
+
+    // 1. Test 'done' message
+    let msg_done_id = OutboxMessageId::new();
+    sqlx::query(
+        "INSERT INTO outbox_messages (id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at) VALUES (?, 'delete_project_artifact_dir', '{}', 'done', 0, 'now', 'now', 'now')"
+    )
+    .bind(msg_done_id.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = repo.mark_done(&msg_done_id).await;
+    assert!(res.is_ok());
+
+    // 2. Test 'dead' message
+    let msg_dead_id = OutboxMessageId::new();
+    sqlx::query(
+        "INSERT INTO outbox_messages (id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at) VALUES (?, 'delete_project_artifact_dir', '{}', 'dead', 0, 'now', 'now', 'now')"
+    )
+    .bind(msg_dead_id.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = repo.mark_done(&msg_dead_id).await;
+    assert!(res.is_ok());
+
+    // 3. Test 'pending' message fails
+    let msg_pending_id = OutboxMessageId::new();
+    sqlx::query(
+        "INSERT INTO outbox_messages (id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at) VALUES (?, 'delete_project_artifact_dir', '{}', 'pending', 0, 'now', 'now', 'now')"
+    )
+    .bind(msg_pending_id.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = repo.mark_done(&msg_pending_id).await;
+    assert!(res.is_err());
+    let err_str = res.unwrap_err().to_string();
+    assert!(err_str.contains("not found or already modified"));
+}
+
+#[tokio::test]
 async fn mark_failed_fails_if_missing() {
     let pool = setup_db().await;
     let repo = SqliteOutboxRepository::new(pool.clone());

@@ -74,7 +74,9 @@ where
                         let _ = self.artifact_store.delete_storage_key(final_key).await;
                     }
                     ports::transaction::CommitArtifactFinalizeResult::Conflict => {
-                        // Conflict (e.g. outbox message not found). Do nothing to final_key to be safe.
+                        return Err(ApplicationError::InvalidOperation {
+                            message: "Conflict during artifact finalization transaction".to_string(),
+                        });
                     }
                 }
             }

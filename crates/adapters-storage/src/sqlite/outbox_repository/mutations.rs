@@ -6,6 +6,35 @@ use super::SqliteOutboxRepository;
 impl SqliteOutboxRepository {
     pub async fn execute_mark_done(&self, id: &OutboxMessageId) -> Result<(), PortError> {
         let id_str = id.to_string();
+
+        let status_opt: Option<String> =
+            sqlx::query_scalar("SELECT status FROM outbox_messages WHERE id = ?")
+                .bind(&id_str)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| PortError::Io {
+                    message: format!("Failed to query status of outbox message {}: {}", id, e),
+                })?;
+
+        let status = match status_opt {
+            Some(s) => s,
+            None => {
+                return Err(PortError::Io {
+                    message: format!("Outbox message {} not found or already modified", id),
+                });
+            }
+        };
+
+        if status == "done" || status == "dead" {
+            return Ok(());
+        }
+
+        if status != "processing" {
+            return Err(PortError::Io {
+                message: format!("Outbox message {} not found or already modified", id),
+            });
+        }
+
         let result = sqlx::query(
             r#"
             UPDATE outbox_messages
