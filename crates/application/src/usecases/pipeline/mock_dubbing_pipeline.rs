@@ -193,7 +193,7 @@ impl<
                         crate::error::ApplicationError::OperationFailedWithCleanup {
                             cleanup_report,
                             ..
-                        } => !cleanup_report.failures.is_empty(),
+                        } => !cleanup_report.is_empty(),
                         _ => false,
                     };
                     if is_cleanup_fail {

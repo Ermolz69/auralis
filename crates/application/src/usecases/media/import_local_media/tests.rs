@@ -72,6 +72,18 @@ impl ports::storage::ArtifactStore for MockArtifactStore {
         unimplemented!()
     }
 
+    async fn stage_owned_workspace_file(
+        &self,
+        _project_id: &ProjectId,
+        _kind: domain::media::ArtifactKind,
+        _workspace: &dyn ports::TempWorkspacePort,
+        _key: &domain::outbox::WorkspaceKey,
+        _filename: &str,
+        _filename_hint: Option<&str>,
+    ) -> Result<ports::storage::StagedArtifact, ports::error::PortError> {
+        unimplemented!()
+    }
+
     async fn import_external_file(
         &self,
         project_id: &ProjectId,
