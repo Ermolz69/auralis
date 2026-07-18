@@ -3,7 +3,6 @@ use super::setup_db;
 use crate::sqlite::unit_of_work::SqliteStorageUnitOfWork;
 
 use domain::media::{Artifact, ArtifactId};
-use domain::outbox::OutboxPayload;
 use domain::project::Project;
 use ports::error::PortError;
 use ports::transaction::{CommitManagedSourceImport, CommitProjectDelete, StorageUnitOfWork};
@@ -13,18 +12,9 @@ async fn test_commit_managed_source_import_writes_atomically() {
     let pool = setup_db().await;
     let uow = SqliteStorageUnitOfWork::new(pool.clone());
 
-    let artifact = Artifact {
-        id: ArtifactId::new(),
-        kind: domain::media::ArtifactKind::SourceVideo,
-        location: domain::media::ArtifactLocation::LocalPath("fake_path".into()),
-        size_bytes: Some(1024),
-        state: domain::media::ArtifactState::PendingFinalize,
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-        ready_at: None,
-    };
-
     let mut project = Project::new("Tx Test".to_string());
+    let original_updated_at = project.updated_at();
+
     sqlx::query(
         "INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
     )
@@ -32,69 +22,185 @@ async fn test_commit_managed_source_import_writes_atomically() {
     .bind(project.title())
     .bind("Draft")
     .bind(project.created_at().to_rfc3339())
-    .bind(project.updated_at().to_rfc3339())
+    .bind(original_updated_at.to_rfc3339())
     .execute(&pool)
     .await
     .unwrap();
+
+    let artifact_id = ArtifactId::new();
+    let final_key = format!("{}/source-video/{}.mp4", project.id(), artifact_id);
+    let staging_key = format!(".staging/uuid/{}.mp4", artifact_id);
+
+    let artifact = Artifact {
+        id: artifact_id.clone(),
+        kind: domain::media::ArtifactKind::SourceVideo,
+        location: domain::media::ArtifactLocation::StorageKey(final_key.clone()),
+        size_bytes: Some(1024),
+        state: domain::media::ArtifactState::PendingFinalize,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+        ready_at: None,
+    };
 
     project
         .import_source(
             domain::media::MediaSource::ManagedLocalFile {
                 artifact_id: artifact.id.clone(),
-                original_filename: "test".into(),
+                original_filename: "test.mp4".into(),
             },
             None,
         )
         .unwrap();
+    project.mark_ready_for_processing().unwrap();
 
     let cmd = CommitManagedSourceImport {
         project: project.clone(),
         artifact: artifact.clone(),
-        staging_key: "staging_key".to_string(),
-        final_key: "final_key".to_string(),
+        staging_key: staging_key.clone(),
+        final_key: final_key.clone(),
+        original_updated_at,
     };
 
     uow.commit_managed_source_import(cmd).await.unwrap();
 
-    let project_row: Option<crate::sqlite::project_row::ProjectRow> =
+    let project_row: crate::sqlite::project_row::ProjectRow =
         sqlx::query_as("SELECT * FROM projects WHERE id = ?")
             .bind(project.id().to_string())
-            .fetch_optional(&pool)
+            .fetch_one(&pool)
             .await
             .unwrap();
-    assert!(project_row.is_some());
+    assert_eq!(project_row.status, "ReadyForProcessing");
 
-    let artifact_row: Option<crate::sqlite::artifact_index::row::ArtifactRow> =
+    let artifact_row: crate::sqlite::artifact_index::row::ArtifactRow =
         sqlx::query_as("SELECT * FROM artifacts WHERE id = ?")
             .bind(artifact.id.to_string())
-            .fetch_optional(&pool)
+            .fetch_one(&pool)
             .await
             .unwrap();
-    assert!(artifact_row.is_some());
+    assert_eq!(artifact_row.state, "pending_finalize");
+    assert_eq!(artifact_row.project_id, project.id().to_string());
 
     let outbox_rows: Vec<crate::sqlite::outbox_row::OutboxRow> =
         sqlx::query_as("SELECT * FROM outbox_messages")
             .fetch_all(&pool)
             .await
             .unwrap();
-
     assert_eq!(outbox_rows.len(), 1);
-    let payload: OutboxPayload = serde_json::from_str(&outbox_rows[0].payload_json).unwrap();
 
-    match payload {
-        OutboxPayload::FinalizeStagedArtifact {
-            project_id,
-            artifact_id,
-            staging_key,
-            final_key,
-        } => {
-            assert_eq!(project_id, project.id().clone());
-            assert_eq!(artifact_id, artifact.id);
-            assert_eq!(staging_key, "staging_key");
-            assert_eq!(final_key, "final_key");
-        }
-        _ => panic!("Expected FinalizeStagedArtifact payload"),
-    }
+    let jobs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM jobs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(jobs_count, 0);
+}
+
+#[tokio::test]
+async fn test_commit_managed_source_import_missing_project_returns_not_found() {
+    let pool = setup_db().await;
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
+
+    let mut project = Project::new("Missing".to_string());
+    let artifact_id = ArtifactId::new();
+    let final_key = format!("{}/source-video/{}.mp4", project.id(), artifact_id);
+    let staging_key = format!(".staging/uuid/{}.mp4", artifact_id);
+
+    let artifact = Artifact {
+        id: artifact_id.clone(),
+        kind: domain::media::ArtifactKind::SourceVideo,
+        location: domain::media::ArtifactLocation::StorageKey(final_key.clone()),
+        size_bytes: Some(1024),
+        state: domain::media::ArtifactState::PendingFinalize,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+        ready_at: None,
+    };
+
+    let original_updated_at = project.updated_at();
+    project
+        .import_source(
+            domain::media::MediaSource::ManagedLocalFile {
+                artifact_id: artifact.id.clone(),
+                original_filename: "test.mp4".into(),
+            },
+            None,
+        )
+        .unwrap();
+    project.mark_ready_for_processing().unwrap();
+
+    let cmd = CommitManagedSourceImport {
+        project,
+        artifact,
+        staging_key,
+        final_key,
+        original_updated_at,
+    };
+
+    let err = uow.commit_managed_source_import(cmd).await.unwrap_err();
+    assert!(matches!(err, PortError::NotFound { .. }));
+
+    let artifacts_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM artifacts")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(artifacts_count, 0);
+}
+
+#[tokio::test]
+async fn test_commit_managed_source_import_status_mismatch_returns_conflict() {
+    let pool = setup_db().await;
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
+
+    let mut project = Project::new("Status Mismatch".to_string());
+    let original_updated_at = project.updated_at();
+
+    sqlx::query(
+        "INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(project.id().to_string())
+    .bind(project.title())
+    .bind("ReadyForProcessing") // DB status is already ReadyForProcessing, not Draft!
+    .bind(project.created_at().to_rfc3339())
+    .bind(original_updated_at.to_rfc3339())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let artifact_id = ArtifactId::new();
+    let final_key = format!("{}/source-video/{}.mp4", project.id(), artifact_id);
+    let staging_key = format!(".staging/uuid/{}.mp4", artifact_id);
+
+    let artifact = Artifact {
+        id: artifact_id.clone(),
+        kind: domain::media::ArtifactKind::SourceVideo,
+        location: domain::media::ArtifactLocation::StorageKey(final_key.clone()),
+        size_bytes: Some(1024),
+        state: domain::media::ArtifactState::PendingFinalize,
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+        ready_at: None,
+    };
+
+    project
+        .import_source(
+            domain::media::MediaSource::ManagedLocalFile {
+                artifact_id: artifact.id.clone(),
+                original_filename: "test.mp4".into(),
+            },
+            None,
+        )
+        .unwrap();
+    project.mark_ready_for_processing().unwrap();
+
+    let cmd = CommitManagedSourceImport {
+        project,
+        artifact,
+        staging_key,
+        final_key,
+        original_updated_at,
+    };
+
+    let err = uow.commit_managed_source_import(cmd).await.unwrap_err();
+    assert!(matches!(err, PortError::Conflict { .. }));
 }
 
 #[tokio::test]

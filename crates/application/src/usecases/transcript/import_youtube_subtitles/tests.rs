@@ -18,23 +18,14 @@ use crate::test_utils::MockStorageUnitOfWork;
 struct MockProjectRepo {
     project: Option<Project>,
 }
+#[rustfmt::skip]
 #[async_trait]
 impl ProjectRepository for MockProjectRepo {
-    async fn create(&self, project: Project) -> Result<Project, PortError> {
-        Ok(project)
-    }
-    async fn get(&self, _id: &ProjectId) -> Result<Option<Project>, PortError> {
-        Ok(self.project.clone())
-    }
-    async fn save(&self, _project: &Project) -> Result<(), PortError> {
-        Ok(())
-    }
-    async fn list(&self) -> Result<Vec<Project>, PortError> {
-        Ok(vec![])
-    }
-    async fn delete(&self, _id: &ProjectId) -> Result<(), PortError> {
-        Ok(())
-    }
+    async fn create(&self, project: Project) -> Result<Project, PortError> { Ok(project) }
+    async fn get(&self, _id: &ProjectId) -> Result<Option<Project>, PortError> { Ok(self.project.clone()) }
+    async fn save(&self, _project: &Project) -> Result<(), PortError> { Ok(()) }
+    async fn list(&self) -> Result<Vec<Project>, PortError> { Ok(vec![]) }
+    async fn delete(&self, _id: &ProjectId) -> Result<(), PortError> { Ok(()) }
 }
 
 struct MockSubtitleSource {
@@ -213,22 +204,13 @@ async fn test_rollback_on_transaction_failure() {
     let deleted_staging = Arc::new(Mutex::new(vec![]));
     let deleted_workspace = Arc::new(Mutex::new(vec![]));
 
+    #[rustfmt::skip]
     let usecase = ImportYoutubeSubtitlesUseCase::new(
-        Arc::new(MockProjectRepo {
-            project: Some(project),
-        }),
-        Arc::new(MockSubtitleSource {
-            fail_download: false,
-        }),
-        Arc::new(MockArtifactStoreForSubs {
-            fail_delete: false,
-            deleted_keys: deleted_staging.clone(),
-        }),
+        Arc::new(MockProjectRepo { project: Some(project) }),
+        Arc::new(MockSubtitleSource { fail_download: false }),
+        Arc::new(MockArtifactStoreForSubs { fail_delete: false, deleted_keys: deleted_staging.clone() }),
         Arc::new(MockStorageUnitOfWork::with_failure()), // Will fail commit
-        Arc::new(MockWorkspacePortForSubs {
-            fail_delete: false,
-            deleted_keys: deleted_workspace.clone(),
-        }),
+        Arc::new(MockWorkspacePortForSubs { fail_delete: false, deleted_keys: deleted_workspace.clone() }),
     );
 
     let result = usecase
@@ -264,22 +246,13 @@ async fn test_workspace_error_composites_with_primary_error() {
     let deleted_staging = Arc::new(Mutex::new(vec![]));
     let deleted_workspace = Arc::new(Mutex::new(vec![]));
 
+    #[rustfmt::skip]
     let usecase = ImportYoutubeSubtitlesUseCase::new(
-        Arc::new(MockProjectRepo {
-            project: Some(project),
-        }),
-        Arc::new(MockSubtitleSource {
-            fail_download: false,
-        }),
-        Arc::new(MockArtifactStoreForSubs {
-            fail_delete: true,
-            deleted_keys: deleted_staging.clone(),
-        }), // staging delete fails
+        Arc::new(MockProjectRepo { project: Some(project) }),
+        Arc::new(MockSubtitleSource { fail_download: false }),
+        Arc::new(MockArtifactStoreForSubs { fail_delete: true, deleted_keys: deleted_staging.clone() }), // staging delete fails
         Arc::new(MockStorageUnitOfWork::with_failure()), // Will fail commit
-        Arc::new(MockWorkspacePortForSubs {
-            fail_delete: true,
-            deleted_keys: deleted_workspace.clone(),
-        }), // workspace delete fails
+        Arc::new(MockWorkspacePortForSubs { fail_delete: true, deleted_keys: deleted_workspace.clone() }), // workspace delete fails
     );
 
     let result = usecase
@@ -302,19 +275,9 @@ async fn test_workspace_error_composites_with_primary_error() {
     } = err
     {
         assert!(matches!(*primary, ApplicationError::Port(_))); // The initial transaction failure
-        assert_eq!(cleanup_report.failures.len(), 2);
-
-        // Ensure both failures are reported
-        let has_workspace_err = cleanup_report
-            .failures
-            .iter()
-            .any(|f| matches!(f.target, crate::error::CleanupTarget::Workspace { .. }));
-        let has_staging_err = cleanup_report
-            .failures
-            .iter()
-            .any(|f| matches!(f.target, crate::error::CleanupTarget::Staging { .. }));
-        assert!(has_workspace_err);
-        assert!(has_staging_err);
+        assert_eq!(cleanup_report.len(), 2);
+        assert_eq!(cleanup_report.workspace_failure_count(), 1);
+        assert_eq!(cleanup_report.staging_failure_count(), 1);
     } else {
         panic!("Expected OperationFailedWithCleanup, got {:?}", err);
     }

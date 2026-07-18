@@ -12,7 +12,7 @@ use ports::transaction::{
 use super::artifact_writes::{finalize_artifact, save_artifact};
 use super::job_writes::{insert_job, update_job};
 use super::outbox_writes::save_outbox_message;
-use super::project_writes::{delete_project, update_project};
+use super::project_writes::{delete_project, update_project, update_project_conditional};
 
 pub struct SqliteStorageUnitOfWork {
     pool: SqlitePool,
@@ -99,7 +99,14 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
-        update_project(&mut tx, &command.project).await?;
+        update_project_conditional(
+            &mut tx,
+            &command.project,
+            command.original_updated_at,
+            &domain::project::ProjectStatus::Draft,
+            None,
+        )
+        .await?;
         save_artifact(&mut tx, command.project.id(), &command.artifact).await?;
 
         let finalize_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
