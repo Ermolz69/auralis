@@ -372,7 +372,13 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                     Ok(ports::job_runtime_control::RuntimeTaskOutcome::Cancelled) => {
                         ports::job_runtime_control::RuntimeCleanupOutcome::CooperativeCancelled
                     }
+                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::DeletedNoOp) => {
+                        ports::job_runtime_control::RuntimeCleanupOutcome::Completed
+                    }
                     Ok(ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed) => {
+                        ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
+                    }
+                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::RecoveryRequired) => {
                         ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
                     }
                     Ok(ports::job_runtime_control::RuntimeTaskOutcome::Panicked) => {
@@ -420,7 +426,13 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                     Ok(ports::job_runtime_control::RuntimeTaskOutcome::Completed) => {
                         ports::job_runtime_control::RuntimeCleanupOutcome::Completed
                     }
+                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::DeletedNoOp) => {
+                        ports::job_runtime_control::RuntimeCleanupOutcome::Completed
+                    }
                     Ok(ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed) => {
+                        ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
+                    }
+                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::RecoveryRequired) => {
                         ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
                     }
                     Ok(ports::job_runtime_control::RuntimeTaskOutcome::Panicked) => {
