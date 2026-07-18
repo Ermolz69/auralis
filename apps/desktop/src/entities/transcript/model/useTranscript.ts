@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { listen } from '@/shared/api/tauri';
+import { toCommandError } from '@/shared/api/contracts';
 import { getTranscript } from '../api/transcriptApi';
 import type { Transcript } from './types';
 
@@ -24,7 +25,7 @@ export function useTranscript(projectId: string | null) {
       }
     } catch (err: any) {
       if (activeProjectId.current === id) {
-        setError(err?.toString() || 'Failed to load transcript');
+        setError(toCommandError(err).message);
       }
     } finally {
       if (activeProjectId.current === id) {

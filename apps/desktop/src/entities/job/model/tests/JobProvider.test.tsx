@@ -45,8 +45,12 @@ describe('JobProvider React Integration', () => {
 
     const { rerender } = render(
       <JobProvider projectId="project-1">
-        <TestConsumer onState={(s) => { capturedState = s; }} />
-      </JobProvider>
+        <TestConsumer
+          onState={(s) => {
+            capturedState = s;
+          }}
+        />
+      </JobProvider>,
     );
 
     // Initial render
@@ -67,8 +71,12 @@ describe('JobProvider React Integration', () => {
     // Re-render the provider with the same project ID
     rerender(
       <JobProvider projectId="project-1">
-        <TestConsumer onState={(s) => { capturedState = s; }} />
-      </JobProvider>
+        <TestConsumer
+          onState={(s) => {
+            capturedState = s;
+          }}
+        />
+      </JobProvider>,
     );
 
     // The synchronizer MUST NOT have been recreated!
@@ -79,7 +87,7 @@ describe('JobProvider React Integration', () => {
     const { rerender, unmount } = render(
       <JobProvider projectId="project-1">
         <div />
-      </JobProvider>
+      </JobProvider>,
     );
 
     expect(mockStartCycle).toHaveBeenLastCalledWith('project-1');
@@ -89,7 +97,7 @@ describe('JobProvider React Integration', () => {
     rerender(
       <JobProvider projectId="project-2">
         <div />
-      </JobProvider>
+      </JobProvider>,
     );
 
     expect(mockDispose).toHaveBeenCalledTimes(1);
@@ -105,8 +113,12 @@ describe('JobProvider React Integration', () => {
 
     render(
       <JobProvider projectId="project-1">
-        <TestConsumer onState={(s) => { capturedState = s; }} />
-      </JobProvider>
+        <TestConsumer
+          onState={(s) => {
+            capturedState = s;
+          }}
+        />
+      </JobProvider>,
     );
 
     const dispatch = mockConstructor.mock.calls[0][0];
@@ -127,7 +139,7 @@ describe('JobProvider React Integration', () => {
         <JobProvider projectId="project-1">
           <div />
         </JobProvider>
-      </React.StrictMode>
+      </React.StrictMode>,
     );
 
     // StrictMode setup -> cleanup -> setup replay will result in:

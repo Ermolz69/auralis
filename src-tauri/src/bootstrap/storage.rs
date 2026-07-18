@@ -78,34 +78,40 @@ pub fn setup_storage(
             );
         let report = tauri::async_runtime::block_on(use_case.execute())?;
 
-        for warning in &report.warnings {
-            tracing::warn!("Recovery warning: {:?}", warning);
+        if !report.warnings.is_empty() {
+            tracing::warn!(
+                count = report.warnings.len(),
+                "Recovery warning(s) occurred"
+            );
         }
-        for violation in &report.resolved_violations {
-            tracing::info!("Recovery resolved violation: {:?}", violation);
+        if !report.resolved_violations.is_empty() {
+            tracing::info!(
+                count = report.resolved_violations.len(),
+                "Recovery resolved violation(s)"
+            );
         }
 
         if report.has_blocking_failures() {
-            for failure in &report.persistence_failures {
+            if !report.persistence_failures.is_empty() {
                 tracing::error!(
                     error = %common::observability::redaction::DiagnosticError {
                         kind: "RecoveryPersistenceFailure",
                         code: None,
                         retryable: false,
                     },
-                    failure = ?failure,
-                    "Recovery persistence failure"
+                    count = report.persistence_failures.len(),
+                    "Recovery persistence failure occurred"
                 );
             }
-            for violation in &report.unresolved_violations {
+            if !report.unresolved_violations.is_empty() {
                 tracing::error!(
                     error = %common::observability::redaction::DiagnosticError {
                         kind: "RecoveryUnresolvedViolation",
                         code: None,
                         retryable: false,
                     },
-                    violation = ?violation,
-                    "Recovery unresolved violation"
+                    count = report.unresolved_violations.len(),
+                    "Recovery unresolved violation occurred"
                 );
             }
             return Err("Startup halted due to fatal state recovery issues.".into());
@@ -139,5 +145,113 @@ pub fn setup_storage(
             },
             Some(outbox_repo),
         ))
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use application::usecases::system::recover_interrupted::report::{
+        PersistenceFailure, RecoveryActionType, RecoveryReport,
+    };
+    use domain::system::recovery::{RecoveryIssueType, RecoveryViolation};
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::fmt::MakeWriter;
+
+    #[derive(Clone)]
+    struct MockWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl<'a> MakeWriter<'a> for MockWriter {
+        type Writer = Self;
+        fn make_writer(&self) -> Self::Writer {
+            self.clone()
+        }
+    }
+
+    impl std::io::Write for MockWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.buf.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_recovery_logging_redaction() {
+        let mut report = RecoveryReport::new();
+        report.add_persistence_failure(PersistenceFailure {
+            action_kind: RecoveryActionType::FailInterruptedPair,
+            project_id: None,
+            job_id: None,
+            error_type: "DB_ERROR".to_string(),
+            message: "sqlx::Error::Database(C:\\Users\\secret\\video.mp4 token=SECRET Bearer token SELECT * FROM projects)".to_string(),
+        });
+        report.unresolved_violations.push(RecoveryViolation {
+            project_id: None,
+            job_id: None,
+            issue_type: RecoveryIssueType::OrphanActiveJob,
+            message: "Failed/secret/path token=XYZ Bearer BearerToken".to_string(),
+        });
+
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        let writer = MockWriter { buf: buf.clone() };
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(writer)
+            .with_ansi(false)
+            .finish();
+
+        tracing::subscriber::with_default(subscriber, || {
+            if !report.warnings.is_empty() {
+                tracing::warn!(
+                    count = report.warnings.len(),
+                    "Recovery warning(s) occurred"
+                );
+            }
+            if !report.resolved_violations.is_empty() {
+                tracing::info!(
+                    count = report.resolved_violations.len(),
+                    "Recovery resolved violation(s)"
+                );
+            }
+            if report.has_blocking_failures() {
+                if !report.persistence_failures.is_empty() {
+                    tracing::error!(
+                        error = %common::observability::redaction::DiagnosticError {
+                            kind: "RecoveryPersistenceFailure",
+                            code: None,
+                            retryable: false,
+                        },
+                        count = report.persistence_failures.len(),
+                        "Recovery persistence failure occurred"
+                    );
+                }
+                if !report.unresolved_violations.is_empty() {
+                    tracing::error!(
+                        error = %common::observability::redaction::DiagnosticError {
+                            kind: "RecoveryUnresolvedViolation",
+                            code: None,
+                            retryable: false,
+                        },
+                        count = report.unresolved_violations.len(),
+                        "Recovery unresolved violation occurred"
+                    );
+                }
+            }
+        });
+
+        let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
+        assert!(logs.contains("RecoveryPersistenceFailure"));
+        assert!(logs.contains("RecoveryUnresolvedViolation"));
+
+        assert!(!logs.contains("secret"));
+        assert!(!logs.contains("SECRET"));
+        assert!(!logs.contains("token"));
+        assert!(!logs.contains("Bearer"));
+        assert!(!logs.contains("sqlx"));
+        assert!(!logs.contains("SELECT"));
     }
 }

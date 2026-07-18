@@ -11,12 +11,14 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2.0"
 domain = { path = "../domain" }
 ports = { path = "../ports" }
+common = { path = "../common" }
 async-trait = "0.1.89"
 tracing = "0.1.44"
 futures = "0.3.32"
 
 [dev-dependencies]
 serde_json = "1.0.150"
+tracing-subscriber = "0.3"
 
 [lints]
 workspace = true

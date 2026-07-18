@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isCommandError } from './error';
+import { isCommandError, toCommandError } from './error';
 
 describe('isCommandError', () => {
   it('returns true for valid NOT_FOUND error', () => {
@@ -25,5 +25,29 @@ describe('isCommandError', () => {
   it('returns false for non-object', () => {
     expect(isCommandError('error string')).toBe(false);
     expect(isCommandError(null)).toBe(false);
+  });
+});
+
+describe('toCommandError', () => {
+  it('returns a clean copy of valid CommandError and drops extra fields', () => {
+    const raw = { code: 'BUSY' as const, message: 'Busy message', debug: 'SECRET' };
+    const res = toCommandError(raw);
+    expect(res).toEqual({ code: 'BUSY', message: 'Busy message' });
+    expect((res as any).debug).toBeUndefined();
+  });
+
+  it('returns generic INTERNAL for string errors', () => {
+    const res = toCommandError('C:\\Users\\secret\\video.mp4 token=SECRET Bearer token');
+    expect(res).toEqual({ code: 'INTERNAL', message: 'An unexpected system error occurred' });
+  });
+
+  it('returns generic INTERNAL for generic Error objects', () => {
+    const res = toCommandError(new Error('sensitive DB error'));
+    expect(res).toEqual({ code: 'INTERNAL', message: 'An unexpected system error occurred' });
+  });
+
+  it('returns generic INTERNAL for malformed objects', () => {
+    const res = toCommandError({ code: 'NOT_FOUND', msg: 'wrong field' });
+    expect(res).toEqual({ code: 'INTERNAL', message: 'An unexpected system error occurred' });
   });
 });

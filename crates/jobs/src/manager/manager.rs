@@ -87,8 +87,15 @@ impl JobManager {
     pub async fn list_jobs_internal(&self) -> Vec<Job> {
         let mut jobs = match self.repo.list_recent(100).await {
             Ok(j) => j,
-            Err(e) => {
-                tracing::warn!("Failed to list recent jobs from repo: {}", e);
+            Err(_e) => {
+                tracing::warn!(
+                    error = %common::observability::redaction::DiagnosticError {
+                        kind: "RepositoryListRecentJobsFailed",
+                        code: None,
+                        retryable: true,
+                    },
+                    "Failed to list recent jobs from repository"
+                );
                 // Fallback to cache
                 self.cache.list_all().await
             }

@@ -446,3 +446,93 @@ async fn test_drain_all_scenarios() {
     let res_double = manager.drain_all(Duration::from_millis(100)).await;
     assert!(matches!(res_double, Err(PortError::AlreadyStopped)));
 }
+
+#[tokio::test]
+async fn test_list_recent_jobs_tracing_redaction() {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::fmt::MakeWriter;
+
+    #[derive(Clone)]
+    struct MockWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl<'a> MakeWriter<'a> for MockWriter {
+        type Writer = Self;
+        fn make_writer(&self) -> Self::Writer {
+            self.clone()
+        }
+    }
+
+    impl std::io::Write for MockWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.buf.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    struct FailingRepo;
+    #[async_trait]
+    impl JobRepository for FailingRepo {
+        async fn create(&self, j: Job) -> Result<Job, PortError> {
+            Ok(j)
+        }
+        async fn get(&self, _id: &JobId) -> Result<Option<Job>, PortError> {
+            Ok(None)
+        }
+        async fn save(&self, _j: &Job, _r: u64) -> Result<(), PortError> {
+            Ok(())
+        }
+        async fn list_by_project(
+            &self,
+            _pid: &domain::project::ProjectId,
+        ) -> Result<Vec<Job>, PortError> {
+            Ok(vec![])
+        }
+        async fn list_active(&self) -> Result<Vec<Job>, PortError> {
+            Ok(vec![])
+        }
+        async fn list_recent(&self, _limit: usize) -> Result<Vec<Job>, PortError> {
+            Err(PortError::Unexpected {
+                message: "sqlx::Error::Database(C:\\Users\\secret\\video.mp4 token=SECRET Bearer sct_token SELECT * FROM projects)".to_string(),
+            })
+        }
+    }
+
+    let repo = Arc::new(FailingRepo);
+    let uow = Arc::new(MockStorageUnitOfWork::new(Arc::new(
+        tokio::sync::Mutex::new(HashMap::new()),
+    )));
+    let manager = JobManager::new(repo, uow, None);
+
+    let buf = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let writer = MockWriter { buf: buf.clone() };
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(writer)
+        .with_ansi(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        let handle = tokio::runtime::Handle::current();
+        let _ = handle.enter();
+        futures::executor::block_on(async {
+            manager.list_jobs_internal().await;
+        });
+    });
+
+    let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
+    assert!(logs.contains("RepositoryListRecentJobsFailed"));
+    assert!(logs.contains("Failed to list recent jobs from repository"));
+
+    assert!(!logs.contains("secret"));
+    assert!(!logs.contains("SECRET"));
+    assert!(!logs.contains("token"));
+    assert!(!logs.contains("Bearer"));
+    assert!(!logs.contains("sct_token"));
+    assert!(!logs.contains("sqlx"));
+    assert!(!logs.contains("SELECT"));
+}

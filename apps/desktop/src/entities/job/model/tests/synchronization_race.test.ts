@@ -86,7 +86,12 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveSnapshot: any;
-    (getJobsSnapshot as any).mockImplementation(() => new Promise((r) => { resolveSnapshot = r; }));
+    (getJobsSnapshot as any).mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveSnapshot = r;
+        }),
+    );
 
     const startPromise = synchronizer.startCycle('p1');
 
@@ -111,7 +116,12 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveFetch: any;
-    (getJobsSnapshot as any).mockImplementation(() => new Promise((r) => { resolveFetch = r; }));
+    (getJobsSnapshot as any).mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveFetch = r;
+        }),
+    );
 
     await synchronizer.startCycle('p1');
     expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
@@ -134,8 +144,18 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
 
     let resolveFetch1: any, resolveFetch2: any;
     (getJobsSnapshot as any)
-      .mockImplementationOnce(() => new Promise((r) => { resolveFetch1 = r; }))
-      .mockImplementationOnce(() => new Promise((r) => { resolveFetch2 = r; }));
+      .mockImplementationOnce(
+        () =>
+          new Promise((r) => {
+            resolveFetch1 = r;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((r) => {
+            resolveFetch2 = r;
+          }),
+      );
 
     await synchronizer.startCycle('p1');
 
@@ -163,7 +183,12 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveSnapshotProj1: any;
-    (getJobsSnapshot as any).mockImplementationOnce(() => new Promise((r) => { resolveSnapshotProj1 = r; }));
+    (getJobsSnapshot as any).mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          resolveSnapshotProj1 = r;
+        }),
+    );
 
     await synchronizer.startCycle('p1');
 
@@ -175,7 +200,9 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SNAPSHOT_RESOLVED', generation: 1 }));
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SNAPSHOT_RESOLVED', generation: 1 }),
+    );
   });
 
   it('ignores snapshot resolution after dispose', async () => {
@@ -183,7 +210,12 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveSnapshot: any;
-    (getJobsSnapshot as any).mockImplementation(() => new Promise((r) => { resolveSnapshot = r; }));
+    (getJobsSnapshot as any).mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveSnapshot = r;
+        }),
+    );
 
     await synchronizer.startCycle('p1');
     synchronizer.dispose();
@@ -193,7 +225,9 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SNAPSHOT_RESOLVED' }));
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SNAPSHOT_RESOLVED' }),
+    );
   });
 });
 

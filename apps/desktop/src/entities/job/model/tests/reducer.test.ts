@@ -65,7 +65,7 @@ describe('jobStoreReducer', () => {
       phase: 'ready',
       scopeProjectId: 'p1',
       jobs: {
-        'j1': createJob('j1', 1),
+        j1: createJob('j1', 1),
       },
       buffer: [createEvent(createJob('j2', 1))],
       pendingRefetch: true,
@@ -86,7 +86,7 @@ describe('jobStoreReducer', () => {
       phase: 'ready',
       scopeProjectId: 'p1',
       jobs: {
-        'j1': createJob('j1', 1),
+        j1: createJob('j1', 1),
       },
       buffer: [createEvent(createJob('j2', 1))],
       pendingRefetch: true,
@@ -138,7 +138,7 @@ describe('jobStoreReducer', () => {
       phase: 'ready',
       scopeProjectId: 'p1',
       jobs: {
-        'j1': jobV2,
+        j1: jobV2,
       },
       buffer: [],
       pendingRefetch: false,
@@ -147,12 +147,20 @@ describe('jobStoreReducer', () => {
 
     // Older revision (1 < 2)
     const eventV1 = createEvent(createJob('j1', 1));
-    const state1 = jobStoreReducer(state, { type: 'EVENT_RECEIVED', event: eventV1, generation: 1 });
+    const state1 = jobStoreReducer(state, {
+      type: 'EVENT_RECEIVED',
+      event: eventV1,
+      generation: 1,
+    });
     expect(state1.jobs['j1'].revision).toBe(2);
 
     // Equal revision (2 === 2)
     const eventV2 = createEvent(createJob('j1', 2));
-    const state2 = jobStoreReducer(state, { type: 'EVENT_RECEIVED', event: eventV2, generation: 1 });
+    const state2 = jobStoreReducer(state, {
+      type: 'EVENT_RECEIVED',
+      event: eventV2,
+      generation: 1,
+    });
     expect(state2.jobs['j1'].revision).toBe(2);
   });
 
@@ -162,7 +170,7 @@ describe('jobStoreReducer', () => {
       phase: 'ready',
       scopeProjectId: 'p1',
       jobs: {
-        'j1': jobV1,
+        j1: jobV1,
       },
       buffer: [],
       pendingRefetch: false,
@@ -170,7 +178,11 @@ describe('jobStoreReducer', () => {
     };
 
     const eventV2 = createEvent(createJob('j1', 2));
-    const nextState = jobStoreReducer(state, { type: 'EVENT_RECEIVED', event: eventV2, generation: 1 });
+    const nextState = jobStoreReducer(state, {
+      type: 'EVENT_RECEIVED',
+      event: eventV2,
+      generation: 1,
+    });
     expect(nextState.jobs['j1'].revision).toBe(2);
   });
 
@@ -180,7 +192,7 @@ describe('jobStoreReducer', () => {
       phase: 'ready',
       scopeProjectId: 'p1',
       jobs: {
-        'j1': jobV1,
+        j1: jobV1,
       },
       buffer: [],
       pendingRefetch: false,
@@ -189,7 +201,11 @@ describe('jobStoreReducer', () => {
 
     // Gap (3 > 1 + 1)
     const eventV3 = createEvent(createJob('j1', 3));
-    const nextState = jobStoreReducer(state, { type: 'EVENT_RECEIVED', event: eventV3, generation: 1 });
+    const nextState = jobStoreReducer(state, {
+      type: 'EVENT_RECEIVED',
+      event: eventV3,
+      generation: 1,
+    });
     expect(nextState.phase).toBe('stale');
     expect(nextState.pendingRefetch).toBe(true);
   });

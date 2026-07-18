@@ -2,6 +2,7 @@ import { useState, useRef, useLayoutEffect } from 'react';
 import { Button } from '../../../shared/ui/button';
 import { useProjectContext, startProjectMockPipeline } from '@/entities/project';
 import { toast } from '@/shared/ui/toast';
+import { toCommandError } from '@/shared/api/contracts';
 
 export const RunDubbing = () => {
   const [isStarting, setIsStarting] = useState(false);
@@ -35,8 +36,7 @@ export const RunDubbing = () => {
     activeAttemptRef.current = attemptId;
 
     const ownsAttempt = () =>
-      latestAttemptRef.current === attemptId &&
-      activeAttemptRef.current === attemptId;
+      latestAttemptRef.current === attemptId && activeAttemptRef.current === attemptId;
 
     const isCurrentAttempt = () => ownsAttempt() && validateToken(token);
 
@@ -51,8 +51,9 @@ export const RunDubbing = () => {
       setProject(response.project);
     } catch (e: any) {
       if (!isCurrentAttempt()) return;
-      console.error('Failed to start mock dubbing job', e);
-      toast.error(e?.message || 'Failed to start pipeline');
+      const cmdErr = toCommandError(e);
+      console.error('Failed to start mock dubbing job', cmdErr);
+      toast.error(cmdErr.message);
     } finally {
       if (ownsAttempt()) {
         activeAttemptRef.current = null;
@@ -72,4 +73,3 @@ export const RunDubbing = () => {
     </Button>
   );
 };
-

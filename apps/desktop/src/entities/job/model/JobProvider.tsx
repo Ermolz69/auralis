@@ -6,12 +6,12 @@ import type { JobStoreState } from './types';
 
 export const JobContext = createContext<JobStoreState | null>(null);
 
-export function JobProvider({ 
-  projectId, 
-  children 
-}: { 
-  projectId: string | null; 
-  children: ReactNode 
+export function JobProvider({
+  projectId,
+  children,
+}: {
+  projectId: string | null;
+  children: ReactNode;
 }) {
   const [state, dispatch] = useReducer(jobStoreReducer, projectId, initializeStore);
 
@@ -41,9 +41,5 @@ export function JobProvider({
     }
   }, [state.pendingRefetch, state.generation]);
 
-  return (
-    <JobContext.Provider value={state}>
-      {children}
-    </JobContext.Provider>
-  );
+  return <JobContext.Provider value={state}>{children}</JobContext.Provider>;
 }

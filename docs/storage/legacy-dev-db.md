@@ -52,13 +52,13 @@ The current staleness contract is `15 minutes`.
 
 ## Resume Matrix
 
-| Durable stage | Expected filesystem state | Next action |
-| --- | --- | --- |
-| `Started` | Legacy DB still live; manifest exists | Checkpoint legacy DB, create and validate backup |
-| `BackupFinalized` | Backup exists and validates; legacy DB still live | Prepare fresh SQLx database |
-| `NewDatabaseReady` | Backup exists; legacy DB live; new DB exists and validates | Move legacy DB files to quarantine |
-| `OldDatabaseQuarantined` | Legacy DB quarantined; new DB still staged | Rename new DB into active database path |
-| `NewDatabaseActivated` | Active DB is SQLx-managed; backup still exists | Remove quarantine and transition manifest |
+| Durable stage            | Expected filesystem state                                  | Next action                                      |
+| ------------------------ | ---------------------------------------------------------- | ------------------------------------------------ |
+| `Started`                | Legacy DB still live; manifest exists                      | Checkpoint legacy DB, create and validate backup |
+| `BackupFinalized`        | Backup exists and validates; legacy DB still live          | Prepare fresh SQLx database                      |
+| `NewDatabaseReady`       | Backup exists; legacy DB live; new DB exists and validates | Move legacy DB files to quarantine               |
+| `OldDatabaseQuarantined` | Legacy DB quarantined; new DB still staged                 | Rename new DB into active database path          |
+| `NewDatabaseActivated`   | Active DB is SQLx-managed; backup still exists             | Remove quarantine and transition manifest        |
 
 Each stage is repeatable. On resume, the implementation checks the actual file
 state first and either performs the next idempotent operation or returns a typed

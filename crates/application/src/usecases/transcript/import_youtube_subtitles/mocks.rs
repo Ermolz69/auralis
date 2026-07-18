@@ -208,7 +208,7 @@ impl TempWorkspacePort for MockWorkspacePortForSubs {
             .lock()
             .unwrap()
             .clone()
-            .unwrap_or_default();
+            .unwrap_or_default(); // allow-fallback
         Ok(p)
     }
     async fn cleanup_stale_allocations(

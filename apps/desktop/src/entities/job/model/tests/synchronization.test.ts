@@ -16,9 +16,22 @@ describe('JobStoreSynchronizer - Core', () => {
   let currentState: JobStoreState;
 
   const createJob = (id: string, revision: number, projectId: string | null = 'p1'): JobDto => ({
-    id, revision, projectId, title: `Job ${id}`, status: 'pending', stage: null,
-    progress: { percent: 0, message: '', currentStep: null, processedItems: null, totalItems: null },
-    error: null, createdAt: '', updatedAt: '',
+    id,
+    revision,
+    projectId,
+    title: `Job ${id}`,
+    status: 'pending',
+    stage: null,
+    progress: {
+      percent: 0,
+      message: '',
+      currentStep: null,
+      processedItems: null,
+      totalItems: null,
+    },
+    error: null,
+    createdAt: '',
+    updatedAt: '',
   });
 
   const createEvent = (job: JobDto, kind: any = 'created'): JobEventDto => ({
@@ -68,15 +81,21 @@ describe('JobStoreSynchronizer - Core', () => {
 
     (subscribeJobEvents as any).mockImplementation(() => {
       order.push('subscribeJobEvents');
-      return new Promise((r) => { resolveEvents = r; });
+      return new Promise((r) => {
+        resolveEvents = r;
+      });
     });
     (subscribeJobsInvalidated as any).mockImplementation(() => {
       order.push('subscribeJobsInvalidated');
-      return new Promise((r) => { resolveInvalidated = r; });
+      return new Promise((r) => {
+        resolveInvalidated = r;
+      });
     });
     (getJobsSnapshot as any).mockImplementation(() => {
       order.push('getJobsSnapshot');
-      return new Promise((r) => { resolveSnapshot = r; });
+      return new Promise((r) => {
+        resolveSnapshot = r;
+      });
     });
 
     const promise = synchronizer.startCycle('p1');
@@ -136,7 +155,12 @@ describe('JobStoreSynchronizer - Core', () => {
 
   it('does not dispatch if dispose is called during listener registration', async () => {
     let resolveEvents: any;
-    (subscribeJobEvents as any).mockImplementation(() => new Promise((r) => { resolveEvents = r; }));
+    (subscribeJobEvents as any).mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveEvents = r;
+        }),
+    );
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     const promise = synchronizer.startCycle('p1');
@@ -147,12 +171,19 @@ describe('JobStoreSynchronizer - Core', () => {
       await promise;
     });
 
-    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'LISTENERS_REGISTERED' }));
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'LISTENERS_REGISTERED' }),
+    );
   });
 
   it('sets pendingFetch = true and defers fetch if requestFetch is called before listeners are ready', async () => {
     let resolveEvents: any;
-    (subscribeJobEvents as any).mockImplementation(() => new Promise((r) => { resolveEvents = r; }));
+    (subscribeJobEvents as any).mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveEvents = r;
+        }),
+    );
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
     (getJobsSnapshot as any).mockResolvedValue([]);
 
@@ -210,8 +241,12 @@ describe('JobStoreSynchronizer - Core', () => {
     eventCallback1(createEvent(createJob('j1', 1)));
     invalidationCallback1();
 
-    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ generation: 1, type: 'EVENT_RECEIVED' }));
-    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ generation: 1, type: 'INVALIDATION_RECEIVED' }));
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ generation: 1, type: 'EVENT_RECEIVED' }),
+    );
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ generation: 1, type: 'INVALIDATION_RECEIVED' }),
+    );
   });
 
   it('guarantees at most one active snapshot fetch request inside the same generation', async () => {
@@ -219,7 +254,12 @@ describe('JobStoreSynchronizer - Core', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveFetch: any;
-    (getJobsSnapshot as any).mockImplementation(() => new Promise((r) => { resolveFetch = r; }));
+    (getJobsSnapshot as any).mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveFetch = r;
+        }),
+    );
 
     await synchronizer.startCycle('p1');
     expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
@@ -275,7 +315,25 @@ describe('JobStoreSynchronizer - Core', () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(dispatch).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'SNAPSHOT_RESOLVED', generation: 1 }));
+    expect(dispatch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: 'SNAPSHOT_RESOLVED', generation: 1 }),
+    );
+  });
+
+  it('protects against raw leakage in console.error when snapshot fetch fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (subscribeJobEvents as any).mockResolvedValue(vi.fn());
+    (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
+    (getJobsSnapshot as any).mockRejectedValue(
+      new Error('C:\\Users\\secret\\video.mp4 token=SECRET'),
+    );
+    await synchronizer.startCycle('p1');
+    expect(dispatch).toHaveBeenCalledWith({ type: 'FETCH_FAILED', generation: 1 });
+    spy.mock.calls.forEach((call) => {
+      const log = JSON.stringify(call);
+      ['secret', 'SECRET', 'token', 'video.mp4'].forEach((s) => expect(log).not.toContain(s));
+    });
+    spy.mockRestore();
   });
 });
 

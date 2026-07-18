@@ -69,7 +69,10 @@ pub fn map_job_dto(job: &ScheduledJob) -> Result<JobDto, JobDtoMappingError> {
             processed_items: job.progress.processed_items,
             total_items: job.progress.total_items,
         },
-        error: job.error.clone(),
+        error: job
+            .error
+            .as_ref()
+            .map(|_| "An error occurred during job execution.".to_string()),
         created_at: job.created_at,
         updated_at: job.updated_at,
     })
@@ -80,4 +83,54 @@ pub fn map_job_event_dto(event: &JobLifecycleEvent) -> Result<JobEventDto, JobDt
         kind: map_kind(&event.kind),
         job: map_job_dto(&event.job)?,
     })
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use domain::job::{JobId, JobProgress, JobStatus};
+    use domain::project::ProjectId;
+    use ports::job_scheduler::ScheduledJob;
+
+    #[test]
+    fn test_unconditional_job_error_sanitization() {
+        let job = ScheduledJob {
+            id: JobId::new(),
+            revision: 1,
+            project_id: Some(ProjectId::new()),
+            title: "Test Job".to_string(),
+            status: JobStatus::Failed,
+            stage: None,
+            progress: JobProgress {
+                percent: 0,
+                message: "Failed".to_string(),
+                current_step: None,
+                processed_items: None,
+                total_items: None,
+            },
+            error: Some(
+                "sqlx::Error::Database(C:\\secret\\file.mp4 token=SECRET Bearer token)".to_string(),
+            ),
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+        };
+
+        let dto = map_job_dto(&job).unwrap();
+        assert_eq!(
+            dto.error,
+            Some("An error occurred during job execution.".to_string())
+        );
+
+        // Also test map_job_event_dto
+        let event = ports::job_scheduler::JobLifecycleEvent {
+            kind: ports::job_scheduler::JobLifecycleEventKind::Failed,
+            job,
+        };
+        let event_dto = map_job_event_dto(&event).unwrap();
+        assert_eq!(
+            event_dto.job.error,
+            Some("An error occurred during job execution.".to_string())
+        );
+    }
 }

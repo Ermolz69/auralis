@@ -3,6 +3,7 @@ import { createProjectFromYoutube, useProjectContext } from '@/entities/project'
 import type { Job } from '@/entities/job';
 import type { Project } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
+import { toCommandError } from '@/shared/api/contracts';
 
 export function usePasteYoutubeLink() {
   const [url, setUrl] = useState('');
@@ -41,8 +42,7 @@ export function usePasteYoutubeLink() {
     activeAttemptRef.current = attemptId;
 
     const ownsAttempt = () =>
-      latestAttemptRef.current === attemptId &&
-      activeAttemptRef.current === attemptId;
+      latestAttemptRef.current === attemptId && activeAttemptRef.current === attemptId;
 
     const isCurrentAttempt = () => ownsAttempt() && validateToken(token);
 
@@ -62,7 +62,8 @@ export function usePasteYoutubeLink() {
       return response;
     } catch (err: any) {
       if (!isCurrentAttempt()) return null;
-      setError(err?.toString() || 'Failed to start project');
+      const cmdErr = toCommandError(err);
+      setError(cmdErr.message);
       return null;
     } finally {
       if (ownsAttempt()) {
@@ -83,4 +84,3 @@ export function usePasteYoutubeLink() {
     error,
   };
 }
-

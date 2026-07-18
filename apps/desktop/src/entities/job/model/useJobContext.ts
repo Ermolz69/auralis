@@ -7,22 +7,22 @@ export function useJobContext() {
   if (!context) {
     throw new Error('useJobContext must be used within a JobProvider');
   }
-  
+
   const activeJobs = useMemo(() => {
     return Object.values(context.jobs).filter(
-      (j: JobDto) => j.status !== 'completed' && j.status !== 'failed' && j.status !== 'cancelled'
+      (j: JobDto) => j.status !== 'completed' && j.status !== 'failed' && j.status !== 'cancelled',
     );
   }, [context.jobs]);
 
   const completedJobs = useMemo(() => {
     return Object.values(context.jobs).filter(
-      (j: JobDto) => j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled'
+      (j: JobDto) => j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled',
     );
   }, [context.jobs]);
 
   return {
     ...context,
     activeJobs,
-    completedJobs
+    completedJobs,
   };
 }

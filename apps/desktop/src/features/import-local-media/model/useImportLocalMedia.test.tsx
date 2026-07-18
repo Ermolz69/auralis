@@ -213,5 +213,32 @@ describe('useImportLocalMedia', () => {
 
     expect(result.current.error).toBeNull();
   });
-});
 
+  it('protects against raw leakage in local media import errors', async () => {
+    vi.mocked(open).mockResolvedValue('C:\\path\\video.mp4');
+    vi.mocked(createProject).mockResolvedValue({ id: 'p-new' } as any);
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(importLocalMedia).mockRejectedValue(
+      new Error('C:\\Users\\secret\\video.mp4 token=SECRET'),
+    );
+
+    const { result } = renderHook(() => useImportLocalMedia());
+
+    await act(async () => {
+      await result.current.handleImport();
+    });
+
+    expect(result.current.error).toBe('An unexpected system error occurred');
+
+    consoleErrorSpy.mock.calls.forEach((call) => {
+      const logStr = JSON.stringify(call);
+      expect(logStr).not.toContain('secret');
+      expect(logStr).not.toContain('SECRET');
+      expect(logStr).not.toContain('token');
+      expect(logStr).not.toContain('video.mp4');
+    });
+
+    consoleErrorSpy.mockRestore();
+  });
+});

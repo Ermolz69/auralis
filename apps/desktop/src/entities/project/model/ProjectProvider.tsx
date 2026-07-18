@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@/shared/api/tauri';
-import { isCommandError } from '@/shared/api/contracts';
+import { toCommandError } from '@/shared/api/contracts';
 import { ProjectContext } from './context';
 import type { Project } from './types';
 import type { OperationToken } from './context';
@@ -51,7 +51,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const validateToken = (token: OperationToken): boolean => {
-    return deletingProjectIdRef.current === null && token.generation === operationGenerationRef.current;
+    return (
+      deletingProjectIdRef.current === null && token.generation === operationGenerationRef.current
+    );
   };
 
   useEffect(() => {
@@ -97,11 +99,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 return;
               }
 
-              if (isCommandError(e) && e.code === 'NOT_FOUND') {
+              const cmdErr = toCommandError(e);
+              if (cmdErr.code === 'NOT_FOUND') {
                 setProject(null);
-                console.warn('Project no longer exists:', e.message);
+                console.warn('Project no longer exists:', cmdErr.message);
               } else {
-                console.error('Failed to sync project:', e);
+                console.error('Failed to sync project:', cmdErr);
               }
             }
           }
@@ -113,7 +116,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           unlisten = fn;
         }
       } catch (err) {
-        console.warn('Failed to listen to project-updated event:', err);
+        console.warn('Failed to listen to project-updated event:', toCommandError(err));
       }
     };
 
@@ -144,4 +147,3 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     </ProjectContext.Provider>
   );
 }
-
