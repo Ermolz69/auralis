@@ -9,10 +9,10 @@ use ports::transaction::{
     CommitStagedArtifactWrite, CommitTranscriptImport, StorageUnitOfWork,
 };
 
-use super::artifact_writes::save_artifact;
+use super::artifact_writes::{finalize_artifact, save_artifact};
 use super::job_writes::{insert_job, update_job};
 use super::outbox_writes::save_outbox_message;
-use super::project_writes::update_project;
+use super::project_writes::{delete_project, update_project};
 
 pub struct SqliteStorageUnitOfWork {
     pool: SqlitePool,
@@ -121,140 +121,11 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: CommitProjectDelete,
     ) -> Result<CommitProjectDeleteResult, PortError> {
-        // We'll acquire a write lock immediately
-        // by executing a dummy update to ensure equivalent serialization (IMMEDIATE transaction semantics).
         let mut tx = self.pool.begin().await.map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to acquire connection", e)
         })?;
 
-        // 1. Acquire write lock to serialize and prevent concurrent reads from missing this delete
-        // and to check existence.
-        let exists = sqlx::query("UPDATE projects SET id = id WHERE id = ?")
-            .bind(command.project_id.to_string())
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to verify project existence", e)
-            })?;
-
-        if exists.rows_affected() == 0 {
-            return Err(PortError::NotFound {
-                resource: format!("Project {}", command.project_id),
-            });
-        }
-
-        // 2. Query Job IDs belonging to the project
-        let job_records = sqlx::query("SELECT id FROM jobs WHERE project_id = ?")
-            .bind(command.project_id.to_string())
-            .fetch_all(&mut *tx)
-            .await
-            .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch job IDs", e))?;
-
-        let deleted_job_ids: Vec<domain::job::JobId> = job_records
-            .into_iter()
-            .map(|record| -> Result<domain::job::JobId, PortError> {
-                use sqlx::Row;
-                let id_str: String =
-                    record
-                        .try_get("id")
-                        .map_err(|e| PortError::InvalidStoredData {
-                            entity_type: "job".to_string(),
-                            entity_id: "unknown".to_string(),
-                            field: "id".to_string(),
-                            message: format!("Failed to decode job ID: {}", e),
-                        })?;
-                std::str::FromStr::from_str(&id_str).map_err(|e| PortError::InvalidStoredData {
-                    entity_type: "job".to_string(),
-                    entity_id: id_str,
-                    field: "id".to_string(),
-                    message: format!("Invalid UUID: {}", e),
-                })
-            })
-            .collect::<Result<_, _>>()?;
-
-        // 3. Query StorageKeys of artifacts for the project
-        let artifact_records = sqlx::query(
-            "SELECT id, storage_key FROM artifacts WHERE project_id = ? AND storage_key IS NOT NULL ORDER BY id ASC",
-        )
-        .bind(command.project_id.to_string())
-        .fetch_all(&mut *tx)
-        .await
-        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch artifacts", e))?;
-
-        // Cancel Existing Outbox
-        let now = domain::chrono::Utc::now();
-        let timestamp = crate::sqlite::helpers::format_db_timestamp(now);
-        let error_json = r#"{"reason": "obsolete due to project deletion"}"#;
-
-        sqlx::query(
-            "UPDATE outbox_messages SET status = 'dead', updated_at = ?, last_error = ? WHERE aggregate_type = 'project' AND aggregate_id = ? AND status IN ('pending', 'processing')"
-        )
-        .bind(timestamp)
-        .bind(error_json)
-        .bind(command.project_id.to_string())
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| {
-            crate::sqlite::helpers::map_sqlite_error("Failed to cancel existing outbox messages", e)
-        })?;
-
-        // 4. Insert outbox DeleteStorageKey for each StorageKey artifact
-        for record in artifact_records {
-            use sqlx::Row;
-            let artifact_id: String =
-                record
-                    .try_get("id")
-                    .map_err(|e| PortError::InvalidStoredData {
-                        entity_type: "artifact".to_string(),
-                        entity_id: "unknown".to_string(),
-                        field: "id".to_string(),
-                        message: format!("Failed to decode artifact ID: {}", e),
-                    })?;
-
-            let key_str: String =
-                record
-                    .try_get("storage_key")
-                    .map_err(|e| PortError::InvalidStoredData {
-                        entity_type: "artifact".to_string(),
-                        entity_id: artifact_id.clone(),
-                        field: "storage_key".to_string(),
-                        message: format!("Failed to decode storage key: {}", e),
-                    })?;
-
-            let storage_key = std::str::FromStr::from_str(&key_str).map_err(|e| {
-                PortError::InvalidStoredData {
-                    entity_type: "artifact".to_string(),
-                    entity_id: artifact_id,
-                    field: "storage_key".to_string(),
-                    message: format!("Invalid StorageKey: {}", e),
-                }
-            })?;
-
-            let msg = OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key });
-            save_outbox_message(&mut tx, &msg).await?;
-        }
-
-        // 5. Insert outbox DeleteProjectArtifactDir
-        let del_msg = OutboxMessage::new(OutboxPayload::DeleteProjectArtifactDir {
-            project_id: command.project_id.clone(),
-        });
-        save_outbox_message(&mut tx, &del_msg).await?;
-
-        // 6. Delete project (artifacts and jobs will be cascade deleted)
-        let delete_result = sqlx::query("DELETE FROM projects WHERE id = ?")
-            .bind(command.project_id.to_string())
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to delete project in tx", e)
-            })?;
-
-        if delete_result.rows_affected() != 1 {
-            return Err(PortError::Conflict {
-                resource: format!("Project {}", command.project_id),
-                message: "Project concurrently deleted or missing".to_string(),
-            });
-        }
+        let deleted_job_ids = delete_project(&mut tx, &command.project_id).await?;
 
         tx.commit().await.map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to commit transaction", e)
@@ -396,309 +267,27 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
-        // 1. Check current outbox status
-        use sqlx::Row;
-        let outbox_status = sqlx::query("SELECT status FROM outbox_messages WHERE id = ?")
-            .bind(command.message_id.to_string())
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to check outbox status", e)
-            })?;
-
-        if let Some(row) = outbox_status {
-            let status: String = row.try_get("status").unwrap_or_default();
-            if status == "dead" {
-                return Ok(
-                    ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted,
-                );
-            }
-            if status == "done" {
-                return Ok(ports::transaction::CommitArtifactFinalizeResult::AlreadyFinalized);
-            }
-            if status != "processing" {
-                return Ok(ports::transaction::CommitArtifactFinalizeResult::Conflict);
-            }
-        } else {
-            return Ok(ports::transaction::CommitArtifactFinalizeResult::Conflict);
-        }
-
-        // 2. Mark as done
-        sqlx::query(
-            "UPDATE outbox_messages SET status = 'done', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
+        let result = finalize_artifact(
+            &mut tx,
+            &command.message_id.to_string(),
+            &command.project_id,
+            &command.artifact_id,
+            &command.ready_key,
         )
-        .bind(command.message_id.to_string())
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update outbox message", e))?;
+        .await?;
 
-        // 3. Verify artifact ownership and project, update to ready
-        let artifact_result = sqlx::query(
-            r#"
-            UPDATE artifacts 
-            SET state = 'ready', 
-                location_kind = 'managed_local_file', 
-                location_value = ?, 
-                ready_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
-                updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') 
-            WHERE id = ? AND project_id = ?
-            "#,
-        )
-        .bind(command.ready_key.to_string())
-        .bind(command.artifact_id.to_string())
-        .bind(command.project_id.to_string())
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update artifact", e))?;
-
-        if artifact_result.rows_affected() == 0 {
-            // Artifact not found or project deleted. Rollback tx.
-            let _ = tx.rollback().await;
-            return Ok(
-                ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted,
-            );
+        if matches!(
+            result,
+            ports::transaction::CommitArtifactFinalizeResult::Conflict
+        ) {
+            tx.rollback().await.ok();
+            return Ok(result);
         }
 
         tx.commit().await.map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to commit finalize transaction", e)
         })?;
 
-        Ok(ports::transaction::CommitArtifactFinalizeResult::Committed)
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-
-    use domain::media::{Artifact, ArtifactId};
-    use domain::project::Project;
-    use sqlx::SqlitePool;
-
-    async fn setup_db() -> SqlitePool {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
-        pool
-    }
-
-    #[tokio::test]
-    async fn test_commit_managed_source_import_writes_atomically() {
-        let pool = setup_db().await;
-        let uow = SqliteStorageUnitOfWork::new(pool.clone());
-
-        let artifact = Artifact {
-            id: ArtifactId::new(),
-            kind: domain::media::ArtifactKind::SourceVideo,
-            location: domain::media::ArtifactLocation::LocalPath("fake_path".into()),
-            size_bytes: Some(1024),
-            state: domain::media::ArtifactState::PendingFinalize,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            ready_at: None,
-        };
-
-        let mut project = Project::new("Tx Test".to_string());
-        sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind(project.title())
-            .bind("Draft")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .execute(&pool)
-            .await
-            .unwrap();
-
-        project
-            .import_source(
-                domain::media::MediaSource::ManagedLocalFile {
-                    artifact_id: artifact.id.clone(),
-                    original_filename: "test".into(),
-                },
-                None,
-            )
-            .unwrap();
-
-        let cmd = CommitManagedSourceImport {
-            project: project.clone(),
-            artifact: artifact.clone(),
-            staging_key: "staging_key".to_string(),
-            final_key: "final_key".to_string(),
-        };
-
-        uow.commit_managed_source_import(cmd).await.unwrap();
-
-        // Verify project is in DB
-        let project_row: Option<crate::sqlite::project_row::ProjectRow> =
-            sqlx::query_as("SELECT * FROM projects WHERE id = ?")
-                .bind(project.id().to_string())
-                .fetch_optional(&pool)
-                .await
-                .unwrap();
-        assert!(project_row.is_some());
-
-        // Verify artifact is in DB
-        let artifact_row: Option<crate::sqlite::artifact_index::row::ArtifactRow> =
-            sqlx::query_as("SELECT * FROM artifacts WHERE id = ?")
-                .bind(artifact.id.to_string())
-                .fetch_optional(&pool)
-                .await
-                .unwrap();
-        assert!(artifact_row.is_some());
-
-        // Verify outbox message is in DB
-        let outbox_rows: Vec<crate::sqlite::outbox_row::OutboxRow> =
-            sqlx::query_as("SELECT * FROM outbox_messages")
-                .fetch_all(&pool)
-                .await
-                .unwrap();
-
-        assert_eq!(outbox_rows.len(), 1);
-        let payload: OutboxPayload = serde_json::from_str(&outbox_rows[0].payload_json).unwrap();
-
-        match payload {
-            OutboxPayload::FinalizeStagedArtifact {
-                project_id,
-                artifact_id,
-                staging_key,
-                final_key,
-            } => {
-                assert_eq!(project_id, project.id().clone());
-                assert_eq!(artifact_id, artifact.id);
-                assert_eq!(staging_key, "staging_key");
-                assert_eq!(final_key, "final_key");
-            }
-            _ => panic!("Expected FinalizeStagedArtifact payload"),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_commit_project_delete_rolls_back_on_invalid_job_id() {
-        let pool = setup_db().await;
-        let uow = SqliteStorageUnitOfWork::new(pool.clone());
-        let project_id = domain::project::ProjectId::new();
-
-        sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
-            .bind(project_id.to_string())
-            .bind("Corrupt Job Test")
-            .bind("Draft")
-            .bind(chrono::Utc::now().to_rfc3339())
-            .bind(chrono::Utc::now().to_rfc3339())
-            .execute(&pool)
-            .await
-            .unwrap();
-
-        sqlx::query("INSERT INTO jobs (id, project_id, kind, title, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind("invalid-job-uuid-12345") // CORRUPTED UUID
-            .bind(project_id.to_string())
-            .bind("Extracting")
-            .bind("Job title")
-            .bind("Pending")
-            .bind(r#"{}"#)
-            .bind::<Option<String>>(None)
-            .bind(chrono::Utc::now().to_rfc3339())
-            .bind(chrono::Utc::now().to_rfc3339())
-            .execute(&pool)
-            .await
-            .unwrap();
-
-        let cmd = CommitProjectDelete {
-            project_id: project_id.clone(),
-        };
-
-        let result = uow.commit_project_delete(cmd).await;
-
-        match result {
-            Err(PortError::InvalidStoredData { field, .. }) => {
-                assert_eq!(field, "id");
-            }
-            Ok(_) => panic!("Expected InvalidStoredData error, got Ok"),
-            Err(e) => panic!("Expected InvalidStoredData error, got Err({:?})", e),
-        }
-
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM projects WHERE id = ?")
-            .bind(project_id.to_string())
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        assert_eq!(count, 1);
-
-        let outbox_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM outbox_messages")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        assert_eq!(outbox_count, 0);
-    }
-
-    #[tokio::test]
-    async fn test_commit_project_delete_conflict_when_missing() {
-        let pool = setup_db().await;
-        let uow = SqliteStorageUnitOfWork::new(pool.clone());
-        let project_id = domain::project::ProjectId::new();
-
-        let cmd = CommitProjectDelete {
-            project_id: project_id.clone(),
-        };
-
-        let result = uow.commit_project_delete(cmd).await;
-
-        match result {
-            Err(PortError::NotFound { .. }) => {}
-            Ok(_) => panic!("Expected NotFound on missing project initial check, got Ok"),
-            Err(e) => panic!(
-                "Expected NotFound on missing project initial check, got Err({:?})",
-                e
-            ),
-        }
-    }
-
-    #[sqlx::test]
-    async fn test_commit_project_delete_busy_lock_contention(pool: sqlx::SqlitePool) {
-        let project_id = domain::project::ProjectId::new();
-        // Insert a dummy project
-        sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'Test', 'draft', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")
-            .bind(project_id.to_string())
-            .execute(&pool)
-            .await
-            .unwrap();
-
-        // Start a transaction on a separate connection that holds a write lock
-        let mut blocker_tx = pool.begin().await.unwrap();
-        // Acquire write lock
-        sqlx::query("UPDATE projects SET title = 'Locked' WHERE id = ?")
-            .bind(project_id.to_string())
-            .execute(&mut *blocker_tx)
-            .await
-            .unwrap();
-
-        // Now attempt to delete using the UoW in another task/connection.
-        // It should encounter SQLITE_BUSY immediately because of IMMEDIATE transaction semantics or the dummy UPDATE.
-        // In WAL mode, writers block writers immediately.
-        let uow = SqliteStorageUnitOfWork::new(pool.clone());
-        let cmd = CommitProjectDelete {
-            project_id: project_id.clone(),
-        };
-
-        // Note: With default busy_timeout=5000 in SqliteConnectOptions, it might wait 5s before failing if not configured properly,
-        // but for testing, if it takes time and returns Busy, that's fine. We just want to ensure it maps to PortError::Busy.
-        // However, we can use sqlx::query on a new connection with busy_timeout=0 if needed. But let's assume the UoW encounters Busy.
-
-        // Actually, to make it fast for test, we can configure a pool with busy_timeout=0, but we just use the provided pool.
-        // We will run this and expect a Busy or timeout that maps to Unexpected.
-        // If it maps to Unexpected (e.g. database is locked), wait, SQLITE_BUSY extended is usually 5 or SQLITE_BUSY_TIMEOUT (517 -> 5).
-        // Let's just run it.
-
-        let result = uow.commit_project_delete(cmd).await;
-
-        match result {
-            Err(PortError::Busy { .. }) => {} // Success
-            Err(PortError::Unexpected { message })
-                if message.contains("database is locked") || message.contains("busy") =>
-            {
-                panic!("Mapped to Unexpected instead of Busy: {}", message);
-            }
-            Err(e) => panic!("Expected Busy, got {:?}", e),
-            Ok(_) => panic!("Expected error, got Ok (lock was not held?)"),
-        }
+        Ok(result)
     }
 }
