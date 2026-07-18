@@ -30,6 +30,12 @@ const meta = {
         setProjectId: () => {},
         project: mockProject,
         setProject: () => {},
+        deletingProjectId: null,
+        beginProjectDeletion: () => false,
+        finishProjectDeletion: () => {},
+        operationGeneration: 0,
+        captureToken: () => ({ generation: 0 }),
+        validateToken: () => true,
       };
 
       return (
