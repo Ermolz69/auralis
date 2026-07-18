@@ -99,8 +99,29 @@ pub fn run() -> Result<(), AppRunError> {
 
     app.run(move |app_handle, event| {
         if let RuntimeLifecycleAction::FinalShutdown = classify_run_event(&event) {
-            use crate::state::{ManagedJobEventBridge, ManagedOutboxWorker, ManagedTracingGuard};
+            use crate::state::{
+                ManagedJobEventBridge, ManagedJobRuntime, ManagedOutboxWorker, ManagedTracingGuard,
+            };
             use tauri::Manager;
+
+            let job_runtime = app_handle
+                .try_state::<ManagedJobRuntime>()
+                .map(|state| state.0.clone());
+
+            let jobs_report = if let Some(runtime) = job_runtime {
+                match tauri::async_runtime::block_on(runtime.drain_all(shutdown_timeout)) {
+                    Ok(rep) => rep,
+                    Err(ports::error::PortError::AlreadyStopped) => {
+                        ports::job_runtime_control::RuntimeShutdownReport::default()
+                    }
+                    Err(e) => {
+                        tracing::error!("Job runtime drain failed: {:?}", e);
+                        ports::job_runtime_control::RuntimeShutdownReport::default()
+                    }
+                }
+            } else {
+                ports::job_runtime_control::RuntimeShutdownReport::default()
+            };
 
             let outbox = app_handle
                 .try_state::<ManagedOutboxWorker>()
@@ -116,7 +137,7 @@ pub fn run() -> Result<(), AppRunError> {
 
             let workers_report =
                 tauri::async_runtime::block_on(shutdown_runtime(outbox, bridge, shutdown_timeout));
-            let final_report = finalize_runtime_shutdown(workers_report, tracing);
+            let final_report = finalize_runtime_shutdown(workers_report, jobs_report, tracing);
 
             let mut guard = shutdown_report_clone
                 .lock()
@@ -211,10 +232,11 @@ impl WorkerShutdownReport {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeShutdownReport {
     pub outbox_outcome: WorkerOutcome,
     pub bridge_outcome: WorkerOutcome,
+    pub jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport,
     pub tracing_outcome: TracingShutdownOutcome,
 }
 
@@ -223,6 +245,9 @@ impl RuntimeShutdownReport {
         self.outbox_outcome.is_graceful()
             && self.bridge_outcome.is_graceful()
             && self.tracing_outcome.is_graceful()
+            && self.jobs_outcome.forced_aborted_count == 0
+            && self.jobs_outcome.unconfirmed_count == 0
+            && self.jobs_outcome.join_failed_count == 0
     }
 }
 
@@ -230,12 +255,14 @@ pub const TRACING_FLUSH_TIMEOUT: std::time::Duration = std::time::Duration::from
 
 pub fn finalize_runtime_shutdown<T: TracingShutdown>(
     workers: WorkerShutdownReport,
+    jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport,
     tracing: Option<T>,
 ) -> RuntimeShutdownReport {
     tracing::info!(
         action = "workers_shutdown_completed",
         outbox_outcome = ?workers.outbox_outcome,
         bridge_outcome = ?workers.bridge_outcome,
+        jobs_outcome = ?jobs_outcome,
         "shutdown_handles: workers finished, initiating tracing flush"
     );
 
@@ -248,6 +275,7 @@ pub fn finalize_runtime_shutdown<T: TracingShutdown>(
     RuntimeShutdownReport {
         outbox_outcome: workers.outbox_outcome,
         bridge_outcome: workers.bridge_outcome,
+        jobs_outcome,
         tracing_outcome,
     }
 }

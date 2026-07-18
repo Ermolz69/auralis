@@ -66,6 +66,10 @@ pub fn setup(
     )?;
 
     // 4. Register all static Tauri state & use cases BEFORE spawning any tasks
+    app.manage(crate::state::ManagedJobRuntime(
+        job_manager.clone() as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>
+    ));
+
     usecases::setup_usecases(
         app.handle(),
         services.project_repo,

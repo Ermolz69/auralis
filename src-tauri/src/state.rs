@@ -62,3 +62,5 @@ impl ManagedTracingGuard {
         }
     }
 }
+
+pub struct ManagedJobRuntime(pub Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>);
