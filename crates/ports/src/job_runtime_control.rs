@@ -10,7 +10,9 @@ use crate::error::PortError;
 pub enum RuntimeTaskOutcome {
     Completed,
     Cancelled,
+    DeletedNoOp,
     ApplicationFailed,
+    RecoveryRequired,
     Panicked,
 }
 
@@ -71,6 +73,18 @@ pub struct RuntimeCleanupReport {
     pub jobs: HashMap<JobId, RuntimeCleanupOutcome>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeShutdownReport {
+    pub completed_count: usize,
+    pub reservation_removed_count: usize,
+    pub cooperative_cancelled_count: usize,
+    pub forced_aborted_count: usize,
+    pub panicked_count: usize,
+    pub join_failed_count: usize,
+    pub unconfirmed_count: usize,
+}
+
 #[async_trait::async_trait]
 pub trait JobRuntimeControlPort: Send + Sync {
     async fn reserve(&self, job_id: JobId, project_id: ProjectId) -> Result<(), PortError>;
@@ -88,4 +102,11 @@ pub trait JobRuntimeControlPort: Send + Sync {
         &self,
         job_ids: &[JobId],
     ) -> Result<RuntimeCleanupReport, PortError>;
+
+    async fn drain_all(
+        &self,
+        _deadline: std::time::Duration,
+    ) -> Result<RuntimeShutdownReport, PortError> {
+        Ok(RuntimeShutdownReport::default())
+    }
 }

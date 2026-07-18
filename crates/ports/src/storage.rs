@@ -44,6 +44,16 @@ pub trait ArtifactStore: Send + Sync {
 
     async fn delete_project_dir(&self, project_id: &ProjectId) -> Result<(), PortError>;
     async fn cleanup_stale_staging(&self, max_age: std::time::Duration) -> Result<(), PortError>;
+
+    async fn stage_owned_workspace_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        workspace_port: &dyn crate::workspace::TempWorkspacePort,
+        allocation_key: &domain::outbox::WorkspaceKey,
+        relative_file: &str,
+        filename_hint: Option<&str>,
+    ) -> Result<StagedArtifact, PortError>;
 }
 
 use std::sync::Arc;
@@ -105,5 +115,26 @@ where
 
     async fn delete_project_dir(&self, project_id: &ProjectId) -> Result<(), PortError> {
         (**self).delete_project_dir(project_id).await
+    }
+
+    async fn stage_owned_workspace_file(
+        &self,
+        project_id: &ProjectId,
+        kind: ArtifactKind,
+        workspace_port: &dyn crate::workspace::TempWorkspacePort,
+        allocation_key: &domain::outbox::WorkspaceKey,
+        relative_file: &str,
+        filename_hint: Option<&str>,
+    ) -> Result<StagedArtifact, PortError> {
+        (**self)
+            .stage_owned_workspace_file(
+                project_id,
+                kind,
+                workspace_port,
+                allocation_key,
+                relative_file,
+                filename_hint,
+            )
+            .await
     }
 }

@@ -59,9 +59,15 @@ pub(super) async fn update_project_conditional(
     expected_active_job_id: Option<&domain::job::JobId>,
 ) -> Result<(), PortError> {
     let row = project_to_row_values(project)?;
-    let expected_status_str = format!("{:?}", expected_status);
+
+    let expected_status_str = serde_json::to_string(expected_status)
+        .map_err(|e| PortError::Unexpected {
+            message: format!("Failed to serialize status: {}", e),
+        })?
+        .trim_matches('"')
+        .to_string();
+
     let expected_active_job_id_str = expected_active_job_id.map(|id| id.to_string());
-    let expected_updated_at_str = expected_updated_at.to_rfc3339();
 
     let result = sqlx::query(
         r#"
@@ -77,33 +83,30 @@ pub(super) async fn update_project_conditional(
             last_terminal_job_id = ?,
             updated_at = ?
         WHERE id = ?
-          AND status = ?
           AND updated_at = ?
-          AND (
-            (active_job_id IS NULL AND ? IS NULL)
-            OR (active_job_id = ?)
-          )
+          AND status = ?
+          AND (active_job_id = ? OR (active_job_id IS NULL AND ? IS NULL))
         "#,
     )
-    .bind(&row.title)
-    .bind(&row.status)
-    .bind(&row.source_json)
-    .bind(&row.metadata_json)
-    .bind(&row.source_language)
-    .bind(&row.target_language)
-    .bind(&row.transcript_json)
-    .bind(&row.active_job_id)
-    .bind(&row.last_terminal_job_id)
-    .bind(&row.updated_at)
-    .bind(&row.id)
+    .bind(row.title)
+    .bind(row.status)
+    .bind(row.source_json)
+    .bind(row.metadata_json)
+    .bind(row.source_language)
+    .bind(row.target_language)
+    .bind(row.transcript_json)
+    .bind(row.active_job_id)
+    .bind(row.last_terminal_job_id)
+    .bind(row.updated_at)
+    .bind(row.id.clone())
+    .bind(expected_updated_at.to_rfc3339())
     .bind(expected_status_str)
-    .bind(expected_updated_at_str)
-    .bind(&expected_active_job_id_str)
-    .bind(&expected_active_job_id_str)
+    .bind(expected_active_job_id_str.clone())
+    .bind(expected_active_job_id_str)
     .execute(&mut **tx)
     .await
     .map_err(|e| {
-        crate::sqlite::helpers::map_sqlite_error("Failed to conditionally update project in tx", e)
+        crate::sqlite::helpers::map_sqlite_error("Failed to update project conditionally in tx", e)
     })?;
 
     if result.rows_affected() == 0 {
@@ -112,18 +115,20 @@ pub(super) async fn update_project_conditional(
             .fetch_one(&mut **tx)
             .await
             .map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to check project existence", e)
+                crate::sqlite::helpers::map_sqlite_error(
+                    "Failed to check project existence conditionally",
+                    e,
+                )
             })?;
 
-        if !exists {
-            return Err(PortError::NotFound {
-                resource: format!("Project {}", row.id),
+        if exists {
+            return Err(PortError::Conflict {
+                resource: "Project".to_string(),
+                message: "Project state changed concurrently".to_string(),
             });
         } else {
-            return Err(PortError::Conflict {
-                resource: format!("Project {}", row.id),
-                message: "CAS update failed: status, active_job_id, or updated_at mismatch"
-                    .to_string(),
+            return Err(PortError::NotFound {
+                resource: "Project".to_string(),
             });
         }
     }

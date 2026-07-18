@@ -1,6 +1,5 @@
-import { listen } from '@tauri-apps/api/event';
+import { getJobsSnapshot, subscribeJobEvents, subscribeJobsInvalidated } from '../api/jobApi';
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
 import type { Dispatch } from 'react';
 import type { JobStoreAction } from './reducer';
 import { DEFAULT_JOB_SYNCHRONIZATION_CONFIG } from './types';
@@ -13,13 +12,17 @@ export class JobStoreSynchronizer {
   private activeGeneration: number = 0;
   private activeProjectId: string | null = null;
 
-  // Debouncing & fetching
+  // Single-flight and readiness
   private fetchInProgress = false;
-  private chainFetchCount = 0;
-  
+  private activeFetchGeneration: number | null = null;
+  private pendingFetch = false;
+  private listenersReadyGeneration: number | null = null;
+
   // Backoff timers
-  private retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private retryAttempt = 0;
+  private listenerRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private snapshotRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private listenerRetryAttempt = 0;
+  private snapshotRetryAttempt = 0;
 
   private dispatch: Dispatch<JobStoreAction>;
   private getState: () => JobStoreState;
@@ -33,53 +36,46 @@ export class JobStoreSynchronizer {
   }
 
   public async startCycle(projectId: string | null) {
-    this.cleanup(); 
-    
-    this.dispatch({ type: 'INITIALIZATION_CYCLE' });
-    const state = this.getState();
-    this.activeGeneration = state.generation;
+    const previousProjectId = this.activeProjectId;
+    const newGeneration = ++this.activeGeneration;
+    const expectedGen = newGeneration;
+
+    this.cleanupCycle();
+
     this.activeProjectId = projectId;
-    this.chainFetchCount = 0;
+    this.listenersReadyGeneration = null;
+    this.activeFetchGeneration = null;
     this.fetchInProgress = false;
+    this.pendingFetch = false;
+    this.listenerRetryAttempt = 0;
+    this.snapshotRetryAttempt = 0;
 
-    try {
-      const [unlistenJ, unlistenInv] = await Promise.all([
-        listen('job-lifecycle-event', (event) => {
-          this.handleEvent(event.payload);
-        }),
-        listen('job-lifecycle-invalidated', () => {
-          this.handleInvalidation();
-        }),
-      ]);
-
-      if (this.activeGeneration !== state.generation || this.activeProjectId !== projectId) {
-        unlistenJ();
-        unlistenInv();
-        return;
-      }
-
-      this.unlistenJobs = unlistenJ;
-      this.unlistenInvalidation = unlistenInv;
-
-      this.dispatch({ type: 'LISTENERS_REGISTERED' });
-      this.triggerFetchLoop();
-    } catch (err) {
-      console.warn('JobStore: Failed to register Tauri listeners', err);
-      this.cleanupListeners();
-      this.dispatch({ type: 'LISTENERS_FAILED' });
-      this.scheduleRetry();
+    if (projectId === null) {
+      this.dispatch({ type: 'SWITCH_PROJECT', projectId: null, generation: expectedGen });
+      return;
     }
+
+    if (projectId !== previousProjectId) {
+      this.dispatch({ type: 'SWITCH_PROJECT', projectId, generation: expectedGen });
+    } else {
+      this.dispatch({ type: 'INITIALIZATION_CYCLE', generation: expectedGen });
+    }
+
+    await this.registerListeners(expectedGen);
   }
 
   public dispose() {
-    this.cleanup();
+    this.activeGeneration++;
+    this.cleanupCycle();
+    this.listenersReadyGeneration = null;
+    this.activeFetchGeneration = null;
+    this.fetchInProgress = false;
+    this.pendingFetch = false;
   }
 
-  private cleanup() {
+  private cleanupCycle() {
     this.cleanupListeners();
     this.clearTimers();
-    this.activeGeneration = 0; 
-    this.activeProjectId = null;
   }
 
   private cleanupListeners() {
@@ -94,65 +90,149 @@ export class JobStoreSynchronizer {
   }
 
   private clearTimers() {
-    if (this.retryTimeoutId !== null) {
-      clearTimeout(this.retryTimeoutId);
-      this.retryTimeoutId = null;
+    if (this.listenerRetryTimer !== null) {
+      clearTimeout(this.listenerRetryTimer);
+      this.listenerRetryTimer = null;
+    }
+    if (this.snapshotRetryTimer !== null) {
+      clearTimeout(this.snapshotRetryTimer);
+      this.snapshotRetryTimer = null;
     }
   }
 
-  private handleEvent(payload: unknown) {
+  private async registerListeners(expectedGen: number) {
+    if (this.activeGeneration !== expectedGen) return;
+
+    this.cleanupListeners();
+    let unlistenJ: UnlistenFn | null = null;
+    let unlistenInv: UnlistenFn | null = null;
+
+    try {
+      unlistenJ = await subscribeJobEvents((event) => {
+        this.handleEvent(event, expectedGen);
+      });
+      if (this.activeGeneration !== expectedGen) {
+        if (unlistenJ) unlistenJ();
+        return;
+      }
+
+      unlistenInv = await subscribeJobsInvalidated(() => {
+        this.handleInvalidation(expectedGen);
+      });
+      if (this.activeGeneration !== expectedGen) {
+        if (unlistenJ) unlistenJ();
+        if (unlistenInv) unlistenInv();
+        return;
+      }
+
+      this.unlistenJobs = unlistenJ;
+      this.unlistenInvalidation = unlistenInv;
+      this.listenersReadyGeneration = expectedGen;
+      this.listenerRetryAttempt = 0;
+
+      this.dispatch({ type: 'LISTENERS_REGISTERED', generation: expectedGen });
+      
+      this.performFetch(expectedGen);
+    } catch (err) {
+      console.warn('JobStore: Failed to register Tauri listeners', err);
+      if (unlistenJ) unlistenJ();
+      if (unlistenInv) unlistenInv();
+
+      if (this.activeGeneration === expectedGen) {
+        this.dispatch({ type: 'LISTENERS_FAILED', generation: expectedGen });
+        this.scheduleListenerRetry(expectedGen);
+      }
+    }
+  }
+
+  private scheduleListenerRetry(expectedGen: number) {
+    if (this.listenerRetryTimer !== null) {
+      clearTimeout(this.listenerRetryTimer);
+    }
+
+    const exponent = Math.min(this.listenerRetryAttempt, DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryExponentLimit, 30);
+    const delay = Math.min(
+      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryInitialMs * Math.pow(2, exponent),
+      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryMaxMs
+    );
+    this.listenerRetryAttempt++;
+
+    this.listenerRetryTimer = setTimeout(() => {
+      this.listenerRetryTimer = null;
+      if (this.activeGeneration !== expectedGen) return;
+      void this.registerListeners(expectedGen);
+    }, delay);
+  }
+
+  private handleEvent(payload: unknown, expectedGen: number) {
+    if (this.activeGeneration !== expectedGen) return;
+
     if (!validateJobEventDto(payload)) {
-      console.warn('JobStore: Received invalid job event', payload);
-      this.handleInvalidation();
+      console.warn('JobStore: Received invalid job event');
+      this.dispatch({ type: 'INVALIDATION_RECEIVED', generation: expectedGen });
+      this.requestFetch(expectedGen);
       return;
     }
-    this.dispatch({ type: 'EVENT_RECEIVED', event: payload });
+    this.dispatch({ type: 'EVENT_RECEIVED', event: payload, generation: expectedGen });
   }
 
-  private handleInvalidation() {
-    this.dispatch({ type: 'INVALIDATION_RECEIVED' });
-    this.triggerFetchLoop();
+  private handleInvalidation(expectedGen: number) {
+    if (this.activeGeneration !== expectedGen) return;
+
+    this.dispatch({ type: 'INVALIDATION_RECEIVED', generation: expectedGen });
   }
 
-  private async triggerFetchLoop() {
-    if (this.fetchInProgress) return;
-    
-    const state = this.getState();
-    if (state.phase === 'initializing' || state.phase === 'idle') {
-      return; 
+  public requestFetch(expectedGeneration: number) {
+    this.getState(); // read to satisfy noUnusedLocals check
+    if (expectedGeneration !== this.activeGeneration || this.activeProjectId === null) {
+      return;
+    }
+    this.performFetch(expectedGeneration);
+  }
+
+  private async performFetch(expectedGen: number) {
+    if (this.activeGeneration !== expectedGen) return;
+
+    if (this.listenersReadyGeneration !== expectedGen) {
+      this.pendingFetch = true;
+      return;
     }
 
-    if (!state.pendingRefetch && state.phase !== 'synchronizing') {
-      return; 
+    if (this.fetchInProgress && this.activeFetchGeneration === expectedGen) {
+      this.pendingFetch = true;
+      return;
     }
 
     this.fetchInProgress = true;
-    this.clearTimers();
+    this.activeFetchGeneration = expectedGen;
+    this.pendingFetch = false;
 
-    const expectedGen = this.activeGeneration;
+    if (this.snapshotRetryTimer !== null) {
+      clearTimeout(this.snapshotRetryTimer);
+      this.snapshotRetryTimer = null;
+    }
+
     const expectedProj = this.activeProjectId;
 
     try {
-      this.dispatch({ type: 'CLEAR_PENDING_REFETCH' });
-      this.dispatch({ type: 'FETCH_STARTED' });
+      this.dispatch({ type: 'CLEAR_PENDING_REFETCH', generation: expectedGen });
+      this.dispatch({ type: 'FETCH_STARTED', generation: expectedGen });
 
       if (!expectedProj) {
-         throw new Error("Cannot fetch snapshot without a projectId");
+        throw new Error("Cannot fetch snapshot without a projectId");
       }
 
-      const snapshot = await invoke('list_jobs_snapshot_cmd', { projectId: expectedProj });
+      const snapshot = await getJobsSnapshot(expectedProj);
 
       if (this.activeGeneration !== expectedGen) {
-        this.fetchInProgress = false;
-        return; 
+        return;
       }
 
       if (!validateJobSnapshot(snapshot, expectedProj)) {
         throw new Error('Invalid snapshot payload or contained foreign/duplicate jobs');
       }
 
-      this.retryAttempt = 0;
-      this.chainFetchCount++;
+      this.snapshotRetryAttempt = 0;
 
       this.dispatch({
         type: 'SNAPSHOT_RESOLVED',
@@ -160,48 +240,42 @@ export class JobStoreSynchronizer {
         projectId: expectedProj,
         jobs: snapshot,
       });
-
-      this.fetchInProgress = false;
-
-      const postState = this.getState();
-      if (postState.pendingRefetch && this.chainFetchCount < 2) {
-        this.triggerFetchLoop();
-      } else {
-        this.chainFetchCount = 0; 
-      }
     } catch (err) {
       console.error('JobStore: Snapshot fetch failed', err);
-      
+
       if (this.activeGeneration === expectedGen) {
-        this.dispatch({ type: 'FETCH_FAILED' });
+        this.dispatch({ type: 'FETCH_FAILED', generation: expectedGen });
+        this.scheduleSnapshotRetry(expectedGen);
+      }
+    } finally {
+      if (this.activeGeneration === expectedGen) {
         this.fetchInProgress = false;
-        this.chainFetchCount = 0;
-        this.scheduleRetry();
+        this.activeFetchGeneration = null;
+
+        if (this.pendingFetch) {
+          this.pendingFetch = false;
+          this.performFetch(expectedGen);
+        }
       }
     }
   }
 
-  private scheduleRetry() {
-    if (this.retryAttempt >= DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryMaxAttempts) {
-      console.warn('JobStore: Max retry attempts reached. Waiting for explicit invalidation.');
-      return;
+  private scheduleSnapshotRetry(expectedGen: number) {
+    if (this.snapshotRetryTimer !== null) {
+      clearTimeout(this.snapshotRetryTimer);
     }
 
+    const exponent = Math.min(this.snapshotRetryAttempt, DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryExponentLimit, 30);
     const delay = Math.min(
-      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryInitialMs * Math.pow(2, this.retryAttempt),
+      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryInitialMs * Math.pow(2, exponent),
       DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryMaxMs
     );
+    this.snapshotRetryAttempt++;
 
-    this.retryAttempt++;
-    this.retryTimeoutId = setTimeout(() => {
-      this.retryTimeoutId = null;
-      if (this.getState().phase === 'stale') {
-         if (!this.unlistenJobs || !this.unlistenInvalidation) {
-             this.startCycle(this.activeProjectId);
-         } else {
-             this.triggerFetchLoop();
-         }
-      }
+    this.snapshotRetryTimer = setTimeout(() => {
+      this.snapshotRetryTimer = null;
+      if (this.activeGeneration !== expectedGen) return;
+      void this.performFetch(expectedGen);
     }, delay);
   }
 }

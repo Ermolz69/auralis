@@ -24,6 +24,9 @@ impl TauriEventPublisher {
     }
 }
 
+pub const EVENT_JOB_EVENT: &str = "job-event";
+pub const EVENT_JOB_EVENTS_INVALIDATED: &str = "job-events-invalidated";
+
 impl FrontendJobEventPublisher for TauriEventPublisher {
     fn publish_job_event(
         &self,
@@ -34,7 +37,7 @@ impl FrontendJobEventPublisher for TauriEventPublisher {
                 message: e.to_string(),
             })?;
         self.app
-            .emit("job-event", dto)
+            .emit(EVENT_JOB_EVENT, dto)
             .map_err(|e| PortError::Unexpected {
                 message: e.to_string(),
             })
@@ -42,7 +45,7 @@ impl FrontendJobEventPublisher for TauriEventPublisher {
 
     fn publish_invalidated(&self) -> Result<(), PortError> {
         self.app
-            .emit("job-events-invalidated", ())
+            .emit(EVENT_JOB_EVENTS_INVALIDATED, ())
             .map_err(|e| PortError::Unexpected {
                 message: e.to_string(),
             })

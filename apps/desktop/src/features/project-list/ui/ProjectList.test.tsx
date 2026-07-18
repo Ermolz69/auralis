@@ -107,6 +107,9 @@ const StatefulProjectProvider = ({
         deletingProjectId,
         beginProjectDeletion,
         finishProjectDeletion,
+        operationGeneration: 0,
+        captureToken: () => ({ generation: 0 }),
+        validateToken: () => true,
       }}
     >
       {children}

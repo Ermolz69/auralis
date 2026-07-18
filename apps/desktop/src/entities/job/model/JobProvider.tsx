@@ -14,33 +14,32 @@ export function JobProvider({
   children: ReactNode 
 }) {
   const [state, dispatch] = useReducer(jobStoreReducer, projectId, initializeStore);
-  
-  const synchronizerRef = useRef<JobStoreSynchronizer | null>(null);
 
+  const stateRef = useRef<JobStoreState>(state);
+  stateRef.current = state;
+
+  const synchronizerRef = useRef<JobStoreSynchronizer | null>(null);
   if (!synchronizerRef.current) {
-    synchronizerRef.current = new JobStoreSynchronizer(dispatch, () => state);
+    synchronizerRef.current = new JobStoreSynchronizer(dispatch, () => stateRef.current);
   }
 
-  // Allow synchronizer to access latest state without creating stale closures
-  useEffect(() => {
-    synchronizerRef.current = new JobStoreSynchronizer(dispatch, () => state);
-  }, [state, dispatch]);
-
-  useEffect(() => {
-    if (projectId !== state.scopeProjectId) {
-      dispatch({ type: 'SWITCH_PROJECT', projectId });
-    }
-  }, [projectId, state.scopeProjectId]);
-
+  // Handle mount, project switch, and unmount
   useEffect(() => {
     const sync = synchronizerRef.current;
-    if (sync && projectId) {
-      sync.startCycle(projectId);
+    if (sync) {
+      void sync.startCycle(projectId);
     }
     return () => {
       sync?.dispose();
     };
   }, [projectId]);
+
+  // Handle follow-up fetches triggered by pendingRefetch from the reducer
+  useEffect(() => {
+    if (state.pendingRefetch) {
+      synchronizerRef.current?.requestFetch(state.generation);
+    }
+  }, [state.pendingRefetch, state.generation]);
 
   return (
     <JobContext.Provider value={state}>

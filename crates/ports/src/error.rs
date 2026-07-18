@@ -41,6 +41,9 @@ pub enum PortError {
     #[error("Unsupported operation: {message}")]
     Unsupported { message: String },
 
+    #[error("Already stopped")]
+    AlreadyStopped,
+
     #[error("Unexpected port error: {message}")]
     Unexpected { message: String },
 }

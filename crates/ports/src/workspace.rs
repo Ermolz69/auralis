@@ -39,4 +39,22 @@ pub trait TempWorkspacePort: Send + Sync {
         &self,
         age_threshold: Duration,
     ) -> Result<WorkspaceCleanupReport, PortError>;
+
+    /// Reads the content of a file within the workspace specified by WorkspaceKey as a string.
+    /// The filename is a relative path within that allocation, containing only Normal components.
+    /// The read is bounded to max_bytes, and fails if it exceeds or has invalid UTF-8 encoding.
+    async fn read_workspace_file_to_string(
+        &self,
+        allocation_key: &WorkspaceKey,
+        relative_file: &str,
+        max_bytes: u64,
+    ) -> Result<String, PortError>;
+
+    /// Safely resolves a child path within the workspace allocation to an absolute PathBuf,
+    /// ensuring it is contained and not a symlink/traversal.
+    async fn resolve_child_path(
+        &self,
+        key: &WorkspaceKey,
+        relative_file: &str,
+    ) -> Result<PathBuf, PortError>;
 }

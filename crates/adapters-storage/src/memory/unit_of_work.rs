@@ -46,11 +46,24 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         command: CommitTranscriptImport,
     ) -> Result<(), PortError> {
         let mut db = self.lock_db()?;
-        if !db.projects.contains_key(command.project.id()) {
-            return Err(PortError::NotFound {
+        let existing =
+            db.projects
+                .get(command.project.id())
+                .ok_or_else(|| PortError::NotFound {
+                    resource: "Project".to_string(),
+                })?;
+
+        // Revalidate the fence
+        if existing.updated_at() != command.expected_project_updated_at
+            || existing.status() != &command.expected_status
+            || existing.active_job_id() != command.expected_active_job_id.as_ref()
+        {
+            return Err(PortError::Conflict {
                 resource: "Project".to_string(),
+                message: "Project state changed concurrently".to_string(),
             });
         }
+
         db.projects
             .insert(command.project.id().clone(), command.project.clone());
         Ok(())

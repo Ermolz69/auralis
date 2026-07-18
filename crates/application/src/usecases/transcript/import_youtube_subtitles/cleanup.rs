@@ -52,4 +52,37 @@ impl ImportCleanupCoordinator {
 
         report
     }
+
+    pub async fn handle_workspace_failure(
+        &self,
+        alloc_key: &WorkspaceKey,
+        primary_err: crate::error::ApplicationError,
+    ) -> crate::error::ApplicationError {
+        let report = self.cleanup_workspace(alloc_key).await;
+        if report.is_empty() {
+            primary_err
+        } else {
+            crate::error::ApplicationError::OperationFailedWithCleanup {
+                primary: Box::new(primary_err),
+                cleanup_report: report,
+            }
+        }
+    }
+
+    pub async fn handle_all_failure(
+        &self,
+        staging_key: &str,
+        alloc_key: &WorkspaceKey,
+        primary_err: crate::error::ApplicationError,
+    ) -> crate::error::ApplicationError {
+        let report = self.cleanup_all(staging_key, alloc_key).await;
+        if report.is_empty() {
+            primary_err
+        } else {
+            crate::error::ApplicationError::OperationFailedWithCleanup {
+                primary: Box::new(primary_err),
+                cleanup_report: report,
+            }
+        }
+    }
 }

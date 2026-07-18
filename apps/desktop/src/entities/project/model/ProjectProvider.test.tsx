@@ -28,8 +28,6 @@ describe('ProjectProvider', () => {
 
   it('ignores project-updated event if deletingProjectId matches', async () => {
     let contextValue: any;
-
-    // Setup listener mock to capture the callback
     let eventCallback: any;
     (listen as any).mockImplementation((event: string, cb: any) => {
       if (event === 'project-updated') eventCallback = cb;
@@ -46,12 +44,10 @@ describe('ProjectProvider', () => {
       </ProjectProvider>,
     );
 
-    // Set a project and start deleting it
     act(() => {
       contextValue.setProjectId('p1');
     });
 
-    // Let the effect run and register the listener
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -60,13 +56,11 @@ describe('ProjectProvider', () => {
       contextValue.beginProjectDeletion('p1');
     });
 
-    // Simulate event
     expect(eventCallback).toBeDefined();
     await act(async () => {
       await eventCallback({ payload: { projectId: 'p1' } });
     });
 
-    // Invoke should not be called because it's currently deleting
     expect(invoke).not.toHaveBeenCalled();
   });
 
@@ -104,32 +98,194 @@ describe('ProjectProvider', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    // Simulate event while project is active (triggering a fetch)
     act(() => {
       void eventCallback({ payload: { projectId: 'p1' } });
     });
 
     expect(invoke).toHaveBeenCalledTimes(1);
 
-    // Now start project deletion (should increment generation token)
     act(() => {
       contextValue.beginProjectDeletion('p1');
     });
 
-    // Complete the deletion lifecycle: clear context, finish deletion
     act(() => {
       contextValue.setProjectId(null);
       contextValue.setProject(null);
       contextValue.finishProjectDeletion('p1');
     });
 
-    // Resolve the in-flight get_project_cmd call
     await act(async () => {
       resolveGetProject({ id: 'p1', title: 'Resurrected' });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    // Verify that the stale project did not resurrect
     expect(contextValue.project).toBeNull();
   });
+
+  it('verifies that token capture and validation function correctly', () => {
+    let contextValue: any;
+    render(
+      <ProjectProvider>
+        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+      </ProjectProvider>,
+    );
+
+    const token1 = contextValue.captureToken();
+    expect(contextValue.validateToken(token1)).toBe(true);
+  });
+
+  it('verifies setProjectId behaviour on same and different ID', () => {
+    let contextValue: any;
+    render(
+      <ProjectProvider>
+        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+      </ProjectProvider>,
+    );
+
+    act(() => {
+      contextValue.setProjectId('p1');
+    });
+    const token1 = contextValue.captureToken();
+
+    // Same ID set
+    act(() => {
+      contextValue.setProjectId('p1');
+    });
+    expect(contextValue.validateToken(token1)).toBe(true);
+
+    // Different ID set
+    act(() => {
+      contextValue.setProjectId('p2');
+    });
+    expect(contextValue.validateToken(token1)).toBe(false);
+  });
+
+  it('verifies an accepted beginProjectDeletion() invalidates the token synchronously before returning', () => {
+    let contextValue: any;
+    render(
+      <ProjectProvider>
+        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+      </ProjectProvider>,
+    );
+
+    const token1 = contextValue.captureToken();
+    let result = false;
+    act(() => {
+      result = contextValue.beginProjectDeletion('p1');
+    });
+
+    expect(result).toBe(true);
+    expect(contextValue.validateToken(token1)).toBe(false);
+  });
+
+  it('verifies that after beginProjectDeletion() followed by finishProjectDeletion(), the previously captured token remains invalid', () => {
+    let contextValue: any;
+    render(
+      <ProjectProvider>
+        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+      </ProjectProvider>,
+    );
+
+    const token1 = contextValue.captureToken();
+    act(() => {
+      contextValue.beginProjectDeletion('p1');
+    });
+    act(() => {
+      contextValue.finishProjectDeletion('p1');
+    });
+
+    expect(contextValue.validateToken(token1)).toBe(false);
+  });
+
+  it('verifies that project-updated event fetch does not invalidate active operation tokens', async () => {
+    let contextValue: any;
+    let eventCallback: any;
+    (listen as any).mockImplementation((event: string, cb: any) => {
+      if (event === 'project-updated') eventCallback = cb;
+      return Promise.resolve(() => {});
+    });
+
+    (invoke as Mock).mockResolvedValue({ id: 'p1', title: 'Updated' });
+
+    render(
+      <ProjectProvider>
+        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+      </ProjectProvider>,
+    );
+
+    act(() => {
+      contextValue.setProjectId('p1');
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const token = contextValue.captureToken();
+
+    await act(async () => {
+      await eventCallback({ payload: { projectId: 'p1' } });
+    });
+
+    expect(contextValue.validateToken(token)).toBe(true);
+  });
+
+  it('verifies that two project-updated event fetches completing in reverse order apply only the latest one', async () => {
+    let contextValue: any;
+    let eventCallback: any;
+    (listen as any).mockImplementation((event: string, cb: any) => {
+      if (event === 'project-updated') eventCallback = cb;
+      return Promise.resolve(() => {});
+    });
+
+    let resolve1: (val: any) => void = () => {};
+    let resolve2: (val: any) => void = () => {};
+    const promise1 = new Promise((resolve) => { resolve1 = resolve; });
+    const promise2 = new Promise((resolve) => { resolve2 = resolve; });
+
+    (invoke as Mock)
+      .mockReturnValueOnce(promise1)
+      .mockReturnValueOnce(promise2);
+
+    render(
+      <ProjectProvider>
+        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+      </ProjectProvider>,
+    );
+
+    act(() => {
+      contextValue.setProjectId('p1');
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Fire first event (starts promise1)
+    act(() => {
+      void eventCallback({ payload: { projectId: 'p1' } });
+    });
+
+    // Fire second event (starts promise2)
+    act(() => {
+      void eventCallback({ payload: { projectId: 'p1' } });
+    });
+
+    // Resolve second fetch first
+    await act(async () => {
+      resolve2({ id: 'p1', title: 'Latest Title' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(contextValue.project?.title).toBe('Latest Title');
+
+    // Resolve first fetch second
+    await act(async () => {
+      resolve1({ id: 'p1', title: 'Stale Title' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Should remain latest title
+    expect(contextValue.project?.title).toBe('Latest Title');
+  });
 });
+

@@ -34,7 +34,14 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
-        update_project(&mut tx, &command.project).await?;
+        update_project_conditional(
+            &mut tx,
+            &command.project,
+            command.expected_project_updated_at,
+            &command.expected_status,
+            command.expected_active_job_id.as_ref(),
+        )
+        .await?;
         save_artifact(&mut tx, command.project.id(), &command.artifact).await?;
 
         let finalize_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
