@@ -44,12 +44,12 @@ export type JobSynchronizationConfig = {
   maxBufferedEvents: number;
   retryInitialMs: number;
   retryMaxMs: number;
-  retryMaxAttempts: number;
+  retryExponentLimit: number;
 };
 
 export const DEFAULT_JOB_SYNCHRONIZATION_CONFIG = {
   maxBufferedEvents: 256,
   retryInitialMs: 1000,
   retryMaxMs: 30000,
-  retryMaxAttempts: 5,
+  retryExponentLimit: 5,
 } satisfies JobSynchronizationConfig;
