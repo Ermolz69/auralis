@@ -1,9 +1,15 @@
+use super::runner_terminalization::{
+    TerminalFailure, await_or_cancel, cancelled, terminalize_runner_failure,
+};
 use crate::usecases::transcript::import_youtube_subtitles::{
     ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesUseCase,
 };
 use domain::dubbing::DubbingPipelineStage;
 use domain::job::{JobId, JobProgress};
 use domain::project::ProjectId;
+use ports::cancellation::CancellationToken;
+use ports::error::PortError;
+use ports::job_runtime_control::RuntimeTaskOutcome;
 use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::ProjectRepository;
 use ports::source::SubtitleSourcePort;
@@ -26,7 +32,21 @@ pub struct MockDubbingPipelineRunner<
     artifact_store: S,
     workspace_port: Arc<dyn TempWorkspacePort>,
     _job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+    #[cfg(test)]
+    panic_on_run: bool,
 }
+
+#[cfg(test)]
+#[path = "mock_dubbing_pipeline_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "mock_dubbing_completion_tests.rs"]
+mod completion_tests;
+
+#[cfg(test)]
+#[path = "mock_dubbing_panic_tests.rs"]
+mod panic_tests;
 
 impl<
     R: ProjectRepository + Clone + 'static,
@@ -52,17 +72,29 @@ impl<
             artifact_store,
             workspace_port,
             _job_runtime: job_runtime,
+            #[cfg(test)]
+            panic_on_run: false,
         }
     }
 
-    #[allow(clippy::collapsible_if)]
+    #[cfg(test)]
+    pub fn with_panic_on_run(mut self) -> Self {
+        self.panic_on_run = true;
+        self
+    }
+
     pub async fn run(
         &self,
         job_id: JobId,
         project_id: ProjectId,
-        token: ports::cancellation::CancellationToken,
+        token: CancellationToken,
         guard: &mut crate::observability::execution_summary::ExecutionSummaryGuard,
-    ) -> ports::job_runtime_control::RuntimeTaskOutcome {
+    ) -> RuntimeTaskOutcome {
+        #[cfg(test)]
+        if self.panic_on_run {
+            panic!("test runner panic");
+        }
+
         let stages = vec![
             (DubbingPipelineStage::ValidateSource, 10, 500),
             (DubbingPipelineStage::FetchMetadata, 25, 600),
@@ -71,8 +103,7 @@ impl<
 
         for (stage, percent, delay_ms) in stages {
             if token.is_cancelled() {
-                guard.summary.update_status("cancelled");
-                return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+                return cancelled(guard);
             }
 
             let progress = JobProgress {
@@ -83,51 +114,33 @@ impl<
                 total_items: None,
             };
 
-            if let Err(e) = self
-                .job_scheduler
-                .update_job_stage(&job_id, stage.clone(), progress)
+            if let Err(outcome) = self
+                .update_stage_or_terminalize(
+                    &job_id,
+                    &token,
+                    guard,
+                    stage,
+                    progress,
+                    TerminalFailure::stage_update(),
+                )
                 .await
             {
-                match e {
-                    ports::error::PortError::NotFound { .. } => {
-                        guard.summary.update_status("deleted");
-                        return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
-                    }
-                    ports::error::PortError::Conflict { .. } => {
-                        guard.summary.update_status("conflict");
-                        return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed;
-                    }
-                    _ => {
-                        // Storage / other
-                        guard.summary.update_status("storage_error");
-                        let _ = self
-                            .job_scheduler
-                            .fail_job(&job_id, "STORAGE_ERROR".into(), e.to_string(), false)
-                            .await;
-                        return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed;
-                    }
-                }
+                return outcome;
             }
 
-            // Before I/O check
-            if token.is_cancelled() {
+            if let Err(outcome) =
+                await_or_cancel(&token, tokio::time::sleep(Duration::from_millis(delay_ms))).await
+            {
                 guard.summary.update_status("cancelled");
-                return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
-            }
-
-            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-
-            // After I/O check
-            if token.is_cancelled() {
-                guard.summary.update_status("cancelled");
-                return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+                return outcome;
             }
         }
 
-        if let Err(e) = self
-            .job_scheduler
-            .update_job_stage(
+        if let Err(outcome) = self
+            .update_stage_or_terminalize(
                 &job_id,
+                &token,
+                guard,
                 DubbingPipelineStage::ExtractOrGenerateTranscript,
                 JobProgress {
                     percent: 50,
@@ -136,16 +149,11 @@ impl<
                     processed_items: None,
                     total_items: None,
                 },
+                TerminalFailure::stage_update(),
             )
             .await
         {
-            match e {
-                ports::error::PortError::NotFound { .. } => {
-                    guard.summary.update_status("deleted");
-                    return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
-                }
-                _ => return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed,
-            }
+            return outcome;
         }
 
         let import_use_case = ImportYoutubeSubtitlesUseCase::new(
@@ -156,39 +164,38 @@ impl<
             self.workspace_port.clone(),
         );
 
-        match import_use_case
-            .execute(ImportYoutubeSubtitlesRequest {
+        match await_or_cancel(
+            &token,
+            import_use_case.execute(ImportYoutubeSubtitlesRequest {
                 project_id: project_id.clone(),
                 preferred_languages: vec!["en".to_string(), "ru".to_string(), "uk".to_string()],
                 allow_auto_generated: true,
-            })
-            .await
+            }),
+        )
+        .await
         {
-            Ok(_) => {}
-            Err(e) => {
-                let _ = self
-                    .job_scheduler
-                    .fail_job(
-                        &job_id,
-                        "SUBTITLE_IMPORT_FAILED".into(),
-                        e.to_string(),
-                        false,
-                    )
-                    .await;
-                guard.summary.update_status("failed");
-                return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed;
+            Ok(Ok(_)) => {}
+            Ok(Err(_)) => {
+                return terminalize_runner_failure(
+                    self.job_scheduler.as_ref(),
+                    &job_id,
+                    TerminalFailure::subtitle_import(),
+                    guard,
+                )
+                .await;
             }
+            Err(outcome) => return outcome,
         }
 
         if token.is_cancelled() {
-            guard.summary.update_status("cancelled");
-            return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
+            return cancelled(guard);
         }
 
-        if let Err(e) = self
-            .job_scheduler
-            .update_job_stage(
+        if let Err(outcome) = self
+            .update_stage_or_terminalize(
                 &job_id,
+                &token,
+                guard,
                 DubbingPipelineStage::ExportResult,
                 JobProgress {
                     percent: 100,
@@ -197,29 +204,67 @@ impl<
                     processed_items: None,
                     total_items: None,
                 },
+                TerminalFailure::stage_update(),
             )
             .await
         {
-            match e {
-                ports::error::PortError::NotFound { .. } => {
-                    return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
-                }
-                _ => return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed,
-            }
+            return outcome;
         }
 
-        tokio::time::sleep(Duration::from_millis(500)).await;
-
-        if let Err(e) = self.job_scheduler.complete_job(&job_id).await {
-            match e {
-                ports::error::PortError::NotFound { .. } => {
-                    return ports::job_runtime_control::RuntimeTaskOutcome::Cancelled;
-                }
-                _ => return ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed,
-            }
+        if let Err(outcome) =
+            await_or_cancel(&token, tokio::time::sleep(Duration::from_millis(500))).await
+        {
+            guard.summary.update_status("cancelled");
+            return outcome;
         }
 
-        guard.summary.update_status("completed");
-        ports::job_runtime_control::RuntimeTaskOutcome::Completed
+        match await_or_cancel(&token, self.job_scheduler.complete_job(&job_id)).await {
+            Ok(Ok(_)) => {
+                guard.summary.update_status("completed");
+                RuntimeTaskOutcome::Completed
+            }
+            Ok(Err(PortError::NotFound { .. })) => {
+                guard.summary.update_status("deleted");
+                RuntimeTaskOutcome::DeletedNoOp
+            }
+            Ok(Err(_)) => {
+                guard.summary.update_status("completion_recovery_required");
+                RuntimeTaskOutcome::RecoveryRequired
+            }
+            Err(outcome) => outcome,
+        }
+    }
+
+    async fn update_stage_or_terminalize(
+        &self,
+        job_id: &JobId,
+        token: &CancellationToken,
+        guard: &mut crate::observability::execution_summary::ExecutionSummaryGuard,
+        stage: DubbingPipelineStage,
+        progress: JobProgress,
+        failure: TerminalFailure,
+    ) -> Result<(), RuntimeTaskOutcome> {
+        match await_or_cancel(
+            token,
+            self.job_scheduler.update_job_stage(job_id, stage, progress),
+        )
+        .await
+        {
+            Ok(Ok(_)) => Ok(()),
+            Ok(Err(PortError::NotFound { .. })) => {
+                guard.summary.update_status("deleted");
+                Err(RuntimeTaskOutcome::DeletedNoOp)
+            }
+            Ok(Err(_)) => {
+                Err(
+                    terminalize_runner_failure(self.job_scheduler.as_ref(), job_id, failure, guard)
+                        .await,
+                )
+            }
+            Err(outcome) => {
+                guard.summary.update_status("cancelled");
+                Err(outcome)
+            }
+        }
     }
 }
