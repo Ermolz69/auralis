@@ -337,3 +337,112 @@ async fn test_enqueue_existing_job_is_idempotent_for_already_running_job() {
     let scheduled = manager.enqueue_existing_job(&job_id).await.unwrap();
     assert_eq!(scheduled.status, JobStatus::Running);
 }
+
+#[tokio::test]
+async fn test_drain_all_scenarios() {
+    use ports::job_runtime_control::{
+        JobRuntimeControlPort, RuntimeCompletion, RuntimeTask, RuntimeTaskOutcome,
+    };
+
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
+
+    // 1. Setup reserved, attached, and already completed/cancelled tasks
+    let job_reserved = JobId::new();
+    let proj_reserved = domain::project::ProjectId::new();
+    manager
+        .reserve(job_reserved.clone(), proj_reserved)
+        .await
+        .unwrap();
+
+    // 2. Setup a cooperative task that finishes quickly on cancellation
+    let job_coop = JobId::new();
+    let proj_coop = domain::project::ProjectId::new();
+    manager.reserve(job_coop.clone(), proj_coop).await.unwrap();
+    let (cancel_handle, cancel_token) = ports::cancellation::CancelHandle::new();
+    let completion = Arc::new(RuntimeCompletion::new());
+    let join_handle = tokio::spawn(async move {
+        cancel_token.cancelled().await;
+        RuntimeTaskOutcome::Cancelled
+    });
+    manager
+        .attach_task(
+            job_coop.clone(),
+            RuntimeTask {
+                cancel: cancel_handle,
+                join_handle,
+                completion,
+            },
+        )
+        .await
+        .unwrap();
+
+    // 3. Setup a panic task
+    let job_panic = JobId::new();
+    let proj_panic = domain::project::ProjectId::new();
+    manager
+        .reserve(job_panic.clone(), proj_panic)
+        .await
+        .unwrap();
+    let (cancel_handle_panic, _cancel_token_panic) = ports::cancellation::CancelHandle::new();
+    let completion_panic = Arc::new(RuntimeCompletion::new());
+    let join_handle_panic = tokio::spawn(async move {
+        panic!("test panic");
+    });
+    manager
+        .attach_task(
+            job_panic.clone(),
+            RuntimeTask {
+                cancel: cancel_handle_panic,
+                join_handle: join_handle_panic,
+                completion: completion_panic,
+            },
+        )
+        .await
+        .unwrap();
+
+    // 4. Setup an unresponsive task that hangs
+    let job_hang = JobId::new();
+    let proj_hang = domain::project::ProjectId::new();
+    manager.reserve(job_hang.clone(), proj_hang).await.unwrap();
+    let (cancel_handle_hang, _cancel_token_hang) = ports::cancellation::CancelHandle::new();
+    let completion_hang = Arc::new(RuntimeCompletion::new());
+    let join_handle_hang = tokio::spawn(async move {
+        sleep(Duration::from_secs(10)).await;
+        RuntimeTaskOutcome::Completed
+    });
+    manager
+        .attach_task(
+            job_hang.clone(),
+            RuntimeTask {
+                cancel: cancel_handle_hang,
+                join_handle: join_handle_hang,
+                completion: completion_hang,
+            },
+        )
+        .await
+        .unwrap();
+
+    // Perform drain_all with a short timeout to trigger abort for hang
+    let report = manager.drain_all(Duration::from_secs(2)).await.unwrap();
+
+    assert_eq!(report.reservation_removed_count, 1);
+    assert_eq!(report.cooperative_cancelled_count, 1);
+    assert_eq!(report.panicked_count, 1);
+    assert_eq!(report.forced_aborted_count, 1);
+    assert_eq!(report.completed_count, 0);
+
+    // Verify zero handles after shutdown
+    assert_eq!(manager.runtime_registry.lock_entries().entries.len(), 0);
+
+    // Verify reserve during drain is rejected
+    let res = manager
+        .reserve(JobId::new(), domain::project::ProjectId::new())
+        .await;
+    assert!(res.is_err());
+
+    // Verify double drain returns AlreadyStopped
+    let res_double = manager.drain_all(Duration::from_millis(100)).await;
+    assert!(matches!(res_double, Err(PortError::AlreadyStopped)));
+}

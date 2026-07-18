@@ -46,7 +46,7 @@ impl JobSchedulerPort for JobManager {
             )
             .await?;
         if let Some(crate::manager::runtime_registry::JobRuntimeEntry::Attached { task, .. }) =
-            self.runtime_registry.lock_entries().get(job_id)
+            self.runtime_registry.lock_entries().entries.get(job_id)
         {
             task.cancel.cancel();
         }

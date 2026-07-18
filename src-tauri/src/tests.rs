@@ -52,6 +52,7 @@ fn test_runtime_shutdown_report_graceful_logic() {
     let mut report = RuntimeShutdownReport {
         outbox_outcome: WorkerOutcome::Graceful,
         bridge_outcome: WorkerOutcome::AlreadyStopped,
+        jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport::default(),
         tracing_outcome: TracingShutdownOutcome::Flushed,
     };
     assert!(report.is_graceful());
@@ -64,6 +65,11 @@ fn test_runtime_shutdown_report_graceful_logic() {
 
     report.outbox_outcome = WorkerOutcome::Graceful;
     report.tracing_outcome = TracingShutdownOutcome::TimedOut;
+    assert!(!report.is_graceful());
+
+    // Timeout/abort in jobs makes report non-graceful
+    report.tracing_outcome = TracingShutdownOutcome::Flushed;
+    report.jobs_outcome.forced_aborted_count = 1;
     assert!(!report.is_graceful());
 }
 
@@ -166,6 +172,7 @@ fn test_finalize_runtime_shutdown_tracing() {
 
     let report = finalize_runtime_shutdown(
         workers,
+        ports::job_runtime_control::RuntimeShutdownReport::default(),
         Some(MockTracingShutdown {
             called: called.clone(),
         }),
