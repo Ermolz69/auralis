@@ -48,7 +48,9 @@ path. Startup validates the payload before acting on it.
 - The lock is not held during long copy, migration, or rename operations; durable
   resume is driven by the manifest and filesystem checks.
 
-The current staleness contract is `15 minutes`.
+The current staleness contract is `15 minutes`. Database paths and manifest
+paths must be absolute file paths; relative paths fail closed as corrupt
+transition state.
 
 ## Resume Matrix
 
@@ -78,7 +80,8 @@ Startup failures are typed and sanitized:
 
 Manifest paths are validated so transition state cannot move or remove files
 outside the database directory and its `backups` root. Manifest database names
-must be plain filenames.
+must be plain filenames, and durable transition directories must be absolute
+paths under the expected root.
 
 ## Restoring From Backup
 

@@ -11,6 +11,11 @@ pub struct TransitionPaths {
 
 impl TransitionPaths {
     pub fn new(db_path: PathBuf) -> Result<Self, DatabaseTransitionError> {
+        if !db_path.is_absolute() {
+            return Err(DatabaseTransitionError::CorruptTransitionState(
+                "database path must be absolute".to_string(),
+            ));
+        }
         let db_root = db_path
             .parent()
             .ok_or_else(|| {

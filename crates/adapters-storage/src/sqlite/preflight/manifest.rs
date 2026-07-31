@@ -82,14 +82,14 @@ impl TransitionManifest {
             .await
             .map_err(|e| DatabaseTransitionError::TransitionRecoveryFailed(e.to_string()))?;
 
-        // Best effort sync parent directory
         #[cfg(target_family = "unix")]
         {
-            if let Ok(parent_dir) = std::fs::File::open(parent) {
-                let _ = parent_dir.sync_data();
-            }
+            let parent_dir = std::fs::File::open(parent)
+                .map_err(|e| DatabaseTransitionError::TransitionRecoveryFailed(e.to_string()))?;
+            parent_dir
+                .sync_data()
+                .map_err(|e| DatabaseTransitionError::TransitionRecoveryFailed(e.to_string()))?;
         }
-        // For Windows, directory sync is not supported natively by std::fs::File in the same way, but it's best effort.
 
         Ok(())
     }
@@ -132,6 +132,13 @@ fn validate_contained_path(
     path: &Path,
     root: &Path,
 ) -> Result<(), DatabaseTransitionError> {
+    if !path.is_absolute() || !root.is_absolute() {
+        return Err(DatabaseTransitionError::CorruptTransitionState(format!(
+            "{} must be absolute and contained by the transition root",
+            label
+        )));
+    }
+
     if path
         .components()
         .any(|component| matches!(component, Component::ParentDir))
@@ -142,12 +149,7 @@ fn validate_contained_path(
         )));
     }
 
-    let candidate = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        root.join(path)
-    };
-    if !candidate.starts_with(root) {
+    if !path.starts_with(root) {
         return Err(DatabaseTransitionError::CorruptTransitionState(format!(
             "{} escapes the transition root",
             label

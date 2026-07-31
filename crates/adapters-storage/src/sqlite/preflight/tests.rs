@@ -282,6 +282,29 @@ mod preflight_tests {
     }
 
     #[tokio::test]
+    async fn corrupt_lock_payload_with_relative_manifest_is_typed_failure() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("transition.sqlite");
+        create_handcrafted_v0(&db_path).await;
+        write_lock(
+            &db_path,
+            999_999,
+            now_sec() - TRANSITION_LOCK_STALE_AFTER_SECS - 1,
+            std::path::PathBuf::from("backups/transition_manifest.json"),
+        )
+        .await;
+
+        let err = TransitionStateMachine::new(&db_path)
+            .run()
+            .await
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            DatabaseTransitionError::CorruptTransitionLock(_)
+        ));
+    }
+
+    #[tokio::test]
     async fn missing_db_with_manifest_is_resume_mismatch() {
         let dir = tempdir().unwrap();
         let db_path = dir.path().join("transition.sqlite");
@@ -314,11 +337,18 @@ mod preflight_tests {
             manifest.validate(db_root, &backup_root),
             Err(DatabaseTransitionError::CorruptTransitionState(_))
         ));
+
+        let mut manifest = test_manifest(dir.path(), "transition.sqlite", TransitionStage::Started);
+        manifest.backup_directory = std::path::PathBuf::from("backups/relative");
+        assert!(matches!(
+            manifest.validate(db_root, &backup_root),
+            Err(DatabaseTransitionError::CorruptTransitionState(_))
+        ));
     }
 
     #[tokio::test]
-    async fn relative_path_without_filename_is_rejected() {
-        let err = TransitionStateMachine::new(Path::new(""))
+    async fn relative_database_path_is_rejected() {
+        let err = TransitionStateMachine::new(Path::new("relative.sqlite"))
             .run()
             .await
             .unwrap_err();
