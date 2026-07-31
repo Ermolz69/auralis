@@ -239,10 +239,7 @@ async fn test_workspace_janitor() {
     set_file_mtime(&old_project_dir, two_hours_ago).unwrap();
 
     #[cfg(unix)]
-    let mut outside_dir_guard = None;
-
-    #[cfg(unix)]
-    {
+    let _outside_dir_guard = {
         // Add symlink escape (which should be skipped or untraversed)
         let outside_dir = tempdir().unwrap();
         let outside_file = outside_dir.path().join("secret.txt");
@@ -255,10 +252,10 @@ async fn test_workspace_janitor() {
             .path()
             .join("tmp")
             .join(symlinked_project_id.to_string());
-        std::os::unix::fs::symlink(&outside_dir.path(), &symlinked_project_dir).unwrap();
+        std::os::unix::fs::symlink(outside_dir.path(), &symlinked_project_dir).unwrap();
 
-        outside_dir_guard = Some((outside_dir, outside_file, symlinked_project_dir));
-    }
+        (outside_dir, outside_file, symlinked_project_dir)
+    };
 
     // Also create empty project directory
     let empty_project_id = Uuid::new_v4();
