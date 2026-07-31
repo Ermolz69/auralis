@@ -46,6 +46,11 @@ impl JobManager {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) async fn cached_job_for_test(&self, job_id: &DomainJobId) -> Option<Job> {
+        self.cache.get(job_id).await
+    }
+
     pub async fn start_mock_dubbing_job_internal(
         &self,
         title: String,
@@ -71,35 +76,21 @@ impl JobManager {
         Ok(job)
     }
 
-    pub async fn get_job_internal(&self, job_id: &DomainJobId) -> Option<Job> {
-        if let Some(job) = self.cache.get(job_id).await {
-            return Some(job);
+    pub async fn get_job_internal(&self, job_id: &DomainJobId) -> Result<Option<Job>, PortError> {
+        match self.repo.get(job_id).await? {
+            Some(job) => {
+                self.cache.insert(job.clone()).await;
+                Ok(Some(job))
+            }
+            None => {
+                self.cache.remove(job_id).await;
+                Ok(None)
+            }
         }
-
-        if let Ok(Some(job)) = self.repo.get(job_id).await {
-            self.cache.insert(job.clone()).await;
-            return Some(job);
-        }
-
-        None
     }
 
-    pub async fn list_jobs_internal(&self) -> Vec<Job> {
-        let mut jobs = match self.repo.list_recent(100).await {
-            Ok(j) => j,
-            Err(_e) => {
-                tracing::warn!(
-                    error = %common::observability::redaction::DiagnosticError {
-                        kind: "RepositoryListRecentJobsFailed",
-                        code: None,
-                        retryable: true,
-                    },
-                    "Failed to list recent jobs from repository"
-                );
-                // Fallback to cache
-                self.cache.list_all().await
-            }
-        };
+    pub async fn list_jobs_internal(&self) -> Result<Vec<Job>, PortError> {
+        let mut jobs = self.repo.list_recent(100).await?;
 
         // Merge active jobs from cache if any aren't returned by list_recent
         let cache_jobs = self.cache.list_all().await;
@@ -120,7 +111,7 @@ impl JobManager {
         }
 
         jobs.sort_by_key(|b| std::cmp::Reverse(*b.created_at()));
-        jobs
+        Ok(jobs)
     }
 
     pub(super) async fn mutate_job<F>(
@@ -132,7 +123,7 @@ impl JobManager {
     where
         F: FnOnce(&mut Job) -> Result<(), domain::error::DomainError>,
     {
-        let lock = self.mutation_locks.get_lock(job_id);
+        let lock = self.mutation_locks.get_lock(job_id)?;
         let _guard = lock.lock().await;
 
         let mut job = self
@@ -166,7 +157,7 @@ impl JobManager {
     where
         F: FnOnce(&mut Job) -> Result<(), domain::error::DomainError>,
     {
-        let lock = self.mutation_locks.get_lock(job_id);
+        let lock = self.mutation_locks.get_lock(job_id)?;
         let _guard = lock.lock().await;
 
         let mut job = self
@@ -487,7 +478,16 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                 for mut entry in unconfirmed {
                     let _ = (&mut entry.join_handle).await;
                     cache.remove(&entry.job_id).await;
-                    locks.remove(&entry.job_id);
+                    if let Err(_err) = locks.remove_if_unused(&entry.job_id) {
+                        tracing::error!(
+                            error = %common::observability::redaction::DiagnosticError {
+                                kind: "JobMutationLockCleanupFailed",
+                                code: None,
+                                retryable: false,
+                            },
+                            "failed to cleanup job mutation lock"
+                        );
+                    }
                 }
             });
         }
@@ -499,13 +499,13 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                 continue;
             }
 
-            let lock = self.mutation_locks.get_lock(job_id);
+            let lock = self.mutation_locks.get_lock(job_id)?;
             let _guard = lock.lock().await;
 
             self.cache.remove(job_id).await;
 
             drop(_guard);
-            self.mutation_locks.remove(job_id);
+            self.mutation_locks.release_if_unused(job_id, &lock)?;
         }
 
         Ok(report)
@@ -529,7 +529,7 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                 super::runtime_registry::JobRuntimeEntry::Reserved { .. } => {
                     report.reservation_removed_count += 1;
                     self.cache.remove(&job_id).await;
-                    self.mutation_locks.remove(&job_id);
+                    self.mutation_locks.remove_if_unused(&job_id)?;
                 }
                 super::runtime_registry::JobRuntimeEntry::Attached { task, .. } => {
                     task.cancel.cancel();
@@ -576,11 +576,11 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                                 abort_handles.remove(&job_id);
                                 classify_outcome(join_res, &mut report, false);
 
-                                let lock = self.mutation_locks.get_lock(&job_id);
+                                let lock = self.mutation_locks.get_lock(&job_id)?;
                                 let _guard = lock.lock().await;
                                 self.cache.remove(&job_id).await;
                                 drop(_guard);
-                                self.mutation_locks.remove(&job_id);
+                                self.mutation_locks.release_if_unused(&job_id, &lock)?;
                             }
                             None => {
                                 break;
@@ -603,21 +603,21 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                         abort_handles.remove(&job_id);
                         classify_outcome(join_res, &mut report, true);
 
-                        let lock = self.mutation_locks.get_lock(&job_id);
+                        let lock = self.mutation_locks.get_lock(&job_id)?;
                         let _guard = lock.lock().await;
                         self.cache.remove(&job_id).await;
                         drop(_guard);
-                        self.mutation_locks.remove(&job_id);
+                        self.mutation_locks.release_if_unused(&job_id, &lock)?;
                     }
                     None => {
                         for job_id in abort_handles.keys() {
                             report.unconfirmed_count += 1;
 
-                            let lock = self.mutation_locks.get_lock(job_id);
+                            let lock = self.mutation_locks.get_lock(job_id)?;
                             let _guard = lock.lock().await;
                             self.cache.remove(job_id).await;
                             drop(_guard);
-                            self.mutation_locks.remove(job_id);
+                            self.mutation_locks.release_if_unused(job_id, &lock)?;
                         }
                         break;
                     }
