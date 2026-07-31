@@ -126,7 +126,11 @@ describe('ProjectProvider', () => {
     let contextValue: any;
     render(
       <ProjectProvider>
-        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
       </ProjectProvider>,
     );
 
@@ -138,7 +142,11 @@ describe('ProjectProvider', () => {
     let contextValue: any;
     render(
       <ProjectProvider>
-        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
       </ProjectProvider>,
     );
 
@@ -164,7 +172,11 @@ describe('ProjectProvider', () => {
     let contextValue: any;
     render(
       <ProjectProvider>
-        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
       </ProjectProvider>,
     );
 
@@ -182,7 +194,11 @@ describe('ProjectProvider', () => {
     let contextValue: any;
     render(
       <ProjectProvider>
-        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
       </ProjectProvider>,
     );
 
@@ -209,7 +225,11 @@ describe('ProjectProvider', () => {
 
     render(
       <ProjectProvider>
-        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
       </ProjectProvider>,
     );
 
@@ -240,16 +260,22 @@ describe('ProjectProvider', () => {
 
     let resolve1: (val: any) => void = () => {};
     let resolve2: (val: any) => void = () => {};
-    const promise1 = new Promise((resolve) => { resolve1 = resolve; });
-    const promise2 = new Promise((resolve) => { resolve2 = resolve; });
+    const promise1 = new Promise((resolve) => {
+      resolve1 = resolve;
+    });
+    const promise2 = new Promise((resolve) => {
+      resolve2 = resolve;
+    });
 
-    (invoke as Mock)
-      .mockReturnValueOnce(promise1)
-      .mockReturnValueOnce(promise2);
+    (invoke as Mock).mockReturnValueOnce(promise1).mockReturnValueOnce(promise2);
 
     render(
       <ProjectProvider>
-        <TestComponent onContext={(ctx) => { contextValue = ctx; }} />
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
       </ProjectProvider>,
     );
 
@@ -288,4 +314,3 @@ describe('ProjectProvider', () => {
     expect(contextValue.project?.title).toBe('Latest Title');
   });
 });
-

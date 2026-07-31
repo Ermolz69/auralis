@@ -350,7 +350,9 @@ describe('ProjectList', () => {
 
     // Wait for deletion lock to be active
     await screen.findByRole('button', { name: 'Open Test Project' });
-    expect((screen.getByRole('button', { name: 'Open Test Project' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole('button', { name: 'Open Test Project' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
 
     (listProjects as Mock).mockClear();
 
@@ -539,5 +541,37 @@ describe('ProjectList', () => {
     // Verify that the ghost project did not reappear
     expect(screen.queryByText('Test Project')).toBeNull();
     expect(screen.getByText('Untitled Project')).not.toBeNull();
+  });
+
+  it('protects against raw leakage in delete errors', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (deleteProject as any).mockRejectedValue(
+      new Error('C:\\Users\\secret\\video.mp4 token=SECRET'),
+    );
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('An unexpected system error occurred');
+    });
+
+    // Check that console.error doesn't receive raw leakage message
+    consoleErrorSpy.mock.calls.forEach((call) => {
+      const logStr = JSON.stringify(call);
+      expect(logStr).not.toContain('secret');
+      expect(logStr).not.toContain('SECRET');
+      expect(logStr).not.toContain('token');
+      expect(logStr).not.toContain('video.mp4');
+    });
+
+    consoleErrorSpy.mockRestore();
   });
 });

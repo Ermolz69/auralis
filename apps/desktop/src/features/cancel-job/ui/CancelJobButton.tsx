@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cancelJob } from '@/entities/job';
+import { toCommandError } from '@/shared/api/contracts';
 
 export interface CancelJobButtonProps {
   jobId: string;
@@ -16,7 +17,7 @@ export function CancelJobButton({ jobId, onCancelled, className }: CancelJobButt
       await cancelJob(jobId);
       onCancelled?.();
     } catch (e) {
-      console.error('Failed to cancel job', e);
+      console.error('Failed to cancel job', toCommandError(e));
     } finally {
       setIsCancelling(false);
     }

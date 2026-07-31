@@ -114,8 +114,15 @@ pub fn run() -> Result<(), AppRunError> {
                     Err(ports::error::PortError::AlreadyStopped) => {
                         ports::job_runtime_control::RuntimeShutdownReport::default()
                     }
-                    Err(e) => {
-                        tracing::error!("Job runtime drain failed: {:?}", e);
+                    Err(_e) => {
+                        tracing::error!(
+                            error = %common::observability::redaction::DiagnosticError {
+                                kind: "JobRuntimeDrainFailed",
+                                code: None,
+                                retryable: false,
+                            },
+                            "job runtime drain failed"
+                        );
                         ports::job_runtime_control::RuntimeShutdownReport::default()
                     }
                 }

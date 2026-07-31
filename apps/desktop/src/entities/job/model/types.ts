@@ -1,5 +1,6 @@
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-export type JobLifecycleEventKindDto = 'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
+export type JobLifecycleEventKindDto =
+  'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
 
 export type JobProgressDto = {
   percent: number;

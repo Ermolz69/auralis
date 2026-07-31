@@ -3,6 +3,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { useProjectContext, createProject } from '@/entities/project';
 import { importLocalMedia } from '@/entities/media';
 import { useNavigation } from '@/shared/router';
+import { toCommandError } from '@/shared/api/contracts';
 
 export function useImportLocalMedia() {
   const [isImporting, setIsImporting] = useState(false);
@@ -40,8 +41,7 @@ export function useImportLocalMedia() {
     activeAttemptRef.current = attemptId;
 
     const ownsAttempt = () =>
-      latestAttemptRef.current === attemptId &&
-      activeAttemptRef.current === attemptId;
+      latestAttemptRef.current === attemptId && activeAttemptRef.current === attemptId;
 
     const isCurrentAttempt = () => ownsAttempt() && validateToken(token);
 
@@ -87,8 +87,9 @@ export function useImportLocalMedia() {
       setCurrentView('project');
     } catch (err: any) {
       if (!isCurrentAttempt()) return;
-      setError(err?.toString() || 'Failed to import local media');
-      console.error(err);
+      const cmdErr = toCommandError(err);
+      setError(cmdErr.message);
+      console.error(cmdErr);
     } finally {
       if (ownsAttempt()) {
         activeAttemptRef.current = null;
@@ -106,4 +107,3 @@ export function useImportLocalMedia() {
     error,
   };
 }
-

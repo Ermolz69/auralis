@@ -19,4 +19,3 @@ export interface ProjectContextType {
 }
 
 export const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
-

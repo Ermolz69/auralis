@@ -1,9 +1,8 @@
 use crate::bootstrap::usecases::AppUseCases;
+use crate::dto::error::{parse_artifact_id, parse_artifact_kind, parse_project_id, CommandError};
 use application::usecases::artifact::list_project_artifacts::ListProjectArtifactsRequest;
 use application::usecases::artifact::resolve_path::ResolveArtifactPathRequest;
-use domain::media::{Artifact, ArtifactId, ArtifactKind};
-use domain::project::ProjectId;
-use std::str::FromStr;
+use domain::media::Artifact;
 use std::sync::Arc;
 use tauri::State;
 
@@ -12,15 +11,11 @@ pub async fn list_project_artifacts_cmd(
     project_id: String,
     kind: Option<String>,
     usecases: State<'_, Arc<AppUseCases>>,
-) -> Result<Vec<Artifact>, String> {
-    let parsed_project_id = ProjectId::from_str(&project_id).map_err(|e| e.to_string())?;
+) -> Result<Vec<Artifact>, CommandError> {
+    let parsed_project_id = parse_project_id(&project_id)?;
 
     let parsed_kind = match kind {
-        Some(k) => {
-            let parsed: ArtifactKind =
-                serde_json::from_str(&format!("\"{}\"", k)).map_err(|e| e.to_string())?;
-            Some(parsed)
-        }
+        Some(k) => Some(parse_artifact_kind(&k)?),
         None => None,
     };
 
@@ -31,15 +26,15 @@ pub async fn list_project_artifacts_cmd(
             kind: parsed_kind,
         })
         .await
-        .map_err(|e| e.to_string())
+        .map_err(CommandError::from)
 }
 
 #[tauri::command]
 pub async fn resolve_artifact_path_cmd(
     artifact_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
-) -> Result<String, String> {
-    let id = ArtifactId::from_str(&artifact_id).map_err(|e| e.to_string())?;
+) -> Result<String, CommandError> {
+    let id = parse_artifact_id(&artifact_id)?;
 
     let req = ResolveArtifactPathRequest { artifact_id: id };
 
@@ -47,7 +42,7 @@ pub async fn resolve_artifact_path_cmd(
         .resolve_artifact_path
         .execute(req)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
 
     Ok(res.absolute_path.to_string_lossy().into_owned())
 }

@@ -7,7 +7,7 @@ import { Card } from '@/shared/ui/card';
 import { Icon } from '@/shared/ui/icon';
 import { Button } from '@/shared/ui/button';
 import { toast } from '@/shared/ui/toast';
-import { isCommandError } from '@/shared/api/contracts';
+import { toCommandError } from '@/shared/api/contracts';
 import {
   Dialog,
   DialogHeader,
@@ -161,8 +161,9 @@ export const ProjectList = () => {
       // Separate Refetch
       await fetchProjects();
     } catch (error) {
-      const errorMessage = isCommandError(error) ? error.message : String(error);
-      const errorCode = isCommandError(error) ? error.code : 'UNKNOWN';
+      const commandError = toCommandError(error);
+      const errorMessage = commandError.message;
+      const errorCode = commandError.code;
 
       if (errorCode === 'NOT_FOUND') {
         pendingFocusTargetRef.current = {

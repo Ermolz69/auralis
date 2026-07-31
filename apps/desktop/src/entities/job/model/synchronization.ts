@@ -5,6 +5,7 @@ import type { JobStoreAction } from './reducer';
 import { DEFAULT_JOB_SYNCHRONIZATION_CONFIG } from './types';
 import type { JobStoreState } from './types';
 import { validateJobEventDto, validateJobSnapshot } from './validation';
+import { toCommandError } from '@/shared/api/contracts';
 
 export class JobStoreSynchronizer {
   private unlistenJobs: UnlistenFn | null = null;
@@ -27,10 +28,7 @@ export class JobStoreSynchronizer {
   private dispatch: Dispatch<JobStoreAction>;
   private getState: () => JobStoreState;
 
-  constructor(
-    dispatch: Dispatch<JobStoreAction>,
-    getState: () => JobStoreState
-  ) {
+  constructor(dispatch: Dispatch<JobStoreAction>, getState: () => JobStoreState) {
     this.dispatch = dispatch;
     this.getState = getState;
   }
@@ -131,10 +129,10 @@ export class JobStoreSynchronizer {
       this.listenerRetryAttempt = 0;
 
       this.dispatch({ type: 'LISTENERS_REGISTERED', generation: expectedGen });
-      
+
       this.performFetch(expectedGen);
     } catch (err) {
-      console.warn('JobStore: Failed to register Tauri listeners', err);
+      console.warn('JobStore: Failed to register Tauri listeners', toCommandError(err));
       if (unlistenJ) unlistenJ();
       if (unlistenInv) unlistenInv();
 
@@ -150,10 +148,14 @@ export class JobStoreSynchronizer {
       clearTimeout(this.listenerRetryTimer);
     }
 
-    const exponent = Math.min(this.listenerRetryAttempt, DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryExponentLimit, 30);
+    const exponent = Math.min(
+      this.listenerRetryAttempt,
+      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryExponentLimit,
+      30,
+    );
     const delay = Math.min(
       DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryInitialMs * Math.pow(2, exponent),
-      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryMaxMs
+      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryMaxMs,
     );
     this.listenerRetryAttempt++;
 
@@ -219,7 +221,7 @@ export class JobStoreSynchronizer {
       this.dispatch({ type: 'FETCH_STARTED', generation: expectedGen });
 
       if (!expectedProj) {
-        throw new Error("Cannot fetch snapshot without a projectId");
+        throw new Error('Cannot fetch snapshot without a projectId');
       }
 
       const snapshot = await getJobsSnapshot(expectedProj);
@@ -241,7 +243,7 @@ export class JobStoreSynchronizer {
         jobs: snapshot,
       });
     } catch (err) {
-      console.error('JobStore: Snapshot fetch failed', err);
+      console.error('JobStore: Snapshot fetch failed', toCommandError(err));
 
       if (this.activeGeneration === expectedGen) {
         this.dispatch({ type: 'FETCH_FAILED', generation: expectedGen });
@@ -265,10 +267,14 @@ export class JobStoreSynchronizer {
       clearTimeout(this.snapshotRetryTimer);
     }
 
-    const exponent = Math.min(this.snapshotRetryAttempt, DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryExponentLimit, 30);
+    const exponent = Math.min(
+      this.snapshotRetryAttempt,
+      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryExponentLimit,
+      30,
+    );
     const delay = Math.min(
       DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryInitialMs * Math.pow(2, exponent),
-      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryMaxMs
+      DEFAULT_JOB_SYNCHRONIZATION_CONFIG.retryMaxMs,
     );
     this.snapshotRetryAttempt++;
 

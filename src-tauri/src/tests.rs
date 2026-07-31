@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use super::*;
 use crate::observability::config::ObservabilitySettings;
 use crate::observability::error::ObservabilityValidationError;
@@ -182,4 +183,60 @@ fn test_finalize_runtime_shutdown_tracing() {
     assert_eq!(report.outbox_outcome, WorkerOutcome::Graceful);
     assert_eq!(report.bridge_outcome, WorkerOutcome::Graceful);
     assert_eq!(report.tracing_outcome, TracingShutdownOutcome::Flushed);
+}
+
+#[test]
+fn test_shutdown_logging_redaction() {
+    use std::sync::{Arc, Mutex};
+    use tracing_subscriber::fmt::MakeWriter;
+
+    #[derive(Clone)]
+    struct MockWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl<'a> MakeWriter<'a> for MockWriter {
+        type Writer = Self;
+        fn make_writer(&self) -> Self::Writer {
+            self.clone()
+        }
+    }
+
+    impl std::io::Write for MockWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.buf.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let buf = Arc::new(Mutex::new(Vec::new()));
+    let writer = MockWriter { buf: buf.clone() };
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(writer)
+        .with_ansi(false)
+        .finish();
+
+    tracing::subscriber::with_default(subscriber, || {
+        tracing::error!(
+            error = %common::observability::redaction::DiagnosticError {
+                kind: "JobRuntimeDrainFailed",
+                code: None,
+                retryable: false,
+            },
+            "job runtime drain failed"
+        );
+    });
+
+    let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
+    assert!(logs.contains("JobRuntimeDrainFailed"));
+    assert!(logs.contains("job runtime drain failed"));
+
+    assert!(!logs.contains("secret"));
+    assert!(!logs.contains("SECRET"));
+    assert!(!logs.contains("token"));
+    assert!(!logs.contains("Bearer"));
+    assert!(!logs.contains("sqlx"));
 }

@@ -25,8 +25,9 @@ export type JobStoreAction =
   | { type: 'CLEAR_PENDING_REFETCH'; generation: number };
 
 export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): JobStoreState {
-  const isStartingAction = action.type === 'SWITCH_PROJECT' || action.type === 'INITIALIZATION_CYCLE';
-  
+  const isStartingAction =
+    action.type === 'SWITCH_PROJECT' || action.type === 'INITIALIZATION_CYCLE';
+
   if (isStartingAction) {
     if (action.generation <= state.generation) {
       return state;
