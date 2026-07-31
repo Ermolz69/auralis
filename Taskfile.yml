@@ -26,7 +26,7 @@ tasks:
 
   install:
     cmds:
-      - pnpm install
+      - pnpm install --frozen-lockfile
       - cargo fetch
 
   dev:

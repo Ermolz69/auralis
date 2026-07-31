@@ -24,6 +24,7 @@ tasks:
 
   storage-fallbacks:
     cmds:
+      - node tools/scripts/check-storage-fallbacks.test.mjs
       - node tools/scripts/check-storage-fallbacks.mjs
 
   fsd-boundaries:
@@ -33,6 +34,7 @@ tasks:
 
   file-size:
     cmds:
+      - node tools/scripts/check-file-size.test.mjs
       - node tools/scripts/check-file-size.mjs
 
   color-tokens:

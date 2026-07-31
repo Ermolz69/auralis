@@ -43,7 +43,7 @@ jobs:
           version: 3.x
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: task install
 
       - name: Build Storybook to Pages dir
         run: task frontend:storybook-pages

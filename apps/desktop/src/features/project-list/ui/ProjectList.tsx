@@ -3,19 +3,10 @@ import { deleteProject, listProjects, useProjectContext } from '@/entities/proje
 import { listen } from '@/shared/api/tauri';
 import type { Project } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
-import { Card } from '@/shared/ui/card';
-import { Icon } from '@/shared/ui/icon';
-import { Button } from '@/shared/ui/button';
 import { toast } from '@/shared/ui/toast';
 import { toCommandError } from '@/shared/api/contracts';
-import {
-  Dialog,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from '@/shared/ui/dialog';
+import { DeleteProjectDialog } from './DeleteProjectDialog';
+import { ProjectListRow } from './ProjectListRow';
 
 export const ProjectList = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -217,33 +208,12 @@ export const ProjectList = () => {
 
   return (
     <div className="w-full flex flex-col gap-3 mt-8">
-      <Dialog open={!!projectToDelete} onOpenChange={(open) => !open && cancelDelete()}>
-        <form
-          data-testid="delete-project-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void executeDelete();
-          }}
-          className="contents"
-        >
-          <DialogHeader>
-            <DialogTitle>Delete Project</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete the project "{projectToDelete?.title}"? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={cancelDelete}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="danger" loading={deletingProjectId !== null}>
-              Confirm Delete
-            </Button>
-          </DialogFooter>
-          <DialogClose />
-        </form>
-      </Dialog>
+      <DeleteProjectDialog
+        project={projectToDelete}
+        isDeleting={deletingProjectId !== null}
+        onCancel={cancelDelete}
+        onConfirm={() => void executeDelete()}
+      />
       <h3
         ref={headingRef}
         tabIndex={-1}
@@ -252,69 +222,24 @@ export const ProjectList = () => {
         Recent Projects
       </h3>
       <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-        {projects.map((project) => {
-          const displayTitle = project.title || 'Untitled Project';
-          const isDeleting = deletingProjectId === project.id;
-
-          return (
-            <Card
-              key={project.id}
-              className={`group relative overflow-hidden p-0 transition-colors flex items-center justify-between shadow-sm border border-secondary ${isDeleting ? 'opacity-50' : 'hover:bg-bg/50'}`}
-              aria-busy={isDeleting}
-            >
-              <button
-                type="button"
-                ref={(el) => {
-                  if (el) openButtonRefs.current.set(project.id, el);
-                  else openButtonRefs.current.delete(project.id);
-                }}
-                className="flex-1 flex items-center gap-3 p-4 text-left w-full h-full focus:outline-none focus:bg-bg/50"
-                onClick={() => handleOpenProject(project)}
-                disabled={deletingProjectId !== null}
-                aria-label={`Open ${displayTitle}`}
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Icon name={project.source?.kind === 'remoteUrl' ? 'Video' : 'Film'} size="md" />
-                </div>
-                <div className="flex flex-col text-left flex-1">
-                  <span
-                    className="text-text font-medium truncate max-w-[250px]"
-                    title={displayTitle}
-                  >
-                    {displayTitle}
-                  </span>
-                  <span className="text-muted text-xs capitalize flex items-center gap-1.5 mt-0.5">
-                    <span
-                      className={`w-2 h-2 rounded-full ${project.status === 'completed' ? 'bg-success' : project.status === 'failed' ? 'bg-danger' : project.status === 'processing' ? 'bg-primary animate-pulse' : 'bg-muted'}`}
-                    ></span>
-                    {project.status.replace(/_/g, ' ')}
-                  </span>
-                </div>
-                <div className="text-muted text-xs pr-4">
-                  {new Date(project.updatedAt).toLocaleDateString()}
-                </div>
-              </button>
-
-              <div className="pr-4 shrink-0 flex items-center">
-                <Button
-                  ref={(el) => {
-                    if (el) deleteButtonRefs.current.set(project.id, el);
-                    else deleteButtonRefs.current.delete(project.id);
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="opacity-0 focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 transition-opacity"
-                  loading={isDeleting}
-                  disabled={deletingProjectId !== null}
-                  onClick={() => handleDeleteClick(project)}
-                  title="Delete Project"
-                  aria-label={`Delete ${displayTitle}`}
-                  leftIcon={!isDeleting ? <Icon name="Trash2" size="sm" /> : undefined}
-                />
-              </div>
-            </Card>
-          );
-        })}
+        {projects.map((project) => (
+          <ProjectListRow
+            key={project.id}
+            project={project}
+            isDeleting={deletingProjectId === project.id}
+            isAnyDeleting={deletingProjectId !== null}
+            openButtonRef={(el) => {
+              if (el) openButtonRefs.current.set(project.id, el);
+              else openButtonRefs.current.delete(project.id);
+            }}
+            deleteButtonRef={(el) => {
+              if (el) deleteButtonRefs.current.set(project.id, el);
+              else deleteButtonRefs.current.delete(project.id);
+            }}
+            onOpen={handleOpenProject}
+            onDelete={handleDeleteClick}
+          />
+        ))}
       </div>
     </div>
   );

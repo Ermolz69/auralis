@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod orphan_writes;
 pub mod pair_writes;
+pub mod project_writes;
 pub mod snapshot;
 #[cfg(test)]
 mod tests;
@@ -56,14 +57,14 @@ impl RecoveryStorage for SqliteRecoveryStorage {
         &self,
         cmd: FailProjectWithMissingLinkedJobCommand,
     ) -> Result<RecoveryApplyResult, PortError> {
-        pair_writes::commit_failed_project_with_missing_linked_job(&self.pool, cmd).await
+        project_writes::commit_failed_project_with_missing_linked_job(&self.pool, cmd).await
     }
 
     async fn commit_failed_legacy_project_without_job(
         &self,
         cmd: FailLegacyProjectWithoutJobCommand,
     ) -> Result<RecoveryApplyResult, PortError> {
-        pair_writes::commit_failed_legacy_project_without_job(&self.pool, cmd).await
+        project_writes::commit_failed_legacy_project_without_job(&self.pool, cmd).await
     }
 
     async fn commit_failed_orphan_job(

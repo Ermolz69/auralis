@@ -10,7 +10,7 @@ It forbids committing files whose line count exceeds the fixed limits for their 
 
 ## Where does it run
 
-In the CI pipeline via the `task q:file-size` command (runs the `check-file-size.mjs` script).
+In the CI pipeline via the `task q:file-size` command. The task first runs `tools/scripts/check-file-size.test.mjs`, then runs `tools/scripts/check-file-size.mjs` against production source.
 
 ## How to fix the error
 
@@ -24,8 +24,10 @@ Split the file using the following strategies:
 
 ## When can an exception be made
 
-Limits do not apply to generated code, API types (`api-types`), lock files, SVG icons, test snapshots, and files with large arrays of static data (containing words like `mock`, `data`, `constants`).
+Limits do not apply to generated code, API types (`api-types`), lock files, SVG icons, test snapshots, and explicit static-data file suffixes such as `data.ts` and `constants.ts`.
+
+Production filenames are still checked even when their basename contains words such as `mock`.
 
 ## Who approves the exception
 
-Tech Lead. A new exception must be added to the `isExcluded` function inside `tools/scripts/check-file-size.mjs`.
+Tech Lead. A new exception must be explicit and narrow inside `tools/scripts/check-file-size.mjs`; broad subtree, `mock`, or production-source waivers are not allowed.

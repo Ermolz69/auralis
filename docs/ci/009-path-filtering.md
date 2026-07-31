@@ -17,7 +17,7 @@ The repository is split into distinct logical zones tracked by the `changes` CI 
 - **frontend**: React code, styling, frontend configuration (e.g., `apps/desktop/**`, `package.json`, `tailwind.config.*`).
 - **rust**: Rust workspace, Tauri backend (e.g., `crates/**`, `src-tauri/**`, `Cargo.toml`).
 - **docs**: All markdown documentation files (`docs/**`, `README.md`, etc.).
-- **quality/global**: Repository-wide tooling (`Taskfile.yml`, `taskfiles/**`, `.editorconfig`, `.prettier*`).
+- **quality/global**: Repository-wide tooling (`Taskfile.yml`, `taskfiles/**`, `tools/scripts/**`, `.agents/AGENTS.md`, `.editorconfig`, `.prettier*`).
 - **release/tauri**: Production release configuration (`src-tauri/tauri.conf.json`, `src-tauri/capabilities/**`, `release.yml`).
 - **ci**: GitHub Actions workflows (`.github/workflows/**`).
 
@@ -45,6 +45,12 @@ The repository is split into distinct logical zones tracked by the `changes` CI 
 
 - **Changed**: `Taskfile.yml`
 - **Run**: `changes` -> `frontend`, `rust`, `docs`, `quality-global` -> `ci-summary` (All checks run to ensure global tooling changes didn't break anything).
+
+### Quality script changes
+
+- **Changed**: `tools/scripts/check-file-size.mjs`
+- **Run**: `changes` -> `quality-global` -> `ci-summary`
+- **Also Run When Needed**: any affected frontend, Rust, or docs jobs selected by the same change set.
 
 ### Release / Tauri config commit
 

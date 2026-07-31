@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '../../');
+const defaultRootDir = path.resolve(__dirname, '../../');
 
 const RULES = [
   { dir: 'apps/desktop/src/pages', maxLines: 120, pattern: /\.(ts|tsx)$/ },
@@ -16,102 +16,155 @@ const RULES = [
   { dir: 'crates/application/src', maxLines: 300, pattern: /\.rs$/ },
 ];
 
-function getRuleForFile(filePath) {
-  // Check explicit rules
+const EXCLUDED_SUFFIXES = ['pnpm-lock.yaml', 'Cargo.lock', '.generated.ts', '.d.ts', '.snap', '.svg'];
+const EXCLUDED_SEGMENTS = ['node_modules', 'dist', 'target', '__generated__', 'api-types'];
+const STATIC_SUFFIXES = ['data.ts', 'constants.ts'];
+const TEST_PATTERNS = [
+  /\.test\.(ts|tsx)$/,
+  /\.spec\.(ts|tsx)$/,
+  /(^|\/)tests\.rs$/,
+  /(^|\/)tests\//,
+  /(^|\/)__tests__\//,
+];
+
+function normalizeRelative(rootDir, filePath) {
+  return path.relative(rootDir, filePath).replace(/\\/g, '/');
+}
+
+function getRuleForFile(rootDir, filePath) {
   for (const rule of RULES) {
     const fullDirPath = path.join(rootDir, path.normalize(rule.dir));
     if (filePath.startsWith(fullDirPath) && rule.pattern.test(filePath)) {
       return rule;
     }
   }
-  // Check dynamic rules for Rust adapters
+
   if (filePath.includes(`${path.sep}adapters-`) && filePath.endsWith('.rs')) {
     return { maxLines: 400 };
   }
+
   return null;
 }
 
-function isExcluded(filePath) {
-  if (filePath.includes('node_modules') || filePath.includes('dist') || filePath.includes('target')) return true;
-  if (filePath.endsWith('pnpm-lock.yaml') || filePath.endsWith('Cargo.lock')) return true;
-  if (filePath.endsWith('.generated.ts') || filePath.endsWith('.d.ts')) return true;
-  if (filePath.includes('__generated__') || filePath.includes('api-types')) return true;
-  if (filePath.endsWith('.snap') || filePath.endsWith('.svg')) return true;
-  
-  const basename = path.basename(filePath).toLowerCase();
-  if (basename.includes('mock') || basename.endsWith('data.ts') || basename.endsWith('constants.ts')) {
-    return true;
-  }
+function isExcluded(rootDir, filePath) {
+  const relativePath = normalizeRelative(rootDir, filePath);
+  const segments = relativePath.split('/');
 
-  // Exclude test files
-  if (basename.includes('test') || basename.endsWith('tests.rs')) {
-    return true;
-  }
-
-  // Exempt legacy files that exceed the limit
-  const relativePath = path.relative(rootDir, filePath).replace(/\\/g, '/');
-  const legacyExemptions = [
-    'apps/desktop/src/features/project-list/ui/ProjectList.tsx',
-    'crates/adapters-storage/src/sqlite/recovery/pair_writes.rs',
-    'crates/adapters-tauri/src/job_event_bridge.rs',
-    'crates/application/src/usecases/system/recover_interrupted/planner.rs',
-    'crates/application/src/worker/outbox/worker.rs',
-  ];
-  if (legacyExemptions.includes(relativePath)) {
-    return true;
-  }
+  if (EXCLUDED_SEGMENTS.some((segment) => segments.includes(segment))) return true;
+  if (EXCLUDED_SUFFIXES.some((suffix) => relativePath.endsWith(suffix))) return true;
+  if (STATIC_SUFFIXES.some((suffix) => relativePath.endsWith(suffix))) return true;
+  if (TEST_PATTERNS.some((pattern) => pattern.test(relativePath))) return true;
 
   return false;
 }
 
 function walkSync(dir, filelist = []) {
   if (!fs.existsSync(dir)) return filelist;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
+
+  for (const file of fs.readdirSync(dir).sort()) {
     const filepath = path.join(dir, file);
     if (fs.statSync(filepath).isDirectory()) {
-      filelist = walkSync(filepath, filelist);
+      walkSync(filepath, filelist);
     } else {
       filelist.push(filepath);
     }
   }
+
   return filelist;
 }
 
-let hasErrors = false;
+export function checkFileSize({ rootDir = defaultRootDir } = {}) {
+  const errors = [];
+  const searchRoots = [path.join(rootDir, 'apps/desktop/src'), path.join(rootDir, 'crates')];
 
-// Gather all files from relevant roots
-const searchRoots = [
-  path.join(rootDir, 'apps/desktop/src'),
-  path.join(rootDir, 'crates')
-];
+  for (const searchRoot of searchRoots) {
+    for (const file of walkSync(searchRoot)) {
+      if (isExcluded(rootDir, file)) continue;
 
-for (const searchRoot of searchRoots) {
-  const files = walkSync(searchRoot);
-  for (const file of files) {
-    if (isExcluded(file)) continue;
+      const rule = getRuleForFile(rootDir, file);
+      if (!rule) continue;
 
-    const rule = getRuleForFile(file);
-    if (!rule) continue;
+      const content = fs.readFileSync(file, 'utf-8');
+      const lines = countLinesForPolicy(file, content);
 
-    const content = fs.readFileSync(file, 'utf-8');
-    const lines = content.split('\n').length;
-    
-    if (lines > rule.maxLines) {
-      console.error(`\nERROR: File too large! [${lines}/${rule.maxLines} lines] -> ${path.relative(rootDir, file)}`);
-      console.error(`       Policy to fix this:`);
-      console.error(`       1. Pure functions -> move to lib`);
-      console.error(`       2. Complex UI -> split into smaller components`);
-      console.error(`       3. State logic -> move to model`);
-      console.error(`       4. DTO mapping -> move to api/lib`);
-      console.error(`       5. Constants/Static Data -> move to config`);
-      hasErrors = true;
+      if (lines > rule.maxLines) {
+        errors.push({
+          file: normalizeRelative(rootDir, file),
+          lines,
+          maxLines: rule.maxLines,
+        });
+      }
     }
+  }
+
+  errors.sort((a, b) => a.file.localeCompare(b.file));
+  return errors;
+}
+
+function countLinesForPolicy(filePath, content) {
+  if (!filePath.endsWith('.rs')) {
+    return content.split('\n').length;
+  }
+
+  return stripRustCfgTestModules(content).split('\n').length;
+}
+
+function stripRustCfgTestModules(content) {
+  const lines = content.split('\n');
+  const kept = [];
+  let pendingCfgTest = false;
+  let skipping = false;
+  let braceDepth = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!skipping && trimmed === '#[cfg(test)]') {
+      pendingCfgTest = true;
+      continue;
+    }
+
+    if (pendingCfgTest && /^mod\s+tests\s*\{/.test(trimmed)) {
+      skipping = true;
+      pendingCfgTest = false;
+      braceDepth = countBraces(line);
+      if (braceDepth <= 0) skipping = false;
+      continue;
+    }
+
+    if (skipping) {
+      braceDepth += countBraces(line);
+      if (braceDepth <= 0) skipping = false;
+      continue;
+    }
+
+    if (pendingCfgTest) {
+      kept.push('#[cfg(test)]');
+      pendingCfgTest = false;
+    }
+
+    kept.push(line);
+  }
+
+  return kept.join('\n');
+}
+
+function countBraces(line) {
+  return (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length;
+}
+
+function printErrors(errors) {
+  for (const error of errors) {
+    console.error(`ERROR: File too large [${error.lines}/${error.maxLines}] ${error.file}`);
   }
 }
 
-if (hasErrors) {
-  process.exit(1);
-} else {
-  console.log("SUCCESS: All file sizes are within architectural limits.");
+if (process.argv[1] === __filename) {
+  const errors = checkFileSize();
+  if (errors.length > 0) {
+    printErrors(errors);
+    process.exit(1);
+  }
+
+  console.log('SUCCESS: All file sizes are within architectural limits.');
 }
