@@ -253,6 +253,7 @@ impl RuntimeShutdownReport {
             && self.bridge_outcome.is_graceful()
             && self.tracing_outcome.is_graceful()
             && self.jobs_outcome.forced_aborted_count == 0
+            && self.jobs_outcome.panicked_count == 0
             && self.jobs_outcome.unconfirmed_count == 0
             && self.jobs_outcome.join_failed_count == 0
     }

@@ -431,6 +431,7 @@ async fn test_drain_all_scenarios() {
     assert_eq!(report.cooperative_cancelled_count, 1);
     assert_eq!(report.panicked_count, 1);
     assert_eq!(report.forced_aborted_count, 1);
+    assert_eq!(report.unconfirmed_count, 0);
     assert_eq!(report.completed_count, 0);
 
     // Verify zero handles after shutdown

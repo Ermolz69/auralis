@@ -72,6 +72,10 @@ fn test_runtime_shutdown_report_graceful_logic() {
     report.tracing_outcome = TracingShutdownOutcome::Flushed;
     report.jobs_outcome.forced_aborted_count = 1;
     assert!(!report.is_graceful());
+
+    report.jobs_outcome.forced_aborted_count = 0;
+    report.jobs_outcome.panicked_count = 1;
+    assert!(!report.is_graceful());
 }
 
 #[tokio::test]
