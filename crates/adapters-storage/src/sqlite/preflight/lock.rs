@@ -1,7 +1,7 @@
 use super::error::DatabaseTransitionError;
 use super::manifest::{TransitionManifest, TransitionStage};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs::{self, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use uuid::Uuid;
@@ -26,58 +26,27 @@ impl TransitionLock {
         manifest_path: PathBuf,
         operation_id: Uuid,
     ) -> Result<Self, DatabaseTransitionError> {
+        validate_lock_manifest_path(&manifest_path)?;
         let lock_data = TransitionLockData {
             operation_id,
             pid: std::process::id(),
-            timestamp_sec: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default() // allow-fallback
-                .as_secs(),
+            timestamp_sec: current_timestamp_sec()?,
             manifest_path: manifest_path.clone(),
         };
         let data_bytes = serde_json::to_vec(&lock_data)
             .map_err(|e| DatabaseTransitionError::TransitionRecoveryFailed(e.to_string()))?;
 
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&lock_path)
-            .await
-        {
-            Ok(mut file) => {
-                file.write_all(&data_bytes)
-                    .await
-                    .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
-                file.sync_data()
-                    .await
-                    .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
-                Ok(Self { lock_path })
-            }
+        match create_lock_file(&lock_path, &data_bytes).await {
+            Ok(()) => Ok(Self { lock_path }),
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                let existing_data = read_existing_lock(&lock_path).await?;
-                let age = current_timestamp_sec().saturating_sub(existing_data.timestamp_sec);
-                let owner_is_current_process = existing_data.pid == std::process::id();
-                if owner_is_current_process || age < TRANSITION_LOCK_STALE_AFTER_SECS {
-                    return Err(DatabaseTransitionError::LiveTransitionLock);
-                }
-
-                if existing_data.manifest_path.exists() {
-                    match TransitionManifest::load(&existing_data.manifest_path).await {
-                        Ok(manifest)
-                            if manifest.stage != TransitionStage::Completed
-                                && age < TRANSITION_LOCK_STALE_AFTER_SECS * 2 =>
-                        {
-                            return Err(DatabaseTransitionError::LiveTransitionLock);
-                        }
-                        Ok(_) => {}
-                        Err(err) => return Err(err),
+                reclaim_existing_lock(&lock_path).await?;
+                match create_lock_file(&lock_path, &data_bytes).await {
+                    Ok(()) => Ok(Self { lock_path }),
+                    Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                        Err(DatabaseTransitionError::LiveTransitionLock)
                     }
+                    Err(e) => Err(DatabaseTransitionError::InspectionFailed(e.to_string())),
                 }
-
-                fs::remove_file(&lock_path)
-                    .await
-                    .map_err(|e| DatabaseTransitionError::StaleLockReclaimFailed(e.to_string()))?;
-                Box::pin(Self::try_acquire(lock_path, manifest_path, operation_id)).await
             }
             Err(e) => Err(DatabaseTransitionError::InspectionFailed(e.to_string())),
         }
@@ -92,7 +61,43 @@ impl TransitionLock {
     }
 }
 
-async fn read_existing_lock(path: &PathBuf) -> Result<TransitionLockData, DatabaseTransitionError> {
+async fn create_lock_file(lock_path: &Path, data_bytes: &[u8]) -> Result<(), std::io::Error> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(lock_path)
+        .await?;
+    file.write_all(data_bytes).await?;
+    file.sync_data().await
+}
+
+async fn reclaim_existing_lock(lock_path: &Path) -> Result<(), DatabaseTransitionError> {
+    let existing_data = read_existing_lock(lock_path).await?;
+    let age = current_timestamp_sec()?.saturating_sub(existing_data.timestamp_sec);
+    let owner_is_current_process = existing_data.pid == std::process::id();
+    if owner_is_current_process || age < TRANSITION_LOCK_STALE_AFTER_SECS {
+        return Err(DatabaseTransitionError::LiveTransitionLock);
+    }
+
+    if existing_data.manifest_path.exists() {
+        match TransitionManifest::load(&existing_data.manifest_path).await {
+            Ok(manifest)
+                if manifest.stage != TransitionStage::Completed
+                    && age < TRANSITION_LOCK_STALE_AFTER_SECS * 2 =>
+            {
+                return Err(DatabaseTransitionError::LiveTransitionLock);
+            }
+            Ok(_) => {}
+            Err(err) => return Err(err),
+        }
+    }
+
+    fs::remove_file(lock_path)
+        .await
+        .map_err(|e| DatabaseTransitionError::StaleLockReclaimFailed(e.to_string()))
+}
+
+async fn read_existing_lock(path: &Path) -> Result<TransitionLockData, DatabaseTransitionError> {
     let mut existing_lock = fs::File::open(path)
         .await
         .map_err(|e| DatabaseTransitionError::InspectionFailed(e.to_string()))?;
@@ -104,17 +109,31 @@ async fn read_existing_lock(path: &PathBuf) -> Result<TransitionLockData, Databa
 
     let data: TransitionLockData = serde_json::from_slice(&content)
         .map_err(|e| DatabaseTransitionError::CorruptTransitionLock(e.to_string()))?;
+    validate_lock_payload(&data)?;
+    Ok(data)
+}
+
+fn validate_lock_payload(data: &TransitionLockData) -> Result<(), DatabaseTransitionError> {
     if data.pid == 0 || data.timestamp_sec == 0 {
         return Err(DatabaseTransitionError::CorruptTransitionLock(
             "lock payload is missing required owner fields".to_string(),
         ));
     }
-    Ok(data)
+    validate_lock_manifest_path(&data.manifest_path)
 }
 
-fn current_timestamp_sec() -> u64 {
+fn validate_lock_manifest_path(path: &Path) -> Result<(), DatabaseTransitionError> {
+    if !path.is_absolute() || path.file_name().and_then(|name| name.to_str()).is_none() {
+        return Err(DatabaseTransitionError::CorruptTransitionLock(
+            "lock payload manifest path must be an absolute file path".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn current_timestamp_sec() -> Result<u64, DatabaseTransitionError> {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default() // allow-fallback
-        .as_secs()
+        .map_err(|e| DatabaseTransitionError::TransitionRecoveryFailed(e.to_string()))
+        .map(|duration| duration.as_secs())
 }

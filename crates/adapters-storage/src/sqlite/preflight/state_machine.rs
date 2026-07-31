@@ -118,7 +118,7 @@ impl TransitionStateMachine {
     ) -> Result<TransitionManifest, DatabaseTransitionError> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default() // allow-fallback
+            .map_err(|e| DatabaseTransitionError::TransitionRecoveryFailed(e.to_string()))?
             .as_secs();
         let operation_id = Uuid::new_v4();
         let database_name = self
