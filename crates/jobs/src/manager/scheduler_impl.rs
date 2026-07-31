@@ -54,12 +54,12 @@ impl JobSchedulerPort for JobManager {
     }
 
     async fn get_job(&self, job_id: &DomainJobId) -> Result<Option<ScheduledJob>, PortError> {
-        let job = self.get_job_internal(job_id).await;
+        let job = self.get_job_internal(job_id).await?;
         Ok(job.map(|j| map_job_to_scheduled(&j)))
     }
 
     async fn list_jobs(&self) -> Result<Vec<ScheduledJob>, PortError> {
-        let jobs = self.list_jobs_internal().await;
+        let jobs = self.list_jobs_internal().await?;
         Ok(jobs.into_iter().map(|j| map_job_to_scheduled(&j)).collect())
     }
 

@@ -89,12 +89,40 @@ impl StorageUnitOfWork for MockStorageUnitOfWork {
 
 pub struct MockJobRepository {
     jobs: Arc<Mutex<HashMap<JobId, Job>>>,
+    fail_get: Arc<std::sync::atomic::AtomicBool>,
+    fail_save: Arc<std::sync::atomic::AtomicBool>,
+    fail_list_recent: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl MockJobRepository {
     pub fn new() -> Self {
         Self {
             jobs: Arc::new(Mutex::new(HashMap::new())),
+            fail_get: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            fail_save: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            fail_list_recent: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
+    }
+
+    pub fn fail_get(&self) {
+        self.fail_get
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    pub fn fail_save(&self) {
+        self.fail_save
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    pub fn fail_list_recent(&self) {
+        self.fail_list_recent
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    fn outage() -> PortError {
+        PortError::Storage {
+            operation: "job_repository",
+            message: "database unavailable".to_string(),
         }
     }
 }
@@ -107,10 +135,16 @@ impl JobRepository for MockJobRepository {
     }
 
     async fn get(&self, id: &JobId) -> Result<Option<Job>, PortError> {
+        if self.fail_get.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(Self::outage());
+        }
         Ok(self.jobs.lock().await.get(id).cloned())
     }
 
     async fn save(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {
+        if self.fail_save.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(Self::outage());
+        }
         let mut db = self.jobs.lock().await;
 
         let existing = db.get(job.id()).ok_or_else(|| PortError::Unexpected {
@@ -140,6 +174,12 @@ impl JobRepository for MockJobRepository {
     }
 
     async fn list_recent(&self, _limit: usize) -> Result<Vec<Job>, PortError> {
+        if self
+            .fail_list_recent
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            return Err(Self::outage());
+        }
         Ok(vec![])
     }
 }
@@ -266,6 +306,132 @@ async fn test_deterministic_concurrent_updates() {
     assert_eq!(final_job.status, JobStatus::Cancelled);
     // The progress from the update task should be present because they were serialized
     assert_eq!(final_job.progress.percent, 50);
+}
+
+#[tokio::test]
+async fn get_job_propagates_repository_error_even_when_cached() {
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
+
+    let job = manager
+        .start_dubbing_job(ports::job_scheduler::StartDubbingJobRequest {
+            title: "Cached".into(),
+            project_id: Some(domain::project::ProjectId::new()),
+        })
+        .await
+        .unwrap();
+
+    repo.fail_get();
+
+    let result = manager.get_job(&job.id).await;
+    assert!(matches!(result, Err(PortError::Storage { .. })));
+}
+
+#[tokio::test]
+async fn list_jobs_propagates_repository_error_even_when_cached() {
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
+
+    manager
+        .start_dubbing_job(ports::job_scheduler::StartDubbingJobRequest {
+            title: "Cached".into(),
+            project_id: Some(domain::project::ProjectId::new()),
+        })
+        .await
+        .unwrap();
+
+    repo.fail_list_recent();
+
+    let result = manager.list_jobs().await;
+    assert!(matches!(result, Err(PortError::Storage { .. })));
+}
+
+#[tokio::test]
+async fn get_job_does_not_return_stale_cache_when_repository_is_missing() {
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
+
+    let job = manager
+        .start_dubbing_job(ports::job_scheduler::StartDubbingJobRequest {
+            title: "Stale".into(),
+            project_id: Some(domain::project::ProjectId::new()),
+        })
+        .await
+        .unwrap();
+    repo.jobs.lock().await.remove(&job.id);
+
+    assert!(manager.get_job(&job.id).await.unwrap().is_none());
+    assert!(manager.cached_job_for_test(&job.id).await.is_none());
+}
+
+#[tokio::test]
+async fn list_jobs_merges_active_cache_only_after_successful_repository_read() {
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
+
+    let job = manager
+        .start_dubbing_job(ports::job_scheduler::StartDubbingJobRequest {
+            title: "Active cache".into(),
+            project_id: Some(domain::project::ProjectId::new()),
+        })
+        .await
+        .unwrap();
+    repo.jobs.lock().await.remove(&job.id);
+
+    let jobs = manager.list_jobs().await.unwrap();
+    assert!(jobs.iter().any(|candidate| candidate.id == job.id));
+}
+
+#[tokio::test]
+async fn failed_save_does_not_update_cache_or_emit_event() {
+    use ports::job_scheduler::JobLifecycleEvent;
+    use std::sync::Mutex as StdMutex;
+
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let events = Arc::new(StdMutex::new(Vec::<JobLifecycleEvent>::new()));
+    let event_sink = events.clone();
+    let manager = JobManager::new(
+        repo.clone(),
+        uow,
+        Some(Arc::new(move |event| {
+            event_sink.lock().unwrap().push(event);
+        })),
+    );
+
+    let job = manager
+        .start_dubbing_job(ports::job_scheduler::StartDubbingJobRequest {
+            title: "Save failure".into(),
+            project_id: Some(domain::project::ProjectId::new()),
+        })
+        .await
+        .unwrap();
+    events.lock().unwrap().clear();
+
+    repo.fail_save();
+
+    let result = manager
+        .update_job_stage(
+            &job.id,
+            domain::dubbing::DubbingPipelineStage::FetchMetadata,
+            domain::job::JobProgress {
+                percent: 40,
+                message: "Updating".into(),
+                current_step: None,
+                processed_items: None,
+                total_items: None,
+            },
+        )
+        .await;
+
+    assert!(matches!(result, Err(PortError::Storage { .. })));
+    assert!(events.lock().unwrap().is_empty());
+    let cached = manager.cached_job_for_test(&job.id).await.unwrap();
+    assert_eq!(cached.progress().percent, job.progress.percent);
 }
 
 #[tokio::test]
@@ -449,91 +615,13 @@ async fn test_drain_all_scenarios() {
 }
 
 #[tokio::test]
-async fn test_list_recent_jobs_tracing_redaction() {
-    use std::collections::HashMap;
-    use std::sync::{Arc, Mutex};
-    use tracing_subscriber::fmt::MakeWriter;
+async fn list_recent_repository_error_preserves_storage_category() {
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo.clone(), uow, None);
 
-    #[derive(Clone)]
-    struct MockWriter {
-        buf: Arc<Mutex<Vec<u8>>>,
-    }
+    repo.fail_list_recent();
 
-    impl<'a> MakeWriter<'a> for MockWriter {
-        type Writer = Self;
-        fn make_writer(&self) -> Self::Writer {
-            self.clone()
-        }
-    }
-
-    impl std::io::Write for MockWriter {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            self.buf.lock().unwrap().extend_from_slice(buf);
-            Ok(buf.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
-
-    struct FailingRepo;
-    #[async_trait]
-    impl JobRepository for FailingRepo {
-        async fn create(&self, j: Job) -> Result<Job, PortError> {
-            Ok(j)
-        }
-        async fn get(&self, _id: &JobId) -> Result<Option<Job>, PortError> {
-            Ok(None)
-        }
-        async fn save(&self, _j: &Job, _r: u64) -> Result<(), PortError> {
-            Ok(())
-        }
-        async fn list_by_project(
-            &self,
-            _pid: &domain::project::ProjectId,
-        ) -> Result<Vec<Job>, PortError> {
-            Ok(vec![])
-        }
-        async fn list_active(&self) -> Result<Vec<Job>, PortError> {
-            Ok(vec![])
-        }
-        async fn list_recent(&self, _limit: usize) -> Result<Vec<Job>, PortError> {
-            Err(PortError::Unexpected {
-                message: "sqlx::Error::Database(C:\\Users\\secret\\video.mp4 token=SECRET Bearer sct_token SELECT * FROM projects)".to_string(),
-            })
-        }
-    }
-
-    let repo = Arc::new(FailingRepo);
-    let uow = Arc::new(MockStorageUnitOfWork::new(Arc::new(
-        tokio::sync::Mutex::new(HashMap::new()),
-    )));
-    let manager = JobManager::new(repo, uow, None);
-
-    let buf = Arc::new(std::sync::Mutex::new(Vec::new()));
-    let writer = MockWriter { buf: buf.clone() };
-    let subscriber = tracing_subscriber::fmt()
-        .with_writer(writer)
-        .with_ansi(false)
-        .finish();
-
-    tracing::subscriber::with_default(subscriber, || {
-        let handle = tokio::runtime::Handle::current();
-        let _ = handle.enter();
-        futures::executor::block_on(async {
-            manager.list_jobs_internal().await;
-        });
-    });
-
-    let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
-    assert!(logs.contains("RepositoryListRecentJobsFailed"));
-    assert!(logs.contains("Failed to list recent jobs from repository"));
-
-    assert!(!logs.contains("secret"));
-    assert!(!logs.contains("SECRET"));
-    assert!(!logs.contains("token"));
-    assert!(!logs.contains("Bearer"));
-    assert!(!logs.contains("sct_token"));
-    assert!(!logs.contains("sqlx"));
-    assert!(!logs.contains("SELECT"));
+    let result = manager.list_jobs_internal().await;
+    assert!(matches!(result, Err(PortError::Storage { .. })));
 }
