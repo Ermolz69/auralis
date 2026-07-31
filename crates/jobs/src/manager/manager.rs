@@ -55,8 +55,8 @@ impl JobManager {
             message: "Missing project_id for mock dubbing job".to_string(),
         })?;
 
-        let project_id = DomainProjectId::from_str(&id_str).map_err(|e| PortError::Unexpected {
-            message: format!("Invalid project_id {}: {}", id_str, e),
+        let project_id = DomainProjectId::from_str(&id_str).map_err(|_| PortError::Unexpected {
+            message: "Invalid project_id for mock dubbing job".to_string(),
         })?;
 
         let mut job = Job::new(project_id, title, JobKind::Dubbing);

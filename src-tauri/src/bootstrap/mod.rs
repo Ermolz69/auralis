@@ -6,6 +6,7 @@ pub mod workers;
 
 use adapters_tauri::{PreparedJobEventBridge, TauriEventPublisher};
 use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
+use ports::error::PortError;
 use std::sync::Arc;
 use tauri::{App, Manager};
 
@@ -109,7 +110,9 @@ pub fn setup(
 
     let bridge_handle = running_bridge
         .take_handle()
-        .ok_or("Failed to spawn event bridge")?;
+        .ok_or_else(|| PortError::Unexpected {
+            message: "Event bridge handle unavailable".to_string(),
+        })?;
     app.manage(crate::state::ManagedJobEventBridge(std::sync::Mutex::new(
         Some(bridge_handle),
     )));
