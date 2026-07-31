@@ -1,36 +1,27 @@
-use adapters_ffmpeg::ffprobe::FfprobeAdapter;
-use adapters_storage::memory::InMemoryProjectRepository;
-use application::usecases::media::probe_local::{ProbeLocalMediaRequest, ProbeLocalMediaUseCase};
-use domain::project::ProjectId;
-use ports::job_scheduler::JobSchedulerPort;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
-use tauri::{command, AppHandle, State};
-
+use crate::bootstrap::usecases::AppUseCases;
+use crate::dto::error::{parse_project_id, CommandError};
 use crate::dto::media::MediaMetadataDto;
 use crate::dto::project::ProjectDto;
-
-fn get_ffprobe_adapter(app: &AppHandle) -> FfprobeAdapter {
-    let candidates = crate::media_tools::resolve_ffprobe_candidates(app);
-    FfprobeAdapter::new(candidates)
-}
+use application::usecases::media::import_local_media::ImportLocalMediaRequest;
+use application::usecases::media::probe_local::ProbeLocalMediaRequest;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::{command, State};
 
 #[command]
 pub async fn probe_local_media_cmd(
     path: String,
-    app: AppHandle,
-    project_repo: State<'_, InMemoryProjectRepository>,
-) -> Result<MediaMetadataDto, String> {
-    let probe = get_ffprobe_adapter(&app);
-    let use_case = ProbeLocalMediaUseCase::new(project_repo.inner().clone(), probe);
-
+    usecases: State<'_, Arc<AppUseCases>>,
+) -> Result<MediaMetadataDto, CommandError> {
     let req = ProbeLocalMediaRequest {
-        project_id: None,
         path: PathBuf::from(path),
     };
 
-    let res = use_case.execute(req).await.map_err(|e| e.to_string())?;
+    let res = usecases
+        .probe_local_media
+        .execute(req)
+        .await
+        .map_err(CommandError::from)?;
     Ok((&res.metadata).into())
 }
 
@@ -38,29 +29,20 @@ pub async fn probe_local_media_cmd(
 pub async fn import_local_media_cmd(
     project_id: String,
     path: String,
-    app: AppHandle,
-    project_repo: State<'_, InMemoryProjectRepository>,
-    job_scheduler: State<'_, Arc<dyn JobSchedulerPort>>,
-) -> Result<ProjectDto, String> {
-    use application::usecases::media::import_local_media::{
-        ImportLocalMediaRequest, ImportLocalMediaUseCase,
-    };
-
-    let probe = get_ffprobe_adapter(&app);
-    let use_case = ImportLocalMediaUseCase::new(
-        project_repo.inner().clone(),
-        probe,
-        job_scheduler.inner().clone(),
-    );
-
-    let pid = ProjectId::from_str(&project_id).map_err(|e| e.to_string())?;
+    usecases: State<'_, Arc<AppUseCases>>,
+) -> Result<ProjectDto, CommandError> {
+    let pid = parse_project_id(&project_id)?;
 
     let req = ImportLocalMediaRequest {
         project_id: pid,
         path: PathBuf::from(path),
     };
 
-    let response = use_case.execute(req).await.map_err(|e| e.to_string())?;
+    let response = usecases
+        .import_local_media
+        .execute(req)
+        .await
+        .map_err(CommandError::from)?;
 
     Ok((&response.project).into())
 }

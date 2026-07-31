@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use domain::project::Project;
 use ports::repository::ProjectRepository;
 
@@ -43,7 +44,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_project_success() {
-        let repo = InMemoryProjectRepository::new();
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
         let use_case = CreateProjectUseCase::new(repo.clone());
 
         let request = CreateProjectRequest {

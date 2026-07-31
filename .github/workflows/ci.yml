@@ -75,6 +75,8 @@ jobs:
             quality:
               - 'tools/scripts/**'
               - 'taskfiles/**'
+              - 'Taskfile.yml'
+              - '.agents/AGENTS.md'
             release:
               - '.github/workflows/release.yml'
               - '.github/workflows/tauri-build.yml'
@@ -117,10 +119,10 @@ jobs:
           version: 3.x
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: task install
 
       - name: Install Playwright Browsers
-        run: pnpm exec playwright install
+        run: task frontend:setup:playwright
 
       - name: Run frontend checks
         run: task check:frontend
@@ -200,7 +202,7 @@ jobs:
           version: 3.x
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: task install
 
       - name: Run docs checks
         run: task check:docs
@@ -211,7 +213,7 @@ jobs:
   quality-global:
     name: Global Quality
     needs: changes
-    if: ${{ needs.changes.outputs.quality == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
+    if: ${{ needs.changes.outputs.quality == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' || needs.changes.outputs.rust == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -235,7 +237,7 @@ jobs:
           version: 3.x
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: task install
 
       - name: Run global quality checks
         run: task check:quality:global

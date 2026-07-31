@@ -1,0 +1,286 @@
+use ports::{repository::OutboxRepository, storage::ArtifactStore, workspace::TempWorkspacePort};
+use std::{sync::Arc, time::Duration};
+use tokio::sync::watch;
+
+#[derive(Debug, Clone)]
+pub struct OutboxMaintenanceConfig {
+    pub interval: Duration,
+    pub staging_max_age: Duration,
+    pub workspace_max_age: Duration,
+    pub done_retention: domain::chrono::TimeDelta,
+    pub dead_retention: domain::chrono::TimeDelta,
+    pub per_status_batch_limit: u32,
+    pub max_batches: u32,
+    pub run_on_startup: bool,
+    pub shutdown_timeout: Duration,
+}
+
+impl OutboxMaintenanceConfig {
+    pub fn try_default() -> Result<Self, crate::error::ApplicationError> {
+        Ok(Self {
+            interval: Duration::from_secs(3600),
+            staging_max_age: Duration::from_secs(86400),
+            workspace_max_age: Duration::from_secs(86400),
+            done_retention: domain::chrono::TimeDelta::try_days(7).ok_or_else(|| {
+                crate::error::ApplicationError::Configuration("Invalid done_retention".into())
+            })?,
+            dead_retention: domain::chrono::TimeDelta::try_days(30).ok_or_else(|| {
+                crate::error::ApplicationError::Configuration("Invalid dead_retention".into())
+            })?,
+            per_status_batch_limit: 500,
+            max_batches: 10,
+            run_on_startup: true,
+            shutdown_timeout: Duration::from_secs(30),
+        })
+    }
+
+    pub fn validate(&self) -> Result<(), crate::error::ApplicationError> {
+        if self.interval.is_zero() {
+            return Err(crate::error::ApplicationError::Configuration(
+                "interval must be non-zero".to_string(),
+            ));
+        }
+        if self.staging_max_age.is_zero() {
+            return Err(crate::error::ApplicationError::Configuration(
+                "staging_max_age must be non-zero".to_string(),
+            ));
+        }
+        if self.workspace_max_age.is_zero() {
+            return Err(crate::error::ApplicationError::Configuration(
+                "workspace_max_age must be non-zero".to_string(),
+            ));
+        }
+        if self.done_retention.num_seconds() <= 0 {
+            return Err(crate::error::ApplicationError::Configuration(
+                "done_retention must be strictly positive".to_string(),
+            ));
+        }
+        if self.dead_retention.num_seconds() <= 0 {
+            return Err(crate::error::ApplicationError::Configuration(
+                "dead_retention must be strictly positive".to_string(),
+            ));
+        }
+        if self.dead_retention < self.done_retention {
+            return Err(crate::error::ApplicationError::Configuration(
+                "dead_retention must be >= done_retention".to_string(),
+            ));
+        }
+        if self.per_status_batch_limit == 0 {
+            return Err(crate::error::ApplicationError::Configuration(
+                "per_status_batch_limit must be non-zero".to_string(),
+            ));
+        }
+        if self.max_batches == 0 {
+            return Err(crate::error::ApplicationError::Configuration(
+                "max_batches must be non-zero".to_string(),
+            ));
+        }
+        if self.shutdown_timeout.is_zero() {
+            return Err(crate::error::ApplicationError::Configuration(
+                "shutdown_timeout must be non-zero".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MaintenanceStepOutcome {
+    #[default]
+    NotStarted,
+    Succeeded,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct OutboxMaintenanceReport {
+    pub staging_cleanup: MaintenanceStepOutcome,
+    pub workspace_cleanup: MaintenanceStepOutcome,
+    pub pruning: MaintenanceStepOutcome,
+    pub done_deleted: usize,
+    pub dead_deleted: usize,
+    pub batches_run: u32,
+    pub cancelled: bool,
+}
+
+pub struct MaintenanceCoordinator<O, S> {
+    outbox_repo: O,
+    artifact_store: S,
+    workspace_provider: Arc<dyn TempWorkspacePort>,
+    config: OutboxMaintenanceConfig,
+}
+
+impl<O, S> MaintenanceCoordinator<O, S>
+where
+    O: OutboxRepository,
+    S: ArtifactStore,
+{
+    pub fn new(
+        outbox_repo: O,
+        artifact_store: S,
+        workspace_provider: Arc<dyn TempWorkspacePort>,
+        config: OutboxMaintenanceConfig,
+    ) -> Self {
+        Self {
+            outbox_repo,
+            artifact_store,
+            workspace_provider,
+            config,
+        }
+    }
+
+    pub fn run_maintenance<'a>(
+        &'a self,
+        cancel_token: watch::Receiver<bool>,
+    ) -> impl std::future::Future<Output = OutboxMaintenanceReport> + 'a {
+        self.run_maintenance_at(domain::chrono::Utc::now(), cancel_token)
+    }
+
+    pub(crate) fn run_maintenance_at<'a>(
+        &'a self,
+        now: domain::chrono::DateTime<domain::chrono::Utc>,
+        cancel_token: watch::Receiver<bool>,
+    ) -> impl std::future::Future<Output = OutboxMaintenanceReport> + 'a {
+        let span = tracing::info_span!("maintenance_run", action = "maintenance_run");
+        let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
+            span.clone(),
+            crate::observability::execution_summary::OperationSummary::Maintenance {
+                action: "maintenance_run",
+                status: "aborted".to_string(),
+                deleted_count: 0,
+                failed_count: 0,
+            },
+        );
+
+        async move {
+            let report = self.run_maintenance_inner_at(now, cancel_token).await;
+
+            let mut failed_count = 0;
+            if report.staging_cleanup == MaintenanceStepOutcome::Failed {
+                failed_count += 1;
+            }
+            if report.workspace_cleanup == MaintenanceStepOutcome::Failed {
+                failed_count += 1;
+            }
+            if report.pruning == MaintenanceStepOutcome::Failed {
+                failed_count += 1;
+            }
+
+            let status = if report.cancelled {
+                "cancelled"
+            } else if failed_count > 0 {
+                "completed_with_errors"
+            } else {
+                "completed"
+            };
+
+            guard.update_summary(
+                crate::observability::execution_summary::OperationSummary::Maintenance {
+                    action: "maintenance_run",
+                    status: status.to_string(),
+                    deleted_count: (report.done_deleted + report.dead_deleted) as u64,
+                    failed_count,
+                },
+            );
+
+            report
+        }
+    }
+
+    async fn run_maintenance_inner_at(
+        &self,
+        now: domain::chrono::DateTime<domain::chrono::Utc>,
+        cancel_token: watch::Receiver<bool>,
+    ) -> OutboxMaintenanceReport {
+        let mut report = OutboxMaintenanceReport::default();
+        let done_before = now - self.config.done_retention;
+        let dead_before = now - self.config.dead_retention;
+
+        if *cancel_token.borrow() {
+            report.cancelled = true;
+            return report;
+        }
+
+        // 1. Staging janitor
+        report.staging_cleanup = MaintenanceStepOutcome::NotStarted;
+        if *cancel_token.borrow() {
+            report.cancelled = true;
+            return report;
+        }
+        match self
+            .artifact_store
+            .cleanup_stale_staging(self.config.staging_max_age)
+            .await
+        {
+            Ok(_) => {
+                report.staging_cleanup = MaintenanceStepOutcome::Succeeded;
+            }
+            Err(_) => {
+                report.staging_cleanup = MaintenanceStepOutcome::Failed;
+            }
+        }
+
+        if *cancel_token.borrow() {
+            report.cancelled = true;
+            return report;
+        }
+
+        // 2. Workspace janitor
+        report.workspace_cleanup = MaintenanceStepOutcome::NotStarted;
+        match self
+            .workspace_provider
+            .cleanup_stale_allocations(self.config.workspace_max_age)
+            .await
+        {
+            Ok(_) => {
+                report.workspace_cleanup = MaintenanceStepOutcome::Succeeded;
+            }
+            Err(_) => {
+                report.workspace_cleanup = MaintenanceStepOutcome::Failed;
+            }
+        }
+
+        if *cancel_token.borrow() {
+            report.cancelled = true;
+            return report;
+        }
+
+        // 3. Pruning loop
+        report.pruning = MaintenanceStepOutcome::NotStarted;
+        for _ in 0..self.config.max_batches {
+            if *cancel_token.borrow() {
+                report.cancelled = true;
+                report.pruning = MaintenanceStepOutcome::Cancelled;
+                break;
+            }
+
+            tokio::task::yield_now().await;
+
+            match self
+                .outbox_repo
+                .prune_terminal_rows(done_before, dead_before, self.config.per_status_batch_limit)
+                .await
+            {
+                Ok(prune_report) => {
+                    report.pruning = MaintenanceStepOutcome::Succeeded;
+                    report.done_deleted += prune_report.done_deleted;
+                    report.dead_deleted += prune_report.dead_deleted;
+                    report.batches_run += 1;
+
+                    if prune_report.done_deleted < self.config.per_status_batch_limit as usize
+                        && prune_report.dead_deleted < self.config.per_status_batch_limit as usize
+                    {
+                        break;
+                    }
+                }
+                Err(_) => {
+                    report.pruning = MaintenanceStepOutcome::Failed;
+                    break;
+                }
+            }
+        }
+
+        report
+    }
+}

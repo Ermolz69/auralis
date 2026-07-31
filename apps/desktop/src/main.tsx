@@ -3,13 +3,18 @@ import { createRoot } from 'react-dom/client';
 import './app/styles/index.css';
 import App from './App.tsx';
 import { ProjectProvider } from './entities/project';
+
 import { NavigationProvider } from './shared/router';
+
+import { AppJobProvider } from './app/providers';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <NavigationProvider>
       <ProjectProvider>
-        <App />
+        <AppJobProvider>
+          <App />
+        </AppJobProvider>
       </ProjectProvider>
     </NavigationProvider>
   </StrictMode>,

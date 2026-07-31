@@ -85,6 +85,11 @@ impl TtsEnginePort for MockTtsEngineAdapter {
                     location: domain::media::ArtifactLocation::LocalPath(
                         path.to_string_lossy().to_string(),
                     ),
+                    size_bytes: None,
+                    state: domain::media::ArtifactState::Ready,
+                    created_at: domain::chrono::Utc::now(),
+                    updated_at: domain::chrono::Utc::now(),
+                    ready_at: Some(domain::chrono::Utc::now()),
                 },
                 duration_ms: Some(segment.end_ms - segment.start_ms),
             });

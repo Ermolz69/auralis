@@ -1,0 +1,406 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+use crate::event_publisher::FrontendJobEventPublisher;
+use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
+use ports::job_scheduler::JobLifecycleEvent;
+use std::sync::Arc;
+use tokio::sync::{broadcast, oneshot};
+use tokio::task::JoinHandle;
+
+pub const JOB_EVENT_CHANNEL_CAPACITY: usize = 256;
+
+struct JobLifecycleWorker<P>
+where
+    P: FrontendJobEventPublisher + 'static,
+{
+    publisher: P,
+    coordinator: Arc<JobLifecycleCoordinator>,
+    receiver: broadcast::Receiver<JobLifecycleEvent>,
+    shutdown_rx: oneshot::Receiver<()>,
+}
+
+impl<P> JobLifecycleWorker<P>
+where
+    P: FrontendJobEventPublisher + 'static,
+{
+    async fn run(mut self) {
+        loop {
+            tokio::select! {
+                _ = &mut self.shutdown_rx => {
+                    tracing::info!("JobLifecycleWorker: shutdown signal received, stopping");
+                    break;
+                }
+                event_result = self.receiver.recv() => {
+                    match event_result {
+                        Ok(event) => {
+                            if let Err(_e) = self.publisher.publish_job_event(&event) {
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "FrontendPublishError",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "failed to publish job event to frontend"
+                                );
+                            }
+
+                            if let Err(_e) = self.coordinator.handle(event).await {
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "LifecycleCoordinatorError",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "failed to handle job lifecycle event"
+                                );
+                            }
+                        }
+                        Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                            tracing::warn!(skipped_events = skipped, "JobLifecycleWorker lagged behind, skipped events. Publishing invalidated event.");
+                            if let Err(_e) = self.publisher.publish_invalidated() {
+                                tracing::error!(
+                                    error = %common::observability::redaction::DiagnosticError {
+                                        kind: "FrontendPublishError",
+                                        code: None,
+                                        retryable: false,
+                                    },
+                                    "failed to publish invalidated event to frontend"
+                                );
+                            }
+                        }
+                        Err(broadcast::error::RecvError::Closed) => {
+                            tracing::info!("JobLifecycleWorker: all senders dropped, stopping");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct JobEventBridgeHandle {
+    pub shutdown_tx: Option<oneshot::Sender<()>>,
+    pub worker_handle: Option<JoinHandle<()>>,
+}
+
+impl JobEventBridgeHandle {
+    pub fn into_shutdown_parts(mut self) -> (Option<oneshot::Sender<()>>, Option<JoinHandle<()>>) {
+        (self.shutdown_tx.take(), self.worker_handle.take())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct JobEventBridgeConfig {
+    pub capacity: usize,
+}
+
+impl Default for JobEventBridgeConfig {
+    fn default() -> Self {
+        Self { capacity: 256 }
+    }
+}
+
+pub struct PreparedJobEventBridge {
+    tx: broadcast::Sender<JobLifecycleEvent>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+    shutdown_rx: Option<oneshot::Receiver<()>>,
+    receiver: Option<broadcast::Receiver<JobLifecycleEvent>>,
+}
+
+pub struct RunningJobEventBridge {
+    _tx: broadcast::Sender<JobLifecycleEvent>,
+    handle: Option<JobEventBridgeHandle>,
+}
+
+impl PreparedJobEventBridge {
+    pub fn new(config: JobEventBridgeConfig) -> Self {
+        let (tx, rx) = broadcast::channel(config.capacity);
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+        Self {
+            tx,
+            shutdown_tx: Some(shutdown_tx),
+            shutdown_rx: Some(shutdown_rx),
+            receiver: Some(rx),
+        }
+    }
+
+    pub fn emitter(&self) -> Arc<dyn Fn(JobLifecycleEvent) + Send + Sync> {
+        let tx = self.tx.clone();
+        Arc::new(move |event: JobLifecycleEvent| {
+            if let Err(_e) = tx.send(event) {
+                tracing::error!(
+                    error = %common::observability::redaction::DiagnosticError {
+                        kind: "ChannelSendError",
+                        code: None,
+                        retryable: false,
+                    },
+                    "failed to send job lifecycle event to worker channel"
+                );
+            }
+        })
+    }
+
+    pub fn start<P>(
+        mut self,
+        publisher: P,
+        coordinator: Arc<JobLifecycleCoordinator>,
+    ) -> RunningJobEventBridge
+    where
+        P: FrontendJobEventPublisher + 'static,
+    {
+        let worker = JobLifecycleWorker {
+            publisher,
+            coordinator,
+            receiver: self.receiver.take().unwrap(),
+            shutdown_rx: self.shutdown_rx.take().unwrap(),
+        };
+
+        let worker_handle = tokio::spawn(async move {
+            worker.run().await;
+        });
+
+        let bridge_handle = JobEventBridgeHandle {
+            shutdown_tx: self.shutdown_tx.take(),
+            worker_handle: Some(worker_handle),
+        };
+
+        RunningJobEventBridge {
+            _tx: self.tx,
+            handle: Some(bridge_handle),
+        }
+    }
+}
+
+impl RunningJobEventBridge {
+    pub fn take_handle(&mut self) -> Option<JobEventBridgeHandle> {
+        self.handle.take()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use domain::job::{JobId, JobProgress, JobStatus};
+    use ports::error::PortError;
+    use std::sync::Mutex;
+    use std::time::Duration;
+    use tokio::time::sleep;
+
+    #[derive(Clone)]
+    struct MockFrontendPublisher {
+        events: Arc<Mutex<Vec<JobLifecycleEvent>>>,
+        invalidated_calls: Arc<Mutex<usize>>,
+        fail_next: Arc<Mutex<bool>>,
+    }
+
+    impl MockFrontendPublisher {
+        fn new() -> Self {
+            Self {
+                events: Arc::new(Mutex::new(Vec::new())),
+                invalidated_calls: Arc::new(Mutex::new(0)),
+                fail_next: Arc::new(Mutex::new(false)),
+            }
+        }
+    }
+
+    impl FrontendJobEventPublisher for MockFrontendPublisher {
+        fn publish_job_event(&self, event: &JobLifecycleEvent) -> Result<(), PortError> {
+            let mut fail = self.fail_next.lock().unwrap();
+            if *fail {
+                *fail = false;
+                return Err(PortError::Unexpected {
+                    message: "frontend pub failure".into(),
+                });
+            }
+            self.events.lock().unwrap().push(event.clone());
+            Ok(())
+        }
+
+        fn publish_invalidated(&self) -> Result<(), PortError> {
+            *self.invalidated_calls.lock().unwrap() += 1;
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bridge_event_ordering_and_shutdown() {
+        let coordinator = Arc::new(JobLifecycleCoordinator::new());
+        let frontend_pub = MockFrontendPublisher::new();
+
+        let prepared = PreparedJobEventBridge::new(JobEventBridgeConfig::default());
+        let emitter = prepared.emitter();
+        let mut running = prepared.start(frontend_pub.clone(), coordinator);
+
+        let event1 = JobLifecycleEvent {
+            kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 1,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Running,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+        };
+
+        let event2 = JobLifecycleEvent {
+            kind: ports::job_scheduler::JobLifecycleEventKind::Completed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 2,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Completed,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+        };
+
+        // Send two events
+        emitter(event1.clone());
+        emitter(event2.clone());
+
+        // Wait a bit for processing
+        sleep(Duration::from_millis(50)).await;
+
+        let emitted = frontend_pub.events.lock().unwrap().clone();
+        assert_eq!(emitted.len(), 2);
+        assert_eq!(emitted[0].job.status, JobStatus::Running);
+        assert_eq!(emitted[1].job.status, JobStatus::Completed);
+
+        // Test shutdown
+        let handle = running.take_handle().unwrap();
+        let (tx, task) = handle.into_shutdown_parts();
+        if let Some(tx) = tx {
+            let _ = tx.send(());
+        }
+        if let Some(task) = task {
+            let _ = task.await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bridge_processing_after_failure() {
+        let coordinator = Arc::new(JobLifecycleCoordinator::new());
+        let frontend_pub = MockFrontendPublisher::new();
+
+        let prepared = PreparedJobEventBridge::new(JobEventBridgeConfig::default());
+        let emitter = prepared.emitter();
+        let mut running = prepared.start(frontend_pub.clone(), coordinator);
+
+        // Make the first publish fail
+        *frontend_pub.fail_next.lock().unwrap() = true;
+
+        let event1 = JobLifecycleEvent {
+            kind: ports::job_scheduler::JobLifecycleEventKind::Started,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 1,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Running,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+        };
+
+        let event2 = JobLifecycleEvent {
+            kind: ports::job_scheduler::JobLifecycleEventKind::Completed,
+            job: ports::job_scheduler::ScheduledJob {
+                id: JobId::new(),
+                revision: 2,
+                title: "Test".to_string(),
+                project_id: None,
+                status: JobStatus::Completed,
+                stage: Some(domain::dubbing::DubbingPipelineStage::TranslateTranscript),
+                progress: JobProgress::initializing(),
+                error: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            },
+        };
+
+        // Send events
+        emitter(event1);
+        emitter(event2);
+
+        sleep(Duration::from_millis(50)).await;
+
+        // The first event failed to publish, but the worker should have continued to process the second event
+        let emitted = frontend_pub.events.lock().unwrap().clone();
+        assert_eq!(emitted.len(), 1);
+        assert_eq!(emitted[0].job.status, JobStatus::Completed);
+
+        let handle = running.take_handle().unwrap();
+        let (tx, task) = handle.into_shutdown_parts();
+        if let Some(tx) = tx {
+            let _ = tx.send(());
+        }
+        if let Some(task) = task {
+            let _ = task.await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bridge_lagged_receiver() {
+        let coordinator = Arc::new(JobLifecycleCoordinator::new());
+        let frontend_pub = MockFrontendPublisher::new();
+
+        // We use a small capacity channel for testing lagged
+        let (tx, rx) = broadcast::channel(2);
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+
+        let worker = JobLifecycleWorker {
+            publisher: frontend_pub.clone(),
+            coordinator,
+            receiver: rx,
+            shutdown_rx,
+        };
+
+        let worker_handle = tokio::spawn(async move {
+            worker.run().await;
+        });
+
+        // Fill the channel and overflow it
+        for _ in 0..5 {
+            let event = JobLifecycleEvent {
+                kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
+                job: ports::job_scheduler::ScheduledJob {
+                    id: JobId::new(),
+                    revision: 1,
+                    title: "Test".to_string(),
+                    project_id: None,
+                    status: JobStatus::Running,
+                    stage: None,
+                    progress: JobProgress::initializing(),
+                    error: None,
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                },
+            };
+            let _ = tx.send(event);
+        }
+
+        // Give worker time to process the lagged error
+        sleep(Duration::from_millis(50)).await;
+
+        let invalidations = *frontend_pub.invalidated_calls.lock().unwrap();
+        assert!(
+            invalidations > 0,
+            "Expected at least one invalidated event to be published"
+        );
+
+        let _ = shutdown_tx.send(());
+        let _ = worker_handle.await;
+    }
+}

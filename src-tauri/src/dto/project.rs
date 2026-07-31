@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::dto::media::{MediaMetadataDto, MediaSourceDto};
 use domain::project::{Project, ProjectStatus};
 use serde::Serialize;
@@ -37,11 +38,13 @@ impl From<&Project> for ProjectDto {
     }
 }
 
+use adapters_tauri::dto::job::JobDto;
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProjectResponse {
     pub project: ProjectDto,
-    pub job: ports::job_scheduler::ScheduledJob,
+    pub job: JobDto,
 }
 
 #[derive(Serialize)]

@@ -1,4 +1,8 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+use std::fmt;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JobError {
     pub code: String,
     pub message: String,
@@ -13,4 +17,16 @@ impl JobError {
             recoverable,
         }
     }
+
+    pub fn is_recoverable(&self) -> bool {
+        self.recoverable
+    }
 }
+
+impl fmt::Display for JobError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for JobError {}

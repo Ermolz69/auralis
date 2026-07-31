@@ -1,6 +1,6 @@
 use crate::media::stream::{AudioTrackMetadata, MediaStream, VideoStreamMetadata};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MediaContainerMetadata {
     pub format_name: Option<String>,
     pub format_long_name: Option<String>,
@@ -8,7 +8,7 @@ pub struct MediaContainerMetadata {
     pub bitrate: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MediaMetadata {
     pub duration_ms: u64,
     pub width: Option<u32>,

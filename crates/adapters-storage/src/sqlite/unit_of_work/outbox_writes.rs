@@ -1,0 +1,84 @@
+use domain::outbox::{OutboxMessage, OutboxPayload};
+use ports::error::PortError;
+use sqlx::{Sqlite, Transaction};
+
+pub(super) async fn save_outbox_message(
+    tx: &mut Transaction<'_, Sqlite>,
+    msg: &OutboxMessage,
+) -> Result<(), PortError> {
+    fn format_db_timestamp(value: domain::chrono::DateTime<domain::chrono::Utc>) -> String {
+        value.to_rfc3339_opts(domain::chrono::SecondsFormat::Secs, true)
+    }
+
+    let kind = msg.payload.clone();
+    let kind_str = match &kind {
+        OutboxPayload::FinalizeStagedArtifact { .. } => "finalize_staged_artifact",
+        OutboxPayload::DeleteStorageKey { .. } => "delete_storage_key",
+        OutboxPayload::DeleteProjectArtifactDir { .. } => "delete_project_artifact_dir",
+        OutboxPayload::DeleteWorkspaceFile { .. } => "delete_workspace_file",
+        OutboxPayload::HandleTerminalJobState { .. } => "handle_terminal_job_state",
+    };
+
+    let payload_json = serde_json::to_string(&msg.payload).map_err(|e| PortError::Storage {
+        operation: "serialize_outbox_payload",
+        message: e.to_string(),
+    })?;
+
+    let status_str = match msg.status {
+        domain::outbox::OutboxMessageStatus::Pending => "pending",
+        domain::outbox::OutboxMessageStatus::Processing => "processing",
+        domain::outbox::OutboxMessageStatus::Done => "done",
+        domain::outbox::OutboxMessageStatus::Failed => "failed",
+        domain::outbox::OutboxMessageStatus::Dead => "dead",
+    };
+
+    let result = sqlx::query(
+        r#"
+        INSERT INTO outbox_messages (
+            id, kind, payload_json, status, attempts, next_attempt_at,
+            locked_at, locked_by, last_error, deduplication_key, created_at, updated_at,
+            aggregate_type, aggregate_id
+        ) 
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE 
+            (? IS NOT 'project' AND ? IS NOT 'job')
+            OR (? = 'project' AND EXISTS (SELECT 1 FROM projects WHERE id = ?))
+            OR (? = 'job' AND EXISTS (SELECT 1 FROM jobs WHERE id = ?))
+        ON CONFLICT(id) DO NOTHING
+        "#,
+    )
+    .bind(msg.id.to_string())
+    .bind(kind_str)
+    .bind(payload_json)
+    .bind(status_str)
+    .bind(msg.attempts)
+    .bind(format_db_timestamp(msg.next_attempt_at))
+    .bind(msg.locked_at.map(format_db_timestamp))
+    .bind(msg.locked_by.clone())
+    .bind(msg.last_error.clone())
+    .bind(msg.deduplication_key.clone())
+    .bind(format_db_timestamp(msg.created_at))
+    .bind(format_db_timestamp(msg.updated_at))
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_id.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_id.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(msg.aggregate_id.clone())
+    .execute(&mut **tx)
+    .await
+    .map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to add outbox message in tx", e)
+    })?;
+
+    if result.rows_affected() != 1 {
+        return Err(PortError::Conflict {
+            resource: "OutboxMessage".to_string(),
+            message: "Outbox insert did not affect exactly one row".to_string(),
+        });
+    }
+
+    Ok(())
+}

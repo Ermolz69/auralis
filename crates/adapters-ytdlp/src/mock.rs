@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use std::path::Path;
 
 use domain::media::{Artifact, ArtifactKind, MediaMetadata, MediaSource, SubtitleTrack};
 use ports::error::PortError;
@@ -69,11 +68,16 @@ impl VideoSourcePort for MockVideoSourceAdapter {
                 .unwrap_or_else(|| "mock_video.mp4".to_string()),
         );
         Ok(Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::SourceVideo,
             location: domain::media::ArtifactLocation::LocalPath(
                 path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: None,
         })
     }
 }
@@ -106,17 +110,22 @@ impl SubtitleSourcePort for MockSubtitleSourceAdapter {
 
     async fn download_subtitle(
         &self,
-        _source: &MediaSource,
-        track: &SubtitleTrack,
-        target_path: &Path,
+        request: ports::source::DownloadSubtitleRequest,
     ) -> Result<Artifact, PortError> {
-        let path = target_path.join(format!("mock_sub_{}.vtt", track.language));
+        let path = request
+            .target_directory
+            .join(format!("mock_sub_{}.vtt", request.track.language));
         Ok(Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::OriginalSubtitle,
             location: domain::media::ArtifactLocation::LocalPath(
                 path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: None,
         })
     }
 }

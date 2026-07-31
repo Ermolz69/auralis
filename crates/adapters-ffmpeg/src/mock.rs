@@ -60,11 +60,16 @@ impl MediaMuxerPort for MockMediaMuxerAdapter {
         output_path: &Path,
     ) -> Result<Artifact, PortError> {
         Ok(Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::ExtractedAudio,
             location: domain::media::ArtifactLocation::LocalPath(
                 output_path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         })
     }
 
@@ -75,11 +80,16 @@ impl MediaMuxerPort for MockMediaMuxerAdapter {
         output_path: &Path,
     ) -> Result<Artifact, PortError> {
         Ok(Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::FinalVideo,
             location: domain::media::ArtifactLocation::LocalPath(
                 output_path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         })
     }
 
@@ -90,11 +100,16 @@ impl MediaMuxerPort for MockMediaMuxerAdapter {
         output_path: &Path,
     ) -> Result<Artifact, PortError> {
         Ok(Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::PreviewVideo,
             location: domain::media::ArtifactLocation::LocalPath(
                 output_path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
+            state: domain::media::ArtifactState::Ready,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: Some(domain::chrono::Utc::now()),
         })
     }
 }

@@ -6,7 +6,10 @@ use domain::media::MediaSource;
 use domain::project::Project;
 use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::repository::ProjectRepository;
-use ports::source::VideoSourcePort;
+use ports::source::{SubtitleSourcePort, VideoSourcePort};
+use ports::storage::ArtifactStore;
+use ports::transaction::StorageUnitOfWork;
+use ports::workspace::TempWorkspacePort;
 use std::sync::Arc;
 
 pub struct CreateProjectFromYoutubeRequest {
@@ -18,21 +21,52 @@ pub struct CreateProjectFromYoutubeResponse {
     pub job: ScheduledJob,
 }
 
-pub struct CreateProjectFromYoutubeUseCase<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
-{
+pub struct CreateProjectFromYoutubeUseCase<
+    R: ProjectRepository + Clone + 'static,
+    V: VideoSourcePort + Clone,
+    SSub: SubtitleSourcePort + Clone + 'static,
+    SStore: ArtifactStore + Clone + 'static,
+> {
     project_repo: R,
     video_source: V,
     job_scheduler: Arc<dyn JobSchedulerPort>,
+    storage_uow: Arc<dyn StorageUnitOfWork>,
+    subtitle_source: SSub,
+    artifact_store: SStore,
+    workspace_port: Arc<dyn TempWorkspacePort>,
+    locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
 }
 
-impl<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
-    CreateProjectFromYoutubeUseCase<R, V>
+impl<
+    R: ProjectRepository + Clone + 'static,
+    V: VideoSourcePort + Clone,
+    SSub: SubtitleSourcePort + Clone + 'static,
+    SStore: ArtifactStore + Clone + 'static,
+> CreateProjectFromYoutubeUseCase<R, V, SSub, SStore>
 {
-    pub fn new(project_repo: R, video_source: V, job_scheduler: Arc<dyn JobSchedulerPort>) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        project_repo: R,
+        video_source: V,
+        job_scheduler: Arc<dyn JobSchedulerPort>,
+        storage_uow: Arc<dyn StorageUnitOfWork>,
+        subtitle_source: SSub,
+        artifact_store: SStore,
+        workspace_port: Arc<dyn TempWorkspacePort>,
+        locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
+        job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+    ) -> Self {
         Self {
             project_repo,
             video_source,
             job_scheduler,
+            storage_uow,
+            subtitle_source,
+            artifact_store,
+            workspace_port,
+            locks,
+            job_runtime,
         }
     }
 
@@ -63,8 +97,17 @@ impl<R: ProjectRepository + Clone, V: VideoSourcePort + Clone>
             })?;
         self.project_repo.save(&proj).await?;
 
-        let pipeline_use_case =
-            StartMockPipelineUseCase::new(self.project_repo.clone(), self.job_scheduler.clone());
+        let pipeline_use_case = StartMockPipelineUseCase::new(
+            self.project_repo.clone(),
+            self.job_scheduler.clone(),
+            self.storage_uow.clone(),
+            self.subtitle_source.clone(),
+            self.artifact_store.clone(),
+            self.workspace_port.clone(),
+            self.locks.clone(),
+            self.job_runtime.clone(),
+        );
+
         let req3 = StartMockPipelineRequest {
             project_id: proj.id().clone(),
         };

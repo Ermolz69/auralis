@@ -14,6 +14,18 @@ tasks:
   global:
     cmds:
       - task: format-check
+      - task: runtime-println
+      - task: storage-fallbacks
+
+  runtime-println:
+    cmds:
+      - node tools/scripts/check-runtime-println.test.mjs
+      - node tools/scripts/check-runtime-println.mjs
+
+  storage-fallbacks:
+    cmds:
+      - node tools/scripts/check-storage-fallbacks.test.mjs
+      - node tools/scripts/check-storage-fallbacks.mjs
 
   fsd-boundaries:
     cmds:
@@ -22,6 +34,7 @@ tasks:
 
   file-size:
     cmds:
+      - node tools/scripts/check-file-size.test.mjs
       - node tools/scripts/check-file-size.mjs
 
   color-tokens:

@@ -67,9 +67,23 @@ export function MediaPanel() {
               <span className="text-muted">Source</span>
               <span
                 className="font-medium text-text truncate max-w-[120px]"
-                title={source?.urlOrPath}
+                title={
+                  source?.kind === 'managedLocalFile'
+                    ? source.originalFilename
+                    : source?.kind === 'externalLocalFile'
+                      ? source.path
+                      : source?.kind === 'youtubeUrl' || source?.kind === 'remoteUrl'
+                        ? source.url
+                        : ''
+                }
               >
-                {source?.urlOrPath?.split(/[/\\]/).pop() || 'Unknown'}
+                {source?.kind === 'managedLocalFile'
+                  ? source.originalFilename
+                  : source?.kind === 'externalLocalFile'
+                    ? source.path?.split(/[/\\]/).pop()
+                    : source?.kind === 'youtubeUrl' || source?.kind === 'remoteUrl'
+                      ? source.url?.split(/[/\\]/).pop()
+                      : 'Unknown'}
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">

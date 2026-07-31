@@ -1,6 +1,6 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use async_trait::async_trait;
 use std::path::PathBuf;
-use url::Url;
 
 use domain::media::{MediaMetadata, MediaSource};
 use ports::error::PortError;
@@ -41,24 +41,14 @@ impl VideoSourcePort for YtDlpAdapter {
         let url_str = match source {
             MediaSource::YoutubeUrl { url } => url,
             MediaSource::RemoteUrl { url } => url,
-            MediaSource::LocalFile { .. } => {
+            MediaSource::ManagedLocalFile { .. } | MediaSource::ExternalLocalFile { .. } => {
                 return Err(PortError::InvalidSource {
                     message: "yt-dlp adapter only supports URLs, not local files".to_string(),
                 });
             }
         };
 
-        let parsed = Url::parse(url_str).map_err(|_| PortError::InvalidSource {
-            message: format!("invalid URL: {}", url_str),
-        })?;
-
-        let host = parsed.host_str().unwrap_or("");
-        if !host.contains("youtube.com") && !host.contains("youtu.be") {
-            return Err(PortError::InvalidSource {
-                message: "only youtube.com / youtu.be are supported right now".to_string(),
-            });
-        }
-
+        super::validation::validate_url(url_str)?;
         Ok(())
     }
 
@@ -116,12 +106,19 @@ impl VideoSourcePort for YtDlpAdapter {
             .into());
         }
 
+        super::containment::verify_containment(&request.target_dir, &path)?;
+
         Ok(domain::media::Artifact {
             id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
             kind: domain::media::ArtifactKind::DownloadedVideo,
             location: domain::media::ArtifactLocation::LocalPath(
                 path.to_string_lossy().to_string(),
             ),
+            size_bytes: None,
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: None,
         })
     }
 }
@@ -138,7 +135,7 @@ impl SubtitleSourcePort for YtDlpAdapter {
         let url = match source {
             MediaSource::YoutubeUrl { url } => url,
             MediaSource::RemoteUrl { url } => url,
-            MediaSource::LocalFile { .. } => {
+            MediaSource::ManagedLocalFile { .. } | MediaSource::ExternalLocalFile { .. } => {
                 return Err(PortError::InvalidSource {
                     message: "yt-dlp subtitles only support URLs".to_string(),
                 });
@@ -152,35 +149,60 @@ impl SubtitleSourcePort for YtDlpAdapter {
         Ok(parse_subtitle_tracks(&value))
     }
 
+    #[allow(clippy::collapsible_if)]
     async fn download_subtitle(
         &self,
-        source: &MediaSource,
-        track: &SubtitleTrack,
-        target_path: &std::path::Path,
+        request: ports::source::DownloadSubtitleRequest,
     ) -> Result<domain::media::Artifact, PortError> {
-        self.validate_source(source).await?;
+        self.validate_source(&request.source).await?;
 
-        let url = match source {
+        let url = match &request.source {
             MediaSource::YoutubeUrl { url } => url,
             MediaSource::RemoteUrl { url } => url,
-            MediaSource::LocalFile { .. } => unreachable!(),
+            MediaSource::ManagedLocalFile { .. } | MediaSource::ExternalLocalFile { .. } => {
+                return Err(PortError::InvalidSource {
+                    message: "yt-dlp subtitle download only supports URLs".to_string(),
+                });
+            }
         };
 
-        let path = super::command::run_ytdlp_download_subtitle(
+        if !request.target_directory.exists() {
+            if let Err(e) = tokio::fs::create_dir_all(&request.target_directory).await {
+                return Err(PortError::Io {
+                    message: e.to_string(),
+                });
+            }
+        }
+
+        let result = super::command::run_ytdlp_download_subtitle(
             &self.candidates,
             url,
-            target_path,
-            &track.language,
+            &request.target_directory,
+            &request.track.language,
             "vtt",
-            track.is_auto_generated,
+            request.track.is_auto_generated,
             self.timeout_ms,
         )
-        .await?;
+        .await;
+
+        let path = match result {
+            Ok(p) => p,
+            Err(e) => {
+                return Err(e.into());
+            }
+        };
+
+        super::containment::verify_containment(&request.target_directory, &path)?;
 
         Ok(domain::media::Artifact {
-            id: domain::media::ArtifactId(uuid::Uuid::new_v4()),
+            id: domain::media::ArtifactId::new(),
             kind: ArtifactKind::OriginalSubtitle,
             location: ArtifactLocation::LocalPath(path.to_string_lossy().to_string()),
+            size_bytes: None,
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: None,
         })
     }
 }

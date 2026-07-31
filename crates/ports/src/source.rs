@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use domain::media::{Artifact, MediaMetadata, MediaSource, SubtitleTrack};
 
@@ -9,6 +9,12 @@ pub struct DownloadMediaRequest {
     pub source: MediaSource,
     pub target_dir: PathBuf,
     pub filename_hint: Option<String>,
+}
+
+pub struct DownloadSubtitleRequest {
+    pub source: MediaSource,
+    pub track: SubtitleTrack,
+    pub target_directory: PathBuf,
 }
 
 #[async_trait]
@@ -23,8 +29,6 @@ pub trait SubtitleSourcePort: Send + Sync {
     async fn list_subtitles(&self, source: &MediaSource) -> Result<Vec<SubtitleTrack>, PortError>;
     async fn download_subtitle(
         &self,
-        source: &MediaSource,
-        track: &SubtitleTrack,
-        target_path: &Path,
+        request: DownloadSubtitleRequest,
     ) -> Result<Artifact, PortError>;
 }

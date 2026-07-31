@@ -1,5 +1,11 @@
 #[derive(Debug, thiserror::Error)]
 pub enum PortError {
+    #[error("Storage operation failed during {operation}: {message}")]
+    Storage {
+        operation: &'static str,
+        message: String,
+    },
+
     #[error("I/O error: {message}")]
     Io { message: String },
 
@@ -8,6 +14,20 @@ pub enum PortError {
 
     #[error("Not found: {resource}")]
     NotFound { resource: String },
+
+    #[error("Conflict: {resource} - {message}")]
+    Conflict { resource: String, message: String },
+
+    #[error("Resource is busy: {message}")]
+    Busy { message: String },
+
+    #[error("Invalid stored data in {entity_type} {entity_id}, field '{field}': {message}")]
+    InvalidStoredData {
+        entity_type: String,
+        entity_id: String,
+        field: String,
+        message: String,
+    },
 
     #[error("Invalid source: {message}")]
     InvalidSource { message: String },
@@ -20,6 +40,9 @@ pub enum PortError {
 
     #[error("Unsupported operation: {message}")]
     Unsupported { message: String },
+
+    #[error("Already stopped")]
+    AlreadyStopped,
 
     #[error("Unexpected port error: {message}")]
     Unexpected { message: String },

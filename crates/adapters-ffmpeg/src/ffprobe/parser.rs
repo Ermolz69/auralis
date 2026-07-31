@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::ffprobe::dto::FfprobeOutput;
 use crate::ffprobe::error::FfprobeError;
 use domain::media::{

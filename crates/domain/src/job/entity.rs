@@ -1,36 +1,44 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use chrono::{DateTime, Utc};
 
 use crate::dubbing::DubbingPipelineStage;
 use crate::error::DomainError;
 use crate::project::ProjectId;
 
-use super::{JobError, JobId, JobKind, JobProgress, JobStatus};
+use super::{JobError, JobId, JobKind, JobProgress, JobSnapshot, JobStatus};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Job {
     id: JobId,
+    revision: u64,
     project_id: ProjectId,
+    title: String,
     kind: JobKind,
     status: JobStatus,
     stage: Option<DubbingPipelineStage>,
     progress: JobProgress,
     error: Option<JobError>,
     created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
     started_at: Option<DateTime<Utc>>,
     finished_at: Option<DateTime<Utc>>,
 }
 
 impl Job {
-    pub fn new(project_id: ProjectId, kind: JobKind) -> Self {
+    pub fn new(project_id: ProjectId, title: String, kind: JobKind) -> Self {
+        let now = Utc::now();
         Self {
             id: JobId::new(),
+            revision: 1,
             project_id,
+            title,
             kind,
             status: JobStatus::Pending,
             stage: None,
             progress: JobProgress::initializing(),
             error: None,
-            created_at: Utc::now(),
+            created_at: now,
+            updated_at: now,
             started_at: None,
             finished_at: None,
         }
@@ -40,8 +48,16 @@ impl Job {
         &self.id
     }
 
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
     pub fn project_id(&self) -> &ProjectId {
         &self.project_id
+    }
+
+    pub fn title(&self) -> &str {
+        &self.title
     }
 
     pub fn kind(&self) -> &JobKind {
@@ -68,6 +84,10 @@ impl Job {
         &self.created_at
     }
 
+    pub fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+
     pub fn started_at(&self) -> Option<&DateTime<Utc>> {
         self.started_at.as_ref()
     }
@@ -83,35 +103,35 @@ impl Job {
                 to: "Running".to_string(),
             });
         }
+        self.bump_revision()?;
 
+        let now = Utc::now();
         self.status = JobStatus::Running;
-        self.started_at = Some(Utc::now());
+        self.started_at = Some(now);
+        self.updated_at = now;
         self.progress.message = "Job started".to_string();
 
         Ok(())
     }
 
-    pub fn update_progress(&mut self, progress: JobProgress) -> Result<(), DomainError> {
+    pub fn advance(
+        &mut self,
+        stage: DubbingPipelineStage,
+        progress: JobProgress,
+    ) -> Result<(), DomainError> {
         if self.status != JobStatus::Running {
-            return Err(DomainError::ValidationError(
-                "Can only update progress of a running job".to_string(),
-            ));
+            return Err(DomainError::InvalidStateTransition {
+                from: format!("{:?}", self.status),
+                to: "Stage Update (Running)".to_string(),
+            });
         }
 
         progress.validate()?;
-        self.progress = progress;
-
-        Ok(())
-    }
-
-    pub fn update_stage(&mut self, stage: DubbingPipelineStage) -> Result<(), DomainError> {
-        if self.status != JobStatus::Running {
-            return Err(DomainError::ValidationError(
-                "Can only update stage of a running job".to_string(),
-            ));
-        }
+        self.bump_revision()?;
 
         self.stage = Some(stage);
+        self.progress = progress;
+        self.updated_at = Utc::now();
 
         Ok(())
     }
@@ -123,11 +143,14 @@ impl Job {
                 to: "Completed".to_string(),
             });
         }
+        self.bump_revision()?;
 
+        let now = Utc::now();
         self.status = JobStatus::Completed;
         self.progress.percent = 100;
         self.progress.message = "Job completed successfully".to_string();
-        self.finished_at = Some(Utc::now());
+        self.finished_at = Some(now);
+        self.updated_at = now;
 
         Ok(())
     }
@@ -139,25 +162,92 @@ impl Job {
                 to: "Failed".to_string(),
             });
         }
+        self.bump_revision()?;
 
+        let now = Utc::now();
         self.status = JobStatus::Failed;
         self.error = Some(error);
-        self.finished_at = Some(Utc::now());
+        self.finished_at = Some(now);
+        self.updated_at = now;
 
         Ok(())
     }
 
     pub fn cancel(&mut self) -> Result<(), DomainError> {
+        if self.status == JobStatus::Cancelled {
+            return Ok(());
+        }
+
         if matches!(self.status, JobStatus::Completed | JobStatus::Failed) {
             return Err(DomainError::InvalidStateTransition {
                 from: format!("{:?}", self.status),
                 to: "Cancelled".to_string(),
             });
         }
+        self.bump_revision()?;
 
+        let now = Utc::now();
         self.status = JobStatus::Cancelled;
-        self.finished_at = Some(Utc::now());
+        self.finished_at = Some(now);
+        self.updated_at = now;
 
         Ok(())
+    }
+
+    pub fn to_snapshot(&self) -> JobSnapshot {
+        JobSnapshot {
+            id: self.id.clone(),
+            revision: self.revision,
+            project_id: self.project_id.clone(),
+            title: self.title.clone(),
+            kind: self.kind.clone(),
+            status: self.status.clone(),
+            stage: self.stage.clone(),
+            progress: self.progress.clone(),
+            error: self.error.clone(),
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            started_at: self.started_at,
+            finished_at: self.finished_at,
+        }
+    }
+
+    pub fn from_snapshot(snapshot: JobSnapshot) -> Self {
+        Self {
+            id: snapshot.id,
+            revision: snapshot.revision,
+            project_id: snapshot.project_id,
+            title: snapshot.title,
+            kind: snapshot.kind,
+            status: snapshot.status,
+            stage: snapshot.stage,
+            progress: snapshot.progress,
+            error: snapshot.error,
+            created_at: snapshot.created_at,
+            updated_at: snapshot.updated_at,
+            started_at: snapshot.started_at,
+            finished_at: snapshot.finished_at,
+        }
+    }
+
+    fn bump_revision(&mut self) -> Result<(), DomainError> {
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .filter(|&r| r <= super::MAX_JOB_REVISION)
+            .ok_or_else(|| {
+                DomainError::StateOverflow("Job revision exceeded maximum safe bound".to_string())
+            })?;
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub fn set_status(&mut self, status: JobStatus) {
+        self.status = status;
+    }
+
+    #[cfg(test)]
+    pub fn set_id(&mut self, id: JobId) {
+        self.id = id;
     }
 }

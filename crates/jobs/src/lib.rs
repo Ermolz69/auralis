@@ -1,11 +1,6 @@
-pub mod cancellation;
-pub mod error;
-pub mod event;
-pub mod id;
-pub mod job;
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod manager;
-pub mod mock_pipeline;
-pub mod progress;
-pub mod stage;
+#[cfg(test)]
+mod manager_terminal_tests;
 #[cfg(test)]
 mod tests;

@@ -16,6 +16,10 @@ export interface CommandMap {
     args: { url: string };
     result: CreateProjectResponse;
   };
+  start_project_mock_pipeline_cmd: {
+    args: { projectId: string };
+    result: CreateProjectResponse;
+  };
   get_transcript_cmd: {
     args: { projectId: string };
     result: Transcript | null;
@@ -24,12 +28,21 @@ export interface CommandMap {
     args: { projectId: string };
     result: Project;
   };
-  start_mock_dubbing_job_cmd: {
-    args: { input: string };
-    result: Job;
+  list_projects_cmd: {
+    args: undefined;
+    result: Project[];
   };
+  delete_project_cmd: {
+    args: { projectId: string };
+    result: null;
+  };
+
   list_jobs_cmd: {
     args: undefined;
+    result: Job[];
+  };
+  list_jobs_snapshot_cmd: {
+    args: { projectId: string };
     result: Job[];
   };
   cancel_job_cmd: {
