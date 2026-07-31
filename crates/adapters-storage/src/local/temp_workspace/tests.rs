@@ -239,7 +239,7 @@ async fn test_workspace_janitor() {
     set_file_mtime(&old_project_dir, two_hours_ago).unwrap();
 
     #[cfg(unix)]
-    let _outside_dir_guard = {
+    let outside_dir_guard = {
         // Add symlink escape (which should be skipped or untraversed)
         let outside_dir = tempdir().unwrap();
         let outside_file = outside_dir.path().join("secret.txt");
@@ -280,7 +280,7 @@ async fn test_workspace_janitor() {
 
     #[cfg(unix)]
     {
-        let (_guard, outside_file, symlinked_project_dir) = outside_dir_guard.unwrap();
+        let (_guard, outside_file, symlinked_project_dir) = outside_dir_guard;
         // External file must still exist
         assert!(outside_file.exists(), "External file was deleted!");
         // The project directory symlink must still exist (skipped by janitor)
