@@ -16,10 +16,12 @@ pub enum RecoveryAction {
     FailInterruptedPair {
         project: Project,
         job: Job,
+        active_job_id: JobId,
     },
     ReconcileTerminalPair {
         project: Project,
         job: Job,
+        active_job_id: JobId,
     },
     FailLegacyPair {
         project: Project,
@@ -202,6 +204,7 @@ impl Planner {
                                     action: RecoveryAction::FailInterruptedPair {
                                         project,
                                         job: job.clone(),
+                                        active_job_id: active_job_id.clone(),
                                     },
                                     resolved_violation: None,
                                 });
@@ -210,6 +213,7 @@ impl Planner {
                                     action: RecoveryAction::ReconcileTerminalPair {
                                         project,
                                         job: job.clone(),
+                                        active_job_id: active_job_id.clone(),
                                     },
                                     resolved_violation: None,
                                 });

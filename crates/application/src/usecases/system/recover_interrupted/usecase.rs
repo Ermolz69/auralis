@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use domain::job::{JobError, TerminalOutcome};
+use domain::error::DomainError;
+use domain::job::{JobError, JobStatus, TerminalOutcome};
+use ports::error::PortError;
 use ports::recovery::{
     FailInterruptedPairCommand, FailLegacyPairFallbackCommand, FailLegacyProjectWithoutJobCommand,
     FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand, ReconcileTerminalPairCommand,
@@ -11,6 +13,71 @@ use crate::error::ApplicationError;
 
 use super::planner::{Planner, RecoveryAction};
 use super::report::{PersistenceFailure, RecoveryReport};
+
+enum ApplyRecoveryActionError {
+    Domain,
+    InvalidRecoveryAction(&'static str),
+    Persistence(PortError),
+}
+
+impl ApplyRecoveryActionError {
+    fn error_type(&self) -> &'static str {
+        match self {
+            Self::Domain => "DomainError",
+            Self::InvalidRecoveryAction(_) => "InvalidRecoveryAction",
+            Self::Persistence(error) => match error {
+                PortError::Storage { .. } => "Storage",
+                PortError::Io { .. } => "Io",
+                PortError::Network { .. } => "Network",
+                PortError::NotFound { .. } => "NotFound",
+                PortError::Conflict { .. } => "Conflict",
+                PortError::Busy { .. } => "Busy",
+                PortError::InvalidStoredData { .. } => "InvalidStoredData",
+                PortError::InvalidSource { .. } => "InvalidSource",
+                PortError::ExternalToolFailed { .. } => "ExternalToolFailed",
+                PortError::Cancelled => "Cancelled",
+                PortError::Unsupported { .. } => "Unsupported",
+                PortError::AlreadyStopped => "AlreadyStopped",
+                PortError::Unexpected { .. } => "Unexpected",
+            },
+        }
+    }
+
+    fn safe_message(&self) -> &'static str {
+        match self {
+            Self::Domain => "Recovery domain transition failed",
+            Self::InvalidRecoveryAction(message) => message,
+            Self::Persistence(_) => "Recovery persistence operation failed",
+        }
+    }
+}
+
+impl From<DomainError> for ApplyRecoveryActionError {
+    fn from(_: DomainError) -> Self {
+        Self::Domain
+    }
+}
+
+impl From<PortError> for ApplyRecoveryActionError {
+    fn from(value: PortError) -> Self {
+        Self::Persistence(value)
+    }
+}
+
+fn terminal_outcome_for_status(
+    status: &JobStatus,
+) -> Result<TerminalOutcome, ApplyRecoveryActionError> {
+    match status {
+        JobStatus::Completed => Ok(TerminalOutcome::Completed),
+        JobStatus::Failed => Ok(TerminalOutcome::Failed),
+        JobStatus::Cancelled => Ok(TerminalOutcome::Cancelled),
+        JobStatus::Pending | JobStatus::Running => {
+            Err(ApplyRecoveryActionError::InvalidRecoveryAction(
+                "Recovery action expected a terminal job status",
+            ))
+        }
+    }
+}
 
 pub struct RecoverInterruptedStateUseCase {
     recovery_storage: Arc<dyn RecoveryStorage>,
@@ -70,9 +137,7 @@ impl RecoverInterruptedStateUseCase {
     async fn execute_inner(
         recovery_storage: Arc<dyn RecoveryStorage>,
     ) -> Result<RecoveryReport, ApplicationError> {
-        let snapshot = recovery_storage.load_snapshot().await.map_err(|e| {
-            ApplicationError::Unexpected(format!("Failed to load recovery snapshot: {}", e))
-        })?;
+        let snapshot = recovery_storage.load_snapshot().await?;
 
         let plan = Planner::build_plan(snapshot);
         let mut report = RecoveryReport::new();
@@ -89,12 +154,13 @@ impl RecoverInterruptedStateUseCase {
                 RecoveryAction::FailInterruptedPair {
                     mut project,
                     mut job,
+                    active_job_id,
                 } => {
                     project_id_for_err = Some(project.id().clone());
                     job_id_for_err = Some(job.id().clone());
 
                     let expected_project_status = project.status().clone();
-                    let expected_active_job_id = project.active_job_id().cloned().unwrap();
+                    let expected_active_job_id = active_job_id;
                     let expected_job_status = job.status().clone();
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
@@ -103,11 +169,11 @@ impl RecoverInterruptedStateUseCase {
                         "Interrupted by application restart",
                         false,
                     )) {
-                        Err(e.to_string())
+                        Err(e.into())
                     } else if let Err(e) =
                         project.apply_terminal_transition(job.id(), TerminalOutcome::Failed)
                     {
-                        Err(e.to_string())
+                        Err(e.into())
                     } else {
                         recovery_storage
                             .commit_failed_interrupted_pair(FailInterruptedPairCommand {
@@ -119,27 +185,30 @@ impl RecoverInterruptedStateUseCase {
                                 expected_last_terminal_job_id,
                             })
                             .await
-                            .map_err(|e| e.to_string())
+                            .map_err(Into::into)
                     }
                 }
-                RecoveryAction::ReconcileTerminalPair { mut project, job } => {
+                RecoveryAction::ReconcileTerminalPair {
+                    mut project,
+                    job,
+                    active_job_id,
+                } => {
                     project_id_for_err = Some(project.id().clone());
                     job_id_for_err = Some(job.id().clone());
 
                     let expected_project_status = project.status().clone();
-                    let expected_active_job_id = project.active_job_id().cloned().unwrap();
+                    let expected_active_job_id = active_job_id;
                     let expected_job_status = job.status().clone();
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
-                    let outcome = match *job.status() {
-                        domain::job::JobStatus::Completed => TerminalOutcome::Completed,
-                        domain::job::JobStatus::Failed => TerminalOutcome::Failed,
-                        domain::job::JobStatus::Cancelled => TerminalOutcome::Cancelled,
-                        _ => TerminalOutcome::Failed,
-                    };
+                    let outcome = terminal_outcome_for_status(job.status());
 
-                    if let Err(e) = project.apply_terminal_transition(job.id(), outcome) {
-                        Err(e.to_string())
+                    if let Err(e) = outcome.and_then(|outcome| {
+                        project
+                            .apply_terminal_transition(job.id(), outcome)
+                            .map_err(Into::into)
+                    }) {
+                        Err(e)
                     } else {
                         recovery_storage
                             .commit_reconciled_terminal_pair(ReconcileTerminalPairCommand {
@@ -151,7 +220,7 @@ impl RecoverInterruptedStateUseCase {
                                 expected_last_terminal_job_id,
                             })
                             .await
-                            .map_err(|e| e.to_string())
+                            .map_err(Into::into)
                     }
                 }
                 RecoveryAction::FailLegacyPair {
@@ -170,7 +239,7 @@ impl RecoverInterruptedStateUseCase {
                         "Interrupted by application restart (legacy fallback)",
                         false,
                     )) {
-                        Err(e.to_string())
+                        Err(e.into())
                     } else {
                         project.force_fail_legacy_recovery();
                         recovery_storage
@@ -182,7 +251,7 @@ impl RecoverInterruptedStateUseCase {
                                 expected_last_terminal_job_id,
                             })
                             .await
-                            .map_err(|e| e.to_string())
+                            .map_err(Into::into)
                     }
                 }
                 RecoveryAction::FailProjectWithMissingLinkedJob {
@@ -207,7 +276,7 @@ impl RecoverInterruptedStateUseCase {
                             },
                         )
                         .await
-                        .map_err(|e| e.to_string())
+                        .map_err(Into::into)
                 }
                 RecoveryAction::FailLegacyProjectWithoutJob { mut project } => {
                     project_id_for_err = Some(project.id().clone());
@@ -225,7 +294,7 @@ impl RecoverInterruptedStateUseCase {
                             },
                         )
                         .await
-                        .map_err(|e| e.to_string())
+                        .map_err(Into::into)
                 }
                 RecoveryAction::FailOrphanJob { mut job } => {
                     job_id_for_err = Some(job.id().clone());
@@ -236,7 +305,7 @@ impl RecoverInterruptedStateUseCase {
                         "Orphan active job interrupted by application restart",
                         false,
                     )) {
-                        Err(e.to_string())
+                        Err(e.into())
                     } else {
                         recovery_storage
                             .commit_failed_orphan_job(FailOrphanJobCommand {
@@ -244,7 +313,7 @@ impl RecoverInterruptedStateUseCase {
                                 expected_job_status,
                             })
                             .await
-                            .map_err(|e| e.to_string())
+                            .map_err(Into::into)
                     }
                 }
             };
@@ -266,8 +335,8 @@ impl RecoverInterruptedStateUseCase {
                         action_kind,
                         project_id: project_id_for_err,
                         job_id: job_id_for_err,
-                        error_type: "PersistenceFailure".to_string(),
-                        message: e,
+                        error_type: e.error_type().to_string(),
+                        message: e.safe_message().to_string(),
                     });
                 }
             }

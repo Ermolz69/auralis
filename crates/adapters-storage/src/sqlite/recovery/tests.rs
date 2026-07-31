@@ -2,47 +2,94 @@
 #[cfg(test)]
 // Module is defined externally as tests.rs
 use crate::sqlite::recovery::pair_writes::commit_failed_interrupted_pair;
+use crate::sqlite::recovery::snapshot::load_snapshot;
 use domain::job::{Job, JobKind, JobStatus};
 use domain::project::{Project, ProjectStatus};
+use ports::error::PortError;
 use ports::recovery::{FailInterruptedPairCommand, RecoveryApplyResult};
 use sqlx::SqlitePool;
+use sqlx::sqlite::SqlitePoolOptions;
 
 async fn setup_db() -> SqlitePool {
-    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    sqlx::query(
-        "CREATE TABLE projects (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                status TEXT NOT NULL,
-                active_job_id TEXT,
-                last_terminal_job_id TEXT,
-                language_code TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                schema_version INTEGER NOT NULL
-            );",
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
 
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+
+    sqlx::query("PRAGMA foreign_keys = ON")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    pool
+}
+
+fn enum_text<T: serde::Serialize>(value: &T) -> String {
+    serde_json::to_string(value)
+        .unwrap()
+        .trim_matches('"')
+        .to_string()
+}
+
+async fn insert_project(
+    pool: &SqlitePool,
+    project: &Project,
+    status: ProjectStatus,
+    active_job_id: Option<String>,
+    last_terminal_job_id: Option<String>,
+) {
     sqlx::query(
-        "CREATE TABLE jobs (
-                id TEXT PRIMARY KEY,
-                project_id TEXT NOT NULL,
-                kind TEXT NOT NULL,
-                status TEXT NOT NULL,
-                progress_json TEXT,
-                error_json TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-            );",
+        "INSERT INTO projects (
+            id, title, status, source_json, active_job_id, last_terminal_job_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .execute(&pool)
+    .bind(project.id().to_string())
+    .bind("Title")
+    .bind(enum_text(&status))
+    .bind(serde_json::to_string(&domain::media::MediaSource::ExternalLocalFile {
+        path: "test".into(),
+    }).unwrap())
+    .bind(active_job_id)
+    .bind(last_terminal_job_id)
+    .bind(project.created_at().to_rfc3339())
+    .bind(project.updated_at().to_rfc3339())
+    .execute(pool)
     .await
     .unwrap();
-    pool
+}
+
+async fn insert_job(pool: &SqlitePool, job: &Job, status: JobStatus) {
+    sqlx::query(
+        "INSERT INTO jobs (
+            id, project_id, title, kind, status, progress_json, error_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(job.id().to_string())
+    .bind(job.project_id().to_string())
+    .bind(job.title())
+    .bind(enum_text(job.kind()))
+    .bind(enum_text(&status))
+    .bind(serde_json::to_string(job.progress()).unwrap())
+    .bind(job.error().map(|e| serde_json::to_string(e).unwrap()))
+    .bind(job.created_at().to_rfc3339())
+    .bind(job.updated_at().to_rfc3339())
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_fresh_migrated_db_snapshot_is_noop() {
+    let pool = setup_db().await;
+
+    let snapshot = load_snapshot(&pool).await.unwrap();
+
+    assert!(snapshot.processing_projects.is_empty());
+    assert!(snapshot.linked_jobs.is_empty());
+    assert!(snapshot.active_jobs.is_empty());
 }
 
 #[tokio::test]
@@ -62,28 +109,15 @@ async fn test_already_applied_partial_pair() {
     });
     let mut project = Project::from_snapshot(snap).unwrap();
 
-    // Insert them as they were BEFORE crash
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(job.id().to_string())
-            .bind("en")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
-
-    sqlx::query("INSERT INTO jobs (id, project_id, kind, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(job.id().to_string())
-            .bind(project.id().to_string())
-            .bind("dubbing")
-            .bind("running") // Status before crash
-            .bind("{}")
-            .bind(None::<String>)
-            .bind(job.created_at().to_rfc3339())
-            .bind(job.updated_at().to_rfc3339())
-            .execute(&pool).await.unwrap();
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(job.id().to_string()),
+        None,
+    )
+    .await;
+    insert_job(&pool, &job, JobStatus::Running).await;
 
     // Now simulate another worker applied the change to JOB ONLY (partial already applied)
     sqlx::query("UPDATE jobs SET status = 'failed' WHERE id = ?")
@@ -125,6 +159,149 @@ async fn test_already_applied_partial_pair() {
 }
 
 #[tokio::test]
+async fn test_snapshot_apply_reload_interrupted_pair() {
+    let pool = setup_db().await;
+
+    let tmp_p = Project::new("Proj1".into());
+    let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
+    let _ = job.start();
+    let expected_active = job.id().clone();
+
+    let mut snap = tmp_p.to_snapshot();
+    snap.status = ProjectStatus::Processing;
+    snap.active_job_id = Some(expected_active.clone());
+    snap.source = Some(domain::media::MediaSource::ExternalLocalFile {
+        path: "test".into(),
+    });
+    let mut project = Project::from_snapshot(snap).unwrap();
+
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(expected_active.to_string()),
+        None,
+    )
+    .await;
+    insert_job(&pool, &job, JobStatus::Running).await;
+
+    let snapshot = load_snapshot(&pool).await.unwrap();
+    assert_eq!(snapshot.processing_projects.len(), 1);
+    assert_eq!(snapshot.linked_jobs.len(), 1);
+
+    job.mark_failed(domain::job::JobError::new("ERR", "Interrupted", false))
+        .unwrap();
+    project
+        .apply_terminal_transition(job.id(), domain::job::TerminalOutcome::Failed)
+        .unwrap();
+
+    let cmd = FailInterruptedPairCommand {
+        project,
+        job,
+        expected_project_status: ProjectStatus::Processing,
+        expected_job_status: JobStatus::Running,
+        expected_last_terminal_job_id: None,
+        expected_active_job_id: expected_active,
+    };
+
+    let res = commit_failed_interrupted_pair(&pool, cmd).await.unwrap();
+    assert!(matches!(res, RecoveryApplyResult::Applied));
+
+    let snapshot = load_snapshot(&pool).await.unwrap();
+    assert!(snapshot.processing_projects.is_empty());
+    assert!(snapshot.linked_jobs.is_empty());
+    assert!(snapshot.active_jobs.is_empty());
+}
+
+#[tokio::test]
+async fn test_corrupted_processing_project_maps_to_invalid_stored_data() {
+    let pool = setup_db().await;
+    let project = Project::new("Proj1".into());
+
+    insert_project(&pool, &project, ProjectStatus::Processing, None, None).await;
+    sqlx::query("UPDATE projects SET created_at = 'not-a-date' WHERE id = ?")
+        .bind(project.id().to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let err = match load_snapshot(&pool).await {
+        Ok(_) => panic!("expected corrupted row to fail"),
+        Err(err) => err,
+    };
+    assert!(matches!(
+        err,
+        PortError::InvalidStoredData { field, .. } if field == "created_at"
+    ));
+}
+
+#[tokio::test]
+async fn test_second_pair_write_failure_rolls_back_first_write() {
+    let pool = setup_db().await;
+
+    let tmp_p = Project::new("Proj1".into());
+    let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
+    let _ = job.start();
+    let expected_active = job.id().clone();
+
+    let mut snap = tmp_p.to_snapshot();
+    snap.status = ProjectStatus::Processing;
+    snap.active_job_id = Some(expected_active.clone());
+    snap.source = Some(domain::media::MediaSource::ExternalLocalFile {
+        path: "test".into(),
+    });
+    let mut project = Project::from_snapshot(snap).unwrap();
+
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(expected_active.to_string()),
+        None,
+    )
+    .await;
+    insert_job(&pool, &job, JobStatus::Running).await;
+
+    sqlx::query(
+        "CREATE TRIGGER fail_recovery_project_update
+         BEFORE UPDATE ON projects
+         BEGIN
+             SELECT RAISE(ABORT, 'forced project update failure');
+         END;",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    job.mark_failed(domain::job::JobError::new("ERR", "Interrupted", false))
+        .unwrap();
+    project
+        .apply_terminal_transition(job.id(), domain::job::TerminalOutcome::Failed)
+        .unwrap();
+
+    let cmd = FailInterruptedPairCommand {
+        project,
+        job: job.clone(),
+        expected_project_status: ProjectStatus::Processing,
+        expected_job_status: JobStatus::Running,
+        expected_last_terminal_job_id: None,
+        expected_active_job_id: expected_active,
+    };
+
+    let err = commit_failed_interrupted_pair(&pool, cmd)
+        .await
+        .unwrap_err();
+    assert!(matches!(err, PortError::Storage { .. }));
+
+    let job_status: String = sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
+        .bind(job.id().to_string())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(job_status, enum_text(&JobStatus::Running));
+}
+
+#[tokio::test]
 async fn test_already_applied_legacy_fallback() {
     use crate::sqlite::recovery::pair_writes::commit_legacy_pair_fallback;
     use ports::recovery::FailLegacyPairFallbackCommand;
@@ -143,28 +320,8 @@ async fn test_already_applied_legacy_fallback() {
     let mut job = Job::new(project.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
 
-    // Insert as before crash
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(None::<String>)
-            .bind("en")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
-
-    sqlx::query("INSERT INTO jobs (id, project_id, kind, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(job.id().to_string())
-            .bind(project.id().to_string())
-            .bind("dubbing")
-            .bind("running")
-            .bind("{}")
-            .bind(None::<String>)
-            .bind(job.created_at().to_rfc3339())
-            .bind(job.updated_at().to_rfc3339())
-            .execute(&pool).await.unwrap();
+    insert_project(&pool, &project, ProjectStatus::Processing, None, None).await;
+    insert_job(&pool, &job, JobStatus::Running).await;
 
     // Simulate Already Applied logic - update BOTH project and job exactly as the command would
     job.mark_failed(domain::job::JobError::new("ERR", "Interrupted", false))
@@ -172,7 +329,7 @@ async fn test_already_applied_legacy_fallback() {
     project.force_fail_legacy_recovery();
 
     sqlx::query("UPDATE projects SET status = ?, active_job_id = ? WHERE id = ?")
-        .bind("Failed")
+        .bind(enum_text(&ProjectStatus::Failed))
         .bind(None::<String>)
         .bind(project.id().to_string())
         .execute(&pool)
@@ -213,31 +370,19 @@ async fn test_concurrent_zero_row_update() {
     });
     let mut project = Project::from_snapshot(snap).unwrap();
 
-    // Insert
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(job.id().to_string())
-            .bind("en")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
-
-    sqlx::query("INSERT INTO jobs (id, project_id, kind, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(job.id().to_string())
-            .bind(project.id().to_string())
-            .bind("dubbing")
-            .bind("running") // Status before crash
-            .bind("{}")
-            .bind(None::<String>)
-            .bind(job.created_at().to_rfc3339())
-            .bind(job.updated_at().to_rfc3339())
-            .execute(&pool).await.unwrap();
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(job.id().to_string()),
+        None,
+    )
+    .await;
+    insert_job(&pool, &job, JobStatus::Running).await;
 
     // Simulate CONFLICT: Project changed to something completely different
-    sqlx::query("UPDATE projects SET status = 'Completed', active_job_id = NULL WHERE id = ?")
+    sqlx::query("UPDATE projects SET status = ?, active_job_id = NULL WHERE id = ?")
+        .bind(enum_text(&ProjectStatus::Completed))
         .bind(project.id().to_string())
         .execute(&pool)
         .await
@@ -297,28 +442,15 @@ async fn test_terminal_pair_reconciliation() {
         .apply_terminal_transition(job.id(), domain::job::TerminalOutcome::Failed)
         .unwrap();
 
-    // Insert BEFORE reconciliation
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(job.id().to_string())
-            .bind("en")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
-
-    sqlx::query("INSERT INTO jobs (id, project_id, kind, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(job.id().to_string())
-            .bind(project.id().to_string())
-            .bind("dubbing")
-            .bind("failed")
-            .bind("{}")
-            .bind(None::<String>)
-            .bind(job.created_at().to_rfc3339())
-            .bind(job.updated_at().to_rfc3339())
-            .execute(&pool).await.unwrap();
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(job.id().to_string()),
+        None,
+    )
+    .await;
+    insert_job(&pool, &job, JobStatus::Failed).await;
 
     let cmd = ReconcileTerminalPairCommand {
         project: project.clone(),
@@ -351,16 +483,14 @@ async fn test_missing_linked_job_adapter_write() {
     });
     let mut project = Project::from_snapshot(snap).unwrap();
 
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(missing_job_id.to_string())
-            .bind("en")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(missing_job_id.to_string()),
+        None,
+    )
+    .await;
 
     project.force_fail_legacy_recovery();
 
@@ -394,16 +524,7 @@ async fn test_legacy_project_without_job() {
     });
     let mut project = Project::from_snapshot(snap).unwrap();
 
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(None::<String>)
-            .bind("en")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
+    insert_project(&pool, &project, ProjectStatus::Processing, None, None).await;
 
     project.force_fail_legacy_recovery();
 
@@ -430,30 +551,12 @@ async fn test_orphan_adapter_conflict() {
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
 
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(tmp_p.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(None::<String>)
-            .bind("en")
-            .bind(tmp_p.created_at().to_rfc3339())
-            .bind(tmp_p.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
-
-    sqlx::query("INSERT INTO jobs (id, project_id, kind, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(job.id().to_string())
-            .bind(tmp_p.id().to_string())
-            .bind("dubbing")
-            .bind("running")
-            .bind("{}")
-            .bind(None::<String>)
-            .bind(job.created_at().to_rfc3339())
-            .bind(job.updated_at().to_rfc3339())
-            .execute(&pool).await.unwrap();
+    insert_project(&pool, &tmp_p, ProjectStatus::Processing, None, None).await;
+    insert_job(&pool, &job, JobStatus::Running).await;
 
     // Simulate concurrent update on the job
-    sqlx::query("UPDATE jobs SET status = 'completed' WHERE id = ?")
+    sqlx::query("UPDATE jobs SET status = ? WHERE id = ?")
+        .bind(enum_text(&JobStatus::Completed))
         .bind(job.id().to_string())
         .execute(&pool)
         .await
@@ -488,28 +591,15 @@ async fn test_last_terminal_job_id_conflict() {
     });
     let mut project = Project::from_snapshot(snap).unwrap();
 
-    sqlx::query("INSERT INTO projects (id, title, status, active_job_id, last_terminal_job_id, language_code, created_at, updated_at, schema_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(project.id().to_string())
-            .bind("Title")
-            .bind("Processing")
-            .bind(job.id().to_string())
-            .bind(domain::job::JobId::new().to_string()) // SIMULATE that last_terminal_job_id changed concurrently in DB
-            .bind("en")
-            .bind(project.created_at().to_rfc3339())
-            .bind(project.updated_at().to_rfc3339())
-            .bind(1)
-            .execute(&pool).await.unwrap();
-
-    sqlx::query("INSERT INTO jobs (id, project_id, kind, status, progress_json, error_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            .bind(job.id().to_string())
-            .bind(project.id().to_string())
-            .bind("dubbing")
-            .bind("running")
-            .bind("{}")
-            .bind(None::<String>)
-            .bind(job.created_at().to_rfc3339())
-            .bind(job.updated_at().to_rfc3339())
-            .execute(&pool).await.unwrap();
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(job.id().to_string()),
+        Some(domain::job::JobId::new().to_string()),
+    )
+    .await;
+    insert_job(&pool, &job, JobStatus::Running).await;
 
     job.mark_failed(domain::job::JobError::new("ERR", "Interrupted", false))
         .unwrap();
