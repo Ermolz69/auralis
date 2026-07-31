@@ -126,6 +126,44 @@ pub struct CommitStagedArtifactWrite {
     pub temp_workspace_key: Option<domain::outbox::WorkspaceKey>,
 }
 
+impl CommitStagedArtifactWrite {
+    pub fn validate(&self) -> Result<(), PortError> {
+        if self.artifact.location
+            != domain::media::ArtifactLocation::StorageKey(self.final_key.clone())
+        {
+            return Err(PortError::Unexpected {
+                message: "Artifact location must match final_key StorageKey".to_string(),
+            });
+        }
+        if !is_clean_key(&self.final_key) {
+            return Err(PortError::Unexpected {
+                message: "final_key must be a clean relative storage key".to_string(),
+            });
+        }
+        if !is_clean_key(&self.staging_key) {
+            return Err(PortError::Unexpected {
+                message: "staging_key must be a clean relative storage key".to_string(),
+            });
+        }
+        if self.final_key.split('/').next().unwrap_or("") != self.project_id.to_string() {
+            return Err(PortError::Unexpected {
+                message: "final_key must start with the project ID".to_string(),
+            });
+        }
+        if self.staging_key.split('/').next().unwrap_or("") != ".staging" {
+            return Err(PortError::Unexpected {
+                message: "staging_key must start with .staging".to_string(),
+            });
+        }
+        if self.staging_key == self.final_key {
+            return Err(PortError::Unexpected {
+                message: "staging_key and final_key must be different".to_string(),
+            });
+        }
+        Ok(())
+    }
+}
+
 pub struct CommitArtifactFinalize {
     pub message_id: domain::outbox::OutboxMessageId,
     pub project_id: ProjectId,
@@ -314,6 +352,35 @@ mod tests {
         cmd.final_key = same_key.clone();
         cmd.staging_key = same_key.clone();
         cmd.artifact.location = ArtifactLocation::StorageKey(same_key);
+        assert!(cmd.validate().is_err());
+    }
+
+    #[test]
+    fn test_staged_artifact_write_validation() {
+        let project_id = ProjectId::new();
+        let artifact_id = ArtifactId::new();
+        let final_key = format!("{}/source-video/{}.mp4", project_id, artifact_id);
+        let staging_key = format!(".staging/{}/{}.mp4", ArtifactId::new(), artifact_id);
+        let artifact = Artifact {
+            id: artifact_id,
+            kind: ArtifactKind::SourceVideo,
+            location: ArtifactLocation::StorageKey(final_key.clone()),
+            size_bytes: Some(100),
+            state: ArtifactState::PendingFinalize,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            ready_at: None,
+        };
+        let mut cmd = CommitStagedArtifactWrite {
+            project_id,
+            artifact,
+            staging_key,
+            final_key,
+            temp_workspace_key: None,
+        };
+
+        assert!(cmd.validate().is_ok());
+        cmd.staging_key = "../escape".to_string();
         assert!(cmd.validate().is_err());
     }
 }

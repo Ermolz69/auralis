@@ -69,6 +69,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError> {
+        command.validate()?;
+
         let mut tx = self.pool.begin().await.map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
