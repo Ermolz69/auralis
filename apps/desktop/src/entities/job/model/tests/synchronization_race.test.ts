@@ -138,6 +138,39 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     expect(getJobsSnapshot).toHaveBeenCalledTimes(2);
   });
 
+  it('backend invalidation callback during active fetch schedules one canonical follow-up fetch', async () => {
+    let invalidationCallback: any;
+    (subscribeJobEvents as any).mockResolvedValue(vi.fn());
+    (subscribeJobsInvalidated as any).mockImplementation((cb: any) => {
+      invalidationCallback = cb;
+      return Promise.resolve(vi.fn());
+    });
+
+    let resolveFetch: any;
+    (getJobsSnapshot as any).mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveFetch = r;
+        }),
+    );
+
+    await synchronizer.startCycle('p1');
+    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+
+    invalidationCallback();
+    invalidationCallback();
+    invalidationCallback();
+
+    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFetch([]);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(getJobsSnapshot).toHaveBeenCalledTimes(2);
+  });
+
   it('schedules another fetch for invalidation during follow-up fetch', async () => {
     (subscribeJobEvents as any).mockResolvedValue(vi.fn());
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
