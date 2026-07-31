@@ -34,7 +34,7 @@ const meta = {
         beginProjectDeletion: () => false,
         finishProjectDeletion: () => {},
         operationGeneration: 0,
-        captureToken: () => ({ generation: 0 }),
+        captureToken: () => ({ generation: 0, projectId: null }),
         validateToken: () => true,
       };
 

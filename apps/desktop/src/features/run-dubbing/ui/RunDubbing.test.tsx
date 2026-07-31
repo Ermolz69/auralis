@@ -50,9 +50,14 @@ describe('RunDubbing', () => {
       beginProjectDeletion: vi.fn(),
       finishProjectDeletion: vi.fn(),
       operationGeneration: 1,
-      captureToken: () => ({ generation: ctx.operationGeneration }),
+      captureToken: () => ({
+        generation: ctx.operationGeneration,
+        projectId: ctx.projectId,
+      }),
       validateToken: (t: any) =>
-        ctx.deletingProjectId === null && t.generation === ctx.operationGeneration,
+        ctx.deletingProjectId === null &&
+        t.generation === ctx.operationGeneration &&
+        t.projectId === ctx.projectId,
       ...overrides,
     };
     return ctx;

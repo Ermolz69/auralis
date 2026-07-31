@@ -47,12 +47,17 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const captureToken = (): OperationToken => {
-    return { generation: operationGenerationRef.current };
+    return {
+      generation: operationGenerationRef.current,
+      projectId: currentProjectIdRef.current,
+    };
   };
 
   const validateToken = (token: OperationToken): boolean => {
     return (
-      deletingProjectIdRef.current === null && token.generation === operationGenerationRef.current
+      deletingProjectIdRef.current === null &&
+      token.generation === operationGenerationRef.current &&
+      token.projectId === currentProjectIdRef.current
     );
   };
 

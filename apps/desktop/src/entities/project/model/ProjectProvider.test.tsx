@@ -168,6 +168,33 @@ describe('ProjectProvider', () => {
     expect(contextValue.validateToken(token1)).toBe(false);
   });
 
+  it('binds operation tokens to the selected project context', () => {
+    let contextValue: any;
+    render(
+      <ProjectProvider>
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
+      </ProjectProvider>,
+    );
+
+    act(() => {
+      contextValue.setProjectId('p1');
+    });
+
+    const token = contextValue.captureToken();
+    expect(token.projectId).toBe('p1');
+    expect(contextValue.validateToken(token)).toBe(true);
+
+    const wrongProjectToken = {
+      generation: token.generation,
+      projectId: 'p2',
+    };
+    expect(contextValue.validateToken(wrongProjectToken)).toBe(false);
+  });
+
   it('verifies an accepted beginProjectDeletion() invalidates the token synchronously before returning', () => {
     let contextValue: any;
     render(
