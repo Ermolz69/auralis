@@ -11,6 +11,7 @@ fn test_url_validation_success() {
     assert!(validate_url("https://youtube.com/watch?v=123").is_ok());
     assert!(validate_url("https://www.youtube.com/watch?v=123").is_ok());
     assert!(validate_url("https://m.youtube.com/watch?v=123").is_ok());
+    assert!(validate_url("https://music.youtube.com/watch?v=123").is_ok());
     assert!(validate_url("https://youtu.be/123").is_ok());
     assert!(validate_url("HTTPS://YOUTUBE.COM/watch?v=123").is_ok());
     assert!(validate_url("https://youtube.com:443/watch?v=123").is_ok());
@@ -28,6 +29,8 @@ fn test_url_validation_host_deception() {
     assert!(validate_url("https://youtube.com.attacker.tld/watch?v=123").is_err());
     assert!(validate_url("https://attackeryoutube.com/watch?v=123").is_err());
     assert!(validate_url("https://youtube.com@attacker.tld/").is_err());
+    assert!(validate_url("https://trusted.youtube.com/watch?v=123").is_err());
+    assert!(validate_url("https://youtube.com.evil/youtube.com/watch?v=123").is_err());
 }
 
 #[test]

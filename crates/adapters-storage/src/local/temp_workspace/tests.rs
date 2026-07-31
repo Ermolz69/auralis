@@ -95,7 +95,7 @@ async fn resolve_intermediate_parent_symlink_escape() {
 
 #[cfg(unix)]
 #[tokio::test]
-async fn resolve_symlink_into_root_is_safe() {
+async fn resolve_symlink_into_root_is_rejected() {
     let workspace_dir = tempdir().unwrap();
     let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());
 
@@ -111,7 +111,98 @@ async fn resolve_symlink_into_root_is_safe() {
     let key = WorkspaceKey::new("tmp/link.txt".to_string()).unwrap();
     let result = workspace.resolve_key(&key).await;
 
-    assert!(result.is_ok());
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn read_workspace_file_to_string_reads_bounded_utf8() {
+    let workspace_dir = tempdir().unwrap();
+    let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());
+
+    let allocation_dir = workspace_dir.path().join("tmp").join("project-1");
+    fs::create_dir_all(&allocation_dir).unwrap();
+    fs::write(allocation_dir.join("subs.vtt"), "WEBVTT\n\nhello").unwrap();
+
+    let key = WorkspaceKey::new("tmp/project-1".to_string()).unwrap();
+    let content = workspace
+        .read_workspace_file_to_string(&key, "subs.vtt", 1024)
+        .await
+        .unwrap();
+
+    assert_eq!(content, "WEBVTT\n\nhello");
+}
+
+#[tokio::test]
+async fn read_workspace_file_to_string_rejects_traversal_and_missing_files() {
+    let workspace_dir = tempdir().unwrap();
+    let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());
+
+    let allocation_dir = workspace_dir.path().join("tmp").join("project-1");
+    fs::create_dir_all(&allocation_dir).unwrap();
+
+    let key = WorkspaceKey::new("tmp/project-1".to_string()).unwrap();
+
+    assert!(
+        workspace
+            .read_workspace_file_to_string(&key, "../secret.vtt", 1024)
+            .await
+            .is_err()
+    );
+    assert!(
+        workspace
+            .read_workspace_file_to_string(&key, "missing.vtt", 1024)
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn read_workspace_file_to_string_rejects_oversize_and_invalid_utf8() {
+    let workspace_dir = tempdir().unwrap();
+    let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());
+
+    let allocation_dir = workspace_dir.path().join("tmp").join("project-1");
+    fs::create_dir_all(&allocation_dir).unwrap();
+    fs::write(allocation_dir.join("oversize.vtt"), "WEBVTT").unwrap();
+    fs::write(allocation_dir.join("invalid.vtt"), [0xff, 0xfe, 0xfd]).unwrap();
+
+    let key = WorkspaceKey::new("tmp/project-1".to_string()).unwrap();
+
+    assert!(
+        workspace
+            .read_workspace_file_to_string(&key, "oversize.vtt", 3)
+            .await
+            .is_err()
+    );
+    assert!(
+        workspace
+            .read_workspace_file_to_string(&key, "invalid.vtt", 1024)
+            .await
+            .is_err()
+    );
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn read_workspace_file_to_string_rejects_symlink_escape() {
+    let workspace_dir = tempdir().unwrap();
+    let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());
+
+    let outside_dir = tempdir().unwrap();
+    let outside_file = outside_dir.path().join("secret.vtt");
+    fs::write(&outside_file, "secret").unwrap();
+
+    let allocation_dir = workspace_dir.path().join("tmp").join("project-1");
+    fs::create_dir_all(&allocation_dir).unwrap();
+    std::os::unix::fs::symlink(&outside_file, allocation_dir.join("link.vtt")).unwrap();
+
+    let key = WorkspaceKey::new("tmp/project-1".to_string()).unwrap();
+    assert!(
+        workspace
+            .read_workspace_file_to_string(&key, "link.vtt", 1024)
+            .await
+            .is_err()
+    );
 }
 
 #[tokio::test]
