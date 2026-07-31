@@ -4,6 +4,7 @@ use sqlx::sqlite::SqlitePoolOptions;
 mod delete;
 mod finalize;
 mod import;
+mod import_atomicity;
 
 pub(super) async fn setup_db() -> SqlitePool {
     let pool = SqlitePoolOptions::new()

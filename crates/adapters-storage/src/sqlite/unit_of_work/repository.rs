@@ -9,7 +9,7 @@ use ports::transaction::{
     CommitStagedArtifactWrite, CommitTranscriptImport, StorageUnitOfWork,
 };
 
-use super::artifact_writes::{finalize_artifact, save_artifact};
+use super::artifact_writes::{finalize_artifact, insert_new_artifact, save_artifact};
 use super::job_writes::{insert_job, update_job};
 use super::outbox_writes::save_outbox_message;
 use super::project_writes::{delete_project, update_project, update_project_conditional};
@@ -114,7 +114,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             None,
         )
         .await?;
-        save_artifact(&mut tx, command.project.id(), &command.artifact).await?;
+        insert_new_artifact(&mut tx, command.project.id(), &command.artifact).await?;
 
         let finalize_msg = OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
             project_id: command.project.id().clone(),
