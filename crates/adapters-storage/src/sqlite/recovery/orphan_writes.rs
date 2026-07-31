@@ -3,30 +3,17 @@ use sqlx::SqlitePool;
 use ports::error::PortError;
 use ports::recovery::{FailOrphanJobCommand, RecoveryApplyResult};
 
-fn serialize_enum<T: serde::Serialize>(val: &T) -> Result<String, PortError> {
-    serde_json::to_string(val)
-        .map(|s| s.trim_matches('"').to_string())
-        .map_err(|e| PortError::Storage {
-            operation: "serialize_enum",
-            message: e.to_string(),
-        })
-}
+use crate::sqlite::helpers::{map_sqlite_error, serialize_enum, serialize_json};
 
-fn serialize_json<T: serde::Serialize>(val: &T) -> Result<String, PortError> {
-    serde_json::to_string(val).map_err(|e| PortError::Storage {
-        operation: "serialize_json",
-        message: e.to_string(),
-    })
+fn map_recovery_sqlite_error(error: sqlx::Error) -> PortError {
+    map_sqlite_error("recovery orphan write", error)
 }
 
 pub async fn commit_failed_orphan_job(
     pool: &SqlitePool,
     cmd: FailOrphanJobCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool
-        .begin()
-        .await
-        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to begin tx", e))?;
+    let mut tx = pool.begin().await.map_err(map_recovery_sqlite_error)?;
 
     // Check that NO Processing project links to this job via active_job_id
     let has_linked_project: Option<i64> = sqlx::query_scalar(
@@ -35,9 +22,7 @@ pub async fn commit_failed_orphan_job(
     .bind(cmd.job.id().to_string())
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: e.to_string(),
-    })?;
+    .map_err(map_recovery_sqlite_error)?;
 
     if has_linked_project.is_some() {
         let _ = tx.rollback().await; // allow-fallback
@@ -50,23 +35,26 @@ pub async fn commit_failed_orphan_job(
         });
     }
 
-    let expected_job_status = serialize_enum(&cmd.expected_job_status)?;
+    let expected_job_status = serialize_enum(&cmd.expected_job_status, "expected_job_status")?;
 
     let rows = sqlx::query(
         "UPDATE jobs SET status = ?, updated_at = ?, progress_json = ?, error_json = ? 
          WHERE id = ? AND status = ?",
     )
-    .bind(serialize_enum(cmd.job.status())?)
+    .bind(serialize_enum(cmd.job.status(), "job.status")?)
     .bind(cmd.job.updated_at())
-    .bind(serialize_json(cmd.job.progress())?)
-    .bind(cmd.job.error().map(|e| serialize_json(&e)).transpose()?)
+    .bind(serialize_json(cmd.job.progress(), "job.progress")?)
+    .bind(
+        cmd.job
+            .error()
+            .map(|e| serialize_json(&e, "job.error"))
+            .transpose()?,
+    )
     .bind(cmd.job.id().to_string())
     .bind(&expected_job_status)
     .execute(&mut *tx)
     .await
-    .map_err(|e| PortError::Unexpected {
-        message: e.to_string(),
-    })?
+    .map_err(map_recovery_sqlite_error)?
     .rows_affected();
 
     if rows == 0 {
@@ -76,11 +64,9 @@ pub async fn commit_failed_orphan_job(
                 .bind(cmd.job.id().to_string())
                 .fetch_optional(pool)
                 .await
-                .map_err(|e| PortError::Unexpected {
-                    message: e.to_string(),
-                })?;
+                .map_err(map_recovery_sqlite_error)?;
 
-        let new_status = serialize_enum(cmd.job.status())?;
+        let new_status = serialize_enum(cmd.job.status(), "job.status")?;
         if current_status == Some(new_status) {
             return Ok(RecoveryApplyResult::AlreadyApplied);
         } else {
@@ -91,8 +77,6 @@ pub async fn commit_failed_orphan_job(
         }
     }
 
-    tx.commit().await.map_err(|e| PortError::Unexpected {
-        message: e.to_string(),
-    })?;
+    tx.commit().await.map_err(map_recovery_sqlite_error)?;
     Ok(RecoveryApplyResult::Applied)
 }

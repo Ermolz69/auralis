@@ -40,8 +40,8 @@ pub async fn load_snapshot(pool: &SqlitePool) -> Result<RecoverySnapshot, PortEr
             .bind(job_id_str)
             .fetch_optional(&mut *tx)
             .await
-            .map_err(|e| PortError::Unexpected {
-                message: format!("Failed to fetch linked job {}: {}", job_id_str, e),
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to fetch linked job", e)
             })?;
 
         if let Some(row) = job_row {
