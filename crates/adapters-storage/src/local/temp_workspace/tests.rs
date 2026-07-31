@@ -257,6 +257,10 @@ async fn test_workspace_janitor() {
         (outside_dir, outside_file, symlinked_project_dir)
     };
 
+    // Symlink creation can refresh the parent directory mtime on Unix.
+    set_file_mtime(&old_dir, two_hours_ago).unwrap();
+    set_file_mtime(&old_project_dir, two_hours_ago).unwrap();
+
     // Also create empty project directory
     let empty_project_id = Uuid::new_v4();
     let empty_dir = workspace_dir

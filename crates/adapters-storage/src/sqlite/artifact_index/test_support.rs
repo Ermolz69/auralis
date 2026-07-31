@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use sqlx::SqlitePool;
-use tempfile::tempdir;
+use tempfile::{TempDir, tempdir};
 
 use domain::media::{Artifact, ArtifactId, ArtifactKind, ArtifactLocation};
 use domain::project::Project;
@@ -10,6 +10,7 @@ use crate::sqlite::{SqliteProjectRepository, connect_sqlite};
 use ports::repository::ProjectRepository;
 
 pub async fn setup_db() -> (
+    TempDir,
     SqlitePool,
     SqliteArtifactIndex,
     SqliteProjectRepository,
@@ -24,7 +25,7 @@ pub async fn setup_db() -> (
     let project = Project::new("Test Project".to_string());
     repo.create(project.clone()).await.unwrap();
 
-    (pool, artifact_index, repo, project)
+    (temp_dir, pool, artifact_index, repo, project)
 }
 
 pub fn make_artifact(kind: ArtifactKind, seed: &str) -> Artifact {

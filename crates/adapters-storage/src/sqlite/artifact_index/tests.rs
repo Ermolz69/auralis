@@ -10,7 +10,7 @@ use tempfile::tempdir;
 
 #[tokio::test]
 async fn test_add_inserts_artifact_and_get_returns_same() {
-    let (_pool, index, _repo, project) = setup_db().await;
+    let (_temp_dir, _pool, index, _repo, project) = setup_db().await;
     let artifact = make_artifact(ArtifactKind::LogFile, "1");
 
     // 1. add inserts artifact
@@ -30,7 +30,7 @@ async fn test_add_inserts_artifact_and_get_returns_same() {
 
 #[tokio::test]
 async fn test_list_by_project_returns_only_project_artifacts() {
-    let (_pool, index, repo, project1) = setup_db().await;
+    let (_temp_dir, _pool, index, repo, project1) = setup_db().await;
     let project2 = Project::new("Test Project 2".to_string());
     repo.create(project2.clone()).await.unwrap();
 
@@ -48,7 +48,7 @@ async fn test_list_by_project_returns_only_project_artifacts() {
 
 #[tokio::test]
 async fn test_list_by_project_and_kind_filters_correctly() {
-    let (_pool, index, _repo, project) = setup_db().await;
+    let (_temp_dir, _pool, index, _repo, project) = setup_db().await;
 
     let a_log1 = make_artifact(ArtifactKind::LogFile, "l1");
     let a_log2 = make_artifact(ArtifactKind::LogFile, "l2");
@@ -75,7 +75,7 @@ async fn test_list_by_project_and_kind_filters_correctly() {
 
 #[tokio::test]
 async fn test_delete_removes_artifact_row() {
-    let (_pool, index, _repo, project) = setup_db().await;
+    let (_temp_dir, _pool, index, _repo, project) = setup_db().await;
     let artifact = make_artifact(ArtifactKind::LogFile, "del");
 
     index.add(project.id(), &artifact).await.unwrap();
@@ -88,7 +88,7 @@ async fn test_delete_removes_artifact_row() {
 
 #[tokio::test]
 async fn test_deleting_project_cascades_artifact_rows() {
-    let (_pool, index, repo, project) = setup_db().await;
+    let (_temp_dir, _pool, index, repo, project) = setup_db().await;
     let artifact = make_artifact(ArtifactKind::LogFile, "casc");
     index.add(project.id(), &artifact).await.unwrap();
 
@@ -126,7 +126,7 @@ async fn test_reconnect_sqlite_artifacts_still_available() {
 
 #[tokio::test]
 async fn test_corrupted_location_kind_returns_error() {
-    let (pool, index, _repo, project) = setup_db().await;
+    let (_temp_dir, pool, index, _repo, project) = setup_db().await;
     let artifact = make_artifact(ArtifactKind::LogFile, "corr");
 
     sqlx::query(
