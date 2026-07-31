@@ -8,16 +8,16 @@ The CI pipeline strictly **does not contain any unique logic**. It serves only a
 
 ## Quality Gates
 
-The pipeline runs the following checks sequentially:
+The local and CI entrypoints are:
 
-- **install**: Verifies dependency resolution and environment setup (`task install`).
-- **TypeScript check**: Runs static type analysis for the frontend (`task lint:ts`).
-- **ESLint**: Enforces code style, FSD boundaries, and best practices for React/TS (`task lint:es`).
-- **Stylelint**: Enforces CSS/Tailwind structure and rules (`task lint:style`).
-- **frontend tests**: Executes unit and integration tests for the React UI (`task test:frontend`).
-- **Storybook build**: Verifies that the UI documentation compiles successfully without breaking (`task build:storybook`).
-- **cargo fmt**: Checks Rust codebase formatting (`task format:rust`).
-- **cargo clippy**: Runs Rust static analysis and catches common mistakes (`task lint:rust`).
-- **cargo test**: Runs backend unit and integration tests across the workspace (`task test:rust`).
-- **architecture checks**: Validates boundaries between FSD layers and Rust clean architecture (`task check:arch`).
-- **file size checks**: Prevents regressions by enforcing limits on frontend bundle sizes and Tauri sidecars (`task check:size`).
+- **install**: Verifies dependency resolution with frozen package resolution (`task install`).
+- **frontend**: Runs typecheck, lint, tests, and build (`task check:frontend`).
+- **frontend quality**: Runs FSD boundary checks, color-token checks, and file-size checks (`task check:quality:frontend`).
+- **Rust**: Runs `cargo fmt`, `cargo clippy`, `cargo check`, and workspace tests (`task check:rust`).
+- **docs**: Runs markdown checks (`task check:docs`).
+- **docs quality**: Runs markdown formatting checks (`task check:quality:docs`).
+- **global quality**: Runs repository formatting, runtime println, and storage fallback checks (`task check:quality:global`).
+- **runtime println**: Runs the runtime println fixture suite and production scan (`task check:quality:runtime-println`).
+- **full suite**: Runs all required gates (`task check:all`).
+
+Script-backed quality gates must run their own fixture suites before scanning production code.

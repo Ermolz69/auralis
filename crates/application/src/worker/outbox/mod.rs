@@ -2,6 +2,7 @@
 pub mod maintenance;
 pub mod payload_handler;
 pub mod report;
+mod run_loop;
 pub mod worker;
 
 #[cfg(test)]

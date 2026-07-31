@@ -8,6 +8,14 @@ tasks:
       - task: test
       - task: build
 
+  install:
+    cmds:
+      - pnpm install --frozen-lockfile
+
+  setup:playwright:
+    cmds:
+      - pnpm exec playwright install
+
   lint:
     cmds:
       - pnpm --filter desktop lint

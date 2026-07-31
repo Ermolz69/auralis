@@ -467,7 +467,7 @@ async fn test_terminal_pair_reconciliation() {
 
 #[tokio::test]
 async fn test_missing_linked_job_adapter_write() {
-    use crate::sqlite::recovery::pair_writes::commit_failed_project_with_missing_linked_job;
+    use crate::sqlite::recovery::project_writes::commit_failed_project_with_missing_linked_job;
     use ports::recovery::FailProjectWithMissingLinkedJobCommand;
 
     let pool = setup_db().await;
@@ -509,7 +509,7 @@ async fn test_missing_linked_job_adapter_write() {
 
 #[tokio::test]
 async fn test_legacy_project_without_job() {
-    use crate::sqlite::recovery::pair_writes::commit_failed_legacy_project_without_job;
+    use crate::sqlite::recovery::project_writes::commit_failed_legacy_project_without_job;
     use ports::recovery::FailLegacyProjectWithoutJobCommand;
 
     let pool = setup_db().await;
