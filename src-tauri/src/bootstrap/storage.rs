@@ -99,6 +99,8 @@ pub fn setup_storage(
                         code: None,
                         retryable: false,
                     },
+                    category = "persistence",
+                    action = "startup_recovery",
                     count = report.persistence_failures.len(),
                     "Recovery persistence failure occurred"
                 );
@@ -110,6 +112,8 @@ pub fn setup_storage(
                         code: None,
                         retryable: false,
                     },
+                    category = "state_violation",
+                    action = "startup_recovery",
                     count = report.unresolved_violations.len(),
                     "Recovery unresolved violation occurred"
                 );
@@ -225,6 +229,8 @@ mod tests {
                             code: None,
                             retryable: false,
                         },
+                        category = "persistence",
+                        action = "startup_recovery",
                         count = report.persistence_failures.len(),
                         "Recovery persistence failure occurred"
                     );
@@ -236,6 +242,8 @@ mod tests {
                             code: None,
                             retryable: false,
                         },
+                        category = "state_violation",
+                        action = "startup_recovery",
                         count = report.unresolved_violations.len(),
                         "Recovery unresolved violation occurred"
                     );
@@ -246,6 +254,10 @@ mod tests {
         let logs = String::from_utf8(buf.lock().unwrap().clone()).unwrap();
         assert!(logs.contains("RecoveryPersistenceFailure"));
         assert!(logs.contains("RecoveryUnresolvedViolation"));
+        assert!(logs.contains("persistence"));
+        assert!(logs.contains("state_violation"));
+        assert!(logs.contains("startup_recovery"));
+        assert!(logs.contains("count=1"));
 
         assert!(!logs.contains("secret"));
         assert!(!logs.contains("SECRET"));

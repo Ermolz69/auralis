@@ -12,13 +12,14 @@ pub enum CommandError {
     Conflict(String),
     Busy(String),
     Repository(String),
+    RecoveryRequired(String),
     Internal(String),
     Cancelled(String),
 }
 
 fn format_cleanup_report(report: &application::error::CleanupReport) -> String {
     format!(
-        "An unexpected internal error occurred (Cleanup failed: {} staging cleanup failures, {} workspace cleanup failures)",
+        "An unexpected internal error occurred (cleanup_failed: staging_count={}, workspace_count={})",
         report.staging_failure_count(),
         report.workspace_failure_count()
     )
@@ -34,8 +35,10 @@ impl From<ApplicationError> for CommandError {
             ApplicationError::InvalidOperation { .. } => {
                 CommandError::Validation("Invalid operation".to_string())
             }
+            ApplicationError::PipelineStartFailedNeedsRecovery { .. } => {
+                CommandError::RecoveryRequired("Recovery required before retrying".to_string())
+            }
             ApplicationError::PipelineStartFailed { .. }
-            | ApplicationError::PipelineStartFailedNeedsRecovery { .. }
             | ApplicationError::Unexpected(_)
             | ApplicationError::Configuration(_) => {
                 CommandError::Internal("An unexpected internal error occurred".to_string())
@@ -174,6 +177,10 @@ mod tests {
         let cancelled = CommandError::Cancelled("cancelled".into());
         let json = serde_json::to_string(&cancelled).unwrap();
         assert_eq!(json, r#"{"code":"CANCELLED","message":"cancelled"}"#);
+
+        let recovery = CommandError::RecoveryRequired("recover".into());
+        let json = serde_json::to_string(&recovery).unwrap();
+        assert_eq!(json, r#"{"code":"RECOVERY_REQUIRED","message":"recover"}"#);
     }
 
     #[test]
@@ -216,6 +223,12 @@ mod tests {
             }),
             CommandError::Validation("Invalid operation".into())
         );
+        assert_eq!(
+            CommandError::from(ApplicationError::Domain(DomainError::StateOverflow(
+                "overflow".into()
+            ))),
+            CommandError::Validation("State overflow".into())
+        );
 
         // Conflict / Busy
         assert_eq!(
@@ -237,6 +250,96 @@ mod tests {
             CommandError::from(ApplicationError::Port(PortError::Cancelled)),
             CommandError::Cancelled("The operation was cancelled".into())
         );
+
+        assert_eq!(
+            CommandError::from(ApplicationError::PipelineStartFailedNeedsRecovery {
+                scheduling_error: "sql token=SECRET".into(),
+                compensation_error: "C:\\secret\\path".into()
+            }),
+            CommandError::RecoveryRequired("Recovery required before retrying".into())
+        );
+
+        assert_eq!(
+            CommandError::from(ApplicationError::PipelineStartFailed {
+                scheduling_error: "stderr with token=SECRET".into()
+            }),
+            CommandError::Internal("An unexpected internal error occurred".into())
+        );
+    }
+
+    #[test]
+    fn test_port_mapping_exhaustive_and_sanitized() {
+        let variants = [
+            (
+                PortError::Storage {
+                    operation: "SELECT secret FROM table",
+                    message: "C:\\Users\\secret\\db.sqlite token=SECRET".into(),
+                },
+                CommandError::Repository("A repository error occurred".into()),
+            ),
+            (
+                PortError::Io {
+                    message: "/home/user/secret.mp4".into(),
+                },
+                CommandError::Repository("A repository error occurred".into()),
+            ),
+            (
+                PortError::Network {
+                    message: "https://example.com/video?token=SECRET".into(),
+                },
+                CommandError::Repository("A repository error occurred".into()),
+            ),
+            (
+                PortError::InvalidStoredData {
+                    entity_type: "Project".into(),
+                    entity_id: "secret-id".into(),
+                    field: "payload".into(),
+                    message: "{\"transcript\":\"secret text\"}".into(),
+                },
+                CommandError::Repository("A repository error occurred".into()),
+            ),
+            (
+                PortError::InvalidSource {
+                    message: "https://youtube.com/watch?v=x&token=SECRET".into(),
+                },
+                CommandError::Validation("Invalid input source".into()),
+            ),
+            (
+                PortError::ExternalToolFailed {
+                    tool: "ffmpeg".into(),
+                    message: "stderr: token=SECRET".into(),
+                },
+                CommandError::Repository("A repository error occurred".into()),
+            ),
+            (
+                PortError::Unsupported {
+                    message: "file://secret".into(),
+                },
+                CommandError::Validation("Operation not supported".into()),
+            ),
+            (
+                PortError::AlreadyStopped,
+                CommandError::Internal("An unexpected internal error occurred".into()),
+            ),
+            (
+                PortError::Unexpected {
+                    message: "raw payload token=SECRET".into(),
+                },
+                CommandError::Repository("A repository error occurred".into()),
+            ),
+        ];
+
+        for (input, expected) in variants {
+            let mapped = CommandError::from(ApplicationError::Port(input));
+            assert_eq!(mapped, expected);
+            let json = serde_json::to_string(&mapped).unwrap();
+            assert!(!json.contains("SECRET"));
+            assert!(!json.contains("secret"));
+            assert!(!json.contains("token"));
+            assert!(!json.contains("stderr"));
+            assert!(!json.contains("transcript"));
+            assert!(!json.contains("youtube"));
+        }
     }
 
     #[test]
@@ -272,7 +375,7 @@ mod tests {
         if let CommandError::Internal(msg) = cmd_err {
             assert_eq!(
                 msg,
-                "An unexpected internal error occurred (Cleanup failed: 2 staging cleanup failures, 1 workspace cleanup failures)"
+                "An unexpected internal error occurred (cleanup_failed: staging_count=2, workspace_count=1)"
             );
         } else {
             panic!("Expected CommandError::Internal");

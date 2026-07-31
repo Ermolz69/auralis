@@ -1,5 +1,12 @@
 export type CommandErrorCode =
-  'NOT_FOUND' | 'VALIDATION' | 'CONFLICT' | 'BUSY' | 'REPOSITORY' | 'INTERNAL' | 'CANCELLED';
+  | 'NOT_FOUND'
+  | 'VALIDATION'
+  | 'CONFLICT'
+  | 'BUSY'
+  | 'REPOSITORY'
+  | 'RECOVERY_REQUIRED'
+  | 'INTERNAL'
+  | 'CANCELLED';
 
 export interface CommandError {
   code: CommandErrorCode;
@@ -12,6 +19,7 @@ const VALID_ERROR_CODES = new Set<CommandErrorCode>([
   'CONFLICT',
   'BUSY',
   'REPOSITORY',
+  'RECOVERY_REQUIRED',
   'INTERNAL',
   'CANCELLED',
 ]);

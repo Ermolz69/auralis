@@ -14,6 +14,10 @@ describe('isCommandError', () => {
     expect(isCommandError({ code: 'BUSY', message: 'test' })).toBe(true);
   });
 
+  it('returns true for valid RECOVERY_REQUIRED error', () => {
+    expect(isCommandError({ code: 'RECOVERY_REQUIRED', message: 'test' })).toBe(true);
+  });
+
   it('returns false for invalid code', () => {
     expect(isCommandError({ code: 'INVALID_CODE', message: 'test' })).toBe(false);
   });
@@ -49,5 +53,20 @@ describe('toCommandError', () => {
   it('returns generic INTERNAL for malformed objects', () => {
     const res = toCommandError({ code: 'NOT_FOUND', msg: 'wrong field' });
     expect(res).toEqual({ code: 'INTERNAL', message: 'An unexpected system error occurred' });
+  });
+
+  it('does not echo sensitive fields from unknown object shapes', () => {
+    const res = toCommandError({
+      code: 'INTERNAL',
+      message: 42,
+      debug:
+        'C:\\Users\\secret\\video.mp4 https://example.com/path?token=SECRET transcript payload',
+    });
+
+    expect(res).toEqual({ code: 'INTERNAL', message: 'An unexpected system error occurred' });
+    expect(JSON.stringify(res)).not.toContain('SECRET');
+    expect(JSON.stringify(res)).not.toContain('secret');
+    expect(JSON.stringify(res)).not.toContain('transcript');
+    expect(JSON.stringify(res)).not.toContain('token');
   });
 });
