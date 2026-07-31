@@ -597,49 +597,31 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                 abort_handle.abort();
             }
 
-            let elapsed = start_time.elapsed();
-            let abort_budget = deadline
-                .checked_sub(elapsed)
-                .unwrap_or(std::time::Duration::ZERO);
+            while !abort_handles.is_empty() {
+                match futures::StreamExt::next(&mut stream).await {
+                    Some((job_id, join_res)) => {
+                        abort_handles.remove(&job_id);
+                        classify_outcome(join_res, &mut report, true);
 
-            if abort_budget > std::time::Duration::ZERO {
-                let abort_timeout_fut = tokio::time::sleep(abort_budget);
-                tokio::pin!(abort_timeout_fut);
-
-                loop {
-                    tokio::select! {
-                        _ = &mut abort_timeout_fut => {
-                            break;
-                        }
-                        res_opt = futures::StreamExt::next(&mut stream) => {
-                            match res_opt {
-                                Some((job_id, join_res)) => {
-                                    abort_handles.remove(&job_id);
-                                    classify_outcome(join_res, &mut report, true);
-
-                                    let lock = self.mutation_locks.get_lock(&job_id);
-                                    let _guard = lock.lock().await;
-                                    self.cache.remove(&job_id).await;
-                                    drop(_guard);
-                                    self.mutation_locks.remove(&job_id);
-                                }
-                                None => {
-                                    break;
-                                }
-                            }
-                        }
+                        let lock = self.mutation_locks.get_lock(&job_id);
+                        let _guard = lock.lock().await;
+                        self.cache.remove(&job_id).await;
+                        drop(_guard);
+                        self.mutation_locks.remove(&job_id);
                     }
-                }
-            }
+                    None => {
+                        for job_id in abort_handles.keys() {
+                            report.unconfirmed_count += 1;
 
-            for job_id in abort_handles.keys() {
-                report.unconfirmed_count += 1;
-
-                let lock = self.mutation_locks.get_lock(job_id);
-                let _guard = lock.lock().await;
-                self.cache.remove(job_id).await;
-                drop(_guard);
-                self.mutation_locks.remove(job_id);
+                            let lock = self.mutation_locks.get_lock(job_id);
+                            let _guard = lock.lock().await;
+                            self.cache.remove(job_id).await;
+                            drop(_guard);
+                            self.mutation_locks.remove(job_id);
+                        }
+                        break;
+                    }
+                };
             }
         }
 
