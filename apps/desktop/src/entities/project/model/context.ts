@@ -3,6 +3,7 @@ import type { Project } from './types';
 
 export interface OperationToken {
   readonly generation: number;
+  readonly projectId: string | null;
 }
 
 export interface ProjectContextType {

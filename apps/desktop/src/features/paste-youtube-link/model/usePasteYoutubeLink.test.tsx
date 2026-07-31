@@ -22,10 +22,14 @@ describe('usePasteYoutubeLink', () => {
       beginProjectDeletion: vi.fn(),
       finishProjectDeletion: vi.fn(),
       operationGeneration: 1,
-      captureToken: () => ({ generation: mockContextValue.operationGeneration }),
+      captureToken: () => ({
+        generation: mockContextValue.operationGeneration,
+        projectId: mockContextValue.projectId,
+      }),
       validateToken: (token: any) =>
         mockContextValue.deletingProjectId === null &&
-        token.generation === mockContextValue.operationGeneration,
+        token.generation === mockContextValue.operationGeneration &&
+        token.projectId === mockContextValue.projectId,
     };
     vi.mocked(useProjectContext).mockReturnValue(mockContextValue);
   });
