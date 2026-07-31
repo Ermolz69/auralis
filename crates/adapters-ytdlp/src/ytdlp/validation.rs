@@ -1,6 +1,14 @@
 use ports::error::PortError;
 use url::Url;
 
+const ALLOWED_YOUTUBE_HOSTS: &[&str] = &[
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "music.youtube.com",
+    "youtu.be",
+];
+
 pub(crate) fn validate_url(url_str: &str) -> Result<Url, PortError> {
     let parsed = Url::parse(url_str).map_err(|_| PortError::InvalidSource {
         message: "Invalid URL".to_string(),
@@ -16,10 +24,8 @@ pub(crate) fn validate_url(url_str: &str) -> Result<Url, PortError> {
         message: "Missing host".to_string(),
     })?;
 
-    let host_lower = host.to_lowercase();
-    let is_allowed = host_lower == "youtube.com"
-        || host_lower.ends_with(".youtube.com")
-        || host_lower == "youtu.be";
+    let host_lower = host.to_ascii_lowercase();
+    let is_allowed = ALLOWED_YOUTUBE_HOSTS.contains(&host_lower.as_str());
 
     if !is_allowed {
         return Err(PortError::InvalidSource {

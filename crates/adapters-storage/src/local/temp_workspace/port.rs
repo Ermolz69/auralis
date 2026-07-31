@@ -89,7 +89,7 @@ impl TempWorkspacePort for LocalTempWorkspace {
             .await
             .unwrap_or_else(|_| self.workspace_root.clone());
 
-        let target_path = canonical_root.join(key_str);
+        let target_path = reject_symlinks_in_existing_key_path(&canonical_root, key_str).await?;
 
         // Find closest existing ancestor
         let mut ancestor = target_path.clone();
@@ -280,4 +280,34 @@ impl TempWorkspacePort for LocalTempWorkspace {
 
         Ok(file_path)
     }
+}
+
+async fn reject_symlinks_in_existing_key_path(
+    canonical_root: &std::path::Path,
+    key_str: &str,
+) -> Result<PathBuf, PortError> {
+    let mut target_path = canonical_root.to_path_buf();
+
+    for component in std::path::Path::new(key_str).components() {
+        match component {
+            std::path::Component::Normal(part) => {
+                target_path.push(part);
+                if let Ok(metadata) = tokio::fs::symlink_metadata(&target_path).await
+                    && metadata.is_symlink()
+                {
+                    return Err(PortError::Io {
+                        message: "Symlink components are not allowed".to_string(),
+                    });
+                }
+            }
+            _ => {
+                return Err(PortError::Io {
+                    message: "WorkspaceKey must contain only normal relative components"
+                        .to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(target_path)
 }
