@@ -176,18 +176,20 @@ impl<
             }
         });
 
-        match import_use_case
-            .execute(ImportYoutubeSubtitlesRequest {
+        match await_or_cancel(
+            &token,
+            import_use_case.execute(ImportYoutubeSubtitlesRequest {
                 project_id: project_id.clone(),
                 preferred_languages: vec!["en".to_string(), "ru".to_string(), "uk".to_string()],
                 allow_auto_generated: true,
                 cancellation_token: tokio_token,
                 job_id: job_id.clone(),
-            })
-            .await
+            }),
+        )
+        .await
         {
-            Ok(_) => {}
-            Err(e) => {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) => {
                 if token.is_cancelled() {
                     let is_cleanup_fail = match &e {
                         crate::error::ApplicationError::OperationFailedWithCleanup {
@@ -211,6 +213,7 @@ impl<
                 )
                 .await;
             }
+            Err(outcome) => return outcome,
         }
 
         if token.is_cancelled() {
