@@ -182,6 +182,7 @@ export class JobStoreSynchronizer {
     if (this.activeGeneration !== expectedGen) return;
 
     this.dispatch({ type: 'INVALIDATION_RECEIVED', generation: expectedGen });
+    this.requestFetch(expectedGen);
   }
 
   public requestFetch(expectedGeneration: number) {
