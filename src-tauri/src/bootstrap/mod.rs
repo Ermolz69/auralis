@@ -49,7 +49,7 @@ pub fn setup(
     std::fs::create_dir_all(&workspace_root)?;
 
     // 1. Setup storage Adapter (fallible)
-    let (services, outbox_repo_opt) = storage::setup_storage(app, &workspace_root)?;
+    let (services, outbox_repo) = storage::setup_storage(app, &workspace_root)?;
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
         workspace_root.clone(),
@@ -89,24 +89,18 @@ pub fn setup(
 
     let mut running_bridge = prepared_bridge.start(publisher.clone(), coordinator.clone());
 
-    if let Some(outbox_repo) = outbox_repo_opt {
-        let outbox_shutdown = workers::spawn_outbox_worker(
-            outbox_repo.clone(),
-            services.artifact_store.clone(),
-            services.artifact_index.clone(),
-            services.storage_uow.clone(),
-            Arc::new(publisher.clone()),
-            temp_workspace,
-            outbox_config,
-        );
-        app.manage(crate::state::ManagedOutboxWorker(std::sync::Mutex::new(
-            Some(outbox_shutdown),
-        )));
-    } else {
-        app.manage(crate::state::ManagedOutboxWorker(std::sync::Mutex::new(
-            None,
-        )));
-    }
+    let outbox_shutdown = workers::spawn_outbox_worker(
+        outbox_repo.clone(),
+        services.artifact_store.clone(),
+        services.artifact_index.clone(),
+        services.storage_uow.clone(),
+        Arc::new(publisher.clone()),
+        temp_workspace,
+        outbox_config,
+    );
+    app.manage(crate::state::ManagedOutboxWorker(std::sync::Mutex::new(
+        Some(outbox_shutdown),
+    )));
 
     let bridge_handle = running_bridge
         .take_handle()

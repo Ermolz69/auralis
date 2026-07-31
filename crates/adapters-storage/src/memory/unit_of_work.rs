@@ -73,7 +73,8 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         &self,
         command: CommitStagedArtifactWrite,
     ) -> Result<(), PortError> {
-        // Synchronously finalize artifact for dev mode
+        command.validate()?;
+
         self.artifact_store
             .finalize_staged_artifact(&command.staging_key, &command.final_key)
             .await?;
@@ -88,7 +89,6 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         Ok(())
     }
 
-    /// NOTE: Memory UoW provides test/compile parity only and does not claim transactional equivalence with SQLite.
     async fn commit_managed_source_import(
         &self,
         command: ports::transaction::CommitManagedSourceImport,
@@ -266,7 +266,6 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         }
         db.jobs
             .insert(command.job.id().clone(), command.job.clone());
-        // InMemoryAdapter doesn't have an outbox right now, so we just return
         Ok(())
     }
 
