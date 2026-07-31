@@ -32,7 +32,7 @@ pub(super) async fn save_outbox_message(
         domain::outbox::OutboxMessageStatus::Dead => "dead",
     };
 
-    sqlx::query(
+    let result = sqlx::query(
         r#"
         INSERT INTO outbox_messages (
             id, kind, payload_json, status, attempts, next_attempt_at,
@@ -72,5 +72,13 @@ pub(super) async fn save_outbox_message(
     .map_err(|e| {
         crate::sqlite::helpers::map_sqlite_error("Failed to add outbox message in tx", e)
     })?;
+
+    if result.rows_affected() != 1 {
+        return Err(PortError::Conflict {
+            resource: "OutboxMessage".to_string(),
+            message: "Outbox insert did not affect exactly one row".to_string(),
+        });
+    }
+
     Ok(())
 }
