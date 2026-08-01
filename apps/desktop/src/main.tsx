@@ -7,6 +7,7 @@ import { ProjectProvider } from './entities/project';
 import { NavigationProvider } from './shared/router';
 
 import { AppJobProvider } from './app/providers';
+import { Toaster } from './shared/ui/toast';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -14,6 +15,7 @@ createRoot(document.getElementById('root')!).render(
       <ProjectProvider>
         <AppJobProvider>
           <App />
+          <Toaster />
         </AppJobProvider>
       </ProjectProvider>
     </NavigationProvider>
