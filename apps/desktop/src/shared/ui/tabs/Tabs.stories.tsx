@@ -22,6 +22,9 @@ export const DefaultTabs: Story = {
         <TabsTrigger value="password">Password</TabsTrigger>
         <TabsTrigger value="settings">Settings</TabsTrigger>
       </TabsList>
+      <TabsContent value="account">Account preferences</TabsContent>
+      <TabsContent value="password">Password controls</TabsContent>
+      <TabsContent value="settings">Settings overview</TabsContent>
     </Tabs>
   ),
 };
@@ -34,6 +37,9 @@ export const CompactTabs: Story = {
         <TabsTrigger value="videos">Videos</TabsTrigger>
         <TabsTrigger value="audio">Audio</TabsTrigger>
       </TabsList>
+      <TabsContent value="all">All imported files</TabsContent>
+      <TabsContent value="videos">Video files</TabsContent>
+      <TabsContent value="audio">Audio files</TabsContent>
     </Tabs>
   ),
 };
@@ -46,6 +52,9 @@ export const FullWidthTabs: Story = {
         <TabsTrigger value="tab2">Center</TabsTrigger>
         <TabsTrigger value="tab3">Right</TabsTrigger>
       </TabsList>
+      <TabsContent value="tab1">Left panel</TabsContent>
+      <TabsContent value="tab2">Center panel</TabsContent>
+      <TabsContent value="tab3">Right panel</TabsContent>
     </Tabs>
   ),
 };
@@ -60,6 +69,9 @@ export const DisabledTab: Story = {
           Enterprise (Coming Soon)
         </TabsTrigger>
       </TabsList>
+      <TabsContent value="free">Free workspace limits</TabsContent>
+      <TabsContent value="pro">Pro workspace limits</TabsContent>
+      <TabsContent value="enterprise">Enterprise workspace limits</TabsContent>
     </Tabs>
   ),
 };

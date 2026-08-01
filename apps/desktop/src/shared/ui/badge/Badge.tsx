@@ -14,12 +14,12 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
 
     const variants = {
       default: 'bg-surface text-text border border-muted',
-      primary: 'bg-primary/20 text-primary border border-primary/30',
-      accent: 'bg-accent/20 text-accent border border-accent/30',
-      success: 'bg-success/20 text-success border border-success/30',
-      warning: 'bg-warning/20 text-warning border border-warning/30',
-      danger: 'bg-danger/20 text-danger border border-danger/30',
-      muted: 'bg-muted/10 text-muted border border-muted/20',
+      primary: 'bg-primary/20 text-primary-foreground border border-primary/40',
+      accent: 'bg-accent/20 text-accent-foreground border border-accent/40',
+      success: 'bg-success/20 text-success-foreground border border-success/40',
+      warning: 'bg-warning/20 text-warning-foreground border border-warning/40',
+      danger: 'bg-danger/20 text-danger-foreground border border-danger/40',
+      muted: 'bg-secondary text-text border border-muted/40',
     };
 
     const sizes = {
