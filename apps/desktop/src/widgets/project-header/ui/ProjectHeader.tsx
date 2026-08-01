@@ -10,6 +10,7 @@ import { useProjectContext } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
+import { formatProjectTitle, formatSourceLabel } from '@/entities/media';
 import { MediaSummary } from './MediaSummary';
 
 export const ProjectHeader = () => {
@@ -29,7 +30,9 @@ export const ProjectHeader = () => {
           >
             Projects
           </Button>
-          <PageTitle className="!text-xl">{project?.title || 'Loading Project...'}</PageTitle>
+          <PageTitle className="!text-xl">
+            {project ? formatProjectTitle(project.title, project.source) : 'Loading Project...'}
+          </PageTitle>
           {project?.status && (
             <span className="px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
               {project.status.toUpperCase()}
@@ -40,13 +43,7 @@ export const ProjectHeader = () => {
           <MediaSummary metadata={project.metadata} />
         ) : (
           <PageDescription className="!text-sm mt-1">
-            {project?.source?.kind === 'managedLocalFile'
-              ? project.source.originalFilename
-              : project?.source?.kind === 'externalLocalFile'
-                ? project.source.path
-                : project?.source?.kind === 'youtubeUrl' || project?.source?.kind === 'remoteUrl'
-                  ? project.source.url
-                  : 'No media source attached'}
+            {formatSourceLabel(project?.source ?? null)}
           </PageDescription>
         )}
       </PageHeaderGroup>
