@@ -87,6 +87,52 @@ describe('RunDubbing', () => {
     ).toBe(false);
   });
 
+  it('is disabled with an explanation for managed local media', () => {
+    const ctx = createMockContext({
+      project: {
+        ...mockProject,
+        source: {
+          kind: 'managedLocalFile',
+          artifactId: 'artifact-1',
+          originalFilename: 'local.mp4',
+        },
+      },
+    });
+
+    render(
+      <ProjectContext.Provider value={ctx}>
+        <RunDubbing />
+      </ProjectContext.Provider>,
+    );
+
+    const button = screen.getByRole('button', { name: /import subtitles/i }) as HTMLButtonElement;
+
+    expect(button.disabled).toBe(true);
+    expect(screen.getByRole('note').textContent).toContain(
+      'automatic transcription is not supported',
+    );
+    expect(button.getAttribute('aria-describedby')).toBe('subtitle-import-disabled-reason');
+  });
+
+  it('does not invoke subtitle import for external local media', () => {
+    const ctx = createMockContext({
+      project: {
+        ...mockProject,
+        source: { kind: 'externalLocalFile', path: 'C:\\media\\local.mp4' },
+      },
+    });
+
+    render(
+      <ProjectContext.Provider value={ctx}>
+        <RunDubbing />
+      </ProjectContext.Provider>,
+    );
+
+    screen.getByRole('button', { name: /import subtitles/i }).click();
+
+    expect(startProjectMockPipeline).not.toHaveBeenCalled();
+  });
+
   it('is disabled when another project is deleting', () => {
     const ctx = createMockContext({ deletingProjectId: 'other-id' });
     const { rerender } = render(

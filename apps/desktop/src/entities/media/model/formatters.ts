@@ -28,6 +28,9 @@ export const formatProjectTitle = (title: string, source: MediaSource | null): s
   return 'Untitled Project';
 };
 
+export const supportsSubtitleImport = (source: MediaSource | null): boolean =>
+  source?.kind === 'youtubeUrl' || source?.kind === 'remoteUrl';
+
 const isRawUrl = (value: string): boolean => /^https?:\/\//i.test(value.trim());
 
 const getUrlHost = (value: string): string | null => {
