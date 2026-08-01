@@ -1,5 +1,11 @@
 import type { RefCallback } from 'react';
 import type { Project } from '@/entities/project';
+import {
+  formatProjectStatus,
+  formatProjectTitle,
+  formatSourceLabel,
+  getProjectStatusTone,
+} from '@/entities/media';
 import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
 import { Icon } from '@/shared/ui/icon';
@@ -23,15 +29,17 @@ export const ProjectListRow = ({
   onOpen,
   onDelete,
 }: ProjectListRowProps) => {
-  const displayTitle = project.title || 'Untitled Project';
-  const statusClass =
-    project.status === 'completed'
-      ? 'bg-success'
-      : project.status === 'failed'
-        ? 'bg-danger'
-        : project.status === 'processing'
-          ? 'bg-primary animate-pulse'
-          : 'bg-muted';
+  const displayTitle = formatProjectTitle(project.title, project.source);
+  const sourceLabel = formatSourceLabel(project.source);
+  const statusLabel = formatProjectStatus(project.status);
+  const statusTone = getProjectStatusTone(project.status);
+  const statusClass = {
+    success: 'bg-success',
+    danger: 'bg-danger',
+    primary: 'bg-primary animate-pulse',
+    warning: 'bg-warning',
+    muted: 'bg-muted',
+  }[statusTone];
 
   return (
     <Card
@@ -47,15 +55,20 @@ export const ProjectListRow = ({
         aria-label={`Open ${displayTitle}`}
       >
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-          <Icon name={project.source?.kind === 'remoteUrl' ? 'Video' : 'Film'} size="md" />
+          <Icon name={project.source?.kind === 'youtubeUrl' || project.source?.kind === 'remoteUrl' ? 'Video' : 'Film'} size="md" />
         </div>
-        <div className="flex flex-col text-left flex-1">
-          <span className="text-text font-medium truncate max-w-[250px]" title={displayTitle}>
+        <div className="flex min-w-0 flex-col text-left flex-1">
+          <span className="text-text font-medium truncate max-w-[250px]">
             {displayTitle}
           </span>
-          <span className="text-muted text-xs capitalize flex items-center gap-1.5 mt-0.5">
-            <span className={`w-2 h-2 rounded-full ${statusClass}`}></span>
-            {project.status.replace(/_/g, ' ')}
+          <span className="text-muted text-xs flex items-center gap-1.5 mt-0.5">
+            <span className={`w-2 h-2 rounded-full ${statusClass}`} aria-hidden="true"></span>
+            <span className="sr-only">Status: </span>
+            {statusLabel}
+          </span>
+          <span className="text-muted text-xs truncate max-w-[250px]">
+            <span className="sr-only">Source: </span>
+            {sourceLabel}
           </span>
         </div>
         <div className="text-muted text-xs pr-4">
