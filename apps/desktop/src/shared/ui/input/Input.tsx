@@ -25,6 +25,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
+    const helperId = helperText ? `${inputId}-description` : undefined;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -57,6 +58,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             disabled={disabled}
+            aria-invalid={error || undefined}
+            aria-describedby={helperId}
             className={`w-full bg-transparent outline-none placeholder:text-muted py-2 ${
               leftIcon ? 'pl-9' : 'pl-3'
             } ${rightIcon ? 'pr-9' : 'pr-3'}`}
@@ -68,8 +71,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
+        {helperText && (
+          <span
+            id={helperId}
+            className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}
+            role={error ? 'alert' : undefined}
+          >
+            {helperText}
+          </span>
         )}
       </div>
     );

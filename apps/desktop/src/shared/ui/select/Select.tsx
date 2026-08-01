@@ -30,6 +30,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ) => {
     const generatedId = useId();
     const selectId = id || generatedId;
+    const helperId = helperText ? `${selectId}-description` : undefined;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -56,6 +57,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             ref={ref}
             disabled={disabled}
+            aria-invalid={error || undefined}
+            aria-describedby={helperId}
             className={`${selectBase} ${selectBorder} ${selectDisabled}`}
             defaultValue={
               placeholder && !props.value && !props.defaultValue ? '' : props.defaultValue
@@ -75,6 +78,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
             <svg
+              aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
               width="16"
               height="16"
@@ -89,8 +93,14 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             </svg>
           </div>
         </div>
-        {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
+        {helperText && (
+          <span
+            id={helperId}
+            className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}
+            role={error ? 'alert' : undefined}
+          >
+            {helperText}
+          </span>
         )}
       </div>
     );

@@ -14,6 +14,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
   ) => {
     const safeValue = Math.min(Math.max(value, 0), max);
     const percent = Math.round((safeValue / max) * 100);
+    const hasAccessibleName = Boolean(props['aria-label'] || props['aria-labelledby']);
 
     const baseContainer =
       'relative h-2 w-full overflow-hidden rounded-full bg-surface border border-muted/50';
@@ -32,6 +33,9 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         aria-valuemin={0}
         aria-valuemax={max}
         aria-valuenow={indeterminate ? undefined : safeValue}
+        aria-valuetext={indeterminate ? 'Loading' : `${percent}%`}
+        aria-busy={indeterminate || undefined}
+        aria-label={hasAccessibleName ? props['aria-label'] : 'Progress'}
         className={`${baseContainer} ${className}`}
         {...props}
       >

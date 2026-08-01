@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, type KeyboardEvent } from 'react';
+import React, { createContext, useContext, useId, useState, type KeyboardEvent } from 'react';
 
 interface TabsContextValue {
   value: string;
@@ -6,6 +6,8 @@ interface TabsContextValue {
   orientation?: 'horizontal' | 'vertical';
   variant?: 'default' | 'compact';
   fullWidth?: boolean;
+  getTriggerId: (value: string) => string;
+  getContentId: (value: string) => string;
 }
 
 const TabsContext = createContext<TabsContextValue | null>(null);
@@ -35,8 +37,10 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
     ref,
   ) => {
     const [internalValue, setInternalValue] = useState(defaultValue || '');
+    const generatedId = useId();
     const isControlled = value !== undefined;
     const selectedValue = isControlled ? value : internalValue;
+    const getSafeValue = (tabValue: string) => tabValue.replace(/[^a-zA-Z0-9_-]/g, '-');
 
     const handleValueChange = (newValue: string) => {
       if (isControlled && onValueChange) onValueChange(newValue);
@@ -51,6 +55,8 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
           orientation,
           variant,
           fullWidth,
+          getTriggerId: (tabValue) => `${generatedId}-tab-${getSafeValue(tabValue)}`,
+          getContentId: (tabValue) => `${generatedId}-panel-${getSafeValue(tabValue)}`,
         }}
       >
         <div ref={ref} className={className} {...props}>
@@ -62,8 +68,12 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
 );
 Tabs.displayName = 'Tabs';
 
-export const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className = '', ...props }, ref) => {
+export interface TabsListProps extends React.HTMLAttributes<HTMLDivElement> {
+  fullWidth?: boolean;
+}
+
+export const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
+  ({ className = '', fullWidth, ...props }, ref) => {
     const ctx = useContext(TabsContext);
 
     // Keyboard navigation
@@ -102,7 +112,7 @@ export const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
     };
 
     const variantClasses = ctx?.variant === 'compact' ? 'p-0.5 space-x-1' : 'p-1 space-x-1';
-    const widthClass = ctx?.fullWidth ? 'flex w-full' : 'inline-flex';
+    const widthClass = fullWidth || ctx?.fullWidth ? 'flex w-full' : 'inline-flex';
 
     return (
       <div
@@ -135,7 +145,9 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         ref={ref}
         type="button"
         role="tab"
+        id={ctx?.getTriggerId(value)}
         aria-selected={isSelected}
+        aria-controls={ctx?.getContentId(value)}
         disabled={disabled}
         onClick={() => {
           if (!disabled) ctx?.onValueChange(value);
@@ -165,7 +177,9 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
     return (
       <div
         ref={ref}
+        id={ctx?.getContentId(value)}
         role="tabpanel"
+        aria-labelledby={ctx?.getTriggerId(value)}
         tabIndex={0}
         className={`mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${className}`}
         {...props}
