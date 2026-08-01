@@ -31,11 +31,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     // Visual variants
     const variants = {
-      primary: 'bg-primary text-text hover:bg-primary/90 focus-visible:ring-primary/50',
+      primary:
+        'bg-primary-action text-white hover:bg-primary-action-hover focus-visible:ring-primary/50',
       secondary:
         'bg-surface text-text border border-muted hover:bg-surface/80 focus-visible:ring-muted/50',
       ghost: 'bg-transparent text-text hover:bg-surface focus-visible:ring-muted/50',
-      danger: 'bg-danger text-text hover:bg-danger/90 focus-visible:ring-danger/50',
+      danger:
+        'bg-danger-action text-white hover:bg-danger-action-hover focus-visible:ring-danger/50',
     };
 
     // Sizing

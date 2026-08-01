@@ -88,6 +88,7 @@ export const PageWithCards: Story = {
           </PageHeaderGroup>
         </PageHeader>
         <PageContent>
+          <h2 className="sr-only">Dashboard metrics</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card>
               <CardHeader>
@@ -142,6 +143,7 @@ export const DenseProjectPage: Story = {
           </PageActions>
         </PageHeader>
         <PageContent>
+          <h2 className="sr-only">Project workspace panels</h2>
           <PageLayoutWithSidebar>
             <PageSidebarContent>
               <div className="h-96 rounded-xl border border-dashed border-muted/50 flex items-center justify-center text-muted bg-surface/50">

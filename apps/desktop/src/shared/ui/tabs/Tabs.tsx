@@ -154,7 +154,9 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         }}
         tabIndex={isSelected ? 0 : -1}
         className={`inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-50 ${variantClasses} ${widthClass} ${
-          isSelected ? 'bg-primary text-text shadow-sm' : 'hover:bg-muted/10 hover:text-text'
+          isSelected
+            ? 'bg-primary-action text-white shadow-sm'
+            : 'hover:bg-muted/10 hover:text-text'
         } ${className}`}
         {...props}
       />
@@ -172,8 +174,6 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
     const ctx = useContext(TabsContext);
     const isSelected = ctx?.value === value;
 
-    if (!isSelected) return null;
-
     return (
       <div
         ref={ref}
@@ -181,6 +181,7 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
         role="tabpanel"
         aria-labelledby={ctx?.getTriggerId(value)}
         tabIndex={0}
+        hidden={!isSelected}
         className={`mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${className}`}
         {...props}
       />

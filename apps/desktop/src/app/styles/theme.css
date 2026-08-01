@@ -3,13 +3,22 @@
   --color-surface: #171a21;
   --color-text: #f4f4f5;
   --color-muted: #a1a1aa;
-  --color-primary: #7c3aed;
-  --color-accent: #3b82f6;
+  --color-primary: #a78bfa;
+  --color-primary-action: #6d28d9;
+  --color-primary-action-hover: #5b21b6;
+  --color-primary-foreground: #ede9fe;
+  --color-accent: #60a5fa;
+  --color-accent-foreground: #dbeafe;
   --color-success: #10b981;
+  --color-success-foreground: #d1fae5;
   --color-warning: #f59e0b;
+  --color-warning-foreground: #fef3c7;
   --color-secondary: #272a35;
   --color-secondary-foreground: #f4f4f5;
-  --color-danger: #ef4444;
+  --color-danger: #f87171;
+  --color-danger-action: #b91c1c;
+  --color-danger-action-hover: #991b1b;
+  --color-danger-foreground: #fee2e2;
 
   --animate-progress-indeterminate: progress-indeterminate 1.5s infinite linear;
   @keyframes progress-indeterminate {

@@ -32,7 +32,7 @@ export function CancelJobButton({ jobId, onCancelled, className }: CancelJobButt
     <div className="flex flex-col items-end gap-1">
       <button
         type="button"
-        className={`px-3 py-1 bg-danger hover:bg-danger text-white rounded text-sm disabled:opacity-50 ${className || ''}`}
+        className={`px-3 py-1 bg-danger-action hover:bg-danger-action-hover text-white rounded text-sm disabled:opacity-50 ${className || ''}`}
         onClick={handleCancel}
         disabled={isCancelling}
         aria-describedby={error ? errorId : undefined}

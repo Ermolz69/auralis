@@ -73,12 +73,12 @@ export const TranscriptEditor = () => {
           ) : (
             <div className="flex flex-col gap-3" aria-label="Read-only transcript segments">
               {transcript.segments.map((line, idx) => (
-                <p key={idx} className="rounded border border-muted/30 bg-bg p-3">
+                <div key={idx} className="rounded border border-muted/30 bg-bg p-3">
                   <Badge variant="primary" size="sm" className="mr-2 font-mono">
                     [{Math.floor(line.startMs / 1000)}s - {Math.floor(line.endMs / 1000)}s]
                   </Badge>{' '}
                   {line.sourceText}
-                </p>
+                </div>
               ))}
             </div>
           )}

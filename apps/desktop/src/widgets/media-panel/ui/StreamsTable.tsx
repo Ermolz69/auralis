@@ -35,7 +35,7 @@ export function StreamsTable({ streams }: StreamsTableProps) {
               <div className="p-1 bg-muted/50 rounded text-muted">{getStreamIcon(s.codecType)}</div>
               <span className="text-sm font-medium capitalize">{s.codecType} Stream</span>
             </div>
-            <span className="text-xs font-medium text-muted bg-muted/30 px-1.5 py-0.5 rounded">
+            <span className="text-xs font-medium text-text bg-secondary px-1.5 py-0.5 rounded">
               #{s.index}
             </span>
           </div>
