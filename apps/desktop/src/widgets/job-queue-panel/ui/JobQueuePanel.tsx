@@ -10,12 +10,19 @@ const formatStage = (stage: string | null) => {
   return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
 };
 
-export const JobQueuePanel = () => {
+type JobQueuePanelProps = {
+  className?: string;
+};
+
+export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
   const { activeJobs, completedJobs } = useJobContext();
   const jobs = [...activeJobs, ...completedJobs];
 
   return (
-    <aside className="w-96 shrink-0 h-full bg-surface border-l border-muted p-6 flex flex-col gap-4 overflow-hidden">
+    <aside
+      className={`h-full bg-surface p-6 flex flex-col gap-4 overflow-hidden min-w-0 ${className}`}
+      aria-label="Job queue"
+    >
       <h2 className="text-lg font-semibold text-text shrink-0">Job Queue</h2>
       <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-0">
         {jobs.length === 0 ? (

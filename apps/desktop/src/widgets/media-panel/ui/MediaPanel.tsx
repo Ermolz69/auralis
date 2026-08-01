@@ -5,14 +5,19 @@ import { StreamsTable } from './StreamsTable';
 import { AlertCircle, FileVideo, Film, Info } from 'lucide-react';
 import { Badge } from '@/shared/ui/badge';
 
-export function MediaPanel() {
+type MediaPanelProps = {
+  className?: string;
+};
+
+export function MediaPanel({ className = '' }: MediaPanelProps) {
   const { project } = useProjectContext();
   const metadata = project?.metadata;
   const source = project?.source;
+  const baseClass = `p-4 bg-surface flex flex-col h-full overflow-y-auto min-w-0 custom-scrollbar ${className}`;
 
   if (!metadata) {
     return (
-      <div className="p-4 bg-surface border-r border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0">
+      <aside className={baseClass} aria-label="Media details">
         <h3 className="font-semibold mb-4 text-text flex items-center gap-2">
           <FileVideo className="w-5 h-5 text-muted" />
           Media Info
@@ -21,7 +26,7 @@ export function MediaPanel() {
           <Info className="w-6 h-6 opacity-50" />
           <p className="text-sm">No metadata available</p>
         </div>
-      </div>
+      </aside>
     );
   }
 
@@ -34,7 +39,7 @@ export function MediaPanel() {
   }
 
   return (
-    <div className="p-4 bg-surface border-r border-muted flex flex-col h-full overflow-y-auto w-80 shrink-0 custom-scrollbar">
+    <aside className={baseClass} aria-label="Media details">
       <h3 className="font-semibold mb-4 text-lg text-text flex items-center gap-2">
         <Film className="w-5 h-5 text-primary" />
         Media Engine
@@ -113,6 +118,6 @@ export function MediaPanel() {
           <StreamsTable streams={metadata.streams || []} />
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
