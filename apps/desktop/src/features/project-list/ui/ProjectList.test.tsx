@@ -162,6 +162,61 @@ describe('ProjectList', () => {
     expect(screen.getByRole('button', { name: 'Delete Untitled Project' })).not.toBeNull();
   });
 
+  it('shows a loading state before projects resolve', async () => {
+    let resolveProjects: (projects: Project[]) => void = () => {};
+    (listProjects as Mock).mockReturnValueOnce(
+      new Promise<Project[]>((resolve) => {
+        resolveProjects = resolve;
+      }),
+    );
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    expect(screen.getByRole('status').textContent).toContain('Loading recent projects');
+
+    await act(async () => {
+      resolveProjects([mockProject]);
+    });
+
+    await screen.findByText('Test Project');
+  });
+
+  it('shows an empty onboarding state when the project list is empty', async () => {
+    (listProjects as Mock).mockResolvedValueOnce([]);
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('No projects yet');
+    expect(screen.getByText('Import a local video to create your first project.')).not.toBeNull();
+  });
+
+  it('shows list fetch error with retry instead of an empty list', async () => {
+    (listProjects as Mock)
+      .mockRejectedValueOnce({ code: 'REPOSITORY', message: 'Storage unavailable' })
+      .mockResolvedValueOnce([mockProject]);
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('Could not load recent projects');
+    expect(screen.getByText('Storage unavailable')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await screen.findByText('Test Project');
+  });
+
   it('cancel confirmation does not call API and returns focus to Delete Button', async () => {
     render(
       <StatefulProjectProvider>
