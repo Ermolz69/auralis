@@ -14,6 +14,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ) => {
     const generatedId = useId();
     const textareaId = id || generatedId;
+    const helperId = helperText ? `${textareaId}-description` : undefined;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -41,11 +42,19 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           ref={ref}
           disabled={disabled}
+          aria-invalid={error || undefined}
+          aria-describedby={helperId}
           className={`${textareaBase} ${textareaBorder} ${textareaDisabled} ${resizeClass}`}
           {...props}
         />
-        {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
+        {helperText && (
+          <span
+            id={helperId}
+            className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}
+            role={error ? 'alert' : undefined}
+          >
+            {helperText}
+          </span>
         )}
       </div>
     );

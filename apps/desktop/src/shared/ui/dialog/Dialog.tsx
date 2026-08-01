@@ -67,19 +67,31 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
     }
   };
 
+  const triggerElement = React.isValidElement<{ onClick?: React.MouseEventHandler }>(trigger)
+    ? React.cloneElement(trigger, {
+        onClick: (event) => {
+          trigger.props.onClick?.(event);
+          if (!event.defaultPrevented) handleOpen();
+        },
+      })
+    : trigger
+      ? (
+          <button type="button" onClick={handleOpen}>
+            {trigger}
+          </button>
+        )
+      : null;
+
   return (
     <DialogContext.Provider value={{ isOpen, handleClose, titleId, descriptionId }}>
-      {trigger && (
-        <div className="inline-block" onClick={handleOpen}>
-          {trigger}
-        </div>
-      )}
+      {triggerElement}
       <dialog
         ref={dialogRef}
         onCancel={handleCancel}
         onClick={handleBackdropClick}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
+        aria-modal="true"
         className="backdrop:bg-black/70 backdrop:backdrop-blur-sm m-auto rounded-xl bg-surface border border-muted/50 shadow-2xl p-0 text-text w-full max-w-lg open:animate-dialog-in focus:outline-none"
       >
         <div className="relative w-full h-full p-6">{children}</div>
@@ -166,9 +178,18 @@ export const DialogClose = ({
 // Wrapper to make any custom element act as a close button
 export const DialogCloseAction = ({ children }: { children: React.ReactNode }) => {
   const ctx = useContext(DialogContext);
+  if (React.isValidElement<{ onClick?: React.MouseEventHandler }>(children)) {
+    return React.cloneElement(children, {
+      onClick: (event) => {
+        children.props.onClick?.(event);
+        if (!event.defaultPrevented) ctx?.handleClose();
+      },
+    });
+  }
+
   return (
-    <div className="inline-block" onClick={ctx?.handleClose}>
+    <button type="button" onClick={ctx?.handleClose}>
       {children}
-    </div>
+    </button>
   );
 };

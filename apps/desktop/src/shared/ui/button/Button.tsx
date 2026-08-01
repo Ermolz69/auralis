@@ -52,11 +52,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={props.type || 'button'}
         disabled={disabled || loading}
+        aria-busy={loading || undefined}
         className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${widthStyle} ${className}`}
         {...props}
       >
         {loading && (
           <svg
+            aria-hidden="true"
             className="animate-spin -ml-1 mr-2 h-4 w-4 text-current"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -77,6 +79,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             ></path>
           </svg>
         )}
+        {loading && <span className="sr-only">Loading</span>}
         {!loading && leftIcon && <span className="inline-flex shrink-0">{leftIcon}</span>}
         {children}
         {!loading && rightIcon && <span className="inline-flex shrink-0">{rightIcon}</span>}
