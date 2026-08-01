@@ -39,6 +39,25 @@ describe('MediaPanel', () => {
     expect(panel.className).not.toContain('w-80');
     expect(panel.className).not.toContain('shrink-0');
   });
+
+  it('shows a safe local source filename without exposing the full path', () => {
+    render(
+      <ProjectContext.Provider
+        value={createProjectContext({
+          ...project,
+          source: {
+            kind: 'externalLocalFile',
+            path: 'C:\\Users\\person\\Videos\\private-folder\\clip.mp4',
+          },
+        })}
+      >
+        <MediaPanel />
+      </ProjectContext.Provider>,
+    );
+
+    expect(screen.getByLabelText('Source: clip.mp4')).not.toBeNull();
+    expect(document.body.innerHTML).not.toContain('Users\\person');
+  });
 });
 
 function createProjectContext(projectValue: Project) {

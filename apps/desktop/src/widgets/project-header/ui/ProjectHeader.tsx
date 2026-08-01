@@ -10,7 +10,13 @@ import { useProjectContext } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
-import { formatProjectTitle, formatSourceLabel } from '@/entities/media';
+import {
+  formatProjectStatus,
+  formatProjectTitle,
+  formatSourceLabel,
+  getProjectStatusTone,
+} from '@/entities/media';
+import { Badge } from '@/shared/ui/badge';
 import { MediaSummary } from './MediaSummary';
 
 export const ProjectHeader = () => {
@@ -34,9 +40,9 @@ export const ProjectHeader = () => {
             {project ? formatProjectTitle(project.title, project.source) : 'Loading Project...'}
           </PageTitle>
           {project?.status && (
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
-              {project.status.toUpperCase()}
-            </span>
+            <Badge variant={getProjectStatusTone(project.status)} size="sm">
+              {formatProjectStatus(project.status)}
+            </Badge>
           )}
         </div>
         {project?.metadata ? (

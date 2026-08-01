@@ -13,6 +13,7 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
   const { project } = useProjectContext();
   const metadata = project?.metadata;
   const source = project?.source;
+  const sourceLabel = formatSourceLabel(source ?? null);
   const baseClass = `p-4 bg-surface flex flex-col h-full overflow-y-auto min-w-0 custom-scrollbar ${className}`;
 
   if (!metadata) {
@@ -70,8 +71,8 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
           <div className="space-y-2 bg-muted/10 p-3 rounded-lg border border-muted/50">
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted">Source</span>
-              <span className="font-medium text-text truncate max-w-[120px]">
-                {formatSourceLabel(source ?? null)}
+              <span className="font-medium text-text truncate max-w-[120px]" aria-label={`Source: ${sourceLabel}`}>
+                {sourceLabel}
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">
