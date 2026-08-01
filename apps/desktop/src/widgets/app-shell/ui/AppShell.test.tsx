@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React, { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { AppShell } from './AppShell';
 import { ProjectContext, type Project } from '@/entities/project';
 import { NavigationProvider, useNavigation, type View } from '@/shared/router';
@@ -164,6 +164,26 @@ describe('AppShell', () => {
 
     await screen.findByText('Project deleted');
     expect(screen.getAllByText('Project deleted')).toHaveLength(1);
+    expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+  });
+
+  it('dismisses global toast without leaving focus on a removed control', async () => {
+    renderShell();
+
+    toast.error('Pipeline failed');
+
+    await screen.findByText('Pipeline failed');
+
+    const toastAlert = screen.getByRole('alert');
+    const closeToast = within(toastAlert).getByRole('button', { name: 'Close toast' });
+    closeToast.focus();
+    fireEvent.click(closeToast);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Pipeline failed')).toBeNull();
+    });
+
+    expect(document.activeElement).not.toBe(closeToast);
     expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
   });
 });
