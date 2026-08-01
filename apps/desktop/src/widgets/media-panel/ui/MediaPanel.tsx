@@ -1,5 +1,5 @@
 import { useProjectContext } from '@/entities/project';
-import { formatDuration } from '@/entities/media';
+import { formatDuration, formatSourceLabel } from '@/entities/media';
 import { AudioTracksList } from './AudioTracksList';
 import { StreamsTable } from './StreamsTable';
 import { AlertCircle, FileVideo, Film, Info } from 'lucide-react';
@@ -65,25 +65,8 @@ export function MediaPanel() {
           <div className="space-y-2 bg-muted/10 p-3 rounded-lg border border-muted/50">
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted">Source</span>
-              <span
-                className="font-medium text-text truncate max-w-[120px]"
-                title={
-                  source?.kind === 'managedLocalFile'
-                    ? source.originalFilename
-                    : source?.kind === 'externalLocalFile'
-                      ? source.path
-                      : source?.kind === 'youtubeUrl' || source?.kind === 'remoteUrl'
-                        ? source.url
-                        : ''
-                }
-              >
-                {source?.kind === 'managedLocalFile'
-                  ? source.originalFilename
-                  : source?.kind === 'externalLocalFile'
-                    ? source.path?.split(/[/\\]/).pop()
-                    : source?.kind === 'youtubeUrl' || source?.kind === 'remoteUrl'
-                      ? source.url?.split(/[/\\]/).pop()
-                      : 'Unknown'}
+              <span className="font-medium text-text truncate max-w-[120px]">
+                {formatSourceLabel(source ?? null)}
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">

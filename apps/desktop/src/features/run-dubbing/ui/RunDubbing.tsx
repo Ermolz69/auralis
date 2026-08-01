@@ -69,7 +69,7 @@ export const RunDubbing = () => {
 
   return (
     <Button variant="primary" onClick={handleStart} disabled={isDisabled}>
-      {isStarting ? 'Starting...' : 'Run Dubbing'}
+      {isStarting ? 'Starting subtitle import...' : 'Import subtitles'}
     </Button>
   );
 };
