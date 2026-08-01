@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { cancelJob } from '@/entities/job';
 import { toCommandError } from '@/shared/api/contracts';
 
@@ -10,26 +10,40 @@ export interface CancelJobButtonProps {
 
 export function CancelJobButton({ jobId, onCancelled, className }: CancelJobButtonProps) {
   const [isCancelling, setIsCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
   const handleCancel = async () => {
+    setError(null);
     setIsCancelling(true);
     try {
       await cancelJob(jobId);
       onCancelled?.();
     } catch (e) {
-      console.error('Failed to cancel job', toCommandError(e));
+      const commandError = toCommandError(e);
+      console.error('Failed to cancel job', commandError);
+      setError(commandError.message);
     } finally {
       setIsCancelling(false);
     }
   };
 
   return (
-    <button
-      className={`px-3 py-1 bg-danger hover:bg-danger text-white rounded text-sm disabled:opacity-50 ${className || ''}`}
-      onClick={handleCancel}
-      disabled={isCancelling}
-    >
-      {isCancelling ? 'Cancelling...' : 'Cancel'}
-    </button>
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        className={`px-3 py-1 bg-danger hover:bg-danger text-white rounded text-sm disabled:opacity-50 ${className || ''}`}
+        onClick={handleCancel}
+        disabled={isCancelling}
+        aria-describedby={error ? errorId : undefined}
+      >
+        {isCancelling ? 'Cancelling...' : 'Cancel'}
+      </button>
+      {error && (
+        <p id={errorId} className="max-w-48 text-right text-xs text-danger" role="alert">
+          Cancel failed: {error}
+        </p>
+      )}
+    </div>
   );
 }
