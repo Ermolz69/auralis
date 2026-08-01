@@ -60,9 +60,11 @@ export const LocalMediaUnavailable: Story = {
       status: 'completed',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      metadata: null,
       source: {
-        kind: 'localFile',
-        urlOrPath: '/path/to/local/file.mp4',
+        kind: 'managedLocalFile',
+        artifactId: 'artifact-local-test',
+        originalFilename: 'file.mp4',
       },
     },
   } as any,
