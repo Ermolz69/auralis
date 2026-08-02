@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { AppShell } from './AppShell';
-import { ProjectContext, type Project } from '@/entities/project';
+import { ProjectContext, useProjectContext, type Project } from '@/entities/project';
 import { NavigationProvider, useNavigation, type View } from '@/shared/router';
 import { Toaster, toast } from '@/shared/ui/toast';
 
@@ -20,17 +20,17 @@ const project: Project = {
 function renderShell({
   initialView = 'home',
   initialProject = project,
+  children,
 }: {
   initialView?: View;
   initialProject?: Project | null;
+  children?: React.ReactNode;
 } = {}) {
   return render(
     <NavigationProvider>
       <InitialView view={initialView} />
       <ProjectHarness initialProject={initialProject}>
-        <AppShell>
-          <h1>{initialView === 'settings' ? 'Settings' : 'Content heading'}</h1>
-        </AppShell>
+        <AppShell>{children ?? <h1>Content heading</h1>}</AppShell>
         <Toaster />
       </ProjectHarness>
     </NavigationProvider>,
@@ -118,7 +118,7 @@ describe('AppShell', () => {
       expect(screen.getByRole('button', { name: 'Workspace' }).getAttribute('aria-current')).toBe(
         'page',
       );
-      expect(document.activeElement).toBe(screen.getByRole('main', { name: 'Workspace' }));
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Content heading' }));
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
@@ -127,7 +127,7 @@ describe('AppShell', () => {
       expect(screen.getByRole('button', { name: 'Projects' }).getAttribute('aria-current')).toBe(
         'page',
       );
-      expect(document.activeElement).toBe(screen.getByRole('main', { name: 'Projects' }));
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Content heading' }));
     });
   });
 
@@ -154,6 +154,48 @@ describe('AppShell', () => {
       expect(screen.getByRole('button', { name: 'Workspace' }).getAttribute('aria-current')).toBe(
         'page',
       );
+    });
+  });
+
+  it('returns from settings to projects when the active project disappears', async () => {
+    renderShell({
+      initialView: 'project',
+      children: (
+        <>
+          <h1>Content heading</h1>
+          <ClearProjectButton />
+        </>
+      ),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Workspace' }).getAttribute('aria-current')).toBe(
+        'page',
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Settings' }).getAttribute('aria-current')).toBe(
+        'page',
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear project' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Projects' }).getAttribute('aria-current')).toBe(
+        'page',
+      );
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Workspace unavailable without an active project',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
     });
   });
 
@@ -187,3 +229,19 @@ describe('AppShell', () => {
     expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
   });
 });
+
+function ClearProjectButton() {
+  const { setProjectId, setProject } = useProjectContext();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setProjectId(null);
+        setProject(null);
+      }}
+    >
+      Clear project
+    </button>
+  );
+}
