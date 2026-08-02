@@ -17,7 +17,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [settingsReturnView, setSettingsReturnView] = useState<View>('home');
 
   useEffect(() => {
-    mainRef.current?.focus();
+    const main = mainRef.current;
+    const heading = main?.querySelector('h1');
+
+    if (heading instanceof HTMLElement) {
+      heading.tabIndex = -1;
+      heading.focus();
+      return;
+    }
+
+    main?.focus();
   }, [currentView]);
 
   useEffect(() => {
