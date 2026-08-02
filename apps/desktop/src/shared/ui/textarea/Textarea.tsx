@@ -3,17 +3,33 @@ import React, { useId } from 'react';
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   helperText?: string;
+  errorText?: string;
   error?: boolean;
   resizable?: boolean;
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
-    { label, helperText, error = false, resizable = true, className = '', id, disabled, ...props },
+    {
+      label,
+      helperText,
+      errorText,
+      error = false,
+      resizable = true,
+      className = '',
+      id,
+      disabled,
+      ...props
+    },
     ref,
   ) => {
     const generatedId = useId();
     const textareaId = id || generatedId;
+    const resolvedErrorText = errorText || (error ? helperText : undefined);
+    const resolvedHelperText = errorText ? helperText : error ? undefined : helperText;
+    const helperId = resolvedHelperText ? `${textareaId}-helper` : undefined;
+    const errorId = resolvedErrorText ? `${textareaId}-error` : undefined;
+    const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -25,7 +41,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
     const textareaBorder = error
       ? 'border-danger focus:ring-2 focus:ring-danger focus:ring-offset-2 focus:ring-offset-bg focus:border-danger'
-      : 'border-muted hover:border-muted/80 focus:border-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg';
+      : 'border-border hover:border-muted focus:border-focus focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg';
 
     const textareaDisabled = disabled ? 'opacity-50 cursor-not-allowed bg-bg' : '';
     const resizeClass = resizable ? 'resize-y' : 'resize-none';
@@ -41,11 +57,21 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           ref={ref}
           disabled={disabled}
+          aria-invalid={error || undefined}
+          aria-describedby={describedBy}
+          aria-errormessage={errorId}
           className={`${textareaBase} ${textareaBorder} ${textareaDisabled} ${resizeClass}`}
           {...props}
         />
-        {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
+        {resolvedHelperText && (
+          <span id={helperId} className="text-xs text-muted">
+            {resolvedHelperText}
+          </span>
+        )}
+        {resolvedErrorText && (
+          <span id={errorId} className="text-xs text-danger" role="alert">
+            {resolvedErrorText}
+          </span>
         )}
       </div>
     );

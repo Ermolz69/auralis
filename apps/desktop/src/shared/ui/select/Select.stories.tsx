@@ -59,7 +59,8 @@ export const ErrorState: Story = {
     placeholder: 'Choose a fruit...',
     options: defaultOptions,
     error: true,
-    helperText: 'You must select a fruit to continue.',
+    helperText: 'This value controls the next import step.',
+    errorText: 'Select a source type to continue.',
   },
 };
 

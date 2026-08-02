@@ -71,7 +71,7 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     expect(
-      (screen.getByRole('button', { name: /run dubbing/i }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /import subtitles/i }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
@@ -83,8 +83,48 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     expect(
-      (screen.getByRole('button', { name: /run dubbing/i }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /import subtitles/i }) as HTMLButtonElement).disabled,
     ).toBe(false);
+  });
+
+  it('does not render the URL-only action for managed local media', () => {
+    const ctx = createMockContext({
+      project: {
+        ...mockProject,
+        source: {
+          kind: 'managedLocalFile',
+          artifactId: 'artifact-1',
+          originalFilename: 'local.mp4',
+        },
+      },
+    });
+
+    render(
+      <ProjectContext.Provider value={ctx}>
+        <RunDubbing />
+      </ProjectContext.Provider>,
+    );
+
+    expect(screen.queryByRole('button', { name: /import subtitles/i })).toBeNull();
+  });
+
+  it('does not render or invoke subtitle import for external local media', () => {
+    const ctx = createMockContext({
+      project: {
+        ...mockProject,
+        source: { kind: 'externalLocalFile', path: 'C:\\media\\local.mp4' },
+      },
+    });
+
+    render(
+      <ProjectContext.Provider value={ctx}>
+        <RunDubbing />
+      </ProjectContext.Provider>,
+    );
+
+    expect(screen.queryByRole('button', { name: /import subtitles/i })).toBeNull();
+
+    expect(startProjectMockPipeline).not.toHaveBeenCalled();
   });
 
   it('is disabled when another project is deleting', () => {
@@ -95,7 +135,7 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     expect(
-      (screen.getByRole('button', { name: /run dubbing/i }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /import subtitles/i }) as HTMLButtonElement).disabled,
     ).toBe(true);
     ctx.deletingProjectId = null;
     rerender(
@@ -104,7 +144,7 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     expect(
-      (screen.getByRole('button', { name: /run dubbing/i }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /import subtitles/i }) as HTMLButtonElement).disabled,
     ).toBe(false);
   });
 
@@ -120,7 +160,7 @@ describe('RunDubbing', () => {
         <RunDubbing />
       </ProjectContext.Provider>,
     );
-    const btn = screen.getByRole('button', { name: /run dubbing/i });
+    const btn = screen.getByRole('button', { name: /import subtitles/i });
     act(() => {
       btn.click();
     });
@@ -134,8 +174,8 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     expect((btn as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByRole('button', { name: /run dubbing/i }).textContent).not.toBe(
-      'Starting...',
+    expect(screen.getByRole('button', { name: /import subtitles/i }).textContent).not.toBe(
+      'Starting subtitle import...',
     );
     await act(async () => {
       resolveStart({ project: { id: 'test-id', status: 'processing' } as any });
@@ -157,7 +197,7 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     act(() => {
-      screen.getByRole('button', { name: /run dubbing/i }).click();
+      screen.getByRole('button', { name: /import subtitles/i }).click();
     });
     ctx.operationGeneration += 1;
     ctx.deletingProjectId = 'test-id';
@@ -187,7 +227,7 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     act(() => {
-      screen.getByRole('button', { name: /run dubbing/i }).click();
+      screen.getByRole('button', { name: /import subtitles/i }).click();
     });
     ctx.operationGeneration += 1;
     rerender(
@@ -215,7 +255,7 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
     act(() => {
-      screen.getByRole('button', { name: /run dubbing/i }).click();
+      screen.getByRole('button', { name: /import subtitles/i }).click();
     });
     ctx.projectId = 'new-id';
     ctx.project = { ...mockProject, id: 'new-id' };
@@ -246,7 +286,7 @@ describe('RunDubbing', () => {
     );
 
     await act(async () => {
-      screen.getByRole('button', { name: /run dubbing/i }).click();
+      screen.getByRole('button', { name: /import subtitles/i }).click();
     });
 
     await waitFor(() => {

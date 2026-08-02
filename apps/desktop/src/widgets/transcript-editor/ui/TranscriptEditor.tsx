@@ -1,69 +1,28 @@
-import { Card, CardContent } from '../../../shared/ui/card';
-import { Badge } from '../../../shared/ui/badge';
-import { Icon } from '../../../shared/ui/icon';
+import { useContext } from 'react';
 import { useTranscript } from '@/entities/transcript';
 import { useProjectContext } from '@/entities/project';
+import { formatJobStatus, isActiveJobStatus, JobContext } from '@/entities/job';
+import { TranscriptPanelView } from './TranscriptPanelView';
 
 export const TranscriptEditor = () => {
   const { projectId, project } = useProjectContext();
-  const { transcript, isLoading, error } = useTranscript(projectId);
+  const { transcript, isLoading, error, refetch } = useTranscript(projectId);
+  const jobState = useContext(JobContext);
+  const sourceKind = project?.source?.kind;
+  const activeTranscriptJob = Object.values(jobState?.jobs ?? {}).find((job) =>
+    isActiveJobStatus(job.status),
+  );
+  const activeJobStatus = activeTranscriptJob ? formatJobStatus(activeTranscriptJob) : null;
 
   return (
-    <section className="flex-1 p-6 flex flex-col gap-4 overflow-hidden min-h-0">
-      <h2 className="text-lg font-semibold text-text shrink-0">Transcript</h2>
-      <Card className="flex-1 overflow-hidden flex flex-col shadow-sm">
-        <CardContent className="flex-1 p-6 overflow-y-auto min-h-0">
-          {!projectId ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-              <p className="text-lg font-medium text-text">No project selected</p>
-              <p className="text-sm text-muted mt-2 max-w-sm">
-                Paste a YouTube link and start a project to generate a transcript automatically.
-              </p>
-            </div>
-          ) : isLoading ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <p className="text-lg font-medium text-text animate-pulse">Loading transcript...</p>
-            </div>
-          ) : error ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <Icon name="CircleAlert" size="lg" className="text-danger mb-4" />
-              <p className="text-lg font-medium text-text">Error loading transcript</p>
-              <p className="text-sm text-danger mt-2 max-w-sm">{error}</p>
-            </div>
-          ) : !transcript || transcript.segments.length === 0 ? (
-            project?.source?.kind === 'managedLocalFile' ? (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-                <p className="text-lg font-medium text-text">Transcript Unavailable</p>
-                <p className="text-sm text-muted mt-2 max-w-sm">
-                  Automatic transcription for local media is not supported in this version.
-                </p>
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-                <p className="text-lg font-medium text-text">
-                  Waiting for transcript generation...
-                </p>
-                <p className="text-sm text-muted mt-2 max-w-sm">
-                  The mock pipeline is currently running. The transcript will appear here when
-                  ready.
-                </p>
-              </div>
-            )
-          ) : (
-            transcript.segments.map((line, idx) => (
-              <p key={idx} className="mb-4 hover:bg-bg p-2 rounded transition-colors">
-                <Badge variant="primary" size="sm" className="mr-2 font-mono">
-                  [{Math.floor(line.startMs / 1000)}s - {Math.floor(line.endMs / 1000)}s]
-                </Badge>{' '}
-                {line.sourceText}
-              </p>
-            ))
-          )}
-        </CardContent>
-      </Card>
-    </section>
+    <TranscriptPanelView
+      projectId={projectId}
+      sourceKind={sourceKind ?? null}
+      transcript={transcript}
+      isLoading={isLoading}
+      error={error}
+      activeJobStatus={activeJobStatus}
+      onRefetch={refetch}
+    />
   );
 };

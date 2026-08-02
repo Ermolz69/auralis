@@ -6,11 +6,17 @@ import { useNavigation } from '@/shared/router';
 import { toast } from '@/shared/ui/toast';
 import { toCommandError } from '@/shared/api/contracts';
 import { DeleteProjectDialog } from './DeleteProjectDialog';
-import { ProjectListRow } from './ProjectListRow';
+import { ProjectListRows } from './ProjectListRows';
+import {
+  ProjectListEmptyState,
+  ProjectListErrorState,
+  ProjectListLoadingState,
+} from './ProjectListStates';
 
 export const ProjectList = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const {
     projectId: currentProjectId,
@@ -29,14 +35,12 @@ export const ProjectList = () => {
     reason: 'success' | 'cancel' | 'error';
   } | null>(null);
 
-  // Sync refs during render to prevent stale windows
   const deletingProjectIdRef = useRef(deletingProjectId);
   deletingProjectIdRef.current = deletingProjectId;
 
   const currentProjectIdRef = useRef(currentProjectId);
   currentProjectIdRef.current = currentProjectId;
 
-  // Refs for focusing elements
   const deleteButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const openButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -48,26 +52,29 @@ export const ProjectList = () => {
     setCurrentView('home');
   };
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (showLoading = false) => {
     fetchGenerationRef.current += 1;
     const currentGen = fetchGenerationRef.current;
+    if (showLoading) setIsLoading(true);
 
     try {
       const data = await listProjects();
       if (currentGen === fetchGenerationRef.current) {
         setProjects(data);
+        setListError(null);
         setIsLoading(false);
       }
     } catch (e) {
       if (currentGen === fetchGenerationRef.current) {
-        console.error('Failed to fetch projects', e);
+        const commandError = toCommandError(e);
+        setListError(commandError.message);
         setIsLoading(false);
       }
     }
   }, []);
 
   useEffect(() => {
-    fetchProjects();
+    fetchProjects(true);
 
     let unlistenProject: (() => void) | undefined;
     const setupListeners = async () => {
@@ -133,10 +140,9 @@ export const ProjectList = () => {
       return;
     }
 
-    // Invalidate already running list requests by incrementing fetchGen immediately after lock acquisition
     fetchGenerationRef.current += 1;
 
-    setProjectToDelete(null); // Close dialog
+    setProjectToDelete(null);
 
     try {
       await deleteProject(project.id);
@@ -149,7 +155,6 @@ export const ProjectList = () => {
       setProjects((prev) => prev.filter((p) => p.id !== project.id));
       clearProjectContextIfCurrent(project.id);
 
-      // Separate Refetch
       await fetchProjects();
     } catch (error) {
       const commandError = toCommandError(error);
@@ -200,14 +205,8 @@ export const ProjectList = () => {
     setProjectToDelete(null);
   };
 
-  if (isLoading) {
-    return (
-      <div className="text-muted text-sm text-center py-4 animate-pulse">Loading projects...</div>
-    );
-  }
-
   return (
-    <div className="w-full flex flex-col gap-3 mt-8">
+    <section className="w-full flex flex-col gap-3 mt-8" aria-labelledby="recent-projects-heading">
       <DeleteProjectDialog
         project={projectToDelete}
         isDeleting={deletingProjectId !== null}
@@ -215,32 +214,29 @@ export const ProjectList = () => {
         onConfirm={() => void executeDelete()}
       />
       <h3
+        id="recent-projects-heading"
         ref={headingRef}
         tabIndex={-1}
         className="text-sm font-semibold text-muted uppercase tracking-wider mb-2 text-left focus:outline-none focus:text-text"
       >
         Recent Projects
       </h3>
-      <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-        {projects.map((project) => (
-          <ProjectListRow
-            key={project.id}
-            project={project}
-            isDeleting={deletingProjectId === project.id}
-            isAnyDeleting={deletingProjectId !== null}
-            openButtonRef={(el) => {
-              if (el) openButtonRefs.current.set(project.id, el);
-              else openButtonRefs.current.delete(project.id);
-            }}
-            deleteButtonRef={(el) => {
-              if (el) deleteButtonRefs.current.set(project.id, el);
-              else deleteButtonRefs.current.delete(project.id);
-            }}
-            onOpen={handleOpenProject}
-            onDelete={handleDeleteClick}
-          />
-        ))}
-      </div>
-    </div>
+      {isLoading ? (
+        <ProjectListLoadingState />
+      ) : listError ? (
+        <ProjectListErrorState error={listError} onRetry={() => void fetchProjects(true)} />
+      ) : projects.length === 0 ? (
+        <ProjectListEmptyState />
+      ) : (
+        <ProjectListRows
+          projects={projects}
+          deletingProjectId={deletingProjectId}
+          openButtonRefs={openButtonRefs}
+          deleteButtonRefs={deleteButtonRefs}
+          onOpen={handleOpenProject}
+          onDelete={handleDeleteClick}
+        />
+      )}
+    </section>
   );
 };

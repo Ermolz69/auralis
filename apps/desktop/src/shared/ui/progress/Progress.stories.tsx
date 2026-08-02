@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 // 35 percent
 export const Default: Story = {
-  args: { value: 35 },
+  args: { value: 35, label: 'Import progress' },
 };
 
 // 0 percent
@@ -42,6 +42,10 @@ export const StatusVariants: Story = {
       <Progress value={45} variant="success" />
       <Progress value={65} variant="warning" />
       <Progress value={90} variant="danger" />
+      <div className="flex items-center gap-2 text-sm text-success">
+        <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
+        <span>Completed successfully</span>
+      </div>
     </div>
   ),
 };
@@ -51,7 +55,18 @@ export const Indeterminate: Story = {
   args: { indeterminate: true, variant: 'default' },
   render: (args) => (
     <div className="w-96">
-      <Progress {...args} />
+      <Progress {...args} label="Background operation progress" />
+    </div>
+  ),
+};
+
+export const ReducedMotionFallback: Story = {
+  render: () => (
+    <div className="w-96 space-y-3">
+      <Progress indeterminate label="Reduced motion fallback progress" />
+      <p className="text-sm text-muted">
+        The app stylesheet disables decorative animation when reduced motion is requested.
+      </p>
     </div>
   ),
 };

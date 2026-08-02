@@ -36,7 +36,8 @@ export const ErrorState: Story = {
     label: 'Bio',
     defaultValue: 'This bio is way too short.',
     error: true,
-    helperText: 'Bio must be at least 100 characters.',
+    helperText: 'Write a short public summary.',
+    errorText: 'Bio must be at least 100 characters.',
   },
 };
 
@@ -45,7 +46,7 @@ export const Disabled: Story = {
   args: {
     label: 'Read-only notes',
     disabled: true,
-    value: 'These notes cannot be edited anymore.',
+    defaultValue: 'These notes cannot be edited anymore.',
   },
 };
 
@@ -53,8 +54,19 @@ export const Disabled: Story = {
 export const LongText: Story = {
   args: {
     label: 'Terms of Service',
-    value:
+    defaultValue:
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
     rows: 6,
+  },
+};
+
+export const LongLabelAndError: Story = {
+  args: {
+    label: 'Detailed notes for the current dubbing operation and reviewer handoff',
+    helperText: 'These notes stay private to this project.',
+    errorText: 'Notes cannot contain only whitespace.',
+    error: true,
+    defaultValue: '   ',
+    rows: 4,
   },
 };

@@ -8,6 +8,7 @@ export interface SelectOption {
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   helperText?: string;
+  errorText?: string;
   error?: boolean;
   options: SelectOption[];
   placeholder?: string;
@@ -18,6 +19,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     {
       label,
       helperText,
+      errorText,
       error = false,
       options,
       placeholder,
@@ -30,6 +32,11 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ) => {
     const generatedId = useId();
     const selectId = id || generatedId;
+    const resolvedErrorText = errorText || (error ? helperText : undefined);
+    const resolvedHelperText = errorText ? helperText : error ? undefined : helperText;
+    const helperId = resolvedHelperText ? `${selectId}-helper` : undefined;
+    const errorId = resolvedErrorText ? `${selectId}-error` : undefined;
+    const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -40,7 +47,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 
     const selectBorder = error
       ? 'border-danger focus:ring-2 focus:ring-danger focus:ring-offset-2 focus:ring-offset-bg focus:border-danger'
-      : 'border-muted hover:border-muted/80 focus:border-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-bg';
+      : 'border-border hover:border-muted focus:border-focus focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg';
 
     const selectDisabled = disabled ? 'opacity-50 cursor-not-allowed bg-bg' : '';
 
@@ -56,6 +63,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             ref={ref}
             disabled={disabled}
+            aria-invalid={error || undefined}
+            aria-describedby={describedBy}
+            aria-errormessage={errorId}
             className={`${selectBase} ${selectBorder} ${selectDisabled}`}
             defaultValue={
               placeholder && !props.value && !props.defaultValue ? '' : props.defaultValue
@@ -75,6 +85,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
             <svg
+              aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
               width="16"
               height="16"
@@ -89,8 +100,15 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             </svg>
           </div>
         </div>
-        {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
+        {resolvedHelperText && (
+          <span id={helperId} className="text-xs text-muted">
+            {resolvedHelperText}
+          </span>
+        )}
+        {resolvedErrorText && (
+          <span id={errorId} className="text-xs text-danger" role="alert">
+            {resolvedErrorText}
+          </span>
         )}
       </div>
     );

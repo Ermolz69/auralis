@@ -22,9 +22,11 @@ vi.mock('@/entities/media', () => ({
 
 vi.mock('@/shared/router', () => ({
   useNavigation: () => ({
-    setCurrentView: vi.fn(),
+    setCurrentView: mockSetCurrentView,
   }),
 }));
+
+const mockSetCurrentView = vi.fn();
 
 describe('useImportLocalMedia', () => {
   let mockContextValue: any;
@@ -140,6 +142,8 @@ describe('useImportLocalMedia', () => {
     });
 
     expect(result.current.isImporting).toBe(false);
+    expect(result.current.stage).toBe('idle');
+    expect(result.current.error).toBeNull();
     expect(createProject).not.toHaveBeenCalled();
 
     // Should allow import again
@@ -151,6 +155,81 @@ describe('useImportLocalMedia', () => {
       await result.current.handleImport();
     });
     expect(createProject).toHaveBeenCalled();
+  });
+
+  it('shows real import stages without fake progress', async () => {
+    let resolvePicker: (value: string) => void = () => {};
+    let resolveCreate: (value: any) => void = () => {};
+    let resolveImport: (value: any) => void = () => {};
+    vi.mocked(open).mockReturnValue(
+      new Promise((resolve) => {
+        resolvePicker = resolve;
+      }) as any,
+    );
+    vi.mocked(createProject).mockReturnValue(
+      new Promise((resolve) => {
+        resolveCreate = resolve;
+      }) as any,
+    );
+    vi.mocked(importLocalMedia).mockReturnValue(
+      new Promise((resolve) => {
+        resolveImport = resolve;
+      }) as any,
+    );
+
+    const { result } = renderHook(() => useImportLocalMedia());
+
+    let importPromise: Promise<void> | undefined;
+    act(() => {
+      importPromise = result.current.handleImport();
+    });
+
+    expect(result.current.stage).toBe('selecting');
+
+    await act(async () => {
+      resolvePicker('C:\\path\\video.mp4');
+    });
+    expect(result.current.stage).toBe('probing');
+    expect(result.current.sourceLabel).toBe('video.mp4');
+
+    await act(async () => {
+      resolveCreate({ id: 'p-new', title: 'video.mp4' });
+    });
+    expect(result.current.stage).toBe('importing');
+
+    await act(async () => {
+      resolveImport({ id: 'p-new', title: 'video.mp4' });
+      await importPromise;
+    });
+
+    expect(result.current.stage).toBe('idle');
+  });
+
+  it('keeps draft recovery when local import fails after project creation', async () => {
+    vi.mocked(open).mockResolvedValue('C:\\path\\video.mp4');
+    vi.mocked(createProject).mockResolvedValue({ id: 'p-new', title: 'video.mp4' } as any);
+    vi.mocked(importLocalMedia).mockRejectedValue({
+      code: 'REPOSITORY',
+      message: 'Import storage failed',
+    });
+
+    const { result } = renderHook(() => useImportLocalMedia());
+
+    await act(async () => {
+      await result.current.handleImport();
+    });
+
+    expect(result.current.error).toBe('Import storage failed');
+    expect(result.current.draftProject?.id).toBe('p-new');
+    expect(result.current.sourceLabel).toBe('video.mp4');
+
+    act(() => {
+      result.current.openDraftProject();
+    });
+
+    expect(mockContextValue.setProjectId).toHaveBeenCalledWith('p-new');
+    expect(mockContextValue.setProject).toHaveBeenCalledWith({ id: 'p-new', title: 'video.mp4' });
+    expect(mockSetCurrentView).toHaveBeenCalledWith('project');
   });
 
   it('verifies that no compensating delete request is issued and the successfully created backend project response is discarded by the stale frontend flow', async () => {

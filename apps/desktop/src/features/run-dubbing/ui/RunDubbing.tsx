@@ -3,6 +3,7 @@ import { Button } from '../../../shared/ui/button';
 import { useProjectContext, startProjectMockPipeline } from '@/entities/project';
 import { toast } from '@/shared/ui/toast';
 import { toCommandError } from '@/shared/api/contracts';
+import { supportsSubtitleImport } from '@/entities/media';
 
 export const RunDubbing = () => {
   const [isStarting, setIsStarting] = useState(false);
@@ -65,11 +66,17 @@ export const RunDubbing = () => {
   };
 
   const isEligible = project?.status === 'ready_for_processing' || project?.status === 'failed';
-  const isDisabled = !project?.id || isStarting || !isEligible || deletingProjectId !== null;
+  const canImportSubtitles = supportsSubtitleImport(project?.source ?? null);
+  if (project?.id && isEligible && !canImportSubtitles) return null;
+
+  const isDisabled =
+    !project?.id || isStarting || !isEligible || !canImportSubtitles || deletingProjectId !== null;
 
   return (
-    <Button variant="primary" onClick={handleStart} disabled={isDisabled}>
-      {isStarting ? 'Starting...' : 'Run Dubbing'}
-    </Button>
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="primary" onClick={handleStart} disabled={isDisabled}>
+        {isStarting ? 'Starting subtitle import...' : 'Import subtitles'}
+      </Button>
+    </div>
   );
 };

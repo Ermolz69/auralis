@@ -3,6 +3,7 @@ import React, { useId } from 'react';
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   helperText?: string;
+  errorText?: string;
   error?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -13,6 +14,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     {
       label,
       helperText,
+      errorText,
       error = false,
       leftIcon,
       rightIcon,
@@ -25,6 +27,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
+    const resolvedErrorText = errorText || (error ? helperText : undefined);
+    const resolvedHelperText = errorText ? helperText : error ? undefined : helperText;
+    const helperId = resolvedHelperText ? `${inputId}-helper` : undefined;
+    const errorId = resolvedErrorText ? `${inputId}-error` : undefined;
+    const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -36,7 +43,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
     const inputBorder = error
       ? 'border-danger focus-within:ring-2 focus-within:ring-danger focus-within:ring-offset-2 focus-within:ring-offset-bg focus-within:border-danger'
-      : 'border-muted hover:border-muted/80 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-bg';
+      : 'border-border hover:border-muted focus-within:border-focus focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-bg';
 
     const inputDisabled = disabled ? 'opacity-50 cursor-not-allowed bg-bg' : '';
 
@@ -57,6 +64,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             disabled={disabled}
+            aria-invalid={error || undefined}
+            aria-describedby={describedBy}
+            aria-errormessage={errorId}
             className={`w-full bg-transparent outline-none placeholder:text-muted py-2 ${
               leftIcon ? 'pl-9' : 'pl-3'
             } ${rightIcon ? 'pr-9' : 'pr-3'}`}
@@ -68,8 +78,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {(helperText || error) && (
-          <span className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}>{helperText}</span>
+        {resolvedHelperText && (
+          <span id={helperId} className="text-xs text-muted">
+            {resolvedHelperText}
+          </span>
+        )}
+        {resolvedErrorText && (
+          <span id={errorId} className="text-xs text-danger" role="alert">
+            {resolvedErrorText}
+          </span>
         )}
       </div>
     );

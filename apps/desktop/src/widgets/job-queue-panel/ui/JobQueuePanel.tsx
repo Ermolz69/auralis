@@ -1,65 +1,137 @@
-import { Card, CardContent } from '../../../shared/ui/card';
-import { Progress } from '../../../shared/ui/progress';
 import { Icon } from '../../../shared/ui/icon';
-import { useJobContext } from '@/entities/job';
-import { CancelJobButton } from '@/features/cancel-job';
+import { isActiveJobStatus, useJobContext } from '@/entities/job';
+import type { JobDto, JobStoreState } from '@/entities/job';
+import { JobCard } from './JobCard';
 
-const formatStage = (stage: string | null) => {
-  if (!stage) return '';
-  const withSpaces = stage.replace(/([A-Z])/g, ' $1');
-  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+const isActiveJob = (job: JobDto) => isActiveJobStatus(job.status);
+
+const getSyncNotice = (
+  phase: JobStoreState['phase'],
+  pendingRefetch: boolean,
+  scopeProjectId: string | null,
+) => {
+  if (!scopeProjectId) {
+    return null;
+  }
+
+  if (phase === 'initializing') {
+    return {
+      role: 'status' as const,
+      icon: 'LoaderCircle' as const,
+      tone: 'text-muted border-muted/40 bg-bg',
+      title: 'Opening job sync',
+      body: 'Jobs for this project are being connected.',
+    };
+  }
+
+  if (phase === 'synchronizing') {
+    return {
+      role: 'status' as const,
+      icon: 'RefreshCw' as const,
+      tone: 'text-muted border-muted/40 bg-bg',
+      title: 'Refreshing jobs',
+      body: 'The queue is loading the latest operation state.',
+    };
+  }
+
+  if (phase === 'stale' || pendingRefetch) {
+    return {
+      role: 'alert' as const,
+      icon: 'CircleAlert' as const,
+      tone: 'text-warning border-warning/40 bg-warning/10',
+      title: 'Job state may be outdated',
+      body: 'A refresh is in progress. Avoid repeating actions until the queue updates.',
+    };
+  }
+
+  return null;
 };
 
-export const JobQueuePanel = () => {
-  const { activeJobs, completedJobs } = useJobContext();
-  const jobs = [...activeJobs, ...completedJobs];
+type JobQueuePanelProps = {
+  className?: string;
+};
+
+export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
+  const { activeJobs, completedJobs, phase, pendingRefetch, scopeProjectId } = useJobContext();
+  const syncNotice = getSyncNotice(phase, pendingRefetch, scopeProjectId);
+  const hasActiveJobs = activeJobs.some(isActiveJob);
 
   return (
-    <aside className="w-96 shrink-0 h-full bg-surface border-l border-muted p-6 flex flex-col gap-4 overflow-hidden">
+    <aside
+      className={`h-full bg-surface p-6 flex flex-col gap-4 overflow-hidden min-w-0 ${className}`}
+      aria-label="Job queue"
+    >
       <h2 className="text-lg font-semibold text-text shrink-0">Job Queue</h2>
+      {syncNotice && (
+        <div
+          className={`flex gap-3 rounded-md border p-3 ${syncNotice.tone}`}
+          role={syncNotice.role}
+          aria-live={syncNotice.role === 'alert' ? 'assertive' : 'polite'}
+        >
+          <Icon name={syncNotice.icon} size="sm" className="mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text">{syncNotice.title}</p>
+            <p className="text-xs">{syncNotice.body}</p>
+          </div>
+        </div>
+      )}
+      {hasActiveJobs && (
+        <div
+          className="flex gap-3 rounded-md border border-accent/40 bg-accent/10 p-3 text-accent-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <Icon name="Info" size="sm" className="mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text">
+              Operation keeps running while you browse
+            </p>
+            <p className="text-xs">
+              You can switch pages safely. Closing the app can interrupt the operation; on next
+              launch the queue will show the recovered final state.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-0">
-        {jobs.length === 0 ? (
+        {activeJobs.length === 0 && completedJobs.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
             <Icon name="Inbox" size="lg" className="text-muted/50 mb-3" />
             <p className="text-text font-medium">Queue is empty</p>
             <p className="text-sm text-muted mt-1">Jobs will appear here</p>
           </div>
         ) : (
-          jobs.map((job) => (
-            <Card key={job.id} variant="muted" className="shrink-0">
-              <CardContent className="p-4 flex flex-col gap-3">
-                <div className="flex justify-between items-start gap-2">
-                  <div className="flex flex-col">
-                    <p className="text-sm text-text font-medium">{job.title}</p>
-                    <p className="text-xs text-muted capitalize">
-                      {job.status.replace('_', ' ')}
-                      {job.stage && ` - ${formatStage(job.stage)}`}
-                    </p>
-                  </div>
-                  {(job.status === 'pending' || job.status === 'running') && (
-                    <CancelJobButton jobId={job.id} />
-                  )}
-                </div>
+          <>
+            {activeJobs.length > 0 && (
+              <section aria-labelledby="active-operations-heading" className="flex flex-col gap-3">
+                <h3 id="active-operations-heading" className="text-sm font-semibold text-text">
+                  Active operation
+                </h3>
+                <ul className="flex flex-col gap-3" aria-label="Active operations">
+                  {activeJobs.map((job) => (
+                    <li key={job.id}>
+                      <JobCard job={job} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-                {job.status === 'failed' && job.error ? (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-xs text-danger">{job.error}</p>
-                    {job.progress.message && (
-                      <p className="text-xs text-muted">Final state: {job.progress.message}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    <Progress value={job.progress.percent} />
-                    <div className="flex justify-between text-xs text-muted">
-                      <span>{job.progress.message || 'Initializing...'}</span>
-                      <span>{job.progress.percent}%</span>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))
+            {completedJobs.length > 0 && (
+              <section aria-labelledby="job-history-heading" className="flex flex-col gap-3">
+                <h3 id="job-history-heading" className="text-sm font-semibold text-text">
+                  History
+                </h3>
+                <ul className="flex flex-col gap-3" aria-label="Operation history">
+                  {completedJobs.map((job) => (
+                    <li key={job.id}>
+                      <JobCard job={job} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
         )}
       </div>
     </aside>

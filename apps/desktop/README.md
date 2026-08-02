@@ -32,6 +32,23 @@ When you add or update a component, create a `.stories.tsx` file next to it. Pro
 pnpm --filter desktop run storybook
 ```
 
+### Browser Test Setup
+
+Storybook interaction and accessibility checks use Playwright through the existing Vitest browser
+project. Install the browser runtime once on a new machine:
+
+```bash
+task frontend:setup:playwright
+```
+
+This setup task is intentionally separate from the regression gates. Run gates through Taskfile:
+
+```bash
+task check:frontend
+task check:quality:frontend
+task frontend:storybook
+```
+
 ## Theming & Colors
 
 We use a strict **CSS Variable-based Theme** defined in `apps/desktop/src/app/styles/theme.css`.

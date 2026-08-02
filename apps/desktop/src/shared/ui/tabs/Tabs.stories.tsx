@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import React from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 
 const meta = {
@@ -16,14 +16,33 @@ type Story = StoryObj<typeof meta>;
 
 export const DefaultTabs: Story = {
   render: () => (
-    <Tabs defaultValue="account" className="w-[400px]">
+    <Tabs defaultValue="transcript" className="w-[400px]">
       <TabsList>
-        <TabsTrigger value="account">Account</TabsTrigger>
-        <TabsTrigger value="password">Password</TabsTrigger>
-        <TabsTrigger value="settings">Settings</TabsTrigger>
+        <TabsTrigger value="transcript">Transcript</TabsTrigger>
+        <TabsTrigger value="media">Media</TabsTrigger>
+        <TabsTrigger value="jobs">Jobs</TabsTrigger>
       </TabsList>
+      <TabsContent value="transcript">Read-only transcript</TabsContent>
+      <TabsContent value="media">Source metadata</TabsContent>
+      <TabsContent value="jobs">Operation history</TabsContent>
     </Tabs>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const transcriptTab = canvas.getByRole('tab', { name: 'Transcript' });
+    const mediaTab = canvas.getByRole('tab', { name: 'Media' });
+    const transcriptPanel = canvas.getByRole('tabpanel', { name: 'Transcript' });
+
+    await expect(transcriptTab).toHaveAttribute('aria-controls', transcriptPanel.id);
+    await transcriptTab.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    const mediaPanel = canvas.getByRole('tabpanel', { name: 'Media' });
+
+    await expect(mediaTab).toHaveFocus();
+    await expect(mediaTab).toHaveAttribute('aria-selected', 'true');
+    await expect(mediaPanel).toBeVisible();
+    await expect(mediaPanel).toHaveAttribute('aria-labelledby', mediaTab.id);
+  },
 };
 
 export const CompactTabs: Story = {
@@ -34,6 +53,9 @@ export const CompactTabs: Story = {
         <TabsTrigger value="videos">Videos</TabsTrigger>
         <TabsTrigger value="audio">Audio</TabsTrigger>
       </TabsList>
+      <TabsContent value="all">All imported files</TabsContent>
+      <TabsContent value="videos">Video files</TabsContent>
+      <TabsContent value="audio">Audio files</TabsContent>
     </Tabs>
   ),
 };
@@ -46,22 +68,35 @@ export const FullWidthTabs: Story = {
         <TabsTrigger value="tab2">Center</TabsTrigger>
         <TabsTrigger value="tab3">Right</TabsTrigger>
       </TabsList>
+      <TabsContent value="tab1">Left panel</TabsContent>
+      <TabsContent value="tab2">Center panel</TabsContent>
+      <TabsContent value="tab3">Right panel</TabsContent>
     </Tabs>
   ),
 };
 
 export const DisabledTab: Story = {
   render: () => (
-    <Tabs defaultValue="free" className="w-[400px]">
+    <Tabs defaultValue="transcript" className="w-[400px]">
       <TabsList>
-        <TabsTrigger value="free">Free Plan</TabsTrigger>
-        <TabsTrigger value="pro">Pro Plan</TabsTrigger>
-        <TabsTrigger value="enterprise" disabled>
-          Enterprise (Coming Soon)
+        <TabsTrigger value="transcript">Transcript</TabsTrigger>
+        <TabsTrigger value="media">Media</TabsTrigger>
+        <TabsTrigger value="export" disabled>
+          Export unavailable
         </TabsTrigger>
       </TabsList>
+      <TabsContent value="transcript">Read-only transcript</TabsContent>
+      <TabsContent value="media">Source metadata</TabsContent>
+      <TabsContent value="export">Export is not available in this version.</TabsContent>
     </Tabs>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const disabledTab = canvas.getByRole('tab', { name: 'Export unavailable' });
+
+    await expect(disabledTab).toBeDisabled();
+    await expect(disabledTab).toHaveAttribute('aria-selected', 'false');
+  },
 };
 
 export const TabsWithContent: Story = {

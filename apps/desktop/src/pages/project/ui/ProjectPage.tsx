@@ -1,22 +1,22 @@
 import { ProjectHeader } from '../../../widgets/project-header';
-import { TranscriptEditor } from '../../../widgets/transcript-editor';
-import { JobQueuePanel } from '../../../widgets/job-queue-panel';
-import { ExportPanel } from '../../../widgets/export-panel';
-import { MediaPanel } from '../../../widgets/media-panel';
 import { Page } from '../../../shared/ui/page-layout';
+import { WorkspaceMain } from './WorkspaceMain';
+import { WorkspaceSecondaryPanels } from './WorkspaceSecondaryPanels';
 
 export const ProjectPage = () => {
   return (
-    <Page className="h-screen flex flex-col">
+    <Page className="h-screen flex flex-col overflow-hidden">
       <ProjectHeader />
-      <div className="flex-1 flex overflow-hidden">
-        <MediaPanel />
-        <div className="flex-1 flex flex-col min-w-0">
-          <TranscriptEditor />
-          <ExportPanel />
+      <main
+        className="flex-1 min-h-0 overflow-hidden"
+        data-testid="project-workspace"
+        aria-label="Project workspace"
+      >
+        <div className="flex h-full min-h-0 flex-col overflow-hidden xl:grid xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <WorkspaceMain />
+          <WorkspaceSecondaryPanels />
         </div>
-        <JobQueuePanel />
-      </div>
+      </main>
     </Page>
   );
 };

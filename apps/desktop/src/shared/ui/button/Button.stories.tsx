@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Button } from './Button';
+import { Icon } from '../icon';
 
 const meta = {
   title: 'Shared UI/Button',
@@ -63,10 +64,26 @@ export const Loading: Story = {
 export const WithIcon: Story = {
   render: () => (
     <div className="flex gap-4">
-      <Button leftIcon={<span>✨</span>}>Left Icon</Button>
-      <Button variant="secondary" rightIcon={<span>🚀</span>}>
-        Right Icon
+      <Button leftIcon={<Icon name="Plus" size="sm" />}>Create</Button>
+      <Button variant="secondary" rightIcon={<Icon name="ArrowRight" size="sm" />}>
+        Continue
       </Button>
+    </div>
+  ),
+};
+
+export const InteractionStates: Story = {
+  render: () => (
+    <div className="flex flex-col gap-3">
+      <div className="flex gap-3">
+        <Button>Default</Button>
+        <Button className="ring-2 ring-focus ring-offset-2 ring-offset-bg">Focus visible</Button>
+        <Button className="translate-y-px">Pressed</Button>
+      </div>
+      <div className="flex gap-3">
+        <Button loading>Saving changes</Button>
+        <Button disabled>Disabled</Button>
+      </div>
     </div>
   ),
 };

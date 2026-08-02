@@ -8,6 +8,7 @@ import {
   PageContent,
 } from '../../../shared/ui/page-layout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../shared/ui/card';
+import { Badge } from '../../../shared/ui/badge';
 
 export const SettingsPage = () => {
   return (
@@ -16,31 +17,46 @@ export const SettingsPage = () => {
         <PageHeader className="mb-8">
           <PageHeaderGroup>
             <PageTitle>Settings</PageTitle>
-            <PageDescription>Manage your app preferences and defaults.</PageDescription>
+            <PageDescription>Available preferences and defaults will appear here.</PageDescription>
           </PageHeaderGroup>
         </PageHeader>
 
         <PageContent className="gap-6 flex flex-col">
-          <Card>
+          <Card role="status" aria-label="Appearance settings unavailable">
             <CardHeader>
-              <CardTitle>Appearance</CardTitle>
-              <CardDescription>Customize the look and feel of Auralis.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted">Placeholder for theme settings, UI scaling, etc.</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Export Defaults</CardTitle>
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Appearance</CardTitle>
+                <Badge variant="muted" size="sm">
+                  Unavailable
+                </Badge>
+              </div>
               <CardDescription>
-                Configure default video formats and output locations.
+                Appearance preferences are not part of the current app contract.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted">
-                Placeholder for export directory, resolution, and format.
+                This section is informational only. No theme or UI scaling settings are saved yet.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card role="status" aria-label="Export defaults unavailable">
+            <CardHeader>
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle>Export Defaults</CardTitle>
+                <Badge variant="muted" size="sm">
+                  Unavailable
+                </Badge>
+              </div>
+              <CardDescription>
+                Export defaults are not part of the current app contract.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted">
+                This section is informational only. No output directory, resolution, or format
+                settings are saved yet.
               </p>
             </CardContent>
           </Card>

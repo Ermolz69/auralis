@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 import {
   Dialog,
   DialogHeader,
@@ -28,40 +29,56 @@ export const BasicDialog: Story = {
   render: () => (
     <Dialog trigger={<Button>Open Dialog</Button>}>
       <DialogHeader>
-        <DialogTitle>Edit profile</DialogTitle>
+        <DialogTitle>Project details</DialogTitle>
         <DialogDescription>
-          Make changes to your profile here. Click save when you're done.
+          Review the source summary before continuing with the workspace.
         </DialogDescription>
       </DialogHeader>
       <div className="py-4">
-        <p className="text-sm">This is the dialog content body.</p>
+        <p className="text-sm">Source metadata and current operation status stay readable.</p>
       </div>
       <DialogFooter>
         <DialogCloseAction>
           <Button variant="ghost">Cancel</Button>
         </DialogCloseAction>
         <DialogCloseAction>
-          <Button>Save changes</Button>
+          <Button>Continue</Button>
         </DialogCloseAction>
       </DialogFooter>
       <DialogClose />
     </Dialog>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole('button', { name: 'Open Dialog' });
+
+    await userEvent.click(trigger);
+    const dialog = await canvas.findByRole('dialog', { name: 'Project details' });
+
+    await expect(dialog).toHaveAccessibleDescription(
+      'Review the source summary before continuing with the workspace.',
+    );
+    await expect(canvas.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await expect(dialog).not.toBeVisible();
+  },
 };
 
 export const ConfirmationDialog: Story = {
   render: () => (
-    <Dialog trigger={<Button variant="secondary">Sign Out</Button>}>
+    <Dialog trigger={<Button variant="secondary">Leave Project</Button>}>
       <DialogHeader>
-        <DialogTitle>Sign Out</DialogTitle>
-        <DialogDescription>Are you sure you want to sign out?</DialogDescription>
+        <DialogTitle>Leave Project</DialogTitle>
+        <DialogDescription>
+          The active backend job keeps running while you browse.
+        </DialogDescription>
       </DialogHeader>
       <DialogFooter>
         <DialogCloseAction>
           <Button variant="ghost">Cancel</Button>
         </DialogCloseAction>
         <DialogCloseAction>
-          <Button variant="primary">Confirm</Button>
+          <Button variant="primary">Leave project</Button>
         </DialogCloseAction>
       </DialogFooter>
     </Dialog>
@@ -70,12 +87,11 @@ export const ConfirmationDialog: Story = {
 
 export const DangerConfirmation: Story = {
   render: () => (
-    <Dialog trigger={<Button variant="danger">Delete Account</Button>}>
+    <Dialog trigger={<Button variant="danger">Delete Project</Button>}>
       <DialogHeader>
-        <DialogTitle className="text-danger">Delete Account</DialogTitle>
+        <DialogTitle className="text-danger">Delete Project</DialogTitle>
         <DialogDescription>
-          This action cannot be undone. This will permanently delete your account and remove your
-          data from our servers.
+          This removes the saved project from this desktop workspace after backend confirmation.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter>
@@ -83,7 +99,7 @@ export const DangerConfirmation: Story = {
           <Button variant="ghost">Cancel</Button>
         </DialogCloseAction>
         <DialogCloseAction>
-          <Button variant="danger">Delete Account</Button>
+          <Button variant="danger">Delete Project</Button>
         </DialogCloseAction>
       </DialogFooter>
       <DialogClose />
@@ -93,9 +109,9 @@ export const DangerConfirmation: Story = {
 
 export const LongContent: Story = {
   render: () => (
-    <Dialog trigger={<Button>Terms of Service</Button>}>
+    <Dialog trigger={<Button>View Job History</Button>}>
       <DialogHeader>
-        <DialogTitle>Terms of Service</DialogTitle>
+        <DialogTitle>Job History</DialogTitle>
       </DialogHeader>
       <div className="py-4 max-h-[300px] overflow-y-auto pr-2">
         {Array.from({ length: 10 }).map((_, i) => (
@@ -121,7 +137,7 @@ export const WithForm: Story = {
     <Dialog trigger={<Button>Create Project</Button>}>
       <DialogHeader>
         <DialogTitle>Create a new project</DialogTitle>
-        <DialogDescription>Setup your new AI dubbing workspace.</DialogDescription>
+        <DialogDescription>Add a supported source and open a project workspace.</DialogDescription>
       </DialogHeader>
       <form
         onSubmit={(e) => {

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useTranscript } from './useTranscript';
 import { getTranscript } from '../api/transcriptApi';
+import { listen } from '@/shared/api/tauri';
 
 // Mock the dependencies
 vi.mock('../api/transcriptApi', () => ({
@@ -77,5 +78,59 @@ describe('useTranscript', () => {
 
     // Now it should be updated
     expect(result.current.transcript).toEqual({ language: 'fr', segments: [] });
+  });
+
+  it('refetches the current project when transcript-ready arrives', async () => {
+    let transcriptReadyHandler: any = null;
+    vi.mocked(listen).mockImplementation(async (_eventName, handler: any) => {
+      transcriptReadyHandler = handler;
+      return () => undefined;
+    });
+    vi.mocked(getTranscript)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        language: 'en',
+        segments: [
+          {
+            id: 'segment-1',
+            index: 0,
+            startMs: 0,
+            endMs: 1000,
+            sourceText: 'Ready subtitle',
+          },
+        ],
+      });
+
+    const { result } = renderHook(() => useTranscript('project-1'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    transcriptReadyHandler?.({ payload: { projectId: 'project-1', jobId: 'job-1' } });
+
+    await waitFor(() => {
+      expect(result.current.transcript?.segments[0]?.sourceText).toBe('Ready subtitle');
+    });
+    expect(getTranscript).toHaveBeenCalledTimes(2);
+  });
+
+  it('refetch action uses the current project id', async () => {
+    vi.mocked(getTranscript)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ language: 'en', segments: [] });
+
+    const { result } = renderHook(() => useTranscript('project-1'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    result.current.refetch();
+
+    await waitFor(() => {
+      expect(getTranscript).toHaveBeenCalledTimes(2);
+    });
+    expect(getTranscript).toHaveBeenLastCalledWith('project-1');
   });
 });

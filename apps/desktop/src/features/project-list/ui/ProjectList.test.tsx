@@ -147,7 +147,7 @@ describe('ProjectList', () => {
       </StatefulProjectProvider>,
     );
     await screen.findByText('Test Project');
-    const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    const openBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
     expect(openBtn.parentElement).toBe(deleteBtn.parentElement?.parentElement);
   });
@@ -160,6 +160,63 @@ describe('ProjectList', () => {
     );
     await screen.findByText('Untitled Project');
     expect(screen.getByRole('button', { name: 'Delete Untitled Project' })).not.toBeNull();
+  });
+
+  it('shows a loading state before projects resolve', async () => {
+    let resolveProjects: (projects: Project[]) => void = () => {};
+    (listProjects as Mock).mockReturnValueOnce(
+      new Promise<Project[]>((resolve) => {
+        resolveProjects = resolve;
+      }),
+    );
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    expect(screen.getByRole('status').textContent).toContain('Loading recent projects');
+
+    await act(async () => {
+      resolveProjects([mockProject]);
+    });
+
+    await screen.findByText('Test Project');
+  });
+
+  it('shows an empty onboarding state when the project list is empty', async () => {
+    (listProjects as Mock).mockResolvedValueOnce([]);
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('No projects yet');
+    expect(
+      screen.getByText('Import a local video above to create a desktop project.'),
+    ).not.toBeNull();
+  });
+
+  it('shows list fetch error with retry instead of an empty list', async () => {
+    (listProjects as Mock)
+      .mockRejectedValueOnce({ code: 'REPOSITORY', message: 'Storage unavailable' })
+      .mockResolvedValueOnce([mockProject]);
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+
+    await screen.findByText('Could not load recent projects');
+    expect(screen.getByText('Storage unavailable')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await screen.findByText('Test Project');
   });
 
   it('cancel confirmation does not call API and returns focus to Delete Button', async () => {
@@ -193,7 +250,7 @@ describe('ProjectList', () => {
     fireEvent.click(deleteBtn);
     fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
-    const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    const openBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     expect((openBtn as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -349,9 +406,9 @@ describe('ProjectList', () => {
     fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
     // Wait for deletion lock to be active
-    await screen.findByRole('button', { name: 'Open Test Project' });
+    await screen.findByRole('button', { name: /^Open Test Project/ });
     expect(
-      (screen.getByRole('button', { name: 'Open Test Project' }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /^Open Test Project/ }) as HTMLButtonElement).disabled,
     ).toBe(true);
 
     (listProjects as Mock).mockClear();
@@ -438,7 +495,7 @@ describe('ProjectList', () => {
       expect(screen.queryByText('Test Project')).toBeNull();
     });
 
-    const nextOpenBtn = screen.getByRole('button', { name: 'Open Untitled Project' });
+    const nextOpenBtn = screen.getByRole('button', { name: /^Open Untitled Project/ });
     expect(document.activeElement).toBe(nextOpenBtn);
   });
 
@@ -488,7 +545,7 @@ describe('ProjectList', () => {
       expect(screen.queryByText('Untitled Project')).toBeNull();
     });
 
-    const prevOpenBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    const prevOpenBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     expect(document.activeElement).toBe(prevOpenBtn);
   });
 

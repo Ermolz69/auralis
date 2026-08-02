@@ -4,10 +4,16 @@ import { useProjectContext, createProject } from '@/entities/project';
 import { importLocalMedia } from '@/entities/media';
 import { useNavigation } from '@/shared/router';
 import { toCommandError } from '@/shared/api/contracts';
+import type { Project } from '@/entities/project';
+
+export type LocalImportStage = 'idle' | 'selecting' | 'probing' | 'importing';
 
 export function useImportLocalMedia() {
   const [isImporting, setIsImporting] = useState(false);
+  const [stage, setStage] = useState<LocalImportStage>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [draftProject, setDraftProject] = useState<Project | null>(null);
+  const [sourceLabel, setSourceLabel] = useState<string | null>(null);
   const {
     deletingProjectId,
     setProjectId,
@@ -24,6 +30,7 @@ export function useImportLocalMedia() {
 
   useLayoutEffect(() => {
     setIsImporting(false);
+    setStage('idle');
     activeAttemptRef.current = null;
     latestAttemptRef.current += 1;
   }, [operationGeneration, projectId]);
@@ -46,10 +53,12 @@ export function useImportLocalMedia() {
     const isCurrentAttempt = () => ownsAttempt() && validateToken(token);
 
     setIsImporting(true);
+    setStage('selecting');
     setError(null);
+    setDraftProject(null);
+    setSourceLabel(null);
 
     try {
-      // 1. Open file dialog
       const selected = await open({
         multiple: false,
         filters: [
@@ -64,23 +73,27 @@ export function useImportLocalMedia() {
 
       if (!selected || typeof selected !== 'string') {
         setIsImporting(false);
+        setStage('idle');
         activeAttemptRef.current = null;
-        return; // User cancelled
+        return;
       }
 
-      // 2. Extract filename for title
       const filename = selected.split(/[/\\]/).pop() || 'Local Video';
+      setSourceLabel(filename);
 
-      // 3. Create a blank project
+      setStage('probing');
       const project = await createProject(filename);
       if (!isCurrentAttempt()) return;
+      setDraftProject(project);
 
-      // 4. Import the media and probe
+      setStage('importing');
       const updatedProject = await importLocalMedia(project.id, selected);
       if (!isCurrentAttempt()) return;
 
       setIsImporting(false);
+      setStage('idle');
       activeAttemptRef.current = null;
+      setDraftProject(null);
 
       setProjectId(updatedProject.id);
       setProject(updatedProject);
@@ -95,15 +108,27 @@ export function useImportLocalMedia() {
         activeAttemptRef.current = null;
         if (validateToken(token)) {
           setIsImporting(false);
+          setStage('idle');
         }
       }
     }
   };
 
+  const openDraftProject = () => {
+    if (!draftProject) return;
+    setProjectId(draftProject.id);
+    setProject(draftProject);
+    setCurrentView('project');
+  };
+
   return {
     handleImport,
+    openDraftProject,
     isImporting,
     isBlockedByDeletion,
+    stage,
     error,
+    draftProject,
+    sourceLabel,
   };
 }
