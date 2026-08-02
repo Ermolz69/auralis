@@ -68,6 +68,23 @@ const terminalJobs: JobDto[] = [
   },
 ];
 
+const restartRecoveredJob: JobDto = {
+  ...runningJob,
+  id: 'job-recovered-after-restart',
+  title: 'Subtitle import',
+  status: 'failed',
+  stage: null,
+  progress: {
+    percent: 42,
+    message: 'Interrupted during subtitle import',
+    currentStep: null,
+    processedItems: null,
+    totalItems: null,
+  },
+  error: 'Interrupted by application restart',
+  updatedAt: '2026-08-02T00:05:00.000Z',
+};
+
 const meta = {
   title: 'Widgets/JobQueuePanel/States',
   component: JobQueuePanel,
@@ -98,9 +115,24 @@ export const StaleRunningOperation: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByRole('alert')).toHaveTextContent('Job state may be outdated');
+    await expect(canvas.getByText('Operation keeps running while you browse')).toBeInTheDocument();
     await expect(
       canvas.getByRole('progressbar', { name: 'Subtitle import progress' }),
     ).toBeInTheDocument();
+  },
+};
+
+export const RestartRecoveredFailure: Story = {
+  args: {
+    state: createJobState([restartRecoveredJob]),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByRole('alert')).toHaveTextContent(
+      'The app was closed before this operation finished',
+    );
+    await expect(canvas.getByText('Final state: Interrupted during subtitle import')).toBeInTheDocument();
   },
 };
 
