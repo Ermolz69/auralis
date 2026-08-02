@@ -34,6 +34,11 @@ const getProgressVariant = (status: JobDto['status']) => {
   return 'default';
 };
 
+const isActiveJob = (job: JobDto) => job.status === 'pending' || job.status === 'running';
+
+const isRestartRecoveryFailure = (job: JobDto) =>
+  job.status === 'failed' && /application restart|APP_RESTART/i.test(job.error ?? '');
+
 const getSyncNotice = (
   phase: JobStoreState['phase'],
   pendingRefetch: boolean,
@@ -84,6 +89,7 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
   const { activeJobs, completedJobs, phase, pendingRefetch, scopeProjectId } = useJobContext();
   const jobs = [...activeJobs, ...completedJobs];
   const syncNotice = getSyncNotice(phase, pendingRefetch, scopeProjectId);
+  const hasActiveJobs = jobs.some(isActiveJob);
 
   return (
     <aside
@@ -104,6 +110,22 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
           </div>
         </div>
       )}
+      {hasActiveJobs && (
+        <div
+          className="flex gap-3 rounded-md border border-accent/40 bg-accent/10 p-3 text-accent-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <Icon name="Info" size="sm" className="mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-text">Operation keeps running while you browse</p>
+            <p className="text-xs">
+              You can switch pages safely. Closing the app can interrupt the operation; on next
+              launch the queue will show the recovered final state.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-0">
         {jobs.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
@@ -120,7 +142,8 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
 };
 
 function JobCard({ job }: { job: JobDto }) {
-  const isActive = job.status === 'pending' || job.status === 'running';
+  const isActive = isActiveJob(job);
+  const wasRecoveredAfterRestart = isRestartRecoveryFailure(job);
   const statusLabel = formatJobStatus(job);
   const progressMessage = job.progress.message || (job.status === 'pending' ? 'Queued' : 'Working');
 
@@ -157,9 +180,16 @@ function JobCard({ job }: { job: JobDto }) {
             {job.progress.message && (
               <p className="text-xs text-muted">Final state: {job.progress.message}</p>
             )}
-            <p className="text-xs text-muted">
-              Check the message above, then start a supported operation again when ready.
-            </p>
+            {wasRecoveredAfterRestart ? (
+              <p className="text-xs text-muted">
+                The app was closed before this operation finished. Review the project state, then
+                start a supported operation again only if the missing result is still needed.
+              </p>
+            ) : (
+              <p className="text-xs text-muted">
+                Check the message above, then start a supported operation again when ready.
+              </p>
+            )}
           </div>
         )}
 
