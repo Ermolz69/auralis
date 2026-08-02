@@ -13,7 +13,8 @@ describe('Textarea', () => {
     const error = screen.getByRole('alert');
 
     expect(textarea.getAttribute('aria-invalid')).toBe('true');
-    expect(textarea.getAttribute('aria-describedby')).toBe('notes-description');
-    expect(error.id).toBe('notes-description');
+    expect(textarea.getAttribute('aria-describedby')).toBe('notes-error');
+    expect(textarea.getAttribute('aria-errormessage')).toBe('notes-error');
+    expect(error.id).toBe('notes-error');
   });
 });

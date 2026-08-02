@@ -8,7 +8,7 @@ vi.mock('../../../features/import-local-media', () => ({
 }));
 
 vi.mock('../../../features/paste-youtube-link', () => ({
-  PasteYoutubeLink: () => <button type="button">Start YouTube project</button>,
+  PasteYoutubeLink: () => <button type="button">Add from YouTube</button>,
 }));
 
 vi.mock('../../../features/project-list', () => ({
@@ -21,9 +21,13 @@ describe('HomePage', () => {
 
     const createProject = screen.getByLabelText('Create project');
     const localImport = screen.getByRole('button', { name: 'Import local video' });
-    const youtube = screen.getByRole('button', { name: 'Start YouTube project' });
+    const youtube = screen.getByRole('button', { name: 'Add from YouTube' });
 
-    expect(createProject.compareDocumentPosition(localImport)).toBe(Node.DOCUMENT_POSITION_CONTAINED_BY | Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(localImport.compareDocumentPosition(youtube) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(createProject.compareDocumentPosition(localImport)).toBe(
+      Node.DOCUMENT_POSITION_CONTAINED_BY | Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(
+      localImport.compareDocumentPosition(youtube) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

@@ -1,9 +1,23 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { JobContext } from '@/entities/job';
 import type { JobDto, JobStoreState } from '@/entities/job';
+import { ProjectContext, startProjectMockPipeline } from '@/entities/project';
+import type { Project } from '@/entities/project';
 import { JobQueuePanel } from './JobQueuePanel';
+
+declare const require: any;
+
+vi.mock('@/entities/project', () => {
+  const React = require('react');
+  const mockProjectContext = React.createContext(undefined);
+  return {
+    ProjectContext: mockProjectContext,
+    startProjectMockPipeline: vi.fn(),
+    useProjectContext: () => React.useContext(mockProjectContext),
+  };
+});
 
 const makeJob = (overrides: Partial<JobDto>): JobDto => ({
   id: 'job-1',
@@ -25,27 +39,55 @@ const makeJob = (overrides: Partial<JobDto>): JobDto => ({
   ...overrides,
 });
 
-function renderPanel(state: Partial<JobStoreState> = {}) {
+const mockProject: Project = {
+  id: 'project-1',
+  title: 'https://youtube.com/watch?v=123',
+  status: 'failed',
+  createdAt: '2026-08-02T00:00:00.000Z',
+  updatedAt: '2026-08-02T00:00:01.000Z',
+  source: { kind: 'youtubeUrl', url: 'https://youtube.com/watch?v=123' },
+  metadata: null,
+};
+
+function renderPanel(state: Partial<JobStoreState> = {}, project: Project | null = mockProject) {
   const jobs = state.jobs ?? {};
+  const projectContext = {
+    projectId: project?.id ?? null,
+    project,
+    setProjectId: vi.fn(),
+    setProject: vi.fn(),
+    deletingProjectId: null,
+    beginProjectDeletion: vi.fn(),
+    finishProjectDeletion: vi.fn(),
+    operationGeneration: 1,
+    captureToken: () => ({
+      generation: 1,
+      projectId: project?.id ?? null,
+    }),
+    validateToken: () => true,
+  };
 
   return render(
-    <JobContext.Provider
-      value={{
-        phase: 'ready',
-        scopeProjectId: 'p-1',
-        jobs,
-        buffer: [],
-        pendingRefetch: false,
-        generation: 0,
-        ...state,
-      }}
-    >
-      <JobQueuePanel />
-    </JobContext.Provider>,
+    <ProjectContext.Provider value={projectContext}>
+      <JobContext.Provider
+        value={{
+          phase: 'ready',
+          scopeProjectId: 'project-1',
+          jobs,
+          buffer: [],
+          pendingRefetch: false,
+          generation: 0,
+          ...state,
+        }}
+      >
+        <JobQueuePanel />
+      </JobContext.Provider>
+    </ProjectContext.Provider>,
   );
 }
 
 afterEach(() => cleanup());
+afterEach(() => vi.clearAllMocks());
 
 describe('JobQueuePanel', () => {
   it('does not force a fixed desktop width on its root panel', () => {
@@ -77,12 +119,13 @@ describe('JobQueuePanel', () => {
       },
     });
 
-    expect(screen.getByText('Project: project-1')).not.toBeNull();
-    expect(screen.getByText('Running - Import Youtube Subtitles')).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Active operation' })).not.toBeNull();
+    expect(screen.getByText('Project: YouTube project')).not.toBeNull();
+    expect(screen.getByText('Running: Importing YouTube subtitles')).not.toBeNull();
     expect(
-      screen.getByRole('progressbar', { name: 'Subtitle import progress' }).getAttribute(
-        'aria-valuenow',
-      ),
+      screen
+        .getByRole('progressbar', { name: 'Subtitle import progress' })
+        .getAttribute('aria-valuenow'),
     ).toBe('42');
     expect(screen.getByRole('button', { name: 'Cancel' })).not.toBeNull();
   });
@@ -106,8 +149,60 @@ describe('JobQueuePanel', () => {
 
     expect(screen.getByRole('alert').textContent).toContain('Subtitle import failed');
     expect(screen.getByText('Final state: Could not read subtitles')).not.toBeNull();
-    expect(screen.getByText(/start a supported operation again/i)).not.toBeNull();
+    expect(screen.getByText(/retry when this project has a supported source/i)).not.toBeNull();
     expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+
+  it('offers retry only for the current project with a supported source', async () => {
+    const responseProject = { ...mockProject, status: 'processing' as const };
+    vi.mocked(startProjectMockPipeline).mockResolvedValueOnce({
+      project: responseProject,
+      job: makeJob({ id: 'retry-job', status: 'pending' }) as any,
+    });
+
+    renderPanel({
+      jobs: {
+        'job-1': makeJob({
+          status: 'failed',
+          error: 'Subtitle import failed',
+        }),
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry subtitle import' }));
+
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Retrying...' }).disabled).toBe(
+      true,
+    );
+
+    await waitFor(() => {
+      expect(startProjectMockPipeline).toHaveBeenCalledTimes(1);
+    });
+    expect(startProjectMockPipeline).toHaveBeenCalledWith('project-1');
+  });
+
+  it('does not offer retry for local project sources', () => {
+    renderPanel(
+      {
+        jobs: {
+          'job-1': makeJob({
+            status: 'failed',
+            error: 'Subtitle import failed',
+          }),
+        },
+      },
+      {
+        ...mockProject,
+        source: {
+          kind: 'managedLocalFile',
+          artifactId: 'artifact-1',
+          originalFilename: 'local-video.mp4',
+        },
+      },
+    );
+
+    expect(screen.queryByRole('button', { name: 'Retry subtitle import' })).toBeNull();
+    expect(startProjectMockPipeline).not.toHaveBeenCalled();
   });
 
   it('distinguishes cancelled and completed terminal jobs', () => {

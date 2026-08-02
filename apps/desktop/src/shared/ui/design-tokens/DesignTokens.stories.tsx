@@ -14,10 +14,12 @@ type Story = StoryObj<typeof meta>;
 const colors = [
   { name: 'Background', var: 'var(--color-bg)' },
   { name: 'Surface', var: 'var(--color-surface)' },
+  { name: 'Border', var: 'var(--color-border)' },
   { name: 'Secondary', var: 'var(--color-secondary)' },
   { name: 'Text', var: 'var(--color-text)' },
   { name: 'Muted Text', var: 'var(--color-muted)' },
   { name: 'Primary', var: 'var(--color-primary)' },
+  { name: 'Focus Ring', var: 'var(--color-focus)' },
   { name: 'Accent', var: 'var(--color-accent)' },
   { name: 'Danger', var: 'var(--color-danger)' },
   { name: 'Success', var: 'var(--color-success)' },
@@ -105,9 +107,11 @@ export const AllTokens: Story = {
 
       {/* Product Card Example */}
       <section>
-        <h2 className="text-2xl font-bold mb-6 border-b border-muted pb-2">Product State Example</h2>
+        <h2 className="text-2xl font-bold mb-6 border-b border-border pb-2">
+          Operation State Example
+        </h2>
 
-        <div className="bg-surface p-8 rounded-2xl border border-muted shadow-2xl w-full max-w-md relative overflow-hidden group hover:border-primary transition-colors duration-300">
+        <div className="bg-surface p-8 rounded-lg border border-border shadow-2xl w-full max-w-md relative overflow-hidden group hover:border-focus transition-colors duration-300">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary" />
 
           <div className="flex items-start justify-between mb-6">
@@ -134,7 +138,7 @@ export const AllTokens: Story = {
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-text">42%</div>
-              <div className="text-xs text-muted">running</div>
+              <div className="text-xs text-muted">Running</div>
             </div>
           </div>
 
@@ -163,7 +167,7 @@ export const AllTokens: Story = {
             )}
           </ul>
 
-          <button className="w-full py-3 px-4 bg-primary-action hover:bg-primary-action-hover text-white rounded-lg font-medium transition-colors duration-200">
+          <button className="w-full py-3 px-4 bg-primary-action hover:bg-primary-action-hover text-white rounded-lg border border-primary-action font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg">
             Open project
           </button>
         </div>

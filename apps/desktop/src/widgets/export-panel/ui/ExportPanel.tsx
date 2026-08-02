@@ -1,5 +1,4 @@
 import { Card, CardContent } from '../../../shared/ui/card';
-import { Button } from '../../../shared/ui/button';
 import { Icon } from '../../../shared/ui/icon';
 
 export const ExportPanel = () => {
@@ -10,18 +9,17 @@ export const ExportPanel = () => {
           <div className="min-w-0">
             <h3 className="font-semibold text-text">Export</h3>
             <p id="export-unavailable-note" className="text-sm text-muted">
-              Video export is not available in the current app contract.
+              Export is not available in this version.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled
+          <div
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm font-medium text-muted"
+            role="status"
             aria-describedby="export-unavailable-note"
-            leftIcon={<Icon name="Lock" size="sm" />}
           >
+            <Icon name="Lock" size="sm" />
             Export unavailable
-          </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

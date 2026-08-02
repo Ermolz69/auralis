@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 import { Input } from './Input';
+import { Icon } from '../icon';
 
 const meta = {
   title: 'Shared UI/Input',
@@ -45,7 +46,8 @@ export const ErrorState: Story = {
     label: 'Password',
     placeholder: 'Enter password',
     error: true,
-    helperText: 'Password must be at least 8 characters.',
+    helperText: 'Use at least 8 characters.',
+    errorText: 'Password is required.',
   },
 };
 
@@ -55,7 +57,7 @@ export const Disabled: Story = {
     label: 'API Key',
     placeholder: 'sk-1234567890',
     disabled: true,
-    value: 'sk-1234567890',
+    defaultValue: 'sk-1234567890',
   },
 };
 
@@ -63,8 +65,27 @@ export const Disabled: Story = {
 export const WithIcon: Story = {
   render: () => (
     <div className="flex flex-col gap-4 max-w-sm">
-      <Input placeholder="Search projects..." leftIcon={<span>🔍</span>} />
-      <Input placeholder="https://youtube.com/..." rightIcon={<span>🔗</span>} />
+      <Input placeholder="Search projects..." leftIcon={<Icon name="Search" size="sm" />} />
+      <Input placeholder="https://youtube.com/..." rightIcon={<Icon name="Link" size="sm" />} />
+    </div>
+  ),
+};
+
+export const LongLabelsAndDescriptions: Story = {
+  render: () => (
+    <div className="flex max-w-sm flex-col gap-4">
+      <Input
+        label="Project source display name used by collaborators"
+        helperText="Long helper text wraps without changing the control relationship."
+        placeholder="Quarterly launch recording"
+      />
+      <Input
+        label="Transcript import URL"
+        helperText="Paste a supported source URL."
+        errorText="This URL cannot be reached. Check the host and try again."
+        error
+        defaultValue="https://video.example.com/private/session"
+      />
     </div>
   ),
 };

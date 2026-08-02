@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { cancelJob } from '@/entities/job';
 import { toCommandError } from '@/shared/api/contracts';
+import { Button } from '@/shared/ui/button';
 
 export interface CancelJobButtonProps {
   jobId: string;
@@ -11,17 +12,22 @@ export interface CancelJobButtonProps {
 export function CancelJobButton({ jobId, onCancelled, className }: CancelJobButtonProps) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const errorId = useId();
+  const successId = useId();
 
   const handleCancel = async () => {
+    if (isCancelling) return;
+
     setError(null);
+    setSuccess(false);
     setIsCancelling(true);
     try {
       await cancelJob(jobId);
+      setSuccess(true);
       onCancelled?.();
     } catch (e) {
       const commandError = toCommandError(e);
-      console.error('Failed to cancel job', commandError);
       setError(commandError.message);
     } finally {
       setIsCancelling(false);
@@ -30,15 +36,23 @@ export function CancelJobButton({ jobId, onCancelled, className }: CancelJobButt
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <button
+      <Button
         type="button"
-        className={`px-3 py-1 bg-danger-action hover:bg-danger-action-hover text-white rounded text-sm disabled:opacity-50 ${className || ''}`}
+        variant="danger"
+        size="sm"
+        loading={isCancelling}
+        className={className}
         onClick={handleCancel}
         disabled={isCancelling}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={error ? errorId : success ? successId : undefined}
       >
         {isCancelling ? 'Cancelling...' : 'Cancel'}
-      </button>
+      </Button>
+      {success && !error && (
+        <p id={successId} className="max-w-48 text-right text-xs text-muted" role="status">
+          Cancellation requested.
+        </p>
+      )}
       {error && (
         <p id={errorId} className="max-w-48 text-right text-xs text-danger" role="alert">
           Cancel failed: {error}

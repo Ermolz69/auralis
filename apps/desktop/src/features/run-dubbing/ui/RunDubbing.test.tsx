@@ -87,7 +87,7 @@ describe('RunDubbing', () => {
     ).toBe(false);
   });
 
-  it('is disabled with an explanation for managed local media', () => {
+  it('does not render the URL-only action for managed local media', () => {
     const ctx = createMockContext({
       project: {
         ...mockProject,
@@ -105,16 +105,10 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
 
-    const button = screen.getByRole('button', { name: /import subtitles/i }) as HTMLButtonElement;
-
-    expect(button.disabled).toBe(true);
-    expect(screen.getByRole('note').textContent).toContain(
-      'automatic transcription is not supported',
-    );
-    expect(button.getAttribute('aria-describedby')).toBe('subtitle-import-disabled-reason');
+    expect(screen.queryByRole('button', { name: /import subtitles/i })).toBeNull();
   });
 
-  it('does not invoke subtitle import for external local media', () => {
+  it('does not render or invoke subtitle import for external local media', () => {
     const ctx = createMockContext({
       project: {
         ...mockProject,
@@ -128,7 +122,7 @@ describe('RunDubbing', () => {
       </ProjectContext.Provider>,
     );
 
-    screen.getByRole('button', { name: /import subtitles/i }).click();
+    expect(screen.queryByRole('button', { name: /import subtitles/i })).toBeNull();
 
     expect(startProjectMockPipeline).not.toHaveBeenCalled();
   });

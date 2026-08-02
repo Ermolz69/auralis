@@ -10,7 +10,9 @@ vi.mock('@/entities/project', () => ({
 }));
 const mockSetCurrentView = vi.fn();
 
-vi.mock('@/shared/router', () => ({ useNavigation: () => ({ setCurrentView: mockSetCurrentView }) }));
+vi.mock('@/shared/router', () => ({
+  useNavigation: () => ({ setCurrentView: mockSetCurrentView }),
+}));
 
 describe('usePasteYoutubeLink', () => {
   let mockContextValue: any;
@@ -66,6 +68,7 @@ describe('usePasteYoutubeLink', () => {
       res = await result.current.startProject();
     });
     expect(res).not.toBeNull();
+    expect(createProjectFromYoutube).toHaveBeenCalledWith('https://youtube.com/watch?v=123');
     expect(mockContextValue.setProjectId).toHaveBeenCalledWith('p-new');
     expect(mockContextValue.setProject).toHaveBeenCalledWith({ id: 'p-new', title: 'New' });
     expect(mockSetCurrentView).toHaveBeenCalledWith('project');

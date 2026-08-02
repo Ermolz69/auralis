@@ -13,6 +13,7 @@ describe('Button', () => {
 
     expect(button.disabled).toBe(true);
     expect(button.getAttribute('aria-busy')).toBe('true');
-    expect(button.textContent).toContain('Loading');
+    expect(button.textContent).toBe('Save');
+    expect(screen.queryByText('Loading')).toBeNull();
   });
 });

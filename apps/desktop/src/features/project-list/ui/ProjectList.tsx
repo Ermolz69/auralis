@@ -52,9 +52,10 @@ export const ProjectList = () => {
     setCurrentView('home');
   };
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (showLoading = false) => {
     fetchGenerationRef.current += 1;
     const currentGen = fetchGenerationRef.current;
+    if (showLoading) setIsLoading(true);
 
     try {
       const data = await listProjects();
@@ -73,7 +74,7 @@ export const ProjectList = () => {
   }, []);
 
   useEffect(() => {
-    fetchProjects();
+    fetchProjects(true);
 
     let unlistenProject: (() => void) | undefined;
     const setupListeners = async () => {
@@ -204,10 +205,6 @@ export const ProjectList = () => {
     setProjectToDelete(null);
   };
 
-  if (isLoading) {
-    return <ProjectListLoadingState />;
-  }
-
   return (
     <section className="w-full flex flex-col gap-3 mt-8" aria-labelledby="recent-projects-heading">
       <DeleteProjectDialog
@@ -224,8 +221,10 @@ export const ProjectList = () => {
       >
         Recent Projects
       </h3>
-      {listError ? (
-        <ProjectListErrorState error={listError} onRetry={() => void fetchProjects()} />
+      {isLoading ? (
+        <ProjectListLoadingState />
+      ) : listError ? (
+        <ProjectListErrorState error={listError} onRetry={() => void fetchProjects(true)} />
       ) : projects.length === 0 ? (
         <ProjectListEmptyState />
       ) : (

@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Input } from '../../../shared/ui/input';
 import { Button } from '../../../shared/ui/button';
 import { usePasteYoutubeLink } from '../model/usePasteYoutubeLink';
@@ -6,24 +6,44 @@ import { usePasteYoutubeLink } from '../model/usePasteYoutubeLink';
 export const PasteYoutubeLink = () => {
   const { url, setUrl, startProject, isStarting, isBlockedByDeletion, error } =
     usePasteYoutubeLink();
-  const errorId = 'youtube-link-error';
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const statusId = 'youtube-link-status';
-  const describedBy = error ? errorId : isStarting ? statusId : undefined;
+  const displayedError = validationError || error;
+  const trimmedUrl = url.trim();
+
+  useEffect(() => {
+    if (trimmedUrl) setValidationError(null);
+  }, [trimmedUrl]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!trimmedUrl) {
+      setValidationError('Paste a YouTube URL before adding a source.');
+      inputRef.current?.focus();
+      return;
+    }
     void startProject();
   };
 
   return (
-    <form className="flex flex-col gap-2 w-full" onSubmit={handleSubmit}>
+    <form
+      className="flex flex-col gap-3 w-full text-left"
+      aria-label="Add YouTube source"
+      onSubmit={handleSubmit}
+      noValidate
+    >
       <div className="flex gap-2 w-full">
         <Input
-          aria-label="YouTube video link"
-          aria-describedby={describedBy}
-          aria-invalid={Boolean(error)}
-          placeholder="Paste a YouTube link..."
+          id="youtube-link-url"
+          ref={inputRef}
+          label="YouTube URL"
+          helperText="Supported source: a single YouTube video link."
+          error={Boolean(displayedError)}
+          errorText={displayedError ?? undefined}
+          placeholder="https://youtube.com/watch?v=..."
           className="flex-1"
+          type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           disabled={isStarting || isBlockedByDeletion}
@@ -32,25 +52,20 @@ export const PasteYoutubeLink = () => {
           type="submit"
           variant="secondary"
           size="lg"
-          disabled={isStarting || !url || isBlockedByDeletion}
+          disabled={isStarting || !trimmedUrl || isBlockedByDeletion}
           loading={isStarting}
         >
-          {isStarting ? 'Creating project...' : 'Add YouTube source'}
+          Add from YouTube
         </Button>
       </div>
       {isStarting && (
         <p id={statusId} className="text-muted text-sm text-left" role="status" aria-live="polite">
-          Creating YouTube project. The workspace will show subtitle import progress after this step.
+          Creating project. The workspace will show the running subtitle import job after handoff.
         </p>
       )}
       {isBlockedByDeletion && (
         <p className="text-muted text-sm text-left">
           Finish the current delete action before adding a YouTube source.
-        </p>
-      )}
-      {error && (
-        <p id={errorId} className="text-danger text-sm text-left" role="alert">
-          {error}
         </p>
       )}
     </form>

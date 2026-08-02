@@ -25,9 +25,9 @@ describe('media presentation formatters', () => {
         originalFilename: 'C:\\Users\\person\\Videos\\clip.mp4',
       }),
     ).toBe('clip.mp4');
-    expect(formatSourceLabel({ kind: 'externalLocalFile', path: '/Users/person/Videos/clip.mov' })).toBe(
-      'clip.mov',
-    );
+    expect(
+      formatSourceLabel({ kind: 'externalLocalFile', path: '/Users/person/Videos/clip.mov' }),
+    ).toBe('clip.mov');
   });
 
   it('does not promote raw URL titles into project headings', () => {
@@ -37,7 +37,9 @@ describe('media presentation formatters', () => {
         url: 'https://youtube.com/watch?v=abc',
       }),
     ).toBe('YouTube project');
-    expect(formatProjectTitle('C:\\Users\\person\\Videos\\clip.mp4', null)).toBe('Untitled Project');
+    expect(formatProjectTitle('C:\\Users\\person\\Videos\\clip.mp4', null)).toBe(
+      'Untitled Project',
+    );
     expect(
       formatProjectTitle('', {
         kind: 'externalLocalFile',
@@ -62,9 +64,9 @@ describe('media presentation formatters', () => {
   });
 
   it('limits subtitle import capability to URL-backed sources', () => {
-    expect(supportsSubtitleImport({ kind: 'youtubeUrl', url: 'https://youtube.com/watch?v=abc' })).toBe(
-      true,
-    );
+    expect(
+      supportsSubtitleImport({ kind: 'youtubeUrl', url: 'https://youtube.com/watch?v=abc' }),
+    ).toBe(true);
     expect(supportsSubtitleImport({ kind: 'remoteUrl', url: 'https://videos.example.com/a' })).toBe(
       true,
     );
@@ -75,8 +77,8 @@ describe('media presentation formatters', () => {
         originalFilename: 'local.mp4',
       }),
     ).toBe(false);
-    expect(supportsSubtitleImport({ kind: 'externalLocalFile', path: 'C:\\media\\local.mp4' })).toBe(
-      false,
-    );
+    expect(
+      supportsSubtitleImport({ kind: 'externalLocalFile', path: 'C:\\media\\local.mp4' }),
+    ).toBe(false);
   });
 });

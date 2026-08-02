@@ -2,10 +2,10 @@ import React, { createContext, useContext, useEffect, useRef, useState, useId } 
 import { Icon } from '../icon';
 
 interface DialogContextValue {
-  isOpen: boolean;
   handleClose: () => void;
   titleId: string;
   descriptionId: string;
+  setHasDescription: (hasDescription: boolean) => void;
 }
 
 const DialogContext = createContext<DialogContextValue | null>(null);
@@ -23,6 +23,7 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
 
   const titleId = useId();
   const descriptionId = useId();
+  const [hasDescription, setHasDescription] = useState(false);
 
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : internalOpen;
@@ -41,10 +42,9 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    // Use native showModal for proper backdrop, focus trap, and escape key handling
     if (isOpen && !dialog.open) {
       dialog.showModal();
-      document.body.style.overflow = 'hidden'; // prevent background scrolling
+      document.body.style.overflow = 'hidden';
     } else if (!isOpen && dialog.open) {
       dialog.close();
       document.body.style.overflow = '';
@@ -61,38 +61,35 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
   };
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    // If we click exactly on the dialog boundary (which spans the viewport due to backdrop), close it
     if (e.target === e.currentTarget) {
       handleClose();
     }
   };
 
-  const triggerElement = React.isValidElement<{ onClick?: React.MouseEventHandler }>(trigger)
-    ? React.cloneElement(trigger, {
-        onClick: (event) => {
-          trigger.props.onClick?.(event);
-          if (!event.defaultPrevented) handleOpen();
-        },
-      })
-    : trigger
-      ? (
-          <button type="button" onClick={handleOpen}>
-            {trigger}
-          </button>
-        )
-      : null;
+  const triggerElement = React.isValidElement<{ onClick?: React.MouseEventHandler }>(trigger) ? (
+    React.cloneElement(trigger, {
+      onClick: (event) => {
+        trigger.props.onClick?.(event);
+        if (!event.defaultPrevented) handleOpen();
+      },
+    })
+  ) : trigger ? (
+    <button type="button" onClick={handleOpen}>
+      {trigger}
+    </button>
+  ) : null;
 
   return (
-    <DialogContext.Provider value={{ isOpen, handleClose, titleId, descriptionId }}>
+    <DialogContext.Provider value={{ handleClose, titleId, descriptionId, setHasDescription }}>
       {triggerElement}
       <dialog
         ref={dialogRef}
         onCancel={handleCancel}
         onClick={handleBackdropClick}
         aria-labelledby={titleId}
-        aria-describedby={descriptionId}
+        aria-describedby={hasDescription ? descriptionId : undefined}
         aria-modal="true"
-        className="backdrop:bg-black/70 backdrop:backdrop-blur-sm m-auto rounded-xl bg-surface border border-muted/50 shadow-2xl p-0 text-text w-full max-w-lg open:animate-dialog-in focus:outline-none"
+        className="backdrop:bg-black/70 backdrop:backdrop-blur-sm m-auto rounded-xl bg-surface border border-border shadow-2xl p-0 text-text w-full max-w-lg open:animate-dialog-in focus:outline-none"
       >
         <div className="relative w-full h-full p-6">{children}</div>
       </dialog>
@@ -149,6 +146,13 @@ export const DialogDescription = ({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) => {
   const ctx = useContext(DialogContext);
+  const setHasDescription = ctx?.setHasDescription;
+
+  useEffect(() => {
+    setHasDescription?.(true);
+    return () => setHasDescription?.(false);
+  }, [setHasDescription]);
+
   return (
     <p id={ctx?.descriptionId} className={`text-sm text-muted ${className}`} {...props}>
       {children}
@@ -156,7 +160,6 @@ export const DialogDescription = ({
   );
 };
 
-// Ready-to-use close button (usually placed top-right)
 export const DialogClose = ({
   className = '',
   ...props
@@ -167,7 +170,7 @@ export const DialogClose = ({
       type="button"
       aria-label="Close dialog"
       onClick={ctx?.handleClose}
-      className={`absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface disabled:pointer-events-none ${className}`}
+      className={`absolute right-4 top-4 rounded-md border border-transparent p-1 opacity-70 transition-all hover:border-border hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface disabled:pointer-events-none disabled:opacity-50 ${className}`}
       {...props}
     >
       <Icon name="X" size="sm" />
@@ -175,7 +178,6 @@ export const DialogClose = ({
   );
 };
 
-// Wrapper to make any custom element act as a close button
 export const DialogCloseAction = ({ children }: { children: React.ReactNode }) => {
   const ctx = useContext(DialogContext);
   if (React.isValidElement<{ onClick?: React.MouseEventHandler }>(children)) {

@@ -33,7 +33,7 @@ describe('PasteYoutubeLink', () => {
     mockHook();
     render(<PasteYoutubeLink />);
 
-    fireEvent.submit(screen.getByRole('button', { name: 'Add YouTube source' }).closest('form')!);
+    fireEvent.submit(screen.getByRole('form', { name: 'Add YouTube source' }));
 
     expect(mockStartProject).toHaveBeenCalledTimes(1);
   });
@@ -42,19 +42,34 @@ describe('PasteYoutubeLink', () => {
     mockHook({ isStarting: true });
     render(<PasteYoutubeLink />);
 
-    expect(screen.getByRole('status').textContent).toContain('Creating YouTube project');
-    expect(screen.getByText(/workspace will show subtitle import progress/i)).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Add from YouTube' })).not.toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('Creating project');
+    expect(screen.getByText(/running subtitle import job/i)).not.toBeNull();
   });
 
   it('links accessible errors to the input', () => {
     mockHook({ error: 'Could not create project' });
     render(<PasteYoutubeLink />);
 
-    const input = screen.getByRole('textbox', { name: 'YouTube video link' });
+    const input = screen.getByRole('textbox', { name: 'YouTube URL' });
     const alert = screen.getByRole('alert');
 
     expect(alert.textContent).toBe('Could not create project');
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(input.getAttribute('aria-describedby')).toBe(alert.id);
+    expect(input.getAttribute('aria-describedby')).toContain(alert.id);
+  });
+
+  it('keeps focus on the input when submitting an empty URL', () => {
+    mockHook({ url: '' });
+    render(<PasteYoutubeLink />);
+
+    fireEvent.submit(screen.getByRole('form', { name: 'Add YouTube source' }));
+
+    const input = screen.getByRole('textbox', { name: 'YouTube URL' });
+    expect(mockStartProject).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Paste a YouTube URL before adding a source.',
+    );
+    expect(document.activeElement).toBe(input);
   });
 });

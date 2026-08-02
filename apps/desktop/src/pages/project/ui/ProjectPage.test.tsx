@@ -3,6 +3,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { ProjectPage } from './ProjectPage';
 
+vi.mock('@/entities/job', () => ({
+  formatJobStatus: () => 'Running: Importing YouTube subtitles',
+  getJobStatusTone: () => 'default',
+  isActiveJobStatus: () => true,
+  useJobContext: () => ({
+    activeJobs: [
+      {
+        id: 'job-1',
+        title: 'Subtitle import',
+        status: 'running',
+        progress: { percent: 42, message: 'Importing subtitles' },
+      },
+    ],
+    phase: 'ready',
+    pendingRefetch: false,
+    scopeProjectId: 'project-1',
+  }),
+}));
+
 vi.mock('../../../widgets/project-header', () => ({
   ProjectHeader: () => <header>Project header</header>,
 }));
@@ -34,23 +53,35 @@ vi.mock('../../../widgets/job-queue-panel', () => ({
 afterEach(() => cleanup());
 
 describe('ProjectPage', () => {
-  it('keeps a wide workspace and compact tabbed workspace without horizontal page overflow', () => {
+  it('keeps main content first and hides horizontal page overflow', () => {
     render(<ProjectPage />);
 
     expect(screen.getByTestId('project-workspace').className).toContain('overflow-hidden');
-    expect(screen.getByTestId('workspace-wide').className).toContain('xl:grid');
-    expect(screen.getByTestId('workspace-compact').className).toContain('xl:hidden');
+    expect(
+      screen
+        .getByTestId('workspace-main')
+        .compareDocumentPosition(screen.getByLabelText('Media panel controls')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it('exposes secondary media and jobs panels through compact tabs', () => {
+  it('supports wide panel collapse with semantic toggles', () => {
     render(<ProjectPage />);
 
-    expect(screen.getByRole('tab', { name: 'Media' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getAllByLabelText('Media details')).toHaveLength(2);
+    const mediaToggle = screen.getByRole('button', { name: 'Hide Media' });
+    expect(mediaToggle.getAttribute('aria-expanded')).toBe('true');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Jobs' }));
+    fireEvent.click(mediaToggle);
 
-    expect(screen.getByRole('tab', { name: 'Jobs' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getAllByLabelText('Job queue')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Show Media' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+  });
+
+  it('exposes secondary panels in compact mode with one explicit reveal control each', () => {
+    render(<ProjectPage />);
+
+    expect(screen.getByRole('button', { name: 'Open Media' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Open Jobs' })).not.toBeNull();
   });
 });

@@ -20,10 +20,10 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
           key={t.streamIndex}
           className="flex flex-col gap-1 p-3 bg-surface border border-muted rounded-lg shadow-sm"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Headphones className="w-3.5 h-3.5 text-muted" />
-              <span className="text-sm font-semibold text-text">
+              <span className="truncate text-sm font-semibold text-text">
                 Track #{idx} {t.title ? `(${t.title})` : ''}
               </span>
             </div>

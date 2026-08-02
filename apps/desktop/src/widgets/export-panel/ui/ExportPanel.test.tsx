@@ -9,12 +9,11 @@ describe('ExportPanel', () => {
   it('does not present video export as an available action', () => {
     render(<ExportPanel />);
 
-    const exportButton = screen.getByRole<HTMLButtonElement>('button', {
-      name: 'Export unavailable',
-    });
+    expect(screen.queryByRole('button', { name: 'Export unavailable' })).toBeNull();
 
-    expect(exportButton.disabled).toBe(true);
-    expect(screen.getByText('Video export is not available in the current app contract.')).not.toBeNull();
-    expect(exportButton.getAttribute('aria-describedby')).toBe('export-unavailable-note');
+    const status = screen.getByRole('status');
+    expect(status.textContent).toContain('Export unavailable');
+    expect(screen.getByText('Export is not available in this version.')).not.toBeNull();
+    expect(status.getAttribute('aria-describedby')).toBe('export-unavailable-note');
   });
 });

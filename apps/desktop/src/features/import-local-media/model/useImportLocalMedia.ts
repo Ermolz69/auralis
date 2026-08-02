@@ -13,6 +13,7 @@ export function useImportLocalMedia() {
   const [stage, setStage] = useState<LocalImportStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [draftProject, setDraftProject] = useState<Project | null>(null);
+  const [sourceLabel, setSourceLabel] = useState<string | null>(null);
   const {
     deletingProjectId,
     setProjectId,
@@ -55,6 +56,7 @@ export function useImportLocalMedia() {
     setStage('selecting');
     setError(null);
     setDraftProject(null);
+    setSourceLabel(null);
 
     try {
       const selected = await open({
@@ -77,6 +79,7 @@ export function useImportLocalMedia() {
       }
 
       const filename = selected.split(/[/\\]/).pop() || 'Local Video';
+      setSourceLabel(filename);
 
       setStage('probing');
       const project = await createProject(filename);
@@ -126,5 +129,6 @@ export function useImportLocalMedia() {
     stage,
     error,
     draftProject,
+    sourceLabel,
   };
 }

@@ -25,19 +25,18 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    // Premium dark mode base styles: smooth transitions, focus rings, disabled opacity
     const baseStyles =
-      'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:opacity-50 disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center gap-2 rounded-md border font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-bg active:translate-y-px disabled:translate-y-0 disabled:opacity-60 disabled:saturate-50 disabled:cursor-not-allowed disabled:ring-1 disabled:ring-border';
 
     // Visual variants
     const variants = {
       primary:
-        'bg-primary-action text-white hover:bg-primary-action-hover focus-visible:ring-primary/50',
-      secondary:
-        'bg-surface text-text border border-muted hover:bg-surface/80 focus-visible:ring-muted/50',
-      ghost: 'bg-transparent text-text hover:bg-surface focus-visible:ring-muted/50',
+        'border-primary-action bg-primary-action text-white hover:bg-primary-action-hover focus-visible:ring-focus',
+      secondary: 'border-border bg-surface text-text hover:bg-secondary focus-visible:ring-focus',
+      ghost:
+        'border-transparent bg-transparent text-text hover:border-border hover:bg-surface focus-visible:ring-focus',
       danger:
-        'bg-danger-action text-white hover:bg-danger-action-hover focus-visible:ring-danger/50',
+        'border-danger-action bg-danger-action text-white hover:bg-danger-action-hover focus-visible:ring-danger',
     };
 
     // Sizing
@@ -81,7 +80,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             ></path>
           </svg>
         )}
-        {loading && <span className="sr-only">Loading</span>}
         {!loading && leftIcon && <span className="inline-flex shrink-0">{leftIcon}</span>}
         {children}
         {!loading && rightIcon && <span className="inline-flex shrink-0">{rightIcon}</span>}

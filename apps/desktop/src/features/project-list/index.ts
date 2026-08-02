@@ -1,2 +1,6 @@
 export { ProjectList } from './ui/ProjectList';
-export { ProjectListEmptyState, ProjectListErrorState } from './ui/ProjectListStates';
+export {
+  ProjectListEmptyState,
+  ProjectListErrorState,
+  ProjectListLoadingState,
+} from './ui/ProjectListStates';

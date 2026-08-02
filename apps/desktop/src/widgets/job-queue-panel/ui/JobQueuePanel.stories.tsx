@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { JobContext, type JobDto, type JobStoreState } from '@/entities/job';
+import { ProjectContext, type Project } from '@/entities/project';
 import { JobQueuePanel } from './JobQueuePanel';
 
 const runningJob: JobDto = {
@@ -94,9 +95,11 @@ const meta = {
   tags: ['autodocs'],
   render: ({ state }: { state: JobStoreState }) => (
     <div className="h-[640px] w-96">
-      <JobContext.Provider value={state}>
-        <JobQueuePanel className="border border-muted" />
-      </JobContext.Provider>
+      <ProjectContext.Provider value={createProjectContext()}>
+        <JobContext.Provider value={state}>
+          <JobQueuePanel className="border border-muted" />
+        </JobContext.Provider>
+      </ProjectContext.Provider>
     </div>
   ),
 } satisfies Meta<{ state: JobStoreState }>;
@@ -116,6 +119,7 @@ export const StaleRunningOperation: Story = {
 
     await expect(canvas.getByRole('alert')).toHaveTextContent('Job state may be outdated');
     await expect(canvas.getByText('Operation keeps running while you browse')).toBeInTheDocument();
+    await expect(canvas.getByRole('heading', { name: 'Active operation' })).toBeInTheDocument();
     await expect(
       canvas.getByRole('progressbar', { name: 'Subtitle import progress' }),
     ).toBeInTheDocument();
@@ -130,9 +134,11 @@ export const RestartRecoveredFailure: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByRole('alert')).toHaveTextContent(
-      'The app was closed before this operation finished',
+      'This operation was recovered after restart as interrupted',
     );
-    await expect(canvas.getByText('Final state: Interrupted during subtitle import')).toBeInTheDocument();
+    await expect(
+      canvas.getByText('Final state: Interrupted during subtitle import'),
+    ).toBeInTheDocument();
   },
 };
 
@@ -153,5 +159,33 @@ function createJobState(
     buffer: [],
     pendingRefetch: overrides.pendingRefetch ?? false,
     generation: 1,
+  };
+}
+
+function createProjectContext() {
+  const project: Project = {
+    id: 'project-1',
+    title: 'https://youtube.com/watch?v=123',
+    status: 'failed',
+    createdAt: '2026-08-02T00:00:00.000Z',
+    updatedAt: '2026-08-02T00:00:01.000Z',
+    source: { kind: 'youtubeUrl', url: 'https://youtube.com/watch?v=123' },
+    metadata: null,
+  };
+
+  return {
+    projectId: project.id,
+    setProjectId: () => undefined,
+    project,
+    setProject: () => undefined,
+    deletingProjectId: null,
+    beginProjectDeletion: () => false,
+    finishProjectDeletion: () => undefined,
+    operationGeneration: 1,
+    captureToken: () => ({
+      generation: 1,
+      projectId: project.id,
+    }),
+    validateToken: () => true,
   };
 }

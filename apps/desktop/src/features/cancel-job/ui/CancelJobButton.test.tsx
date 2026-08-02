@@ -47,6 +47,53 @@ describe('CancelJobButton', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancelling...' }).disabled).toBe(
       true,
     );
+    expect(screen.getByRole('button', { name: 'Cancelling...' }).getAttribute('aria-busy')).toBe(
+      'true',
+    );
+
+    resolveCancel({
+      id: 'job-1',
+      revision: 1,
+      projectId: 'project-1',
+      title: 'Subtitle import',
+      status: 'cancelled',
+      stage: null,
+      progress: {
+        percent: 10,
+        message: 'Cancelled',
+        currentStep: null,
+        processedItems: null,
+        totalItems: null,
+      },
+      error: null,
+      createdAt: '2026-08-02T00:00:00.000Z',
+      updatedAt: '2026-08-02T00:00:01.000Z',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel' }).disabled).toBe(
+        false,
+      );
+    });
+    expect(screen.getByRole('status').textContent).toContain('Cancellation requested.');
+  });
+
+  it('does not send duplicate cancellation while a request is pending', async () => {
+    let resolveCancel: (value: JobDto) => void = () => undefined;
+    vi.mocked(cancelJob).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCancel = resolve;
+        }),
+    );
+
+    render(<CancelJobButton jobId="job-1" />);
+
+    const button = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(cancelJob).toHaveBeenCalledTimes(1);
 
     resolveCancel({
       id: 'job-1',

@@ -43,8 +43,8 @@ export const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
     const getSafeValue = (tabValue: string) => tabValue.replace(/[^a-zA-Z0-9_-]/g, '-');
 
     const handleValueChange = (newValue: string) => {
-      if (isControlled && onValueChange) onValueChange(newValue);
-      else setInternalValue(newValue);
+      onValueChange?.(newValue);
+      if (!isControlled) setInternalValue(newValue);
     };
 
     return (
@@ -120,7 +120,7 @@ export const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
         role="tablist"
         aria-orientation={ctx?.orientation || 'horizontal'}
         onKeyDown={handleKeyDown}
-        className={`${widthClass} items-center justify-center rounded-lg bg-surface border border-muted/30 text-muted ${variantClasses} ${className}`}
+        className={`${widthClass} items-center justify-center rounded-lg bg-surface border border-border text-muted ${variantClasses} ${className}`}
         {...props}
       />
     );
@@ -153,10 +153,10 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
           if (!disabled) ctx?.onValueChange(value);
         }}
         tabIndex={isSelected ? 0 : -1}
-        className={`inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-50 ${variantClasses} ${widthClass} ${
+        className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 ${variantClasses} ${widthClass} ${
           isSelected
-            ? 'bg-primary-action text-white shadow-sm'
-            : 'hover:bg-muted/10 hover:text-text'
+            ? 'border-primary-action bg-primary-action text-white shadow-sm'
+            : 'hover:border-border hover:bg-secondary hover:text-text'
         } ${className}`}
         {...props}
       />
@@ -182,7 +182,7 @@ export const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
         aria-labelledby={ctx?.getTriggerId(value)}
         tabIndex={0}
         hidden={!isSelected}
-        className={`mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${className}`}
+        className={`mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${className}`}
         {...props}
       />
     );

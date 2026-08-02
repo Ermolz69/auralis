@@ -190,6 +190,7 @@ describe('useImportLocalMedia', () => {
       resolvePicker('C:\\path\\video.mp4');
     });
     expect(result.current.stage).toBe('probing');
+    expect(result.current.sourceLabel).toBe('video.mp4');
 
     await act(async () => {
       resolveCreate({ id: 'p-new', title: 'video.mp4' });
@@ -220,6 +221,7 @@ describe('useImportLocalMedia', () => {
 
     expect(result.current.error).toBe('Import storage failed');
     expect(result.current.draftProject?.id).toBe('p-new');
+    expect(result.current.sourceLabel).toBe('video.mp4');
 
     act(() => {
       result.current.openDraftProject();

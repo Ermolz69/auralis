@@ -147,7 +147,7 @@ describe('ProjectList', () => {
       </StatefulProjectProvider>,
     );
     await screen.findByText('Test Project');
-    const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    const openBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
     expect(openBtn.parentElement).toBe(deleteBtn.parentElement?.parentElement);
   });
@@ -195,7 +195,9 @@ describe('ProjectList', () => {
     );
 
     await screen.findByText('No projects yet');
-    expect(screen.getByText('Import a local video to create your first project.')).not.toBeNull();
+    expect(
+      screen.getByText('Import a local video above to create a desktop project.'),
+    ).not.toBeNull();
   });
 
   it('shows list fetch error with retry instead of an empty list', async () => {
@@ -248,7 +250,7 @@ describe('ProjectList', () => {
     fireEvent.click(deleteBtn);
     fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
-    const openBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    const openBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     expect((openBtn as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -404,9 +406,9 @@ describe('ProjectList', () => {
     fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
     // Wait for deletion lock to be active
-    await screen.findByRole('button', { name: 'Open Test Project' });
+    await screen.findByRole('button', { name: /^Open Test Project/ });
     expect(
-      (screen.getByRole('button', { name: 'Open Test Project' }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /^Open Test Project/ }) as HTMLButtonElement).disabled,
     ).toBe(true);
 
     (listProjects as Mock).mockClear();
@@ -493,7 +495,7 @@ describe('ProjectList', () => {
       expect(screen.queryByText('Test Project')).toBeNull();
     });
 
-    const nextOpenBtn = screen.getByRole('button', { name: 'Open Untitled Project' });
+    const nextOpenBtn = screen.getByRole('button', { name: /^Open Untitled Project/ });
     expect(document.activeElement).toBe(nextOpenBtn);
   });
 
@@ -543,7 +545,7 @@ describe('ProjectList', () => {
       expect(screen.queryByText('Untitled Project')).toBeNull();
     });
 
-    const prevOpenBtn = screen.getByRole('button', { name: 'Open Test Project' });
+    const prevOpenBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     expect(document.activeElement).toBe(prevOpenBtn);
   });
 

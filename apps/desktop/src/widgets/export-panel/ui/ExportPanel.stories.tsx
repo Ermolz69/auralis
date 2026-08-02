@@ -22,9 +22,9 @@ export const ExportUnavailable: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const button = canvas.getByRole('button', { name: 'Export unavailable' });
 
-    await expect(button).toBeDisabled();
-    await expect(canvas.getByText(/not available in the current app contract/i)).toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Export unavailable' })).toBeNull();
+    await expect(canvas.getByRole('status')).toHaveTextContent('Export unavailable');
+    await expect(canvas.getByText(/not available in this version/i)).toBeInTheDocument();
   },
 };

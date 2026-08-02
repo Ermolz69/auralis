@@ -43,35 +43,43 @@ export const ProjectListRow = ({
 
   return (
     <Card
-      className={`group relative overflow-hidden p-0 transition-colors flex items-center justify-between shadow-sm border border-secondary ${isDeleting ? 'opacity-50' : 'hover:bg-bg/50'}`}
+      className={`group relative overflow-hidden p-0 transition-colors flex items-center justify-between shadow-sm border border-secondary min-w-0 ${isDeleting ? 'opacity-50' : 'hover:bg-bg/50'}`}
       aria-busy={isDeleting}
     >
       <button
         type="button"
         ref={openButtonRef}
-        className="flex-1 flex items-center gap-3 p-4 text-left w-full h-full focus:outline-none focus:bg-bg/50"
+        className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left w-full h-full focus:outline-none focus:bg-bg/50 focus-visible:ring-2 focus-visible:ring-focus"
         onClick={() => onOpen(project)}
         disabled={isAnyDeleting}
-        aria-label={`Open ${displayTitle}`}
+        aria-label={`Open ${displayTitle}. Status: ${statusLabel}. Source: ${sourceLabel}`}
       >
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-          <Icon name={project.source?.kind === 'youtubeUrl' || project.source?.kind === 'remoteUrl' ? 'Video' : 'Film'} size="md" />
+          <Icon
+            name={
+              project.source?.kind === 'youtubeUrl' || project.source?.kind === 'remoteUrl'
+                ? 'Video'
+                : 'Film'
+            }
+            size="md"
+          />
         </div>
         <div className="flex min-w-0 flex-col text-left flex-1">
-          <span className="text-text font-medium truncate max-w-[250px]">
-            {displayTitle}
-          </span>
+          <span className="text-text font-medium truncate max-w-full">{displayTitle}</span>
           <span className="text-muted text-xs flex items-center gap-1.5 mt-0.5">
             <span className={`w-2 h-2 rounded-full ${statusClass}`} aria-hidden="true"></span>
             <span className="sr-only">Status: </span>
             {statusLabel}
           </span>
-          <span className="text-muted text-xs truncate max-w-[250px]">
+          <span
+            className="text-muted text-xs truncate max-w-full"
+            aria-label={`Source: ${sourceLabel}`}
+          >
             <span className="sr-only">Source: </span>
             {sourceLabel}
           </span>
         </div>
-        <div className="text-muted text-xs pr-4">
+        <div className="shrink-0 text-muted text-xs pr-4">
           {new Date(project.updatedAt).toLocaleDateString()}
         </div>
       </button>

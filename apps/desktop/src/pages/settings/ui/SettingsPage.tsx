@@ -26,7 +26,9 @@ export const SettingsPage = () => {
             <CardHeader>
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Appearance</CardTitle>
-                <Badge variant="muted" size="sm">Unavailable</Badge>
+                <Badge variant="muted" size="sm">
+                  Unavailable
+                </Badge>
               </div>
               <CardDescription>
                 Appearance preferences are not part of the current app contract.
@@ -43,7 +45,9 @@ export const SettingsPage = () => {
             <CardHeader>
               <div className="flex items-start justify-between gap-3">
                 <CardTitle>Export Defaults</CardTitle>
-                <Badge variant="muted" size="sm">Unavailable</Badge>
+                <Badge variant="muted" size="sm">
+                  Unavailable
+                </Badge>
               </div>
               <CardDescription>
                 Export defaults are not part of the current app contract.

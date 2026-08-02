@@ -13,8 +13,27 @@ describe('Input', () => {
     const error = screen.getByRole('alert');
 
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(input.getAttribute('aria-describedby')).toBe('email-description');
-    expect(error.id).toBe('email-description');
+    expect(input.getAttribute('aria-describedby')).toBe('email-error');
+    expect(input.getAttribute('aria-errormessage')).toBe('email-error');
+    expect(error.id).toBe('email-error');
     expect(error.textContent).toBe('Email is required');
+  });
+
+  it('links helper and error text separately when both are provided', () => {
+    render(
+      <Input
+        id="name"
+        label="Project name"
+        helperText="Shown in the project list"
+        errorText="Name is required"
+        error
+      />,
+    );
+
+    const input = screen.getByLabelText('Project name');
+
+    expect(input.getAttribute('aria-describedby')).toBe('name-helper name-error');
+    expect(screen.getByText('Shown in the project list').id).toBe('name-helper');
+    expect(screen.getByRole('alert').id).toBe('name-error');
   });
 });

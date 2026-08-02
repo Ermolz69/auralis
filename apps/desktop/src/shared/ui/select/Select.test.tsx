@@ -21,7 +21,8 @@ describe('Select', () => {
     const error = screen.getByRole('alert');
 
     expect(select.getAttribute('aria-invalid')).toBe('true');
-    expect(select.getAttribute('aria-describedby')).toBe('language-description');
-    expect(error.id).toBe('language-description');
+    expect(select.getAttribute('aria-describedby')).toBe('language-error');
+    expect(select.getAttribute('aria-errormessage')).toBe('language-error');
+    expect(error.id).toBe('language-error');
   });
 });

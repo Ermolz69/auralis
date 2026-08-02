@@ -59,7 +59,11 @@ export const RecentProjects: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByRole('button', { name: 'Open YouTube project' })).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', {
+        name: 'Open YouTube project. Status: Processing. Source: YouTube source (youtube.com)',
+      }),
+    ).toBeInTheDocument();
     await expect(canvas.getByText('YouTube source (youtube.com)')).toBeInTheDocument();
     await expect(canvas.getAllByText('clip.mp4')).toHaveLength(2);
     await expect(canvas.queryByText(/Users\\person/)).not.toBeInTheDocument();
@@ -79,7 +83,10 @@ export const FetchError: Story = {
     onRetry: fn(),
   },
   render: ({ onRetry }: { onRetry?: () => void }) => (
-    <ProjectListErrorState error="Could not read the project index" onRetry={onRetry ?? (() => undefined)} />
+    <ProjectListErrorState
+      error="Could not read the project index"
+      onRetry={onRetry ?? (() => undefined)}
+    />
   ),
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);

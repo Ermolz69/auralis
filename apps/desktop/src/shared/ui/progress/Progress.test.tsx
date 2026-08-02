@@ -16,7 +16,7 @@ describe('Progress', () => {
   });
 
   it('announces indeterminate loading without a misleading value', () => {
-    render(<Progress indeterminate aria-label="Import progress" />);
+    render(<Progress indeterminate label="Import progress" />);
 
     const progress = screen.getByRole('progressbar', { name: 'Import progress' });
 

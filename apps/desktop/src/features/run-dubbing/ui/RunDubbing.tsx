@@ -67,32 +67,16 @@ export const RunDubbing = () => {
 
   const isEligible = project?.status === 'ready_for_processing' || project?.status === 'failed';
   const canImportSubtitles = supportsSubtitleImport(project?.source ?? null);
-  const disabledReason =
-    project?.id && isEligible && !canImportSubtitles
-      ? 'Subtitle import is only available for YouTube or remote URL projects. Local media was imported successfully, but automatic transcription is not supported in this version.'
-      : null;
+  if (project?.id && isEligible && !canImportSubtitles) return null;
+
   const isDisabled =
     !project?.id || isStarting || !isEligible || !canImportSubtitles || deletingProjectId !== null;
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button
-        variant="primary"
-        onClick={handleStart}
-        disabled={isDisabled}
-        aria-describedby={disabledReason ? 'subtitle-import-disabled-reason' : undefined}
-      >
+      <Button variant="primary" onClick={handleStart} disabled={isDisabled}>
         {isStarting ? 'Starting subtitle import...' : 'Import subtitles'}
       </Button>
-      {disabledReason && (
-        <p
-          id="subtitle-import-disabled-reason"
-          className="max-w-xs text-right text-xs text-muted"
-          role="note"
-        >
-          {disabledReason}
-        </p>
-      )}
     </div>
   );
 };

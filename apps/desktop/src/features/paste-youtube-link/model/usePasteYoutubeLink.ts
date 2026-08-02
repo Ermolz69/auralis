@@ -32,7 +32,8 @@ export function usePasteYoutubeLink() {
   const isBlockedByDeletion = deletingProjectId !== null;
 
   const startProject = async (): Promise<{ project: Project; job: Job } | null> => {
-    if (!url || isStarting || deletingProjectId !== null) return null;
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl || isStarting || deletingProjectId !== null) return null;
 
     if (activeAttemptRef.current !== null) return null;
     const token = captureToken();
@@ -49,7 +50,7 @@ export function usePasteYoutubeLink() {
     setIsStarting(true);
     setError(null);
     try {
-      const response = await createProjectFromYoutube(url);
+      const response = await createProjectFromYoutube(trimmedUrl);
       if (!isCurrentAttempt()) return null;
 
       setIsStarting(false);

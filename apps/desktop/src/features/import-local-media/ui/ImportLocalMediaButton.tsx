@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Button } from '../../../shared/ui/button';
 import { Card, CardContent } from '../../../shared/ui/card';
 import { Icon } from '../../../shared/ui/icon';
@@ -12,15 +13,21 @@ export function ImportLocalMediaButton() {
     stage,
     error,
     draftProject,
+    sourceLabel,
   } = useImportLocalMedia();
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const stageText =
     stage === 'selecting'
       ? 'Waiting for file selection'
       : stage === 'probing'
-        ? 'Checking media'
+        ? `Checking media${sourceLabel ? `: ${sourceLabel}` : ''}`
         : stage === 'importing'
-          ? 'Importing into project'
+          ? `Importing into project${sourceLabel ? `: ${sourceLabel}` : ''}`
           : null;
+
+  useEffect(() => {
+    if (error) errorSummaryRef.current?.focus();
+  }, [error]);
 
   return (
     <div className="flex flex-col items-stretch gap-3">
@@ -44,7 +51,13 @@ export function ImportLocalMediaButton() {
         <p className="text-muted text-sm">Finish the current delete action before importing.</p>
       )}
       {error && (
-        <Card variant="muted" className="border-danger/40 text-left" role="alert">
+        <Card
+          ref={errorSummaryRef}
+          variant="muted"
+          className="border-danger/40 text-left focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2 focus:ring-offset-bg"
+          role="alert"
+          tabIndex={-1}
+        >
           <CardContent className="p-4 flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <Icon name="TriangleAlert" size="sm" color="danger" />
@@ -53,7 +66,13 @@ export function ImportLocalMediaButton() {
                 <p className="text-danger text-sm break-words">{error}</p>
                 {draftProject && (
                   <p className="text-muted text-sm mt-1">
-                    A draft project was saved. You can open it or choose the file again.
+                    A draft project was saved. You can open it, choose the file again, or delete the
+                    draft from Recent Projects.
+                  </p>
+                )}
+                {!draftProject && (
+                  <p className="text-muted text-sm mt-1">
+                    No project was created. Choose the file again when ready.
                   </p>
                 )}
               </div>

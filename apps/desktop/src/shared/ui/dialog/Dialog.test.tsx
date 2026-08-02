@@ -43,4 +43,16 @@ describe('Dialog', () => {
 
     expect(HTMLDialogElement.prototype.close).toHaveBeenCalled();
   });
+
+  it('does not point aria-describedby at a missing description node', () => {
+    render(
+      <Dialog open>
+        <DialogTitle>Preferences</DialogTitle>
+      </Dialog>,
+    );
+
+    expect(screen.getByRole('dialog', { hidden: true }).hasAttribute('aria-describedby')).toBe(
+      false,
+    );
+  });
 });

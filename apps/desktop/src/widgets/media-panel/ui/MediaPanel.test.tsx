@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
 import { ProjectContext, type Project } from '@/entities/project';
 import { MediaPanel } from './MediaPanel';
 
@@ -26,6 +26,8 @@ const project: Project = {
 };
 
 describe('MediaPanel', () => {
+  afterEach(() => cleanup());
+
   it('does not force a fixed desktop width on its root panel', () => {
     render(
       <ProjectContext.Provider value={createProjectContext(project)}>
@@ -55,6 +57,27 @@ describe('MediaPanel', () => {
       </ProjectContext.Provider>,
     );
 
+    expect(screen.getByLabelText('Source: clip.mp4')).not.toBeNull();
+    expect(document.body.innerHTML).not.toContain('Users\\person');
+  });
+
+  it('keeps a safe source label visible when metadata is not available yet', () => {
+    render(
+      <ProjectContext.Provider
+        value={createProjectContext({
+          ...project,
+          metadata: null,
+          source: {
+            kind: 'externalLocalFile',
+            path: 'C:\\Users\\person\\Videos\\private-folder\\clip.mp4',
+          },
+        })}
+      >
+        <MediaPanel />
+      </ProjectContext.Provider>,
+    );
+
+    expect(screen.getByText('No metadata available')).not.toBeNull();
     expect(screen.getByLabelText('Source: clip.mp4')).not.toBeNull();
     expect(document.body.innerHTML).not.toContain('Users\\person');
   });

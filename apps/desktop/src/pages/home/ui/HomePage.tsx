@@ -11,9 +11,16 @@ export const HomePage = () => {
           <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-danger bg-clip-text text-transparent pb-2">
             Auralis
           </h1>
-          <p className="text-muted text-xl">Import a local video and keep the work on your desktop.</p>
+          <p className="text-muted text-xl">
+            Import a local video and keep the work on your desktop.
+          </p>
           <div className="mt-2 flex flex-col gap-4 w-full" aria-label="Create project">
-            <ImportLocalMediaButton />
+            <div className="flex flex-col gap-2">
+              <ImportLocalMediaButton />
+              <p className="text-left text-sm text-muted">
+                Creates a local project, imports metadata, and opens the workspace when ready.
+              </p>
+            </div>
             <div className="flex items-center gap-4 w-full">
               <hr className="flex-1 border-muted" />
               <span className="text-muted text-sm font-medium uppercase tracking-widest">

@@ -37,6 +37,10 @@ describe('ProjectListRow', () => {
     expect(screen.getByText('Needs attention')).not.toBeNull();
     expect(screen.queryByText('failed')).toBeNull();
     expect(document.body.innerHTML).not.toContain('Users\\person');
-    expect(screen.getByRole('button', { name: 'Open clip.mp4' })).not.toBeNull();
+    expect(
+      screen.getByRole('button', {
+        name: 'Open clip.mp4. Status: Needs attention. Source: clip.mp4',
+      }),
+    ).not.toBeNull();
   });
 });
