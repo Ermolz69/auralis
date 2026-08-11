@@ -19,6 +19,7 @@ export function useImportLocalMedia() {
     setProjectId,
     setProject,
     projectId,
+    project: currentProject,
     operationGeneration,
     captureToken,
     validateToken,
@@ -82,7 +83,7 @@ export function useImportLocalMedia() {
       setSourceLabel(filename);
 
       setStage('probing');
-      const project = await createProject(filename);
+      const project = currentProject ?? (await createProject(filename));
       if (!isCurrentAttempt()) return;
       setDraftProject(project);
 

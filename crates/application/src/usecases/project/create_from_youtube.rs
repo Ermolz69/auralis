@@ -5,7 +5,7 @@ use crate::usecases::media::download_youtube_video::{
 use crate::usecases::project::create::{CreateProjectRequest, CreateProjectUseCase};
 use crate::usecases::project::import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase};
 use domain::media::MediaSource;
-use domain::project::Project;
+use domain::project::{Project, ProjectId};
 use ports::repository::ProjectRepository;
 use ports::source::VideoSourcePort;
 use ports::storage::ArtifactStore;
@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 pub struct CreateProjectFromYoutubeRequest {
     pub url: String,
+    pub project_id: Option<ProjectId>,
 }
 
 pub struct CreateProjectFromYoutubeResponse {
@@ -61,18 +62,26 @@ impl<
         &self,
         request: CreateProjectFromYoutubeRequest,
     ) -> Result<CreateProjectFromYoutubeResponse, ApplicationError> {
-        let create_use_case = CreateProjectUseCase::new(self.project_repo.clone());
-        let create_res = create_use_case
-            .execute(CreateProjectRequest {
-                title: request.url.clone(),
-            })
-            .await?;
+        let project_id = match request.project_id {
+            Some(project_id) => project_id,
+            None => {
+                let create_use_case = CreateProjectUseCase::new(self.project_repo.clone());
+                create_use_case
+                    .execute(CreateProjectRequest {
+                        title: request.url.clone(),
+                    })
+                    .await?
+                    .project
+                    .id()
+                    .clone()
+            }
+        };
 
         let import_use_case =
             ImportVideoSourceUseCase::new(self.project_repo.clone(), self.video_source.clone());
         let import_res = import_use_case
             .execute(ImportVideoSourceRequest {
-                project_id: create_res.project.id().clone(),
+                project_id,
                 source: MediaSource::YoutubeUrl {
                     url: request.url.clone(),
                 },
@@ -143,6 +152,7 @@ mod tests {
         let response = use_case
             .execute(CreateProjectFromYoutubeRequest {
                 url: "https://www.youtube.com/watch?v=stage-one".into(),
+                project_id: None,
             })
             .await
             .unwrap();

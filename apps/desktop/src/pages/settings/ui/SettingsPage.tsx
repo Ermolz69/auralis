@@ -1,8 +1,35 @@
 import { Badge } from '../../../shared/ui/badge';
 import { Icon, type IconName } from '../../../shared/ui/icon';
 import { Page } from '../../../shared/ui/page-layout';
-import { Select } from '../../../shared/ui/select';
+import { Select, type SelectOptionGroup } from '../../../shared/ui/select';
 import { COLOR_THEMES, isColorTheme, useColorTheme } from '../../../shared/theme';
+
+const colorThemeOptionGroups: SelectOptionGroup[] = [
+  {
+    label: 'Light themes',
+    options: COLOR_THEMES.filter((theme) => theme.appearance === 'light').map((theme) => ({
+      value: theme.id,
+      label: theme.label,
+    })),
+  },
+  {
+    label: 'Dark themes',
+    options: COLOR_THEMES.filter((theme) => theme.appearance === 'dark').map((theme) => ({
+      value: theme.id,
+      label: theme.label,
+    })),
+  },
+  {
+    label: 'Custom themes',
+    options: [
+      {
+        value: '__custom-themes-empty',
+        label: 'No custom themes yet',
+        disabled: true,
+      },
+    ],
+  },
+];
 
 const unavailableSections: Array<{
   label: string;
@@ -53,7 +80,7 @@ export const SettingsPage = () => {
               <Select
                 label="Color theme"
                 value={colorTheme}
-                options={COLOR_THEMES.map((theme) => ({ value: theme.id, label: theme.label }))}
+                optionGroups={colorThemeOptionGroups}
                 helperText={activeTheme?.description}
                 onChange={(event) => {
                   if (isColorTheme(event.target.value)) setColorTheme(event.target.value);

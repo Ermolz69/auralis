@@ -19,6 +19,7 @@ use application::usecases::project::create_from_youtube::CreateProjectFromYoutub
 use application::usecases::project::delete::DeleteProjectUseCase;
 use application::usecases::project::get::GetProjectUseCase;
 use application::usecases::project::list::ListProjectsUseCase;
+use application::usecases::project::rename::RenameProjectUseCase;
 use application::usecases::transcript::get::GetTranscriptUseCase;
 use application::usecases::transcript::list_youtube_tracks::ListYoutubeSubtitleTracksUseCase;
 use ports::job_scheduler::JobSchedulerPort;
@@ -39,6 +40,7 @@ pub struct AppUseCases {
     >,
     pub get_project: GetProjectUseCase<RuntimeProjectRepository>,
     pub list_projects: ListProjectsUseCase<RuntimeProjectRepository>,
+    pub rename_project: RenameProjectUseCase<RuntimeProjectRepository>,
     pub delete_project: DeleteProjectUseCase,
     pub start_mock_pipeline:
         StartMockPipelineUseCase<RuntimeProjectRepository, YtDlpAdapter, RuntimeArtifactStore>,
@@ -93,6 +95,7 @@ pub fn setup_usecases(
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
+        rename_project: RenameProjectUseCase::new(project_repo.clone()),
         delete_project: DeleteProjectUseCase::new(
             storage_uow.clone(),
             job_runtime.clone(),

@@ -4,6 +4,8 @@ import { formatDuration } from '@/entities/media';
 import { useProjectContext } from '@/entities/project';
 import type { MediaSource } from '@/shared/api/contracts/media';
 import { Icon } from '@/shared/ui/icon';
+import { ImportLocalMediaButton } from '@/features/import-local-media';
+import { PasteYoutubeLink } from '@/features/paste-youtube-link';
 
 export function SourceWorkspace() {
   const { project } = useProjectContext();
@@ -82,7 +84,12 @@ export function SourceWorkspace() {
     >
       <div className="space-y-5">
         <div className="space-y-3">
-          <div className="flex flex-col gap-1.5">
+          {!source && (
+            <div className="rounded-md border border-border bg-surface-raised p-4">
+              <PasteYoutubeLink />
+            </div>
+          )}
+          {source && <div className="flex flex-col gap-1.5">
             <label htmlFor="project-source-url" className="text-xs font-medium text-muted">
               YouTube URL
             </label>
@@ -106,7 +113,7 @@ export function SourceWorkspace() {
               )}
             </div>
             <p className="text-[11px] text-subtle">Только для личного локального использования</p>
-          </div>
+          </div>}
 
           <div className="flex items-center gap-3" aria-hidden="true">
             <span className="h-px flex-1 bg-border/70" />
@@ -114,6 +121,11 @@ export function SourceWorkspace() {
             <span className="h-px flex-1 bg-border/70" />
           </div>
 
+          {!source ? (
+            <div className="rounded-md border border-border bg-surface-raised p-4">
+              <ImportLocalMediaButton />
+            </div>
+          ) : (
           <div
             aria-disabled="true"
             className="flex min-h-[68px] items-center gap-4 rounded-md border border-border/60 px-4 py-3.5 opacity-45"
@@ -133,6 +145,7 @@ export function SourceWorkspace() {
             </span>
             <span className="shrink-0 font-mono text-[11px] text-subtle">.mp4</span>
           </div>
+          )}
         </div>
 
         {metadata && (

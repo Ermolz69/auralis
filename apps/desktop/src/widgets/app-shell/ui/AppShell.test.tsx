@@ -209,6 +209,35 @@ describe('AppShell', () => {
     expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
   });
 
+  it('requires a project name before creation', async () => {
+    renderShell({ initialProject: null });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create project' }));
+
+    const message = await screen.findByText('Укажите название проекта');
+    const input = screen.getByRole('textbox', { name: 'Project name' });
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(input);
+
+    const alert = message.closest('[role="alert"]');
+    expect(alert).not.toBeNull();
+    fireEvent.click(within(alert as HTMLElement).getByRole('button', { name: 'Close toast' }));
+    await waitFor(() => expect(screen.queryByText('Укажите название проекта')).toBeNull());
+  });
+
+  it('resizes the project and pipeline panes with the keyboard', () => {
+    renderShell();
+
+    const separator = screen.getByRole('separator', {
+      name: 'Resize projects and pipeline panels',
+    });
+    expect(separator.getAttribute('aria-valuenow')).toBe('190');
+
+    fireEvent.keyDown(separator, { key: 'ArrowDown' });
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('202');
+  });
+
   it('dismisses global toast without leaving focus on a removed control', async () => {
     renderShell();
 

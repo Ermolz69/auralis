@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react';
 
-type ToastType = 'default' | 'success' | 'warning' | 'danger';
+export type ToastType = 'default' | 'success' | 'warning' | 'danger';
+export type ToastPhase = 'visible' | 'exiting';
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
 
 export interface ToastProps {
   id: string;
   type: ToastType;
+  phase: ToastPhase;
   title: string;
   description?: string;
   duration?: number;
+  action?: ToastAction;
+  dismissible?: boolean;
 }
 
-type ToastOptions = Omit<ToastProps, 'id' | 'type'>;
+export type ToastOptions = Omit<ToastProps, 'id' | 'type' | 'phase' | 'title'>;
+
+export const DEFAULT_TOAST_DURATION = 5000;
+export const TOAST_EXIT_DURATION = 260;
 
 let listeners: ((toasts: ToastProps[]) => void)[] = [];
 let toasts: ToastProps[] = [];
@@ -22,7 +34,7 @@ const notify = () => {
 export const toast = {
   show: (type: ToastType, title: string, options?: ToastOptions) => {
     const id = Math.random().toString(36).slice(2, 9);
-    toasts = [...toasts, { id, type, title, ...options }];
+    toasts = [...toasts, { id, type, phase: 'visible', title, ...options }];
     notify();
     return id;
   },
@@ -32,8 +44,17 @@ export const toast = {
   danger: (title: string, options?: ToastOptions) => toast.show('danger', title, options),
   error: (title: string, options?: ToastOptions) => toast.show('danger', title, options),
   dismiss: (id: string) => {
-    toasts = toasts.filter((t) => t.id !== id);
+    const target = toasts.find((item) => item.id === id);
+    if (!target || target.phase === 'exiting') return;
+    toasts = toasts.map((item) => (item.id === id ? { ...item, phase: 'exiting' } : item));
     notify();
+    globalThis.setTimeout(() => {
+      toasts = toasts.filter((item) => item.id !== id);
+      notify();
+    }, TOAST_EXIT_DURATION);
+  },
+  dismissAll: () => {
+    for (const item of toasts) toast.dismiss(item.id);
   },
 };
 

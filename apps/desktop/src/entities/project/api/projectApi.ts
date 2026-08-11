@@ -2,8 +2,8 @@ import { invoke } from '@/shared/api/tauri';
 import type { Project, CreateProjectResponse } from '../model/types';
 import type { SubtitleTrack } from '@/shared/api/contracts/subtitle';
 
-export async function createProjectFromYoutube(url: string): Promise<Project> {
-  return invoke('create_project_from_youtube_cmd', { url });
+export async function createProjectFromYoutube(url: string, projectId?: string): Promise<Project> {
+  return invoke('create_project_from_youtube_cmd', { url, ...(projectId ? { projectId } : {}) });
 }
 
 export async function startProjectMockPipeline(
@@ -32,4 +32,12 @@ export async function listProjects(): Promise<Project[]> {
 
 export async function deleteProject(projectId: string): Promise<void> {
   await invoke('delete_project_cmd', { projectId });
+}
+
+export async function renameProject(projectId: string, title: string): Promise<Project> {
+  return invoke('rename_project_cmd', { projectId, title });
+}
+
+export async function openProjectFolder(projectId: string): Promise<void> {
+  await invoke('open_project_folder_cmd', { projectId });
 }

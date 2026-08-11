@@ -160,9 +160,16 @@ impl Project {
     }
 
     // Setters for basic info
-    pub fn set_title(&mut self, title: String) {
-        self.title = title;
+    pub fn set_title(&mut self, title: String) -> Result<(), DomainError> {
+        let title = title.trim();
+        if title.is_empty() {
+            return Err(DomainError::ValidationError(
+                "Project title cannot be empty".to_string(),
+            ));
+        }
+        self.title = title.to_string();
         self.updated_at = Utc::now();
+        Ok(())
     }
 
     pub fn set_languages(&mut self, source: Option<LanguageCode>, target: Option<LanguageCode>) {

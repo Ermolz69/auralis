@@ -3,6 +3,12 @@ import React, { useId } from 'react';
 export interface SelectOption {
   value: string | number;
   label: string;
+  disabled?: boolean;
+}
+
+export interface SelectOptionGroup {
+  label: string;
+  options: SelectOption[];
 }
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -10,7 +16,8 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   helperText?: string;
   errorText?: string;
   error?: boolean;
-  options: SelectOption[];
+  options?: SelectOption[];
+  optionGroups?: SelectOptionGroup[];
   placeholder?: string;
 }
 
@@ -21,7 +28,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       helperText,
       errorText,
       error = false,
-      options,
+      options = [],
+      optionGroups = [],
       placeholder,
       className = '',
       id,
@@ -78,9 +86,28 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             )}
             {options.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-surface text-text">
+              <option
+                key={opt.value}
+                value={opt.value}
+                disabled={opt.disabled}
+                className="bg-surface text-text"
+              >
                 {opt.label}
               </option>
+            ))}
+            {optionGroups.map((group) => (
+              <optgroup key={group.label} label={group.label} className="bg-surface text-muted">
+                {group.options.map((opt) => (
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    disabled={opt.disabled}
+                    className="bg-surface text-text"
+                  >
+                    {opt.label}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">

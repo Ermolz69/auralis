@@ -7,16 +7,18 @@ use application::usecases::project::create_from_youtube::CreateProjectFromYoutub
 use application::usecases::project::delete::DeleteProjectRequest;
 use application::usecases::project::get::GetProjectRequest;
 use application::usecases::project::list::ListProjectsRequest;
+use application::usecases::project::rename::RenameProjectRequest;
 use application::usecases::transcript::get::GetTranscriptRequest;
 use application::usecases::transcript::list_youtube_tracks::ListYoutubeSubtitleTracksRequest;
 
 use std::sync::Arc;
-use tauri::{command, State};
+use tauri::{command, AppHandle, State};
 
 #[command]
 pub async fn create_project_cmd(
     title: String,
     usecases: State<'_, Arc<AppUseCases>>,
+    app_paths: State<'_, crate::bootstrap::paths::AppPaths>,
 ) -> Result<ProjectDto, CommandError> {
     let req = CreateProjectRequest { title };
     let create_res = usecases
@@ -25,15 +27,68 @@ pub async fn create_project_cmd(
         .await
         .map_err(CommandError::from)?;
 
+    std::fs::create_dir_all(app_paths.project(create_res.project.id()))
+        .map_err(|_| CommandError::Internal("Failed to create the project folder".to_string()))?;
     Ok(ProjectDto::from(&create_res.project))
+}
+
+#[command]
+pub async fn rename_project_cmd(
+    project_id: String,
+    title: String,
+    usecases: State<'_, Arc<AppUseCases>>,
+) -> Result<ProjectDto, CommandError> {
+    let project = usecases
+        .rename_project
+        .execute(RenameProjectRequest {
+            project_id: parse_project_id(&project_id)?,
+            title,
+        })
+        .await
+        .map_err(CommandError::from)?;
+    Ok(ProjectDto::from(&project))
+}
+
+#[command]
+pub async fn open_project_folder_cmd(
+    project_id: String,
+    app: AppHandle,
+    app_paths: State<'_, crate::bootstrap::paths::AppPaths>,
+    usecases: State<'_, Arc<AppUseCases>>,
+) -> Result<(), CommandError> {
+    let project_id = parse_project_id(&project_id)?;
+    usecases
+        .get_project
+        .execute(GetProjectRequest {
+            project_id: project_id.clone(),
+        })
+        .await
+        .map_err(CommandError::from)?;
+    let path = app_paths.project(&project_id);
+    std::fs::create_dir_all(&path)
+        .map_err(|_| CommandError::Internal("Failed to create the project folder".to_string()))?;
+    open_folder(&app, &path)?;
+    Ok(())
+}
+
+#[allow(deprecated)]
+fn open_folder(app: &AppHandle, path: &std::path::Path) -> Result<(), CommandError> {
+    use tauri_plugin_shell::ShellExt;
+    app.shell()
+        .open(path.to_string_lossy().into_owned(), None)
+        .map_err(|_| CommandError::Internal("Failed to open the project folder".to_string()))
 }
 
 #[command]
 pub async fn create_project_from_youtube_cmd(
     url: String,
+    project_id: Option<String>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectDto, CommandError> {
-    let req = CreateProjectFromYoutubeRequest { url };
+    let req = CreateProjectFromYoutubeRequest {
+        url,
+        project_id: project_id.map(|id| parse_project_id(&id)).transpose()?,
+    };
     let response = usecases
         .create_project_from_youtube
         .execute(req)

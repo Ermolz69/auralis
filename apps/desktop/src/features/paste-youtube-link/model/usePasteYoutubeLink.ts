@@ -49,7 +49,9 @@ export function usePasteYoutubeLink() {
     setIsStarting(true);
     setError(null);
     try {
-      const project = await createProjectFromYoutube(trimmedUrl);
+      const project = projectId
+        ? await createProjectFromYoutube(trimmedUrl, projectId)
+        : await createProjectFromYoutube(trimmedUrl);
       if (!isCurrentAttempt()) return null;
 
       setIsStarting(false);

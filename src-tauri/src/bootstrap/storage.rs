@@ -1,3 +1,4 @@
+use super::paths::AppPaths;
 use super::services::RuntimeServices;
 use adapters_storage::local::artifact_store::LocalArtifactStore;
 use adapters_storage::sqlite::{
@@ -6,7 +7,6 @@ use adapters_storage::sqlite::{
 };
 use ports::repository::JobRepository;
 use std::sync::Arc;
-use tauri::{App, Manager};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StorageBackend {
@@ -27,15 +27,14 @@ fn resolve_storage_backend(
 }
 
 pub fn setup_storage(
-    app: &App,
+    app_paths: &AppPaths,
     workspace_root: &std::path::Path,
 ) -> Result<(RuntimeServices, SqliteOutboxRepository), Box<dyn std::error::Error>> {
     match resolve_storage_backend(std::env::var("AURALIS_STORAGE").ok().as_deref())? {
         StorageBackend::Sqlite => {
-            let app_data_dir = app.path().app_data_dir()?;
-            std::fs::create_dir_all(&app_data_dir)?;
+            std::fs::create_dir_all(app_paths.root())?;
 
-            let db_path = app_data_dir.join("auralis.sqlite");
+            let db_path = app_paths.database();
 
             let pool =
                 tauri::async_runtime::block_on(adapters_storage::sqlite::connect_sqlite(db_path))?;
@@ -116,7 +115,7 @@ pub fn setup_storage(
                 );
             }
 
-            let artifacts_dir = app_data_dir.join("artifacts");
+            let artifacts_dir = app_paths.projects();
             std::fs::create_dir_all(&artifacts_dir)?;
             let store: crate::state::RuntimeArtifactStore =
                 Arc::new(LocalArtifactStore::new(artifacts_dir));

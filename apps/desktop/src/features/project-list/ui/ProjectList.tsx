@@ -1,5 +1,13 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react';
-import { deleteProject, listProjects, useProjectContext } from '@/entities/project';
+import {
+  deleteProject,
+  listProjects,
+  openProjectFolder,
+  removeProjectPreferences,
+  renameProject,
+  updateProjectPreferences,
+  useProjectContext,
+} from '@/entities/project';
 import { listen } from '@/shared/api/tauri';
 import type { Project } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
@@ -154,6 +162,7 @@ export const ProjectList = () => {
         reason: 'success',
       };
       setProjects((prev) => prev.filter((p) => p.id !== project.id));
+      removeProjectPreferences(project.id);
       clearProjectContextIfCurrent(project.id);
 
       await fetchProjects();
@@ -169,6 +178,7 @@ export const ProjectList = () => {
           reason: 'success',
         };
         setProjects((prev) => prev.filter((p) => p.id !== project.id));
+        removeProjectPreferences(project.id);
         clearProjectContextIfCurrent(project.id);
 
         await fetchProjects();
@@ -206,6 +216,26 @@ export const ProjectList = () => {
     setProjectToDelete(null);
   };
 
+  const handleRename = async (project: Project, title: string) => {
+    try {
+      const updated = await renameProject(project.id, title);
+      setProjects((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      if (currentProjectIdRef.current === updated.id) setProject(updated);
+      updateProjectPreferences(updated.id, {});
+      toast.success('Project renamed');
+    } catch (error) {
+      toast.error(toCommandError(error).message);
+    }
+  };
+
+  const handleOpenFolder = async (project: Project) => {
+    try {
+      await openProjectFolder(project.id);
+    } catch (error) {
+      toast.error(toCommandError(error).message);
+    }
+  };
+
   return (
     <section className="flex w-full flex-col gap-3" aria-labelledby="recent-projects-heading">
       <DeleteProjectDialog
@@ -236,6 +266,8 @@ export const ProjectList = () => {
           deleteButtonRefs={deleteButtonRefs}
           onOpen={handleOpenProject}
           onDelete={handleDeleteClick}
+          onRename={(project, title) => void handleRename(project, title)}
+          onOpenFolder={(project) => void handleOpenFolder(project)}
         />
       )}
     </section>

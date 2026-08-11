@@ -9,6 +9,8 @@ type ProjectListRowsProps = {
   deleteButtonRefs: RefObject<Map<string, HTMLButtonElement>>;
   onOpen: (project: Project) => void;
   onDelete: (project: Project) => void;
+  onRename?: (project: Project, title: string) => void;
+  onOpenFolder?: (project: Project) => void;
 };
 
 export function ProjectListRows({
@@ -18,6 +20,8 @@ export function ProjectListRows({
   deleteButtonRefs,
   onOpen,
   onDelete,
+  onRename,
+  onOpenFolder,
 }: ProjectListRowsProps) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5 overflow-y-auto">
@@ -37,6 +41,8 @@ export function ProjectListRows({
           }}
           onOpen={onOpen}
           onDelete={onDelete}
+          onRename={onRename}
+          onOpenFolder={onOpenFolder}
         />
       ))}
     </div>

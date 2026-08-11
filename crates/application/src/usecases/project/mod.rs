@@ -5,3 +5,4 @@ pub mod get;
 pub mod import_source;
 pub mod lifecycle;
 pub mod list;
+pub mod rename;

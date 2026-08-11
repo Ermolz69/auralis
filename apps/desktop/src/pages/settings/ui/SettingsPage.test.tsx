@@ -16,10 +16,10 @@ describe('SettingsPage', () => {
     );
 
     const themeSelect = screen.getByLabelText('Color theme');
-    fireEvent.change(themeSelect, { target: { value: 'violet' } });
+    fireEvent.change(themeSelect, { target: { value: 'frost' } });
 
-    expect(document.documentElement.getAttribute('data-color-theme')).toBe('violet');
-    expect(localStorage.getItem('auralis:color-theme:v1')).toBe('violet');
+    expect(document.documentElement.getAttribute('data-color-theme')).toBe('frost');
+    expect(localStorage.getItem('auralis:color-theme:v1')).toBe('frost');
   });
 
   it('keeps unsupported settings visibly unavailable', () => {

@@ -1,10 +1,19 @@
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { JobContext, isActiveJobStatus, type JobStatus } from '@/entities/job';
 import { formatDuration, formatProjectTitle } from '@/entities/media';
-import { useProjectContext } from '@/entities/project';
+import {
+  createProject,
+  getProjectPreferences,
+  listProjects,
+  projectPreferencesEvent,
+  useProjectContext,
+  type Project,
+} from '@/entities/project';
+import { toCommandError } from '@/shared/api/contracts';
 import { useNavigation, type PipelineStep, type View } from '@/shared/router';
 import { Button } from '@/shared/ui/button';
 import { Icon, type IconName } from '@/shared/ui/icon';
+import { toast } from '@/shared/ui/toast';
 
 const locationLabel: Record<View, string> = {
   home: 'Проекты',
@@ -19,12 +28,38 @@ const stepLabel: Record<PipelineStep, string> = {
 
 export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue?: ReactNode }) {
   const { currentView, setCurrentView, pipelineStep, setPipelineStep } = useNavigation();
-  const { projectId, project } = useProjectContext();
+  const { projectId, project, setProjectId, setProject } = useProjectContext();
   const jobState = useContext(JobContext);
   const mainRef = useRef<HTMLElement>(null);
+  const projectNameRef = useRef<HTMLInputElement>(null);
+  const sidebarBodyRef = useRef<HTMLDivElement>(null);
   const [settingsReturnView, setSettingsReturnView] = useState<View>('home');
   const [queueOpen, setQueueOpen] = useState(false);
-  const [projectFilter, setProjectFilter] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [projectNameRequired, setProjectNameRequired] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [pinnedProjects, setPinnedProjects] = useState<Project[]>([]);
+  const [projectsPaneHeight, setProjectsPaneHeight] = useState(190);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshPinned = async () => {
+      try {
+        const projects = await listProjects();
+        if (!cancelled) {
+          setPinnedProjects(projects.filter((item) => getProjectPreferences(item.id).pinned));
+        }
+      } catch {
+        if (!cancelled) setPinnedProjects([]);
+      }
+    };
+    void refreshPinned();
+    window.addEventListener(projectPreferencesEvent, refreshPinned);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(projectPreferencesEvent, refreshPinned);
+    };
+  }, []);
 
   useEffect(() => {
     const main = mainRef.current;
@@ -62,14 +97,36 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
   const returnFromSettings = () => {
     setCurrentView(settingsReturnView === 'project' && projectId ? 'project' : 'home');
   };
+  const handleCreateProject = async () => {
+    const title = projectName.trim();
+    if (!title) {
+      setProjectNameRequired(true);
+      projectNameRef.current?.focus();
+      toast.warning('Укажите название проекта');
+      return;
+    }
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const created = await createProject(title);
+      setProjectId(created.id);
+      setProject(created);
+      setPipelineStep('source');
+      setCurrentView('project');
+      setProjectName('');
+      setProjectNameRequired(false);
+      toast.success('Project created');
+    } catch (error) {
+      toast.error(toCommandError(error).message);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const jobs = useMemo(() => Object.values(jobState?.jobs ?? {}), [jobState?.jobs]);
   const activeJobs = jobs.filter((job) => isActiveJobStatus(job.status));
   const pipelineStatus = getPipelineStatus(project?.source != null, jobs.map((job) => job.status));
   const projectTitle = project ? formatProjectTitle(project.title, project.source) : 'Проект не открыт';
-  const normalizedFilter = projectFilter.trim().toLocaleLowerCase('ru-RU');
-  const showCurrentProject =
-    Boolean(projectId) && (!normalizedFilter || projectTitle.toLocaleLowerCase('ru-RU').includes(normalizedFilter));
 
   return (
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-canvas text-text">
@@ -81,18 +138,26 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
               <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-bg bg-success" />
             </div>
             <span className="flex-1 text-sm font-semibold">Auralis</span>
-            <Icon name="ChevronDown" size={13} color="muted" />
           </div>
 
-          <div className="hidden min-h-0 flex-1 flex-col lg:flex">
-            <section className="shrink-0 border-b border-border/80 pb-2">
+          <div ref={sidebarBodyRef} className="hidden min-h-0 flex-1 flex-col lg:flex">
+            <section
+              className="shrink-0 overflow-y-auto pb-2"
+              style={{ height: projectsPaneHeight }}
+            >
               <SectionLabel label="Проекты" />
-              <div className="flex items-center gap-1.5 px-1.5">
+              <form
+                className="flex items-center gap-1.5 px-1.5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleCreateProject();
+                }}
+              >
                 <button
-                  type="button"
-                  onClick={goToHome}
-                  aria-label="Create or open project"
-                  title="Открыть список проектов"
+                  type="submit"
+                  aria-label="Create project"
+                  title="Создать проект"
+                  disabled={isCreating}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-raised text-subtle transition-colors hover:border-border-strong hover:text-primary"
                 >
                   <Icon name="FolderPlus" size={13} />
@@ -105,42 +170,106 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
                     className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 opacity-55"
                   />
                   <input
-                    type="search"
-                    value={projectFilter}
-                    onChange={(event) => setProjectFilter(event.target.value)}
-                    aria-label="Filter current project"
+                    ref={projectNameRef}
+                    type="text"
+                    value={projectName}
+                    onChange={(event) => {
+                      setProjectName(event.target.value);
+                      if (event.target.value.trim()) setProjectNameRequired(false);
+                    }}
+                    aria-label="Project name"
+                    aria-invalid={projectNameRequired}
                     placeholder="Название проекта..."
-                    className="h-8 w-full rounded-sm border border-border bg-surface-raised pl-7 pr-2 text-[11px] text-text outline-none placeholder:text-subtle focus:border-primary focus:ring-1 focus:ring-primary/30"
+                    className={`h-8 w-full rounded-sm border bg-surface-raised pl-7 pr-7 text-[11px] text-text outline-none placeholder:text-subtle focus:ring-1 ${
+                      projectNameRequired
+                        ? 'border-danger focus:border-danger focus:ring-danger/30'
+                        : 'border-border focus:border-primary focus:ring-primary/30'
+                    }`}
                   />
+                  {projectName && (
+                    <button
+                      type="button"
+                      aria-label="Clear project name"
+                      onClick={() => {
+                        setProjectName('');
+                        projectNameRef.current?.focus();
+                      }}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-xs p-1 text-subtle hover:text-text"
+                    >
+                      <Icon name="X" size={11} />
+                    </button>
+                  )}
                 </div>
-              </div>
+              </form>
 
               <p className="px-2.5 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-wider text-subtle">
                 Закреплённые
               </p>
-              {showCurrentProject ? (
-                <button
-                  type="button"
-                  onClick={goToProject}
-                  className={`mx-1 flex w-[calc(100%_-_0.5rem)] items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs transition-colors ${
-                    currentView === 'project'
-                      ? 'bg-primary/7 text-text'
-                      : 'text-muted hover:bg-surface hover:text-text'
-                  }`}
-                >
-                  <Icon name="Folder" size={12} color={currentView === 'project' ? 'primary' : 'muted'} />
-                  <span className="min-w-0 flex-1 truncate font-semibold">{projectTitle}</span>
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                </button>
+              {pinnedProjects.length > 0 ? (
+                pinnedProjects.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setProjectId(item.id);
+                      setProject(item);
+                      setPipelineStep('source');
+                      setCurrentView('project');
+                    }}
+                    className={`mx-1 flex w-[calc(100%_-_0.5rem)] items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs transition-colors ${
+                      currentView === 'project' && projectId === item.id
+                        ? 'bg-primary/7 text-text'
+                        : 'text-muted hover:bg-surface hover:text-text'
+                    }`}
+                  >
+                    <Icon name="Folder" size={12} color={projectId === item.id ? 'primary' : 'muted'} />
+                    <span className="min-w-0 flex-1 truncate font-semibold">{item.title}</span>
+                  </button>
+                ))
               ) : (
-                <p className="px-3 py-1.5 text-[11px] text-subtle">
-                  {projectId ? 'Совпадений нет' : 'Нет активного проекта'}
-                </p>
+                <p className="px-3 py-1.5 text-[11px] text-subtle">Нет закреплённых проектов</p>
               )}
               <p className="px-2.5 pt-2 text-[9px] font-semibold uppercase tracking-wider text-subtle">
                 Проекты
               </p>
             </section>
+
+            <div
+              role="separator"
+              aria-label="Resize projects and pipeline panels"
+              aria-orientation="horizontal"
+              aria-valuenow={Math.round(projectsPaneHeight)}
+              tabIndex={0}
+              title="Перетащите, чтобы изменить высоту панелей"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                const startY = event.clientY;
+                const startHeight = projectsPaneHeight;
+                const bodyHeight = sidebarBodyRef.current?.clientHeight ?? 0;
+                const maxHeight = Math.max(150, bodyHeight - 120);
+                const handleMove = (moveEvent: PointerEvent) => {
+                  setProjectsPaneHeight(
+                    Math.min(maxHeight, Math.max(120, startHeight + moveEvent.clientY - startY)),
+                  );
+                };
+                const handleEnd = () => {
+                  window.removeEventListener('pointermove', handleMove);
+                  window.removeEventListener('pointerup', handleEnd);
+                };
+                window.addEventListener('pointermove', handleMove);
+                window.addEventListener('pointerup', handleEnd);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                event.preventDefault();
+                setProjectsPaneHeight((height) =>
+                  Math.max(120, height + (event.key === 'ArrowUp' ? -12 : 12)),
+                );
+              }}
+              className="group relative h-1.5 shrink-0 cursor-row-resize touch-none border-y border-border/60 bg-canvas outline-none hover:bg-primary/15 focus-visible:bg-primary/20"
+            >
+              <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border-strong transition-colors group-hover:bg-primary" />
+            </div>
 
             <section className="min-h-0 flex-1 overflow-y-auto">
               <SectionLabel label="Pipeline" />

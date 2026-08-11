@@ -14,8 +14,16 @@ export interface CommandMap {
     result: Project;
   };
   create_project_from_youtube_cmd: {
-    args: { url: string };
+    args: { url: string; projectId?: string };
     result: Project;
+  };
+  rename_project_cmd: {
+    args: { projectId: string; title: string };
+    result: Project;
+  };
+  open_project_folder_cmd: {
+    args: { projectId: string };
+    result: null;
   };
   start_project_mock_pipeline_cmd: {
     args: {

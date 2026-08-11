@@ -27,7 +27,14 @@ impl<R: ProjectRepository> CreateProjectUseCase<R> {
         &self,
         request: CreateProjectRequest,
     ) -> Result<CreateProjectResponse, ApplicationError> {
-        let project = Project::new(request.title);
+        let title = request.title.trim();
+        if title.is_empty() {
+            return Err(domain::error::DomainError::ValidationError(
+                "Project title cannot be empty".to_string(),
+            )
+            .into());
+        }
+        let project = Project::new(title.to_string());
         let created_project = self.project_repo.create(project).await?;
 
         Ok(CreateProjectResponse {
@@ -61,5 +68,21 @@ mod tests {
         // Verify it was saved
         let saved = repo.get(response.project.id()).await.unwrap().unwrap();
         assert_eq!(saved.id(), response.project.id());
+    }
+
+    #[tokio::test]
+    async fn rejects_empty_project_title() {
+        let repo = InMemoryProjectRepository::new(std::sync::Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
+        let use_case = CreateProjectUseCase::new(repo);
+
+        let result = use_case
+            .execute(CreateProjectRequest {
+                title: "   ".to_string(),
+            })
+            .await;
+
+        assert!(matches!(result, Err(ApplicationError::Domain(_))));
     }
 }

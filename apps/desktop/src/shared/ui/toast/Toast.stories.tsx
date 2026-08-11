@@ -108,3 +108,22 @@ export const LongMessage: Story = {
     </Button>
   ),
 };
+
+export const WithAction: Story = {
+  render: () => (
+    <Button
+      onClick={() =>
+        toast.warning('Источник не выбран', {
+          description: 'Подключите локальное видео или ссылку YouTube, чтобы продолжить.',
+          duration: 7000,
+          action: {
+            label: 'Открыть источник',
+            onClick: () => undefined,
+          },
+        })
+      }
+    >
+      Show Action Toast
+    </Button>
+  ),
+};

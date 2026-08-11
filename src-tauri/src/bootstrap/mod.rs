@@ -1,4 +1,5 @@
 pub mod media_tools;
+pub mod paths;
 pub mod services;
 pub mod storage;
 pub mod usecases;
@@ -16,14 +17,11 @@ pub fn setup(
     validated_settings: crate::observability::config::ValidatedObservabilitySettings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
+    let app_paths = paths::AppPaths::new(app.path().app_data_dir()?);
+    app.manage(app_paths.clone());
 
     // 0a. Initialize observability
-    let log_dir = match app.path().app_log_dir() {
-        Ok(dir) => crate::observability::config::LogDestination::Directory(dir),
-        Err(_) => crate::observability::config::LogDestination::Unavailable(
-            crate::observability::config::LogDestinationErrorKind::PathResolutionFailed,
-        ),
-    };
+    let log_dir = crate::observability::config::LogDestination::Directory(app_paths.logs());
 
     let config = crate::observability::config::ObservabilityConfig {
         settings: validated_settings,
@@ -40,16 +38,11 @@ pub fn setup(
     tracing::info!(action = "observability_init", status = %mode_str, "Observability initialized");
 
     // 0. Compute workspace root
-    let app_path = app.path();
-    let workspace_root = match app_path.app_cache_dir() {
-        Ok(dir) => dir,
-        Err(_) => app_path.app_data_dir()?,
-    }
-    .join("workspaces");
+    let workspace_root = app_paths.workspaces();
     std::fs::create_dir_all(&workspace_root)?;
 
     // 1. Setup storage Adapter (fallible)
-    let (services, outbox_repo) = storage::setup_storage(app, &workspace_root)?;
+    let (services, outbox_repo) = storage::setup_storage(&app_paths, &workspace_root)?;
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
         workspace_root.clone(),

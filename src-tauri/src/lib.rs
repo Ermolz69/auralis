@@ -73,12 +73,15 @@ pub fn run() -> Result<(), AppRunError> {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         .setup(move |app| {
             bootstrap::setup(app, outbox_config, validated_settings)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::project::create_project_cmd,
+            commands::project::rename_project_cmd,
+            commands::project::open_project_folder_cmd,
             commands::project::create_project_from_youtube_cmd,
             commands::project::list_youtube_subtitle_tracks_cmd,
             commands::project::get_transcript_cmd,
