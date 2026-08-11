@@ -15,6 +15,7 @@ use ports::workspace::TempWorkspacePort;
 #[derive(Debug)]
 pub struct StartMockPipelineRequest {
     pub project_id: ProjectId,
+    pub selected_subtitle_track: Option<domain::media::SubtitleTrack>,
 }
 
 #[derive(Debug)]
@@ -130,7 +131,8 @@ impl<
             self.artifact_store.clone(),
             self.workspace_port.clone(),
             self.job_runtime.clone(),
-        );
+        )
+        .with_selected_subtitle_track(request.selected_subtitle_track);
 
         let span = tracing::info_span!("job_execution", job_id = %job_id, project_id = %request.project_id, action = "job_execution");
 

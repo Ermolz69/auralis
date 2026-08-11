@@ -43,8 +43,8 @@ describe('PasteYoutubeLink', () => {
     render(<PasteYoutubeLink />);
 
     expect(screen.getByRole('button', { name: 'Add from YouTube' })).not.toBeNull();
-    expect(screen.getByRole('status').textContent).toContain('Creating project');
-    expect(screen.getByText(/running subtitle import job/i)).not.toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('Loading video metadata');
+    expect(screen.getByText(/subtitles start on step 2/i)).not.toBeNull();
   });
 
   it('links accessible errors to the input', () => {

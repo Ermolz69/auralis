@@ -23,7 +23,7 @@ export function useImportLocalMedia() {
     captureToken,
     validateToken,
   } = useProjectContext();
-  const { setCurrentView } = useNavigation();
+  const { setCurrentView, setPipelineStep = () => undefined } = useNavigation();
 
   const latestAttemptRef = useRef(0);
   const activeAttemptRef = useRef<number | null>(null);
@@ -97,6 +97,7 @@ export function useImportLocalMedia() {
 
       setProjectId(updatedProject.id);
       setProject(updatedProject);
+      setPipelineStep('source');
       setCurrentView('project');
     } catch (err: any) {
       if (!isCurrentAttempt()) return;
@@ -118,6 +119,7 @@ export function useImportLocalMedia() {
     if (!draftProject) return;
     setProjectId(draftProject.id);
     setProject(draftProject);
+    setPipelineStep('source');
     setCurrentView('project');
   };
 

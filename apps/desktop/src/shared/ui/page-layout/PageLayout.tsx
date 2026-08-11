@@ -3,7 +3,7 @@ import React from 'react';
 // Root container for a page. Ensures dark theme bg and min height.
 export const Page = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className = '', ...props }, ref) => (
-    <div ref={ref} className={`min-h-screen w-full bg-bg text-text ${className}`} {...props} />
+    <div ref={ref} className={`min-h-full w-full bg-bg text-text ${className}`} {...props} />
   ),
 );
 Page.displayName = 'Page';
@@ -22,7 +22,7 @@ export const PageContainer = React.forwardRef<HTMLDivElement, PageContainerProps
     return (
       <div
         ref={ref}
-        className={`mx-auto px-6 lg:px-8 py-8 flex flex-col gap-8 min-h-screen ${sizes[size]} ${className}`}
+        className={`mx-auto flex min-h-full flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 ${sizes[size]} ${className}`}
         {...props}
       />
     );
@@ -55,7 +55,7 @@ export const PageTitle = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <h1
     ref={ref}
-    className={`text-2xl font-bold tracking-tight text-text sm:text-3xl ${className}`}
+    className={`text-xl font-semibold tracking-tight text-text sm:text-2xl ${className}`}
     {...props}
   />
 ));
@@ -65,7 +65,7 @@ export const PageDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className = '', ...props }, ref) => (
-  <p ref={ref} className={`text-base text-muted ${className}`} {...props} />
+  <p ref={ref} className={`text-sm text-muted ${className}`} {...props} />
 ));
 PageDescription.displayName = 'PageDescription';
 

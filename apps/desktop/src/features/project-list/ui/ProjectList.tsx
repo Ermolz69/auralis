@@ -26,7 +26,7 @@ export const ProjectList = () => {
     beginProjectDeletion,
     finishProjectDeletion,
   } = useProjectContext();
-  const { setCurrentView } = useNavigation();
+  const { setCurrentView, setPipelineStep = () => undefined } = useNavigation();
 
   const fetchGenerationRef = useRef(0);
   const pendingFocusTargetRef = useRef<{
@@ -122,6 +122,7 @@ export const ProjectList = () => {
     if (deletingProjectIdRef.current !== null) return;
     setProjectId(project.id);
     setProject(project);
+    setPipelineStep('source');
     setCurrentView('project');
   };
 
@@ -206,7 +207,7 @@ export const ProjectList = () => {
   };
 
   return (
-    <section className="w-full flex flex-col gap-3 mt-8" aria-labelledby="recent-projects-heading">
+    <section className="flex w-full flex-col gap-3" aria-labelledby="recent-projects-heading">
       <DeleteProjectDialog
         project={projectToDelete}
         isDeleting={deletingProjectId !== null}
@@ -217,9 +218,9 @@ export const ProjectList = () => {
         id="recent-projects-heading"
         ref={headingRef}
         tabIndex={-1}
-        className="text-sm font-semibold text-muted uppercase tracking-wider mb-2 text-left focus:outline-none focus:text-text"
+        className="mb-1 text-left text-[11px] font-semibold uppercase tracking-wider text-muted focus:outline-none focus:text-text"
       >
-        Recent Projects
+        Recent projects
       </h3>
       {isLoading ? (
         <ProjectListLoadingState />

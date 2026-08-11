@@ -4,8 +4,17 @@ import { useProjectContext, startProjectMockPipeline } from '@/entities/project'
 import { toast } from '@/shared/ui/toast';
 import { toCommandError } from '@/shared/api/contracts';
 import { supportsSubtitleImport } from '@/entities/media';
+import type { SubtitleTrack } from '@/entities/transcript';
 
-export const RunDubbing = () => {
+export const RunDubbing = ({
+  subtitleTrack,
+  label,
+  disabled = false,
+}: {
+  subtitleTrack?: SubtitleTrack | null;
+  label?: string;
+  disabled?: boolean;
+} = {}) => {
   const [isStarting, setIsStarting] = useState(false);
   const {
     project,
@@ -43,7 +52,9 @@ export const RunDubbing = () => {
 
     setIsStarting(true);
     try {
-      const response = await startProjectMockPipeline(project.id);
+      const response = subtitleTrack
+        ? await startProjectMockPipeline(project.id, subtitleTrack)
+        : await startProjectMockPipeline(project.id);
       if (!isCurrentAttempt()) return;
 
       setIsStarting(false);
@@ -70,12 +81,17 @@ export const RunDubbing = () => {
   if (project?.id && isEligible && !canImportSubtitles) return null;
 
   const isDisabled =
-    !project?.id || isStarting || !isEligible || !canImportSubtitles || deletingProjectId !== null;
+    disabled ||
+    !project?.id ||
+    isStarting ||
+    !isEligible ||
+    !canImportSubtitles ||
+    deletingProjectId !== null;
 
   return (
     <div className="flex flex-col items-end gap-1">
       <Button variant="primary" onClick={handleStart} disabled={isDisabled}>
-        {isStarting ? 'Starting subtitle import...' : 'Import subtitles'}
+        {isStarting ? 'Starting subtitle import...' : label || 'Import subtitles'}
       </Button>
     </div>
   );

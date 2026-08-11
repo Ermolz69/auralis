@@ -13,18 +13,18 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
       'inline-flex items-center justify-center rounded-full font-medium shrink-0 gap-1.5';
 
     const variants = {
-      default: 'bg-surface text-text border border-muted',
-      primary: 'bg-primary/20 text-primary-foreground border border-primary/40',
-      accent: 'bg-accent/20 text-accent-foreground border border-accent/40',
-      success: 'bg-success/20 text-success-foreground border border-success/40',
-      warning: 'bg-warning/20 text-warning-foreground border border-warning/40',
-      danger: 'bg-danger/20 text-danger-foreground border border-danger/40',
-      muted: 'bg-secondary text-text border border-muted/40',
+      default: 'border border-border bg-surface-hover text-muted',
+      primary: 'border border-primary/30 bg-primary-soft text-primary',
+      accent: 'border border-accent/30 bg-accent-soft text-accent',
+      success: 'border border-success/30 bg-success-soft text-success',
+      warning: 'border border-warning/30 bg-warning-soft text-warning',
+      danger: 'border border-danger/30 bg-danger-soft text-danger',
+      muted: 'border border-border bg-surface-hover text-muted',
     };
 
     const sizes = {
       sm: 'px-2 py-0.5 text-xs',
-      md: 'px-2.5 py-1 text-sm',
+      md: 'px-2.5 py-1 text-xs',
     };
 
     return (

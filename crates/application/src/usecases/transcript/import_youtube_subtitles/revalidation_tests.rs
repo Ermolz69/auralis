@@ -28,6 +28,7 @@ async fn test_workspace_error_composites_with_primary_error() {
         }),
         Arc::new(MockSubtitleSource {
             fail_download: false,
+            list_calls: None,
         }),
         Arc::new(MockArtifactStoreForSubs {
             fail_delete: true,
@@ -48,6 +49,7 @@ async fn test_workspace_error_composites_with_primary_error() {
             allow_auto_generated: false,
             cancellation_token: tokio_util::sync::CancellationToken::new(),
             job_id,
+            selected_track: None,
         })
         .await;
 
@@ -94,6 +96,7 @@ async fn test_cancellation_during_download() {
         }),
         Arc::new(MockSubtitleSource {
             fail_download: false,
+            list_calls: None,
         }),
         Arc::new(MockArtifactStoreForSubs {
             fail_delete: false,
@@ -114,6 +117,7 @@ async fn test_cancellation_during_download() {
             allow_auto_generated: false,
             cancellation_token: cancel_token,
             job_id,
+            selected_track: None,
         })
         .await;
 
@@ -162,6 +166,7 @@ async fn test_revalidation_job_id_mismatch_fails() {
         }),
         Arc::new(MockSubtitleSource {
             fail_download: false,
+            list_calls: None,
         }),
         Arc::new(MockArtifactStoreForSubs {
             fail_delete: false,
@@ -182,6 +187,7 @@ async fn test_revalidation_job_id_mismatch_fails() {
             allow_auto_generated: false,
             cancellation_token: tokio_util::sync::CancellationToken::new(),
             job_id: mismatched_job_id, // Pass incorrect job_id
+            selected_track: None,
         })
         .await;
 
@@ -228,6 +234,7 @@ async fn test_revalidation_status_mismatch_fails() {
         }),
         Arc::new(MockSubtitleSource {
             fail_download: false,
+            list_calls: None,
         }),
         Arc::new(MockArtifactStoreForSubs {
             fail_delete: false,
@@ -248,6 +255,7 @@ async fn test_revalidation_status_mismatch_fails() {
             allow_auto_generated: false,
             cancellation_token: tokio_util::sync::CancellationToken::new(),
             job_id,
+            selected_track: None,
         })
         .await;
 

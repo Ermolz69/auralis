@@ -59,6 +59,14 @@ impl From<YtDlpError> for PortError {
                 tool: "yt-dlp".to_string(),
                 message: "yt-dlp process timed out".to_string(),
             },
+            YtDlpError::CommandFailed { stderr, .. }
+                if stderr.contains("HTTP Error 429") || stderr.contains("Too Many Requests") =>
+            {
+                PortError::ExternalToolFailed {
+                    tool: "yt-dlp".to_string(),
+                    message: "YouTube rate limit reached; try again later".to_string(),
+                }
+            }
             YtDlpError::CommandFailed { .. } => PortError::ExternalToolFailed {
                 tool: "yt-dlp".to_string(),
                 message: "yt-dlp command failed during execution".to_string(),
@@ -84,5 +92,27 @@ impl From<YtDlpError> for PortError {
                 message: "Failed to create download directory".to_string(),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_youtube_rate_limit_without_exposing_stderr() {
+        let error = YtDlpError::CommandFailed {
+            code: Some(1),
+            stderr: "ERROR: HTTP Error 429: Too Many Requests https://secret.example".into(),
+        };
+
+        let mapped = PortError::from(error);
+        assert!(matches!(
+            mapped,
+            PortError::ExternalToolFailed { ref tool, ref message }
+                if tool == "yt-dlp"
+                    && message == "YouTube rate limit reached; try again later"
+                    && !message.contains("secret.example")
+        ));
     }
 }

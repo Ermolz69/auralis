@@ -3,6 +3,7 @@ import { HomePage } from './pages/home';
 import { ProjectPage } from './pages/project';
 import { SettingsPage } from './pages/settings';
 import { AppShell } from './widgets/app-shell';
+import { JobQueuePanel } from './widgets/job-queue-panel';
 import { useNavigation } from './shared/router';
 import { useProjectContext } from './entities/project';
 
@@ -17,7 +18,7 @@ function App() {
   }, [currentView, projectId, setCurrentView]);
 
   return (
-    <AppShell>
+    <AppShell jobQueue={<JobQueuePanel className="h-[calc(100%-2.5rem)]" />}>
       {currentView === 'home' && <HomePage />}
       {currentView === 'project' && projectId && <ProjectPage />}
       {currentView === 'settings' && <SettingsPage />}

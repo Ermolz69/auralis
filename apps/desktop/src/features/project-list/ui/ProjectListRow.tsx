@@ -7,7 +7,6 @@ import {
   getProjectStatusTone,
 } from '@/entities/media';
 import { Button } from '@/shared/ui/button';
-import { Card } from '@/shared/ui/card';
 import { Icon } from '@/shared/ui/icon';
 
 type ProjectListRowProps = {
@@ -36,68 +35,65 @@ export const ProjectListRow = ({
   const statusClass = {
     success: 'bg-success',
     danger: 'bg-danger',
-    primary: 'bg-primary animate-pulse',
+    primary: 'animate-pulse bg-primary signal-glow-sm',
     warning: 'bg-warning',
     muted: 'bg-muted',
   }[statusTone];
+  const updatedLabel = new Date(project.updatedAt).toLocaleDateString();
 
   return (
-    <Card
-      className={`group relative overflow-hidden p-0 transition-colors flex items-center justify-between shadow-sm border border-secondary min-w-0 ${isDeleting ? 'opacity-50' : 'hover:bg-bg/50'}`}
+    <div
+      className={`group flex min-w-0 items-center rounded-md transition-colors hover:bg-surface-raised ${isDeleting ? 'opacity-45' : ''}`}
       aria-busy={isDeleting}
     >
       <button
         type="button"
         ref={openButtonRef}
-        className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left w-full h-full focus:outline-none focus:bg-bg/50 focus-visible:ring-2 focus-visible:ring-focus"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2.5 text-left focus:outline-none"
         onClick={() => onOpen(project)}
         disabled={isAnyDeleting}
         aria-label={`Open ${displayTitle}. Status: ${statusLabel}. Source: ${sourceLabel}`}
       >
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-raised text-muted transition-colors group-hover:bg-surface-hover">
           <Icon
             name={
               project.source?.kind === 'youtubeUrl' || project.source?.kind === 'remoteUrl'
                 ? 'Video'
-                : 'Film'
+                : 'Folder'
             }
-            size="md"
+            size={14}
           />
-        </div>
-        <div className="flex min-w-0 flex-col text-left flex-1">
-          <span className="text-text font-medium truncate max-w-full">{displayTitle}</span>
-          <span className="text-muted text-xs flex items-center gap-1.5 mt-0.5">
-            <span className={`w-2 h-2 rounded-full ${statusClass}`} aria-hidden="true"></span>
-            <span className="sr-only">Status: </span>
-            {statusLabel}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-medium text-text">{displayTitle}</span>
+          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-subtle">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusClass}`} />
+            <span>{statusLabel}</span>
+            <span aria-hidden="true">·</span>
+            <span className="truncate" aria-label={`Source: ${sourceLabel}`}>
+              {sourceLabel}
+            </span>
           </span>
-          <span
-            className="text-muted text-xs truncate max-w-full"
-            aria-label={`Source: ${sourceLabel}`}
-          >
-            <span className="sr-only">Source: </span>
-            {sourceLabel}
-          </span>
-        </div>
-        <div className="shrink-0 text-muted text-xs pr-4">
-          {new Date(project.updatedAt).toLocaleDateString()}
-        </div>
+        </span>
+        <span className="hidden shrink-0 font-mono text-[10px] text-subtle sm:inline">
+          {updatedLabel}
+        </span>
       </button>
 
-      <div className="pr-4 shrink-0 flex items-center">
+      <div className="shrink-0 pr-2">
         <Button
           ref={deleteButtonRef}
           variant="ghost"
           size="sm"
-          className="opacity-0 focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 transition-opacity"
+          className="!px-2 opacity-0 transition-opacity focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
           loading={isDeleting}
           disabled={isAnyDeleting}
           onClick={() => onDelete(project)}
           title="Delete Project"
           aria-label={`Delete ${displayTitle}`}
-          leftIcon={!isDeleting ? <Icon name="Trash2" size="sm" /> : undefined}
+          leftIcon={!isDeleting ? <Icon name="Trash2" size={14} /> : undefined}
         />
       </div>
-    </Card>
+    </div>
   );
 };

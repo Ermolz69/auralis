@@ -30,7 +30,7 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
 
     // We can just set the CSS color property via a class or style, as lucide uses currentColor for stroke
     const colorClassMap: Record<string, string> = {
-      default: 'text-text', // inheriting or explicitly setting
+      default: '',
       primary: 'text-primary',
       muted: 'text-muted',
       danger: 'text-danger',

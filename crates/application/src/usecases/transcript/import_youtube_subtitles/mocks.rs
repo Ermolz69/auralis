@@ -34,10 +34,14 @@ impl ProjectRepository for MockProjectRepo {
 
 pub(crate) struct MockSubtitleSource {
     pub(crate) fail_download: bool,
+    pub(crate) list_calls: Option<Arc<std::sync::atomic::AtomicUsize>>,
 }
 #[async_trait]
 impl SubtitleSourcePort for MockSubtitleSource {
     async fn list_subtitles(&self, _source: &MediaSource) -> Result<Vec<SubtitleTrack>, PortError> {
+        if let Some(calls) = &self.list_calls {
+            calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         Ok(vec![SubtitleTrack {
             id: "1".to_string(),
             language: "en".to_string(),

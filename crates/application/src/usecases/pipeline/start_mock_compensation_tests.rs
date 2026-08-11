@@ -101,6 +101,7 @@ async fn test_enqueue_failure_compensates_and_marks_failed() {
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),
+        selected_subtitle_track: None,
     };
 
     let response = use_case.execute(request).await;
@@ -243,6 +244,7 @@ async fn test_enqueue_and_compensation_failure_returns_both_errors() {
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),
+        selected_subtitle_track: None,
     };
 
     let response = use_case.execute(request).await;

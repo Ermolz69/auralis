@@ -80,6 +80,7 @@ pub fn run() -> Result<(), AppRunError> {
         .invoke_handler(tauri::generate_handler![
             commands::project::create_project_cmd,
             commands::project::create_project_from_youtube_cmd,
+            commands::project::list_youtube_subtitle_tracks_cmd,
             commands::project::get_transcript_cmd,
             commands::project::get_project_cmd,
             commands::project::list_projects_cmd,

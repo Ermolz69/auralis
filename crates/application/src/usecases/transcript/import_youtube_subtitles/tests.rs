@@ -25,6 +25,7 @@ async fn test_rollback_on_transaction_failure() {
 
     let deleted_staging = Arc::new(Mutex::new(vec![]));
     let deleted_workspace = Arc::new(Mutex::new(vec![]));
+    let list_calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
     let usecase = ImportYoutubeSubtitlesUseCase::new(
         Arc::new(MockProjectRepo {
@@ -32,6 +33,7 @@ async fn test_rollback_on_transaction_failure() {
         }),
         Arc::new(MockSubtitleSource {
             fail_download: false,
+            list_calls: Some(list_calls.clone()),
         }),
         Arc::new(MockArtifactStoreForSubs {
             fail_delete: false,
@@ -52,6 +54,13 @@ async fn test_rollback_on_transaction_failure() {
             allow_auto_generated: false,
             cancellation_token: tokio_util::sync::CancellationToken::new(),
             job_id,
+            selected_track: Some(domain::media::SubtitleTrack {
+                id: "ru-auto-vtt".into(),
+                language: "ru".into(),
+                label: None,
+                format: Some("vtt".into()),
+                is_auto_generated: true,
+            }),
         })
         .await;
 
@@ -67,4 +76,5 @@ async fn test_rollback_on_transaction_failure() {
     assert_eq!(deleted_staging.lock().unwrap()[0], "staging_key");
     assert_eq!(deleted_workspace.lock().unwrap().len(), 1);
     assert_eq!(deleted_workspace.lock().unwrap()[0], "tmp/1/subs");
+    assert_eq!(list_calls.load(std::sync::atomic::Ordering::Relaxed), 0);
 }

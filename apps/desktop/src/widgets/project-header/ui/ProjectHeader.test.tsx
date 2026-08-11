@@ -53,13 +53,15 @@ describe('ProjectHeader', () => {
     vi.mocked(useNavigation).mockReturnValue({
       currentView: 'project',
       setCurrentView: vi.fn(),
+      pipelineStep: 'source',
+      setPipelineStep: vi.fn(),
     });
 
     render(<ProjectHeader />);
 
-    expect(screen.getByRole('heading', { name: 'YouTube project' })).not.toBeNull();
-    expect(screen.getByText('Ready for processing')).not.toBeNull();
-    expect(screen.getByText('YouTube source (youtube.com)')).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Источник видео' })).not.toBeNull();
+    expect(screen.getByText('Ожидание')).not.toBeNull();
+    expect(screen.getByTitle('YouTube source (youtube.com)')).not.toBeNull();
     expect(screen.queryByText('READY_FOR_PROCESSING')).toBeNull();
     expect(screen.queryByText('https://www.youtube.com/watch?v=abc')).toBeNull();
   });

@@ -68,8 +68,8 @@ export function JobCard({ job }: { job: JobDto }) {
   };
 
   return (
-    <Card variant="muted" className="shrink-0">
-      <CardContent className="p-4 flex flex-col gap-3">
+    <Card className="shrink-0">
+      <CardContent className="flex flex-col gap-2 p-3">
         <div className="flex justify-between items-start gap-3">
           <div className="flex min-w-0 flex-col">
             <p className="truncate text-sm text-text font-medium">{job.title}</p>

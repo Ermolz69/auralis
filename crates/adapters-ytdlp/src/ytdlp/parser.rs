@@ -118,7 +118,12 @@ pub fn parse_subtitle_tracks(value: &serde_json::Value) -> Vec<domain::media::Su
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string());
                         t.push(domain::media::SubtitleTrack {
-                            id: format!("{}-{}", lang, ext),
+                            id: format!(
+                                "{}-{}-{}",
+                                lang,
+                                if auto { "auto" } else { "manual" },
+                                ext
+                            ),
                             language: lang.clone(),
                             label: name,
                             format: Some(ext.to_string()),

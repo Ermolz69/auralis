@@ -97,6 +97,7 @@ async fn test_success_saves_project_processing_and_job_pending_running() {
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),
+        selected_subtitle_track: None,
     };
 
     let response = use_case.execute(request).await.unwrap();
@@ -149,6 +150,7 @@ async fn test_transaction_failure_does_not_enqueue_job() {
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),
+        selected_subtitle_track: None,
     };
 
     let response = use_case.execute(request).await;
@@ -185,6 +187,7 @@ async fn test_cannot_start_from_draft() {
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),
+        selected_subtitle_track: None,
     };
 
     let response = use_case.execute(request).await;
@@ -228,6 +231,7 @@ async fn test_cannot_start_from_completed() {
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),
+        selected_subtitle_track: None,
     };
 
     let response = use_case.execute(request).await;

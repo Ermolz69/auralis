@@ -9,9 +9,13 @@ vi.mock('@/entities/project', () => ({
   useProjectContext: vi.fn(),
 }));
 const mockSetCurrentView = vi.fn();
+const mockSetPipelineStep = vi.fn();
 
 vi.mock('@/shared/router', () => ({
-  useNavigation: () => ({ setCurrentView: mockSetCurrentView }),
+  useNavigation: () => ({
+    setCurrentView: mockSetCurrentView,
+    setPipelineStep: mockSetPipelineStep,
+  }),
 }));
 
 describe('usePasteYoutubeLink', () => {
@@ -55,9 +59,9 @@ describe('usePasteYoutubeLink', () => {
 
   it('allows startProject when deletingProjectId is null', async () => {
     vi.mocked(createProjectFromYoutube).mockResolvedValue({
-      project: { id: 'p-new', title: 'New' } as any,
-      job: {} as any,
-    });
+      id: 'p-new',
+      title: 'New',
+    } as any);
     const { result } = renderHook(() => usePasteYoutubeLink());
     expect(result.current.isBlockedByDeletion).toBe(false);
     act(() => {
@@ -71,6 +75,7 @@ describe('usePasteYoutubeLink', () => {
     expect(createProjectFromYoutube).toHaveBeenCalledWith('https://youtube.com/watch?v=123');
     expect(mockContextValue.setProjectId).toHaveBeenCalledWith('p-new');
     expect(mockContextValue.setProject).toHaveBeenCalledWith({ id: 'p-new', title: 'New' });
+    expect(mockSetPipelineStep).toHaveBeenCalledWith('source');
     expect(mockSetCurrentView).toHaveBeenCalledWith('project');
     expect(result.current.isStarting).toBe(false);
   });
@@ -96,7 +101,7 @@ describe('usePasteYoutubeLink', () => {
     });
     rerender();
     await act(async () => {
-      resolveCreate({ project: { id: 'p-new' } as any, job: {} as any });
+      resolveCreate({ id: 'p-new' } as any);
       await startPromise;
     });
     expect(result.current.url).toBe('https://youtube.com/watch?v=123');
@@ -124,7 +129,7 @@ describe('usePasteYoutubeLink', () => {
     });
     rerender();
     await act(async () => {
-      resolveCreate({ project: { id: 'p-new' } as any, job: {} as any });
+      resolveCreate({ id: 'p-new' } as any);
       await startPromise;
     });
     expect(result.current.url).toBe('https://youtube.com/watch?v=123');
@@ -179,7 +184,7 @@ describe('usePasteYoutubeLink', () => {
     });
     expect(secondRes).toBeNull();
     await act(async () => {
-      resolveCreate({ project: { id: 'p-new' } as any, job: {} as any });
+      resolveCreate({ id: 'p-new' } as any);
       await firstPromise;
     });
   });
@@ -214,12 +219,12 @@ describe('usePasteYoutubeLink', () => {
     });
     expect(result.current.isStarting).toBe(true);
     await act(async () => {
-      resolve1({ project: { id: 'p-stale' } as any, job: {} as any });
+      resolve1({ id: 'p-stale' } as any);
       await startPromise1;
     });
     expect(result.current.isStarting).toBe(true);
     await act(async () => {
-      resolve2({ project: { id: 'p-new' } as any, job: {} as any });
+      resolve2({ id: 'p-new' } as any);
       await startPromise2;
     });
     expect(result.current.isStarting).toBe(false);
@@ -237,9 +242,8 @@ describe('usePasteYoutubeLink', () => {
     expect(result.current.error).toBe('An unexpected system error occurred');
     expect(result.current.isStarting).toBe(false);
     vi.mocked(createProjectFromYoutube).mockResolvedValue({
-      project: { id: 'p-new' } as any,
-      job: {} as any,
-    });
+      id: 'p-new',
+    } as any);
     let res;
     await act(async () => {
       res = await result.current.startProject();

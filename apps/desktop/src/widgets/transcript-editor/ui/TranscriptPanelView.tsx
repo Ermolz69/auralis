@@ -28,21 +28,21 @@ export function TranscriptPanelView({
 
   return (
     <section
-      className="flex-1 p-6 flex flex-col gap-4 overflow-hidden min-h-0"
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4 sm:p-5"
       aria-label="Transcript viewer"
     >
       <div className="flex shrink-0 items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-text">Transcript</h2>
-          <p className="text-sm text-muted">Read-only subtitle text from the current project.</p>
+          <h2 className="text-sm font-semibold text-text">Transcript</h2>
+          <p className="text-xs text-muted">Read-only subtitle text from the current project.</p>
         </div>
         <Badge variant="muted" size="sm">
           Read-only
         </Badge>
       </div>
-      <Card className="flex-1 overflow-hidden flex flex-col shadow-sm">
+      <Card className="flex flex-1 flex-col overflow-hidden">
         <CardContent
-          className="flex-1 p-6 overflow-y-auto min-h-0"
+          className="min-h-0 flex-1 overflow-y-auto p-4"
           tabIndex={0}
           aria-label="Transcript content"
         >
@@ -170,7 +170,7 @@ function ReadOnlySegments({ transcript }: { transcript: Transcript }) {
       {transcript.segments.map((line) => (
         <div
           key={line.id}
-          className="rounded border border-muted/30 bg-bg p-3 leading-relaxed break-words"
+          className="break-words rounded-sm border border-border bg-surface p-3 text-sm leading-relaxed"
         >
           <Badge variant="primary" size="sm" className="mr-2 font-mono">
             [{Math.floor(line.startMs / 1000)}s - {Math.floor(line.endMs / 1000)}s]

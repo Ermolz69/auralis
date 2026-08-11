@@ -36,6 +36,14 @@ impl TerminalFailure {
             status: "subtitle_import_failed",
         }
     }
+
+    pub(crate) fn youtube_rate_limited() -> Self {
+        Self {
+            code: "YOUTUBE_RATE_LIMITED",
+            message: "YouTube rate limit reached. Try importing subtitles later.",
+            status: "subtitle_import_rate_limited",
+        }
+    }
 }
 
 pub(crate) async fn terminalize_runner_failure(

@@ -58,10 +58,10 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
 
   return (
     <aside
-      className={`h-full bg-surface p-6 flex flex-col gap-4 overflow-hidden min-w-0 ${className}`}
+      className={`flex h-full min-w-0 flex-col gap-3 overflow-hidden bg-surface p-3 ${className}`}
       aria-label="Job queue"
     >
-      <h2 className="text-lg font-semibold text-text shrink-0">Job Queue</h2>
+      <h2 className="shrink-0 text-sm font-semibold text-text">Job Queue</h2>
       {syncNotice && (
         <div
           className={`flex gap-3 rounded-md border p-3 ${syncNotice.tone}`}
@@ -97,14 +97,14 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
         {activeJobs.length === 0 && completedJobs.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
             <Icon name="Inbox" size="lg" className="text-muted/50 mb-3" />
-            <p className="text-text font-medium">Queue is empty</p>
-            <p className="text-sm text-muted mt-1">Jobs will appear here</p>
+            <p className="text-sm font-medium text-subtle">Queue is empty</p>
+            <p className="mt-1 text-xs text-subtle">Jobs will appear here</p>
           </div>
         ) : (
           <>
             {activeJobs.length > 0 && (
               <section aria-labelledby="active-operations-heading" className="flex flex-col gap-3">
-                <h3 id="active-operations-heading" className="text-sm font-semibold text-text">
+                <h3 id="active-operations-heading" className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                   Active operation
                 </h3>
                 <ul className="flex flex-col gap-3" aria-label="Active operations">
@@ -119,7 +119,7 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
 
             {completedJobs.length > 0 && (
               <section aria-labelledby="job-history-heading" className="flex flex-col gap-3">
-                <h3 id="job-history-heading" className="text-sm font-semibold text-text">
+                <h3 id="job-history-heading" className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                   History
                 </h3>
                 <ul className="flex flex-col gap-3" aria-label="Operation history">

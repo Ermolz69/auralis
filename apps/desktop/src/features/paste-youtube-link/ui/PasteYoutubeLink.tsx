@@ -33,7 +33,7 @@ export const PasteYoutubeLink = () => {
       onSubmit={handleSubmit}
       noValidate
     >
-      <div className="flex gap-2 w-full">
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start">
         <Input
           id="youtube-link-url"
           ref={inputRef}
@@ -60,7 +60,7 @@ export const PasteYoutubeLink = () => {
       </div>
       {isStarting && (
         <p id={statusId} className="text-muted text-sm text-left" role="status" aria-live="polite">
-          Creating project. The workspace will show the running subtitle import job after handoff.
+          Loading video metadata and downloading the source media. Subtitles start on step 2.
         </p>
       )}
       {isBlockedByDeletion && (

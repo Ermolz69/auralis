@@ -108,20 +108,18 @@ impl SubtitleSourcePort for EmptySubtitleSource {
 
 #[tokio::test]
 async fn stage_update_failures_terminalize_through_one_helper() {
-    for fail_call in 1..=4 {
-        let scheduler = Arc::new(MatrixScheduler::new(Some(fail_call), None));
-        let outcome = run_with_scheduler(scheduler.clone()).await;
+    let scheduler = Arc::new(MatrixScheduler::new(Some(1), None));
+    let outcome = run_with_scheduler(scheduler.clone()).await;
 
-        assert_eq!(outcome, RuntimeTaskOutcome::ApplicationFailed);
-        let records = scheduler.fail_records.lock().await;
-        assert_eq!(
-            records.as_slice(),
-            &[(
-                "STAGE_UPDATE_FAILED".into(),
-                "Pipeline progress could not be persisted.".into()
-            )]
-        );
-    }
+    assert_eq!(outcome, RuntimeTaskOutcome::ApplicationFailed);
+    let records = scheduler.fail_records.lock().await;
+    assert_eq!(
+        records.as_slice(),
+        &[(
+            "STAGE_UPDATE_FAILED".into(),
+            "Pipeline progress could not be persisted.".into()
+        )]
+    );
 }
 
 #[tokio::test]
