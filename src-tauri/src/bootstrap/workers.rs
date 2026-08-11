@@ -40,7 +40,9 @@ pub fn spawn_outbox_worker(
         config,
     );
     let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
-    let worker_task = tokio::spawn(Arc::new(worker).run_loop(shutdown_rx));
+    let worker_task = tauri::async_runtime::handle()
+        .inner()
+        .spawn(Arc::new(worker).run_loop(shutdown_rx));
     OutboxWorkerHandle {
         worker_task: Some(worker_task),
         shutdown_tx: Some(shutdown_tx),
