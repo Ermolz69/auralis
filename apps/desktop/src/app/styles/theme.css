@@ -1,26 +1,69 @@
 @theme {
-  --color-bg: #0f1115;
-  --color-surface: #171a21;
-  --color-border: #3f4352;
-  --color-text: #f4f4f5;
-  --color-muted: #a1a1aa;
-  --color-primary: #a78bfa;
-  --color-focus: #c4b5fd;
-  --color-primary-action: #6d28d9;
-  --color-primary-action-hover: #5b21b6;
-  --color-primary-foreground: #ede9fe;
-  --color-accent: #60a5fa;
-  --color-accent-foreground: #dbeafe;
-  --color-success: #10b981;
-  --color-success-foreground: #d1fae5;
-  --color-warning: #f59e0b;
-  --color-warning-foreground: #fef3c7;
-  --color-secondary: #272a35;
-  --color-secondary-foreground: #f4f4f5;
-  --color-danger: #f87171;
-  --color-danger-action: #b91c1c;
-  --color-danger-action-hover: #991b1b;
-  --color-danger-foreground: #fee2e2;
+  /*
+   * Default color theme. This is the single source of truth for application colors.
+   * Components must consume semantic tokens (for example, text-text or bg-surface)
+   * instead of declaring palette colors directly.
+   */
+  --color-canvas: #090c0f;
+  --color-bg: #0d1116;
+  --color-surface: #121820;
+  --color-surface-raised: #18212a;
+  --color-surface-hover: #202b36;
+  --color-surface-active: #293642;
+  --color-border: #28333d;
+  --color-border-strong: #3a4855;
+
+  --color-text: #f1f5f7;
+  --color-muted: #aab5bf;
+  --color-subtle: #8996a2;
+  --color-disabled: #505c66;
+
+  --color-primary: #4de2c1;
+  --color-focus: #4de2c1;
+  --color-primary-action: #4de2c1;
+  --color-primary-action-hover: #67e8cc;
+  --color-primary-action-pressed: #35c9aa;
+  --color-primary-foreground: #071411;
+  --color-primary-soft: #12352f;
+  --color-primary-soft-hover: #17483f;
+
+  --color-secondary: #18212a;
+  --color-secondary-foreground: #f1f5f7;
+  --color-accent: #75a7ff;
+  --color-accent-foreground: #dce8ff;
+  --color-accent-soft: #172743;
+  --color-success: #48d597;
+  --color-success-foreground: #d9ffef;
+  --color-success-soft: #123126;
+  --color-warning: #f2b84b;
+  --color-warning-foreground: #fff0c8;
+  --color-warning-soft: #382a12;
+  --color-danger: #ff6b78;
+  --color-danger-action: #3a171d;
+  --color-danger-action-hover: #4a1f25;
+  --color-danger-foreground: #ffdce0;
+  --color-danger-soft: #3a171d;
+  --color-overlay: rgb(0 0 0 / 70%);
+  --color-shadow-tint: rgb(0 0 0 / 50%);
+
+  --focus-ring-color: rgb(77 226 193 / 55%);
+  --selection-color: rgb(77 226 193 / 22%);
+  --signal-ring-color: rgb(77 226 193 / 30%);
+  --signal-glow-color: rgb(77 226 193 / 10%);
+  --signal-glow-strong-color: rgb(77 226 193 / 22%);
+
+  --font-sans: Inter, "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 22%);
+  --shadow-lg: 0 18px 48px rgb(0 0 0 / 30%);
 
   --animate-progress-indeterminate: progress-indeterminate 1.5s infinite linear;
   @keyframes progress-indeterminate {
@@ -36,11 +79,11 @@
   @keyframes dialog-in {
     from {
       opacity: 0;
-      transform: scale(0.95);
+      transform: scale(0.97) translateY(0.25rem);
     }
     to {
       opacity: 1;
-      transform: scale(1);
+      transform: scale(1) translateY(0);
     }
   }
 
@@ -55,6 +98,62 @@
       opacity: 1;
     }
   }
+}
+
+/*
+ * Additional palettes override only semantic tokens. To add another theme,
+ * register its id in shared/theme/config/colorThemes.ts and add one block here.
+ */
+[data-color-theme='violet'] {
+  --color-canvas: #0c0911;
+  --color-bg: #120e19;
+  --color-surface: #191321;
+  --color-surface-raised: #21192c;
+  --color-surface-hover: #2b2138;
+  --color-surface-active: #372945;
+  --color-border: #392d47;
+  --color-border-strong: #514060;
+
+  --color-text: #f7f2fa;
+  --color-muted: #c0b2c9;
+  --color-subtle: #9c8ca7;
+  --color-disabled: #665a6e;
+
+  --color-primary: #c99cff;
+  --color-focus: #c99cff;
+  --color-primary-action: #c99cff;
+  --color-primary-action-hover: #d7b6ff;
+  --color-primary-action-pressed: #b27eea;
+  --color-primary-foreground: #170c21;
+  --color-primary-soft: #38224e;
+  --color-primary-soft-hover: #4b2d68;
+
+  --color-secondary: #21192c;
+  --color-secondary-foreground: #f7f2fa;
+  --color-accent: #75baff;
+  --color-accent-foreground: #e0efff;
+  --color-accent-soft: #1c2c49;
+  --color-success: #5fdaa0;
+  --color-success-foreground: #ddfff0;
+  --color-success-soft: #16382a;
+  --color-warning: #f3bd61;
+  --color-warning-foreground: #fff1ce;
+  --color-warning-soft: #3c2b14;
+  --color-danger: #ff778c;
+  --color-danger-action: #411a25;
+  --color-danger-action-hover: #54212f;
+  --color-danger-foreground: #ffe0e5;
+  --color-danger-soft: #411a25;
+
+  --focus-ring-color: rgb(201 156 255 / 55%);
+  --selection-color: rgb(201 156 255 / 22%);
+  --signal-ring-color: rgb(201 156 255 / 30%);
+  --signal-glow-color: rgb(201 156 255 / 10%);
+  --signal-glow-strong-color: rgb(201 156 255 / 22%);
+}
+
+:root {
+  color-scheme: dark;
 }
 
 @media (prefers-reduced-motion: reduce) {

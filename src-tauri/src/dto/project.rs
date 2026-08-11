@@ -49,6 +49,28 @@ pub struct CreateProjectResponse {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SubtitleTrackDto {
+    pub id: String,
+    pub language: String,
+    pub label: Option<String>,
+    pub format: Option<String>,
+    pub is_auto_generated: bool,
+}
+
+impl From<&domain::media::SubtitleTrack> for SubtitleTrackDto {
+    fn from(track: &domain::media::SubtitleTrack) -> Self {
+        Self {
+            id: track.id.clone(),
+            language: track.language.clone(),
+            label: track.label.clone(),
+            format: track.format.clone(),
+            is_auto_generated: track.is_auto_generated,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TranscriptDto {
     pub language: String,
     pub segments: Vec<TranscriptSegmentDto>,

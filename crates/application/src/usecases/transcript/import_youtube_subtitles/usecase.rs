@@ -19,6 +19,7 @@ pub struct ImportYoutubeSubtitlesRequest {
     pub allow_auto_generated: bool,
     pub cancellation_token: tokio_util::sync::CancellationToken,
     pub job_id: domain::job::JobId,
+    pub selected_track: Option<domain::media::SubtitleTrack>,
 }
 
 pub struct ImportYoutubeSubtitlesResponse {
@@ -68,18 +69,26 @@ impl ImportYoutubeSubtitlesUseCase {
                 message: "Project has no source".to_string(),
             })?;
 
-        let subtitles = self.subtitle_source.list_subtitles(source).await?;
-        if subtitles.is_empty() {
-            return Err(ApplicationError::InvalidOperation {
-                message: "No subtitles found".to_string(),
-            });
-        }
-
-        let best_track = select_best_subtitle_track(
-            &subtitles,
-            &request.preferred_languages,
-            request.allow_auto_generated,
-        )?;
+        let best_track = if let Some(track) = request.selected_track {
+            if track.format.as_deref() != Some("vtt") || track.language.trim().is_empty() {
+                return Err(ApplicationError::InvalidOperation {
+                    message: "Invalid selected subtitle track".to_string(),
+                });
+            }
+            track
+        } else {
+            let subtitles = self.subtitle_source.list_subtitles(source).await?;
+            if subtitles.is_empty() {
+                return Err(ApplicationError::InvalidOperation {
+                    message: "No subtitles found".to_string(),
+                });
+            }
+            select_best_subtitle_track(
+                &subtitles,
+                &request.preferred_languages,
+                request.allow_auto_generated,
+            )?
+        };
 
         let alloc = self
             .workspace_port

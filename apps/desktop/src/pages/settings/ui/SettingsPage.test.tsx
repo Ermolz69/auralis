@@ -1,19 +1,36 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { SettingsPage } from './SettingsPage';
+import { ThemeProvider } from '../../../shared/theme';
 
 afterEach(() => cleanup());
+beforeEach(() => localStorage.clear());
 
 describe('SettingsPage', () => {
-  it('marks settings sections as unavailable instead of interactive preferences', () => {
-    render(<SettingsPage />);
+  it('switches and persists the application color theme', () => {
+    render(
+      <ThemeProvider>
+        <SettingsPage />
+      </ThemeProvider>,
+    );
 
-    expect(screen.getByLabelText('Appearance settings unavailable')).not.toBeNull();
+    const themeSelect = screen.getByLabelText('Color theme');
+    fireEvent.change(themeSelect, { target: { value: 'violet' } });
+
+    expect(document.documentElement.getAttribute('data-color-theme')).toBe('violet');
+    expect(localStorage.getItem('auralis:color-theme:v1')).toBe('violet');
+  });
+
+  it('keeps unsupported settings visibly unavailable', () => {
+    render(
+      <ThemeProvider>
+        <SettingsPage />
+      </ThemeProvider>,
+    );
+
     expect(screen.getByLabelText('Export defaults unavailable')).not.toBeNull();
-    expect(screen.getAllByText('Unavailable')).toHaveLength(2);
-    expect(screen.getAllByText(/not part of the current app contract/i)).toHaveLength(2);
-    expect(screen.queryByRole('button')).toBeNull();
-    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getAllByText('Unavailable')).toHaveLength(1);
+    expect(screen.getAllByText(/not part of the current app contract/i)).toHaveLength(1);
   });
 });

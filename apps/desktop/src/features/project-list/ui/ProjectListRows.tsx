@@ -20,7 +20,7 @@ export function ProjectListRows({
   onDelete,
 }: ProjectListRowsProps) {
   return (
-    <div className="flex min-w-0 flex-col gap-2 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+    <div className="flex min-w-0 flex-col gap-0.5 overflow-y-auto">
       {projects.map((project) => (
         <ProjectListRow
           key={project.id}

@@ -33,7 +33,7 @@ export const SuccessHandoff: Story = {
     <div className="w-[36rem] space-y-3 text-left">
       <YoutubeFormScenario />
       <p className="text-sm text-success" role="status">
-        Project created. The workspace opens and the subtitle import job continues there.
+        Project created. The workspace opens after the source media is downloaded.
       </p>
     </div>
   ),
@@ -72,7 +72,7 @@ function YoutubeFormScenario({
       </div>
       {loading && (
         <p className="text-muted text-sm" role="status" aria-live="polite">
-          Creating project. The workspace will show the running subtitle import job after handoff.
+          Loading video metadata and downloading the source media. Subtitles start on step 2.
         </p>
       )}
     </form>

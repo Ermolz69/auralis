@@ -1,12 +1,13 @@
 use crate::error::ApplicationError;
-use crate::usecases::pipeline::start_mock::{StartMockPipelineRequest, StartMockPipelineUseCase};
+use crate::usecases::media::download_youtube_video::{
+    DownloadYoutubeVideoRequest, DownloadYoutubeVideoUseCase,
+};
 use crate::usecases::project::create::{CreateProjectRequest, CreateProjectUseCase};
 use crate::usecases::project::import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase};
 use domain::media::MediaSource;
 use domain::project::Project;
-use ports::job_scheduler::{JobSchedulerPort, ScheduledJob};
 use ports::repository::ProjectRepository;
-use ports::source::{SubtitleSourcePort, VideoSourcePort};
+use ports::source::VideoSourcePort;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
 use ports::workspace::TempWorkspacePort;
@@ -18,55 +19,41 @@ pub struct CreateProjectFromYoutubeRequest {
 
 pub struct CreateProjectFromYoutubeResponse {
     pub project: Project,
-    pub job: ScheduledJob,
 }
 
 pub struct CreateProjectFromYoutubeUseCase<
-    R: ProjectRepository + Clone + 'static,
+    R: ProjectRepository + Clone,
     V: VideoSourcePort + Clone,
-    SSub: SubtitleSourcePort + Clone + 'static,
-    SStore: ArtifactStore + Clone + 'static,
+    S: ArtifactStore + Clone,
+    T: StorageUnitOfWork + Clone,
 > {
     project_repo: R,
     video_source: V,
-    job_scheduler: Arc<dyn JobSchedulerPort>,
-    storage_uow: Arc<dyn StorageUnitOfWork>,
-    subtitle_source: SSub,
-    artifact_store: SStore,
+    artifact_store: S,
+    storage_uow: T,
     workspace_port: Arc<dyn TempWorkspacePort>,
-    locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
-    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
 }
 
 impl<
-    R: ProjectRepository + Clone + 'static,
+    R: ProjectRepository + Clone,
     V: VideoSourcePort + Clone,
-    SSub: SubtitleSourcePort + Clone + 'static,
-    SStore: ArtifactStore + Clone + 'static,
-> CreateProjectFromYoutubeUseCase<R, V, SSub, SStore>
+    S: ArtifactStore + Clone,
+    T: StorageUnitOfWork + Clone,
+> CreateProjectFromYoutubeUseCase<R, V, S, T>
 {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         project_repo: R,
         video_source: V,
-        job_scheduler: Arc<dyn JobSchedulerPort>,
-        storage_uow: Arc<dyn StorageUnitOfWork>,
-        subtitle_source: SSub,
-        artifact_store: SStore,
+        artifact_store: S,
+        storage_uow: T,
         workspace_port: Arc<dyn TempWorkspacePort>,
-        locks: Arc<crate::usecases::project::lifecycle::ProjectLifecycleLocks>,
-        job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     ) -> Self {
         Self {
             project_repo,
             video_source,
-            job_scheduler,
-            storage_uow,
-            subtitle_source,
             artifact_store,
+            storage_uow,
             workspace_port,
-            locks,
-            job_runtime,
         }
     }
 
@@ -75,47 +62,104 @@ impl<
         request: CreateProjectFromYoutubeRequest,
     ) -> Result<CreateProjectFromYoutubeResponse, ApplicationError> {
         let create_use_case = CreateProjectUseCase::new(self.project_repo.clone());
-        let req1 = CreateProjectRequest {
-            title: request.url.clone(),
-        };
-        let create_res = create_use_case.execute(req1).await?;
+        let create_res = create_use_case
+            .execute(CreateProjectRequest {
+                title: request.url.clone(),
+            })
+            .await?;
 
         let import_use_case =
             ImportVideoSourceUseCase::new(self.project_repo.clone(), self.video_source.clone());
-        let req2 = ImportVideoSourceRequest {
-            project_id: create_res.project.id().clone(),
-            source: MediaSource::YoutubeUrl {
-                url: request.url.clone(),
-            },
-        };
-        let import_res = import_use_case.execute(req2).await?;
+        let import_res = import_use_case
+            .execute(ImportVideoSourceRequest {
+                project_id: create_res.project.id().clone(),
+                source: MediaSource::YoutubeUrl {
+                    url: request.url.clone(),
+                },
+            })
+            .await?;
 
-        let mut proj = import_res.project;
-        proj.mark_ready_for_processing()
-            .map_err(|e| ApplicationError::InvalidOperation {
-                message: e.to_string(),
-            })?;
-        self.project_repo.save(&proj).await?;
-
-        let pipeline_use_case = StartMockPipelineUseCase::new(
+        // Stage 1 owns only the source media and its metadata. Subtitle discovery/import is
+        // deliberately started by the separate stage-2 command.
+        let allocation = self
+            .workspace_port
+            .create_allocation(import_res.project.id(), "youtube-video-download")
+            .await?;
+        let download_use_case = DownloadYoutubeVideoUseCase::new(
             self.project_repo.clone(),
-            self.job_scheduler.clone(),
-            self.storage_uow.clone(),
-            self.subtitle_source.clone(),
+            self.video_source.clone(),
             self.artifact_store.clone(),
-            self.workspace_port.clone(),
-            self.locks.clone(),
-            self.job_runtime.clone(),
+            self.storage_uow.clone(),
+        );
+        if let Err(error) = download_use_case
+            .execute(DownloadYoutubeVideoRequest {
+                project_id: import_res.project.id().clone(),
+                temp_dir: allocation.absolute_path,
+                filename_hint: Some("original".to_string()),
+            })
+            .await
+        {
+            let _ = self
+                .workspace_port
+                .delete_allocation(&allocation.workspace_key)
+                .await;
+            return Err(error);
+        }
+
+        let mut project = import_res.project;
+        project.mark_ready_for_processing().map_err(|error| {
+            ApplicationError::InvalidOperation {
+                message: error.to_string(),
+            }
+        })?;
+        self.project_repo.save(&project).await?;
+
+        Ok(CreateProjectFromYoutubeResponse { project })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::{MockArtifactStore, MockStorageUnitOfWork};
+    use adapters_storage::{local::LocalTempWorkspace, memory::InMemoryProjectRepository};
+    use adapters_ytdlp::mock::MockVideoSourceAdapter;
+    use domain::project::ProjectStatus;
+
+    #[tokio::test]
+    async fn stage_one_downloads_media_and_stops_before_subtitles() {
+        let repo = InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(
+            adapters_storage::memory::InMemoryDatabase::new(),
+        )));
+        let temp_root = tempfile::tempdir().unwrap();
+        let use_case = CreateProjectFromYoutubeUseCase::new(
+            repo.clone(),
+            MockVideoSourceAdapter::new(),
+            MockArtifactStore,
+            MockStorageUnitOfWork::new(),
+            Arc::new(LocalTempWorkspace::new(temp_root.path().to_path_buf())),
         );
 
-        let req3 = StartMockPipelineRequest {
-            project_id: proj.id().clone(),
-        };
-        let pipeline_res = pipeline_use_case.execute(req3).await?;
+        let response = use_case
+            .execute(CreateProjectFromYoutubeRequest {
+                url: "https://www.youtube.com/watch?v=stage-one".into(),
+            })
+            .await
+            .unwrap();
 
-        Ok(CreateProjectFromYoutubeResponse {
-            project: pipeline_res.project,
-            job: pipeline_res.job,
-        })
+        assert_eq!(
+            response.project.status(),
+            &ProjectStatus::ReadyForProcessing
+        );
+        assert!(response.project.metadata().is_some());
+        assert!(response.project.transcript().is_none());
+        assert_eq!(
+            repo.get(response.project.id())
+                .await
+                .unwrap()
+                .unwrap()
+                .status(),
+            &ProjectStatus::ReadyForProcessing
+        );
     }
 }

@@ -8,16 +8,21 @@ import { NavigationProvider } from './shared/router';
 
 import { AppJobProvider } from './app/providers';
 import { Toaster } from './shared/ui/toast';
+import { initializeColorTheme, ThemeProvider } from './shared/theme';
+
+initializeColorTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <NavigationProvider>
-      <ProjectProvider>
-        <AppJobProvider>
-          <App />
-          <Toaster />
-        </AppJobProvider>
-      </ProjectProvider>
-    </NavigationProvider>
+    <ThemeProvider>
+      <NavigationProvider>
+        <ProjectProvider>
+          <AppJobProvider>
+            <App />
+            <Toaster />
+          </AppJobProvider>
+        </ProjectProvider>
+      </NavigationProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

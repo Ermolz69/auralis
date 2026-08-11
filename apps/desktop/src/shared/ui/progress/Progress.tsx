@@ -26,11 +26,10 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
     const percent = Math.round((safeValue / safeMax) * 100);
     const accessibleLabel = props['aria-label'] || label || 'Progress';
 
-    const baseContainer =
-      'relative h-2 w-full overflow-hidden rounded-full bg-surface border border-border';
+    const baseContainer = 'relative h-1 w-full overflow-hidden rounded-full bg-surface-hover';
 
     const variants = {
-      default: 'bg-primary',
+      default: 'bg-primary signal-glow-sm',
       success: 'bg-success',
       warning: 'bg-warning',
       danger: 'bg-danger',

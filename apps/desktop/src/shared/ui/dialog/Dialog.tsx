@@ -89,9 +89,9 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
         aria-labelledby={titleId}
         aria-describedby={hasDescription ? descriptionId : undefined}
         aria-modal="true"
-        className="backdrop:bg-black/70 backdrop:backdrop-blur-sm m-auto rounded-xl bg-surface border border-border shadow-2xl p-0 text-text w-full max-w-lg open:animate-dialog-in focus:outline-none"
+        className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-border-strong bg-surface-raised p-0 text-text shadow-lg backdrop:bg-overlay backdrop:backdrop-blur-sm open:animate-dialog-in focus:outline-none"
       >
-        <div className="relative w-full h-full p-6">{children}</div>
+        <div className="relative h-full w-full p-5">{children}</div>
       </dialog>
     </DialogContext.Provider>
   );

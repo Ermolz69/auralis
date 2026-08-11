@@ -42,7 +42,7 @@ const ToastItem = ({ toast: t }: { toast: ToastProps }) => {
 
   return (
     <div
-      className={`pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg shadow-black/50 transition-all animate-toast-slide-in ${
+      className={`pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg shadow-shadow-tint transition-all animate-toast-slide-in ${
         typeStyles[t.type]
       }`}
       role={t.type === 'danger' || t.type === 'warning' ? 'alert' : 'status'}

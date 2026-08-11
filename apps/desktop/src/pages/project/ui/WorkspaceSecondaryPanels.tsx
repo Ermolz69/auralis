@@ -4,23 +4,14 @@ import { JobQueuePanel } from '../../../widgets/job-queue-panel';
 import { Button } from '../../../shared/ui/button';
 import { Dialog, DialogDescription, DialogTitle } from '../../../shared/ui/dialog';
 
-const panelSession = {
-  mediaOpen: true,
-  jobsOpen: true,
-};
+const panelSession = { mediaOpen: true };
 
 export function WorkspaceSecondaryPanels() {
   const [mediaOpen, setMediaOpen] = useState(panelSession.mediaOpen);
-  const [jobsOpen, setJobsOpen] = useState(panelSession.jobsOpen);
 
-  const setPanelOpen = (panel: 'media' | 'jobs', open: boolean) => {
-    if (panel === 'media') {
-      panelSession.mediaOpen = open;
-      setMediaOpen(open);
-    } else {
-      panelSession.jobsOpen = open;
-      setJobsOpen(open);
-    }
+  const setPanelOpen = (open: boolean) => {
+    panelSession.mediaOpen = open;
+    setMediaOpen(open);
   };
 
   return (
@@ -33,20 +24,12 @@ export function WorkspaceSecondaryPanels() {
           id="workspace-media-panel"
           label="Media"
           expanded={mediaOpen}
-          onToggle={() => setPanelOpen('media', !mediaOpen)}
+          onToggle={() => setPanelOpen(!mediaOpen)}
         >
-          <MediaPanel className="w-[18rem]" />
-        </WidePanel>
-        <WidePanel
-          id="workspace-jobs-panel"
-          label="Jobs"
-          expanded={jobsOpen}
-          onToggle={() => setPanelOpen('jobs', !jobsOpen)}
-        >
-          <JobQueuePanel className="w-[22rem] border-l border-muted" />
+          <MediaPanel className="w-80" />
         </WidePanel>
       </div>
-      <div className="order-2 flex shrink-0 gap-2 border-t border-muted bg-bg p-3 xl:hidden">
+      <div className="order-2 flex shrink-0 gap-2 border-t border-border bg-surface p-2 xl:hidden">
         <PanelDialog label="Media" description="Media details and stream information">
           <MediaPanel className="h-[70vh]" />
         </PanelDialog>

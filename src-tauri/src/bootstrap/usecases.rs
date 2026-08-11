@@ -20,6 +20,7 @@ use application::usecases::project::delete::DeleteProjectUseCase;
 use application::usecases::project::get::GetProjectUseCase;
 use application::usecases::project::list::ListProjectsUseCase;
 use application::usecases::transcript::get::GetTranscriptUseCase;
+use application::usecases::transcript::list_youtube_tracks::ListYoutubeSubtitleTracksUseCase;
 use ports::job_scheduler::JobSchedulerPort;
 
 pub struct AppUseCases {
@@ -33,8 +34,8 @@ pub struct AppUseCases {
     pub create_project_from_youtube: CreateProjectFromYoutubeUseCase<
         RuntimeProjectRepository,
         YtDlpAdapter,
-        YtDlpAdapter,
         RuntimeArtifactStore,
+        RuntimeStorageUnitOfWork,
     >,
     pub get_project: GetProjectUseCase<RuntimeProjectRepository>,
     pub list_projects: ListProjectsUseCase<RuntimeProjectRepository>,
@@ -42,6 +43,8 @@ pub struct AppUseCases {
     pub start_mock_pipeline:
         StartMockPipelineUseCase<RuntimeProjectRepository, YtDlpAdapter, RuntimeArtifactStore>,
     pub get_transcript: GetTranscriptUseCase<RuntimeProjectRepository>,
+    pub list_youtube_subtitle_tracks:
+        ListYoutubeSubtitleTracksUseCase<RuntimeProjectRepository, YtDlpAdapter>,
     pub list_jobs: ListJobsUseCase,
     pub cancel_job: CancelJobUseCase,
 }
@@ -84,13 +87,9 @@ pub fn setup_usecases(
         create_project_from_youtube: CreateProjectFromYoutubeUseCase::new(
             project_repo.clone(),
             ytdlp_adapter.clone(),
-            job_scheduler.clone(),
-            storage_uow.clone(),
-            ytdlp_adapter.clone(),
             artifact_store.clone(),
+            storage_uow.clone(),
             workspace_port.clone(),
-            locks.clone(),
-            job_runtime.clone(),
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
@@ -110,6 +109,10 @@ pub fn setup_usecases(
             job_runtime.clone(),
         ),
         get_transcript: GetTranscriptUseCase::new(project_repo.clone()),
+        list_youtube_subtitle_tracks: ListYoutubeSubtitleTracksUseCase::new(
+            project_repo.clone(),
+            ytdlp_adapter.clone(),
+        ),
         list_jobs: ListJobsUseCase::new(job_scheduler.clone()),
         cancel_job: CancelJobUseCase::new(job_scheduler.clone()),
     };

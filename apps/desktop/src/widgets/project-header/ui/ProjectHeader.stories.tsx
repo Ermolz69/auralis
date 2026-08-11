@@ -47,8 +47,9 @@ export const YouTubeHandoff: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByRole('heading', { name: 'YouTube project' })).toBeInTheDocument();
-    await expect(canvas.getByText('Ready for processing')).toBeInTheDocument();
+    await expect(canvas.getByRole('heading', { name: 'Источник видео' })).toBeInTheDocument();
+    await expect(canvas.getByText('Ожидание')).toBeInTheDocument();
+    await expect(canvas.getByTitle('YouTube source (youtube.com)')).toBeInTheDocument();
     await expect(canvas.queryByText('READY_FOR_PROCESSING')).not.toBeInTheDocument();
   },
 };
@@ -60,7 +61,8 @@ export const LocalSourcePrivacy: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByRole('heading', { name: 'clip.mp4' })).toBeInTheDocument();
+    await expect(canvas.getByRole('heading', { name: 'Источник видео' })).toBeInTheDocument();
+    await expect(canvas.getByTitle('clip.mp4')).toBeInTheDocument();
     await expect(canvas.queryByText(/Users\\person/)).not.toBeInTheDocument();
   },
 };

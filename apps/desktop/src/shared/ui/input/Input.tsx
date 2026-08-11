@@ -39,18 +39,18 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     // If error -> border-danger
     // If focused -> ring-primary or border-primary
     const inputBase =
-      'flex w-full items-center bg-surface border rounded-md text-text text-sm transition-all outline-none';
+      'flex w-full items-center rounded-md border bg-surface-raised text-sm text-text transition-colors outline-none';
 
     const inputBorder = error
       ? 'border-danger focus-within:ring-2 focus-within:ring-danger focus-within:ring-offset-2 focus-within:ring-offset-bg focus-within:border-danger'
-      : 'border-border hover:border-muted focus-within:border-focus focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-bg';
+      : 'border-border hover:border-border-strong focus-within:border-focus';
 
     const inputDisabled = disabled ? 'opacity-50 cursor-not-allowed bg-bg' : '';
 
     return (
       <div className={`${baseWrapper} ${className}`}>
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-text">
+          <label htmlFor={inputId} className="text-xs font-medium text-muted">
             {label}
           </label>
         )}
@@ -67,7 +67,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={error || undefined}
             aria-describedby={describedBy}
             aria-errormessage={errorId}
-            className={`w-full bg-transparent outline-none placeholder:text-muted py-2 ${
+            className={`w-full bg-transparent py-2 outline-none placeholder:text-subtle ${
               leftIcon ? 'pl-9' : 'pl-3'
             } ${rightIcon ? 'pr-9' : 'pr-3'}`}
             {...props}

@@ -1,6 +1,5 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { createProjectFromYoutube, useProjectContext } from '@/entities/project';
-import type { Job } from '@/entities/job';
 import type { Project } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { toCommandError } from '@/shared/api/contracts';
@@ -18,7 +17,7 @@ export function usePasteYoutubeLink() {
     captureToken,
     validateToken,
   } = useProjectContext();
-  const { setCurrentView } = useNavigation();
+  const { setCurrentView, setPipelineStep = () => undefined } = useNavigation();
 
   const latestAttemptRef = useRef(0);
   const activeAttemptRef = useRef<number | null>(null);
@@ -31,7 +30,7 @@ export function usePasteYoutubeLink() {
 
   const isBlockedByDeletion = deletingProjectId !== null;
 
-  const startProject = async (): Promise<{ project: Project; job: Job } | null> => {
+  const startProject = async (): Promise<Project | null> => {
     const trimmedUrl = url.trim();
     if (!trimmedUrl || isStarting || deletingProjectId !== null) return null;
 
@@ -50,17 +49,18 @@ export function usePasteYoutubeLink() {
     setIsStarting(true);
     setError(null);
     try {
-      const response = await createProjectFromYoutube(trimmedUrl);
+      const project = await createProjectFromYoutube(trimmedUrl);
       if (!isCurrentAttempt()) return null;
 
       setIsStarting(false);
       activeAttemptRef.current = null;
 
       setUrl(''); // clear input
-      setProjectId(response.project.id);
-      setProject(response.project);
+      setProjectId(project.id);
+      setProject(project);
+      setPipelineStep('source');
       setCurrentView('project');
-      return response;
+      return project;
     } catch (err: any) {
       if (!isCurrentAttempt()) return null;
       const cmdErr = toCommandError(err);

@@ -20,7 +20,7 @@ export function CurrentStepSummary() {
   if (!activeJob) {
     return (
       <section
-        className="shrink-0 border-b border-muted bg-surface px-6 py-3"
+        className="shrink-0 border-b border-border bg-surface px-5 py-3 sm:px-6"
         aria-label="Current step"
       >
         <div className="flex flex-col gap-1">
@@ -53,7 +53,7 @@ export function CurrentStepSummary() {
 
   return (
     <section
-      className="shrink-0 border-b border-muted bg-surface px-6 py-3"
+      className="shrink-0 border-b border-border bg-surface px-5 py-3 sm:px-6"
       aria-label="Current step"
       role={phase === 'stale' || pendingRefetch ? 'alert' : 'status'}
       aria-live={phase === 'stale' || pendingRefetch ? 'assertive' : 'polite'}

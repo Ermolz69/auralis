@@ -59,7 +59,7 @@ export const AllTokens: Story = {
                 className="h-24 rounded-lg shadow-sm border border-dashed border-muted flex items-center justify-center relative overflow-hidden"
                 style={{ backgroundColor: color.var }}
               >
-                <span className="opacity-0 hover:opacity-100 transition-opacity bg-black/50 text-white w-full h-full flex items-center justify-center text-xs font-mono absolute inset-0">
+                <span className="opacity-0 hover:opacity-100 transition-opacity bg-overlay text-text w-full h-full flex items-center justify-center text-xs font-mono absolute inset-0">
                   {color.var}
                 </span>
               </div>
@@ -167,7 +167,7 @@ export const AllTokens: Story = {
             )}
           </ul>
 
-          <button className="w-full py-3 px-4 bg-primary-action hover:bg-primary-action-hover text-white rounded-lg border border-primary-action font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg">
+          <button className="w-full py-3 px-4 bg-primary-action hover:bg-primary-action-hover text-primary-foreground rounded-lg border border-primary-action font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg">
             Open project
           </button>
         </div>

@@ -2,47 +2,64 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { JobContext, type JobDto, type JobStoreState } from '@/entities/job';
 import { ProjectContext, type Project, type ProjectContextType } from '@/entities/project';
-import { NavigationProvider } from '@/shared/router';
+import { NavigationProvider, useNavigation } from '@/shared/router';
+import { AppShell } from '@/widgets/app-shell';
+import { useEffect } from 'react';
 import { ProjectPage } from './ProjectPage';
 
 const project: Project = {
   id: 'workspace-story',
-  title: 'Quarterly product walkthrough with a deliberately long title',
+  title: 'auralis',
   status: 'processing',
-  source: { kind: 'youtubeUrl', url: 'https://youtube.com/watch?v=workspace' },
+  source: { kind: 'youtubeUrl', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
   metadata: {
-    durationMs: 184000,
+    durationMs: 2892000,
     width: 1920,
     height: 1080,
-    fps: 29.97,
+    fps: 30,
     videoCodec: 'h264',
     container: 'mp4',
     hasVideo: true,
     hasAudio: true,
-    audioTracks: [],
-    streams: [{ index: 0, codecType: 'video', codecName: 'h264', durationMs: 184000 }],
+    audioCodec: 'aac',
+    sampleRate: 48000,
+    audioChannels: 2,
+    audioTracks: [
+      {
+        streamIndex: 1,
+        codec: 'aac',
+        channels: 2,
+        sampleRate: 48000,
+        language: 'en',
+        isDefault: true,
+      },
+    ],
+    streams: [
+      { index: 0, codecType: 'video', codecName: 'h264', durationMs: 2892000 },
+      { index: 1, codecType: 'audio', codecName: 'aac', language: 'en', durationMs: 2892000 },
+    ],
   },
-  createdAt: '2026-08-02T00:00:00.000Z',
-  updatedAt: '2026-08-02T00:00:01.000Z',
+  createdAt: '2026-08-02T14:23:05.000Z',
+  updatedAt: '2026-08-02T14:24:52.000Z',
 };
 
 const runningJob: JobDto = {
   id: 'job-running',
   revision: 2,
   projectId: project.id,
-  title: 'Subtitle import',
+  title: 'Импорт субтитров',
   status: 'running',
   stage: 'importYoutubeSubtitles',
   progress: {
-    percent: 42,
-    message: 'Importing subtitles',
+    percent: 62,
+    message: 'Импорт субтитров',
     currentStep: 'subtitle-import',
     processedItems: null,
     totalItems: null,
   },
   error: null,
-  createdAt: project.createdAt,
-  updatedAt: project.updatedAt,
+  createdAt: '2026-08-02T14:24:52.000Z',
+  updatedAt: '2026-08-02T14:26:00.000Z',
 };
 
 const meta = {
@@ -60,11 +77,8 @@ export const Wide1280: Story = {
   parameters: viewport('1280x720', 1280, 720),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByLabelText('Current project work')).toBeInTheDocument();
-    await expect(canvas.getByRole('button', { name: 'Hide Media' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
+    await expect(canvas.getByRole('heading', { name: 'Источник видео' })).toBeInTheDocument();
+    await expect(canvas.getByLabelText('Video source configuration')).toBeInTheDocument();
   },
 };
 
@@ -73,6 +87,16 @@ export const Medium1024: Story = {
 };
 
 export const Small800: Story = { parameters: viewport('800x600', 800, 600) };
+
+export const SubtitlesWide: Story = {
+  parameters: viewport('1440x900', 1440, 900),
+  render: () => <ProjectWorkspaceStory initialStep="subtitles" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Субтитры' })).toBeInTheDocument();
+    await expect(canvas.findByText(/Русский \(ru\)/)).resolves.toBeInTheDocument();
+  },
+};
 
 function viewport(name: string, width: number, height: number) {
   return {
@@ -83,7 +107,7 @@ function viewport(name: string, width: number, height: number) {
   };
 }
 
-function ProjectWorkspaceStory() {
+function ProjectWorkspaceStory({ initialStep = 'source' }: { initialStep?: 'source' | 'subtitles' }) {
   const projectContext: ProjectContextType = {
     projectId: project.id,
     project,
@@ -98,13 +122,27 @@ function ProjectWorkspaceStory() {
   };
   return (
     <NavigationProvider>
+      <InitialProjectView step={initialStep} />
       <ProjectContext.Provider value={projectContext}>
         <JobContext.Provider value={createJobState()}>
-          <ProjectPage />
+          <AppShell>
+            <ProjectPage />
+          </AppShell>
         </JobContext.Provider>
       </ProjectContext.Provider>
     </NavigationProvider>
   );
+}
+
+function InitialProjectView({ step }: { step: 'source' | 'subtitles' }) {
+  const { setCurrentView, setPipelineStep } = useNavigation();
+
+  useEffect(() => {
+    setPipelineStep(step);
+    setCurrentView('project');
+  }, [setCurrentView, setPipelineStep, step]);
+
+  return null;
 }
 
 function createJobState(): JobStoreState {

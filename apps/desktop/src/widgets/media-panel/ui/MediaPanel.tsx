@@ -14,12 +14,12 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
   const metadata = project?.metadata;
   const source = project?.source;
   const sourceLabel = formatSourceLabel(source ?? null);
-  const baseClass = `p-4 bg-surface flex flex-col h-full overflow-y-auto min-w-0 custom-scrollbar ${className}`;
+  const baseClass = `flex h-full min-w-0 flex-col overflow-y-auto bg-surface p-4 ${className}`;
 
   if (!metadata) {
     return (
       <aside className={baseClass} aria-label="Media details">
-        <h3 className="font-semibold mb-4 text-text flex items-center gap-2">
+        <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text">
           <FileVideo className="w-5 h-5 text-muted" />
           Media Info
         </h3>
@@ -44,7 +44,7 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
 
   return (
     <aside className={baseClass} aria-label="Media details">
-      <h3 className="font-semibold mb-4 text-lg text-text flex items-center gap-2">
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text">
         <Film className="w-5 h-5 text-primary" />
         Media Engine
       </h3>
@@ -71,7 +71,7 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
             <Info className="w-4 h-4 text-muted" />
             Properties
           </h4>
-          <div className="space-y-2 bg-muted/10 p-3 rounded-lg border border-muted/50">
+          <div className="space-y-2 rounded-md border border-border bg-surface-raised p-3">
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted">Source</span>
               <span
@@ -120,7 +120,7 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
         </div>
 
         {/* Streams Table */}
-        <details className="space-y-3 rounded-md border border-muted/50 bg-muted/10 p-3">
+        <details className="space-y-3 rounded-md border border-border bg-surface-raised p-3">
           <summary className="cursor-pointer text-sm font-medium text-text/80 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg">
             More details
           </summary>

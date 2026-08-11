@@ -17,7 +17,6 @@ use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
 use ports::workspace::TempWorkspacePort;
 use std::sync::Arc;
-use tokio::time::Duration;
 
 pub struct MockDubbingPipelineRunner<
     R: ProjectRepository + Clone + 'static,
@@ -32,6 +31,7 @@ pub struct MockDubbingPipelineRunner<
     artifact_store: S,
     workspace_port: Arc<dyn TempWorkspacePort>,
     _job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+    selected_subtitle_track: Option<domain::media::SubtitleTrack>,
     #[cfg(test)]
     panic_on_run: bool,
 }
@@ -72,9 +72,18 @@ impl<
             artifact_store,
             workspace_port,
             _job_runtime: job_runtime,
+            selected_subtitle_track: None,
             #[cfg(test)]
             panic_on_run: false,
         }
+    }
+
+    pub fn with_selected_subtitle_track(
+        mut self,
+        track: Option<domain::media::SubtitleTrack>,
+    ) -> Self {
+        self.selected_subtitle_track = track;
+        self
     }
 
     #[cfg(test)]
@@ -95,47 +104,6 @@ impl<
             panic!("test runner panic");
         }
 
-        let stages = vec![
-            (DubbingPipelineStage::ValidateSource, 10, 500),
-            (DubbingPipelineStage::FetchMetadata, 25, 600),
-            (DubbingPipelineStage::DownloadMedia, 45, 800),
-        ];
-
-        for (stage, percent, delay_ms) in stages {
-            if token.is_cancelled() {
-                return cancelled(guard);
-            }
-
-            let progress = JobProgress {
-                percent: percent as u8,
-                message: format!("Mock stage: {:?}", stage),
-                current_step: Some(format!("{:?}", stage)),
-                processed_items: None,
-                total_items: None,
-            };
-
-            if let Err(outcome) = self
-                .update_stage_or_terminalize(
-                    &job_id,
-                    &token,
-                    guard,
-                    stage,
-                    progress,
-                    TerminalFailure::stage_update(),
-                )
-                .await
-            {
-                return outcome;
-            }
-
-            if let Err(outcome) =
-                await_or_cancel(&token, tokio::time::sleep(Duration::from_millis(delay_ms))).await
-            {
-                guard.summary.update_status("cancelled");
-                return outcome;
-            }
-        }
-
         if let Err(outcome) = self
             .update_stage_or_terminalize(
                 &job_id,
@@ -143,9 +111,9 @@ impl<
                 guard,
                 DubbingPipelineStage::ExtractOrGenerateTranscript,
                 JobProgress {
-                    percent: 50,
-                    message: "Extracting audio...".into(),
-                    current_step: Some("extracting_audio".into()),
+                    percent: 10,
+                    message: "Importing YouTube subtitles...".into(),
+                    current_step: Some("importing_youtube_subtitles".into()),
                     processed_items: None,
                     total_items: None,
                 },
@@ -180,10 +148,11 @@ impl<
             &token,
             import_use_case.execute(ImportYoutubeSubtitlesRequest {
                 project_id: project_id.clone(),
-                preferred_languages: vec!["en".to_string(), "ru".to_string(), "uk".to_string()],
+                preferred_languages: vec!["ru".to_string(), "en".to_string(), "uk".to_string()],
                 allow_auto_generated: true,
                 cancellation_token: tokio_token,
                 job_id: job_id.clone(),
+                selected_track: self.selected_subtitle_track.clone(),
             }),
         )
         .await
@@ -205,10 +174,33 @@ impl<
                     guard.summary.update_status("cancelled");
                     return RuntimeTaskOutcome::Cancelled;
                 }
+                let rate_limited = matches!(
+                    &e,
+                    crate::error::ApplicationError::Port(
+                        PortError::ExternalToolFailed { message, .. },
+                    ) if message == "YouTube rate limit reached; try again later"
+                );
+                let failure = if rate_limited {
+                    TerminalFailure::youtube_rate_limited()
+                } else {
+                    TerminalFailure::subtitle_import()
+                };
+                tracing::error!(
+                    error = %common::observability::redaction::DiagnosticError {
+                        kind: "subtitle_import",
+                        code: Some(if rate_limited {
+                            "YOUTUBE_RATE_LIMITED"
+                        } else {
+                            "SUBTITLE_IMPORT_FAILED"
+                        }),
+                        retryable: true,
+                    },
+                    "subtitle import failed"
+                );
                 return terminalize_runner_failure(
                     self.job_scheduler.as_ref(),
                     &job_id,
-                    TerminalFailure::subtitle_import(),
+                    failure,
                     guard,
                 )
                 .await;
@@ -225,11 +217,11 @@ impl<
                 &job_id,
                 &token,
                 guard,
-                DubbingPipelineStage::ExportResult,
+                DubbingPipelineStage::ExtractOrGenerateTranscript,
                 JobProgress {
                     percent: 100,
-                    message: "Mock stage: ExportResult".into(),
-                    current_step: Some("export_result".into()),
+                    message: "YouTube subtitles imported".into(),
+                    current_step: Some("youtube_subtitles_imported".into()),
                     processed_items: None,
                     total_items: None,
                 },
@@ -237,13 +229,6 @@ impl<
             )
             .await
         {
-            return outcome;
-        }
-
-        if let Err(outcome) =
-            await_or_cancel(&token, tokio::time::sleep(Duration::from_millis(500))).await
-        {
-            guard.summary.update_status("cancelled");
             return outcome;
         }
 

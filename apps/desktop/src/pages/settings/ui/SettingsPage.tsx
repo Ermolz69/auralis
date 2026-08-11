@@ -1,67 +1,99 @@
-import {
-  Page,
-  PageContainer,
-  PageHeader,
-  PageHeaderGroup,
-  PageTitle,
-  PageDescription,
-  PageContent,
-} from '../../../shared/ui/page-layout';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../shared/ui/card';
 import { Badge } from '../../../shared/ui/badge';
+import { Icon, type IconName } from '../../../shared/ui/icon';
+import { Page } from '../../../shared/ui/page-layout';
+import { Select } from '../../../shared/ui/select';
+import { COLOR_THEMES, isColorTheme, useColorTheme } from '../../../shared/theme';
+
+const unavailableSections: Array<{
+  label: string;
+  description: string;
+  detail: string;
+  ariaLabel: string;
+  icon: IconName;
+}> = [
+  {
+    label: 'Export defaults',
+    description: 'Output directory, resolution and format',
+    detail: 'Export defaults are not part of the current app contract.',
+    ariaLabel: 'Export defaults unavailable',
+    icon: 'FolderOutput',
+  },
+];
 
 export const SettingsPage = () => {
+  const { colorTheme, setColorTheme } = useColorTheme();
+  const activeTheme = COLOR_THEMES.find((theme) => theme.id === colorTheme);
+
   return (
-    <Page className="overflow-y-auto min-h-screen">
-      <PageContainer size="md" className="py-12">
-        <PageHeader className="mb-8">
-          <PageHeaderGroup>
-            <PageTitle>Settings</PageTitle>
-            <PageDescription>Available preferences and defaults will appear here.</PageDescription>
-          </PageHeaderGroup>
-        </PageHeader>
+    <Page className="flex h-full min-h-0 flex-col overflow-hidden">
+      <header className="shrink-0 border-b border-border px-5 py-5 sm:px-8">
+        <h1 className="text-xl font-semibold text-text">Settings</h1>
+        <p className="mt-0.5 text-xs text-muted">Workspace preferences</p>
+      </header>
 
-        <PageContent className="gap-6 flex flex-col">
-          <Card role="status" aria-label="Appearance settings unavailable">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <CardTitle>Appearance</CardTitle>
-                <Badge variant="muted" size="sm">
-                  Unavailable
-                </Badge>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8">
+        <div className="w-full max-w-2xl space-y-3">
+          <section className="rounded-md border border-border bg-surface-raised p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface text-primary">
+                <Icon name="Palette" size={15} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-semibold text-text">Appearance</h2>
+                <p className="text-xs text-muted">Theme and interface colors</p>
               </div>
-              <CardDescription>
-                Appearance preferences are not part of the current app contract.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted">
-                This section is informational only. No theme or UI scaling settings are saved yet.
-              </p>
-            </CardContent>
-          </Card>
+              <div className="flex gap-1" aria-hidden="true">
+                <span className="h-3 w-3 rounded-full bg-primary" />
+                <span className="h-3 w-3 rounded-full bg-accent" />
+                <span className="h-3 w-3 rounded-full bg-success" />
+              </div>
+            </div>
 
-          <Card role="status" aria-label="Export defaults unavailable">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <CardTitle>Export Defaults</CardTitle>
-                <Badge variant="muted" size="sm">
-                  Unavailable
-                </Badge>
+            <div className="mt-4 border-t border-border/70 pt-4">
+              <Select
+                label="Color theme"
+                value={colorTheme}
+                options={COLOR_THEMES.map((theme) => ({ value: theme.id, label: theme.label }))}
+                helperText={activeTheme?.description}
+                onChange={(event) => {
+                  if (isColorTheme(event.target.value)) setColorTheme(event.target.value);
+                }}
+              />
+            </div>
+          </section>
+
+          {unavailableSections.map((section) => (
+            <section
+              key={section.label}
+              role="status"
+              aria-label={section.ariaLabel}
+              className="flex items-start gap-3 rounded-md border border-border bg-surface-raised p-4"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface text-muted">
+                <Icon name={section.icon} size={15} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold text-text">{section.label}</h2>
+                    <p className="text-xs text-muted">{section.description}</p>
+                  </div>
+                  <Badge variant="muted" size="sm">
+                    Unavailable
+                  </Badge>
+                </div>
+                <p className="mt-3 border-t border-border/70 pt-3 text-xs text-subtle">
+                  {section.detail}
+                </p>
               </div>
-              <CardDescription>
-                Export defaults are not part of the current app contract.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted">
-                This section is informational only. No output directory, resolution, or format
-                settings are saved yet.
-              </p>
-            </CardContent>
-          </Card>
-        </PageContent>
-      </PageContainer>
+            </section>
+          ))}
+
+          <p className="pt-2 text-xs text-subtle">
+            Цветовая тема хранится локально и применяется при следующем запуске приложения.
+          </p>
+        </div>
+      </div>
     </Page>
   );
 };

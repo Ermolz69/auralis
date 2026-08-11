@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { HomePage } from './HomePage';
 
 vi.mock('../../../features/import-local-media', () => ({
@@ -18,6 +18,8 @@ vi.mock('../../../features/project-list', () => ({
 describe('HomePage', () => {
   it('presents local import as the first primary creation path', () => {
     render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'New project' }));
 
     const createProject = screen.getByLabelText('Create project');
     const localImport = screen.getByRole('button', { name: 'Import local video' });

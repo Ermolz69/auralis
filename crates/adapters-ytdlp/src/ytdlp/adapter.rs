@@ -13,6 +13,7 @@ use super::parser::parse_ytdlp_metadata;
 pub struct YtDlpAdapter {
     candidates: Vec<PathBuf>,
     timeout_ms: u64,
+    media_download_timeout_ms: u64,
 }
 
 impl Default for YtDlpAdapter {
@@ -26,11 +27,13 @@ impl YtDlpAdapter {
         Self {
             candidates,
             timeout_ms: 60_000,
+            media_download_timeout_ms: 30 * 60_000,
         }
     }
 
     pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = timeout_ms;
+        self.media_download_timeout_ms = timeout_ms;
         self
     }
 }
@@ -95,7 +98,7 @@ impl VideoSourcePort for YtDlpAdapter {
             url,
             &request.target_dir,
             &template,
-            self.timeout_ms,
+            self.media_download_timeout_ms,
         )
         .await?;
 

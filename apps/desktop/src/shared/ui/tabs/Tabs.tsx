@@ -155,7 +155,7 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         tabIndex={isSelected ? 0 : -1}
         className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-60 disabled:saturate-50 ${variantClasses} ${widthClass} ${
           isSelected
-            ? 'border-primary-action bg-primary-action text-white shadow-sm'
+            ? 'border-primary-action bg-primary-action text-primary-foreground shadow-sm'
             : 'hover:border-border hover:bg-secondary hover:text-text'
         } ${className}`}
         {...props}

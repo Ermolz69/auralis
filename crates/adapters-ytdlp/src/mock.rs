@@ -4,6 +4,7 @@ use domain::media::{Artifact, ArtifactKind, MediaMetadata, MediaSource, Subtitle
 use ports::error::PortError;
 use ports::source::{DownloadMediaRequest, SubtitleSourcePort, VideoSourcePort};
 
+#[derive(Clone)]
 pub struct MockVideoSourceAdapter {
     pub should_fail_validation: bool,
 }
