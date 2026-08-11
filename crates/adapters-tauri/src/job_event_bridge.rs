@@ -155,7 +155,7 @@ impl PreparedJobEventBridge {
             shutdown_rx: self.shutdown_rx.take().unwrap(),
         };
 
-        let worker_handle = tokio::spawn(async move {
+        let worker_handle = tauri::async_runtime::handle().inner().spawn(async move {
             worker.run().await;
         });
 
