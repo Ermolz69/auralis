@@ -104,7 +104,10 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
           <>
             {activeJobs.length > 0 && (
               <section aria-labelledby="active-operations-heading" className="flex flex-col gap-3">
-                <h3 id="active-operations-heading" className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
+                <h3
+                  id="active-operations-heading"
+                  className="text-[10px] font-semibold uppercase tracking-wider text-subtle"
+                >
                   Active operation
                 </h3>
                 <ul className="flex flex-col gap-3" aria-label="Active operations">
@@ -119,7 +122,10 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
 
             {completedJobs.length > 0 && (
               <section aria-labelledby="job-history-heading" className="flex flex-col gap-3">
-                <h3 id="job-history-heading" className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
+                <h3
+                  id="job-history-heading"
+                  className="text-[10px] font-semibold uppercase tracking-wider text-subtle"
+                >
                   History
                 </h3>
                 <ul className="flex flex-col gap-3" aria-label="Operation history">

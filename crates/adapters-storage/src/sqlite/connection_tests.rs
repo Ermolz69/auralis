@@ -1,31 +1,59 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(test)]
 mod tests {
-    use crate::sqlite::connection::connect_sqlite;
+    use crate::sqlite::connection::{connect_sqlite, create_pool};
     use tempfile::tempdir;
 
     #[tokio::test]
-    async fn test_fresh_db_migration() {
+    async fn fresh_database_uses_the_final_schema_only() {
         let dir = tempdir().unwrap();
         let db_path = dir.path().join("fresh.sqlite");
 
         let pool = connect_sqlite(&db_path).await.expect("Failed to connect");
 
-        // Ensure _sqlx_migrations exists
-        let has_migrations: bool = sqlx::query(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='_sqlx_migrations'",
+        let tables: Vec<String> = sqlx::query_scalar(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
         )
-        .fetch_optional(&pool)
+        .fetch_all(&pool)
         .await
-        .unwrap()
-        .is_some();
-        assert!(has_migrations);
+        .unwrap();
+        assert_eq!(tables, ["artifacts", "jobs", "outbox_messages", "projects"]);
+
+        let project_columns: Vec<String> =
+            sqlx::query_scalar("SELECT name FROM pragma_table_info('projects') ORDER BY cid")
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            project_columns,
+            [
+                "id",
+                "title",
+                "status",
+                "source_json",
+                "metadata_json",
+                "source_language",
+                "target_language",
+                "transcript_json",
+                "active_job_id",
+                "last_terminal_job_id",
+                "created_at",
+                "updated_at",
+            ]
+        );
+
+        let rejected = sqlx::query(
+            "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, created_at, updated_at) VALUES ('a', 'missing', 'SourceVideo', 'LocalPath', '/tmp/a', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await;
+        assert!(rejected.is_err());
     }
 
     #[tokio::test]
-    async fn test_migrated_db_opens_normally() {
+    async fn final_database_opens_normally_more_than_once() {
         let dir = tempdir().unwrap();
-        let db_path = dir.path().join("migrated.sqlite");
+        let db_path = dir.path().join("final.sqlite");
 
         {
             let _pool = connect_sqlite(&db_path).await.unwrap();
@@ -34,11 +62,25 @@ mod tests {
         // Second open should work normally
         let _pool = connect_sqlite(&db_path).await.unwrap();
     }
+
     #[tokio::test]
-    async fn rename_migration_hack() {
-        let _ = std::fs::rename(
-            "migrations/0006_outbox_aggregate.sql",
-            "migrations/0011_outbox_aggregate.sql",
-        );
+    async fn database_with_another_schema_is_rejected_without_conversion() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("unsupported.sqlite");
+        let pool = create_pool(&db_path).await.unwrap();
+        sqlx::query("CREATE TABLE unrelated_state (id TEXT PRIMARY KEY)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        pool.close().await;
+
+        let error = connect_sqlite(&db_path).await.unwrap_err();
+        assert!(matches!(
+            error,
+            ports::error::PortError::Storage {
+                operation: "validate_sqlite_schema",
+                ..
+            }
+        ));
     }
 }

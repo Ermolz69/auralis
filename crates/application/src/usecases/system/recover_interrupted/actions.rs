@@ -22,15 +22,11 @@ pub enum RecoveryAction {
         job: Job,
         active_job_id: JobId,
     },
-    FailLegacyPair {
-        project: Project,
-        job: Job,
-    },
     FailProjectWithMissingLinkedJob {
         project: Project,
         missing_job_id: JobId,
     },
-    FailLegacyProjectWithoutJob {
+    FailProjectWithoutActiveJob {
         project: Project,
     },
     FailOrphanJob {
@@ -43,12 +39,11 @@ impl RecoveryAction {
         match self {
             Self::FailInterruptedPair { .. } => RecoveryActionType::FailInterruptedPair,
             Self::ReconcileTerminalPair { .. } => RecoveryActionType::ReconcileTerminalPair,
-            Self::FailLegacyPair { .. } => RecoveryActionType::FailLegacyPair,
             Self::FailProjectWithMissingLinkedJob { .. } => {
                 RecoveryActionType::FailProjectWithMissingLinkedJob
             }
-            Self::FailLegacyProjectWithoutJob { .. } => {
-                RecoveryActionType::FailLegacyProjectWithoutJob
+            Self::FailProjectWithoutActiveJob { .. } => {
+                RecoveryActionType::FailProjectWithoutActiveJob
             }
             Self::FailOrphanJob { .. } => RecoveryActionType::FailOrphanJob,
         }

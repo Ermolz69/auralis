@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use domain::job::{JobError, TerminalOutcome};
 use ports::recovery::{
-    FailInterruptedPairCommand, FailLegacyPairFallbackCommand, FailLegacyProjectWithoutJobCommand,
-    FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand, ReconcileTerminalPairCommand,
-    RecoveryApplyResult, RecoveryStorage,
+    FailInterruptedPairCommand, FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand,
+    FailProjectWithoutActiveJobCommand, ReconcileTerminalPairCommand, RecoveryApplyResult,
+    RecoveryStorage,
 };
 
 use crate::error::ApplicationError;
@@ -158,37 +158,6 @@ impl RecoverInterruptedStateUseCase {
                             .map_err(Into::into)
                     }
                 }
-                RecoveryAction::FailLegacyPair {
-                    mut project,
-                    mut job,
-                } => {
-                    project_id_for_err = Some(project.id().clone());
-                    job_id_for_err = Some(job.id().clone());
-
-                    let expected_project_status = project.status().clone();
-                    let expected_job_status = job.status().clone();
-                    let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
-
-                    if let Err(e) = job.mark_failed(JobError::new(
-                        "APP_RESTART",
-                        "Interrupted by application restart (legacy fallback)",
-                        false,
-                    )) {
-                        Err(e.into())
-                    } else {
-                        project.force_fail_legacy_recovery();
-                        recovery_storage
-                            .commit_legacy_pair_fallback(FailLegacyPairFallbackCommand {
-                                project,
-                                job,
-                                expected_project_status,
-                                expected_job_status,
-                                expected_last_terminal_job_id,
-                            })
-                            .await
-                            .map_err(Into::into)
-                    }
-                }
                 RecoveryAction::FailProjectWithMissingLinkedJob {
                     mut project,
                     missing_job_id,
@@ -200,7 +169,7 @@ impl RecoverInterruptedStateUseCase {
                     let expected_active_job_id = missing_job_id.clone();
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
-                    project.force_fail_legacy_recovery(); // Equivalent to force failing due to missing job
+                    project.force_fail_missing_job_recovery();
                     recovery_storage
                         .commit_failed_project_with_missing_linked_job(
                             FailProjectWithMissingLinkedJobCommand {
@@ -213,16 +182,16 @@ impl RecoverInterruptedStateUseCase {
                         .await
                         .map_err(Into::into)
                 }
-                RecoveryAction::FailLegacyProjectWithoutJob { mut project } => {
+                RecoveryAction::FailProjectWithoutActiveJob { mut project } => {
                     project_id_for_err = Some(project.id().clone());
 
                     let expected_project_status = project.status().clone();
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
-                    project.force_fail_legacy_recovery();
+                    project.force_fail_missing_job_recovery();
                     recovery_storage
-                        .commit_failed_legacy_project_without_job(
-                            FailLegacyProjectWithoutJobCommand {
+                        .commit_failed_project_without_active_job(
+                            FailProjectWithoutActiveJobCommand {
                                 project,
                                 expected_project_status,
                                 expected_last_terminal_job_id,

@@ -62,13 +62,3 @@ test('excludes test fixtures from production fallback scan', () => {
 
   assert.deepEqual(checkStorageFallbacks({ rootDir: root }), []);
 });
-
-test('keeps artifacts_json allowlist narrow', () => {
-  const root = fixture();
-  writeRust(root, 'crates/application/src/runtime.rs', 'let field = "artifacts_json";\n');
-
-  assert.equal(
-    checkStorageFallbacks({ rootDir: root })[0]?.reason,
-    'legacy artifacts_json outside migration runtime',
-  );
-});

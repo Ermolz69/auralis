@@ -17,7 +17,7 @@ pub fn setup(
     validated_settings: crate::observability::config::ValidatedObservabilitySettings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
-    let app_paths = paths::AppPaths::new(app.path().app_data_dir()?);
+    let app_paths = paths::AppPaths::resolve(app)?;
     app.manage(app_paths.clone());
 
     // 0a. Initialize observability
@@ -42,7 +42,7 @@ pub fn setup(
     std::fs::create_dir_all(&workspace_root)?;
 
     // 1. Setup storage Adapter (fallible)
-    let (services, outbox_repo) = storage::setup_storage(&app_paths, &workspace_root)?;
+    let (services, outbox_repo) = storage::setup_storage(&app_paths)?;
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
         workspace_root.clone(),
@@ -66,6 +66,7 @@ pub fn setup(
 
     usecases::setup_usecases(
         app.handle(),
+        app_paths.projects(),
         services.project_repo,
         services.artifact_index.clone(),
         services.artifact_store.clone(),

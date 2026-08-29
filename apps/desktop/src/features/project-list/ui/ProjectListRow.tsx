@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState, type RefCallback } from 'react';
-import {
-  getProjectPreferences,
-  updateProjectPreferences,
-  type Project,
-} from '@/entities/project';
+import { getProjectPreferences, updateProjectPreferences, type Project } from '@/entities/project';
 import {
   formatProjectStatus,
   formatProjectTitle,
@@ -145,7 +141,10 @@ export const ProjectListRow = ({
           role="menu"
           aria-label={`Actions for ${displayTitle}`}
           onClick={(event) => event.stopPropagation()}
-          style={{ left: Math.min(menu.x, window.innerWidth - 190), top: Math.min(menu.y, window.innerHeight - 230) }}
+          style={{
+            left: Math.min(menu.x, window.innerWidth - 190),
+            top: Math.min(menu.y, window.innerHeight - 230),
+          }}
           className="fixed z-50 w-48 rounded-md border border-border bg-surface p-1 shadow-lg"
         >
           <MenuItem
@@ -157,9 +156,23 @@ export const ProjectListRow = ({
               if (title && title !== project.title) onRename(project, title);
             }}
           />
-          <MenuItem icon="ImagePlus" label="Выбрать аватарку" onClick={() => { setMenu(null); avatarInputRef.current?.click(); }} />
+          <MenuItem
+            icon="ImagePlus"
+            label="Выбрать аватарку"
+            onClick={() => {
+              setMenu(null);
+              avatarInputRef.current?.click();
+            }}
+          />
           {preferences.avatar && (
-            <MenuItem icon="ImageOff" label="Убрать аватарку" onClick={() => { setPreferences(updateProjectPreferences(project.id, { avatar: null })); setMenu(null); }} />
+            <MenuItem
+              icon="ImageOff"
+              label="Убрать аватарку"
+              onClick={() => {
+                setPreferences(updateProjectPreferences(project.id, { avatar: null }));
+                setMenu(null);
+              }}
+            />
           )}
           <MenuItem
             icon={preferences.pinned ? 'PinOff' : 'Pin'}
@@ -169,18 +182,48 @@ export const ProjectListRow = ({
               setMenu(null);
             }}
           />
-          <MenuItem icon="FolderOpen" label="Открыть папку проекта" onClick={() => { setMenu(null); onOpenFolder(project); }} />
+          <MenuItem
+            icon="FolderOpen"
+            label="Открыть папку проекта"
+            onClick={() => {
+              setMenu(null);
+              onOpenFolder(project);
+            }}
+          />
           <div className="my-1 h-px bg-border" />
-          <MenuItem icon="Trash2" label="Удалить" danger onClick={() => { setMenu(null); onDelete(project); }} />
+          <MenuItem
+            icon="Trash2"
+            label="Удалить"
+            danger
+            onClick={() => {
+              setMenu(null);
+              onDelete(project);
+            }}
+          />
         </div>
       )}
     </div>
   );
 };
 
-function MenuItem({ icon, label, onClick, danger = false }: { icon: 'Pencil' | 'ImagePlus' | 'ImageOff' | 'Pin' | 'PinOff' | 'FolderOpen' | 'Trash2'; label: string; onClick: () => void; danger?: boolean }) {
+function MenuItem({
+  icon,
+  label,
+  onClick,
+  danger = false,
+}: {
+  icon: 'Pencil' | 'ImagePlus' | 'ImageOff' | 'Pin' | 'PinOff' | 'FolderOpen' | 'Trash2';
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
   return (
-    <button type="button" role="menuitem" onClick={onClick} className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-surface-hover ${danger ? 'text-danger' : 'text-muted'}`}>
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-surface-hover ${danger ? 'text-danger' : 'text-muted'}`}
+    >
       <Icon name={icon} size={13} />
       {label}
     </button>

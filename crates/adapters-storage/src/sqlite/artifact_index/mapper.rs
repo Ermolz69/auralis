@@ -10,9 +10,13 @@ pub fn artifact_to_row_values(
     project_id: &ProjectId,
     artifact: &Artifact,
 ) -> Result<ArtifactRow, PortError> {
-    let (location_kind, location_value) = match &artifact.location {
-        ArtifactLocation::LocalPath(path) => ("LocalPath".to_string(), path.clone()),
-        ArtifactLocation::StorageKey(key) => ("StorageKey".to_string(), key.clone()),
+    let location_value = match &artifact.location {
+        ArtifactLocation::StorageKey(key) => key.clone(),
+        ArtifactLocation::LocalPath(_) => {
+            return Err(PortError::Unsupported {
+                message: "Only managed StorageKey artifact locations can be persisted".to_string(),
+            });
+        }
     };
 
     let kind = artifact_kind_to_db(&artifact.kind)?;
@@ -22,7 +26,7 @@ pub fn artifact_to_row_values(
         id: artifact.id.to_string(),
         project_id: project_id.to_string(),
         kind,
-        location_kind,
+        location_kind: "StorageKey".to_string(),
         location_value,
         size_bytes: artifact.size_bytes.map(|s| s as i64),
         state,
@@ -45,7 +49,6 @@ pub fn row_to_artifact(row: ArtifactRow) -> Result<Artifact, PortError> {
         })?;
 
     let location = match row.location_kind.as_str() {
-        "LocalPath" => ArtifactLocation::LocalPath(row.location_value),
         "StorageKey" => ArtifactLocation::StorageKey(row.location_value),
         other => {
             return Err(PortError::InvalidStoredData {

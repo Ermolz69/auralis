@@ -34,17 +34,6 @@ impl Planner {
             }
         }
 
-        for job_ids in active_jobs_by_project.values() {
-            if job_ids.len() > 1 {
-                // Multiple active jobs for one project. Check if one of them is correctly linked.
-                // Actually, the policy says:
-                // "Нормальная active Job + доп. active Job того же Project -> нормальную пару восстановить, дополнительную Job сделать orphan, добавить warning."
-                // So if we have a Processing project with active_job_id, we can spare it if there's only one.
-                // Let's resolve this during project processing to see if one is explicitly linked.
-                // Wait, if it's a legacy project with multiple active jobs, it's a fatal violation.
-            }
-        }
-
         // 2. Identify duplicate active_job_id usage across projects
         let mut active_job_id_users: HashMap<JobId, Vec<ProjectId>> = HashMap::new();
         for project in &snapshot.processing_projects {
@@ -153,52 +142,17 @@ impl Planner {
                     }
                 }
                 None => {
-                    // Legacy fallback
-                    let project_active_jobs: Vec<&Job> = active_jobs_map
-                        .values()
-                        .filter(|j| j.project_id() == project.id())
-                        .collect();
-
-                    if project_active_jobs.is_empty() {
-                        plan.actions.push(PlannedAction {
-                            action: RecoveryAction::FailLegacyProjectWithoutJob {
-                                project: project.clone(),
-                            },
-                            resolved_violation: Some(RecoveryViolation {
-                                project_id: Some(project.id().clone()),
-                                job_id: None,
-                                issue_type: RecoveryIssueType::MissingActiveJob,
-                                message: "Legacy project has no active jobs".into(),
-                            }),
-                        });
-                    } else if project_active_jobs.len() == 1 {
-                        let job = project_active_jobs[0].clone();
-                        processed_job_ids.insert(job.id().clone());
-                        plan.actions.push(PlannedAction {
-                            action: RecoveryAction::FailLegacyPair {
-                                project: project.clone(),
-                                job: job.clone(),
-                            },
-                            resolved_violation: Some(RecoveryViolation {
-                                project_id: Some(project.id().clone()),
-                                job_id: Some(job.id().clone()),
-                                issue_type: RecoveryIssueType::MissingActiveJob,
-                                message: "Legacy project missing active job link repaired".into(),
-                            }),
-                        });
-                    } else {
-                        plan.block_project(project.id().clone());
-                        for j in project_active_jobs {
-                            plan.block_job(j.id().clone());
-                            processed_job_ids.insert(j.id().clone());
-                        }
-                        plan.unresolved_violations.push(RecoveryViolation {
+                    plan.actions.push(PlannedAction {
+                        action: RecoveryAction::FailProjectWithoutActiveJob {
+                            project: project.clone(),
+                        },
+                        resolved_violation: Some(RecoveryViolation {
                             project_id: Some(project.id().clone()),
                             job_id: None,
-                            issue_type: RecoveryIssueType::AmbiguousLegacyJobs,
-                            message: "Legacy project has multiple active jobs".into(),
-                        });
-                    }
+                            issue_type: RecoveryIssueType::MissingActiveJob,
+                            message: "Processing project has no active job link".into(),
+                        }),
+                    });
                 }
             }
         }

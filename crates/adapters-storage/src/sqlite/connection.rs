@@ -3,6 +3,8 @@ use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use std::path::Path;
 
+pub(crate) const SCHEMA: &str = include_str!("schema.sql");
+
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
     let options = SqliteConnectOptions::new()
         .filename(db_path)
@@ -19,23 +21,161 @@ pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError>
 
 pub async fn connect_sqlite<P: AsRef<Path>>(db_path: P) -> Result<SqlitePool, PortError> {
     let db_path = db_path.as_ref();
-
-    // Run robust preflight
-    let preflight = crate::sqlite::preflight::state_machine::TransitionStateMachine::new(db_path);
-    preflight.run().await?;
-
     let pool = create_pool(db_path).await?;
 
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .map_err(|e| PortError::Storage {
-            operation: "run_sqlite_migrations",
+    if validate_existing_database(&pool).await? {
+        let mut transaction = pool.begin().await.map_err(|e| PortError::Storage {
+            operation: "initialize_sqlite_schema",
             message: e.to_string(),
         })?;
-
-    // Note: Runtime backfills must be run manually after this function,
-    // passing the appropriate workspace_root to them.
+        sqlx::raw_sql(SCHEMA)
+            .execute(&mut *transaction)
+            .await
+            .map_err(|e| PortError::Storage {
+                operation: "initialize_sqlite_schema",
+                message: e.to_string(),
+            })?;
+        transaction.commit().await.map_err(|e| PortError::Storage {
+            operation: "initialize_sqlite_schema",
+            message: e.to_string(),
+        })?;
+        validate_existing_database(&pool).await?;
+    }
 
     Ok(pool)
+}
+
+/// Returns `true` only when a new database still needs its one-time initialization.
+async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError> {
+    let table_names: Vec<String> = sqlx::query_scalar(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema", e))?;
+
+    if table_names.is_empty() {
+        return Ok(true);
+    }
+
+    const FINAL_TABLES: [&str; 4] = ["artifacts", "jobs", "outbox_messages", "projects"];
+    let schema_marker: i64 = sqlx::query_scalar("PRAGMA user_version")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
+        })?;
+    if table_names != FINAL_TABLES || schema_marker != 1 {
+        return Err(non_final_schema_error("database"));
+    }
+
+    const FINAL_PROJECT_COLUMNS: [&str; 12] = [
+        "id",
+        "title",
+        "status",
+        "source_json",
+        "metadata_json",
+        "source_language",
+        "target_language",
+        "transcript_json",
+        "active_job_id",
+        "last_terminal_job_id",
+        "created_at",
+        "updated_at",
+    ];
+    validate_columns(pool, "projects", &FINAL_PROJECT_COLUMNS).await?;
+
+    const FINAL_JOB_COLUMNS: [&str; 13] = [
+        "id",
+        "revision",
+        "project_id",
+        "title",
+        "kind",
+        "status",
+        "stage",
+        "progress_json",
+        "error_json",
+        "created_at",
+        "updated_at",
+        "started_at",
+        "finished_at",
+    ];
+    validate_columns(pool, "jobs", &FINAL_JOB_COLUMNS).await?;
+
+    const FINAL_ARTIFACT_COLUMNS: [&str; 10] = [
+        "id",
+        "project_id",
+        "kind",
+        "location_kind",
+        "location_value",
+        "size_bytes",
+        "state",
+        "created_at",
+        "updated_at",
+        "ready_at",
+    ];
+    validate_columns(pool, "artifacts", &FINAL_ARTIFACT_COLUMNS).await?;
+
+    const FINAL_OUTBOX_COLUMNS: [&str; 14] = [
+        "id",
+        "kind",
+        "payload_json",
+        "status",
+        "attempts",
+        "next_attempt_at",
+        "locked_at",
+        "locked_by",
+        "last_error",
+        "deduplication_key",
+        "created_at",
+        "updated_at",
+        "aggregate_type",
+        "aggregate_id",
+    ];
+    validate_columns(pool, "outbox_messages", &FINAL_OUTBOX_COLUMNS).await?;
+
+    let artifact_sql: String = sqlx::query_scalar(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'artifacts'",
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        crate::sqlite::helpers::map_sqlite_error("Failed to inspect artifacts schema", e)
+    })?;
+    if !artifact_sql.contains("location_kind = 'StorageKey'") {
+        return Err(non_final_schema_error("artifacts table"));
+    }
+
+    Ok(false)
+}
+
+async fn validate_columns(
+    pool: &SqlitePool,
+    table: &'static str,
+    expected: &[&str],
+) -> Result<(), PortError> {
+    let query = format!("SELECT name FROM pragma_table_info('{table}') ORDER BY cid");
+    let columns: Vec<String> = sqlx::query_scalar(&query)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| {
+            crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite table", e)
+        })?;
+
+    if columns
+        .iter()
+        .map(String::as_str)
+        .eq(expected.iter().copied())
+    {
+        Ok(())
+    } else {
+        Err(non_final_schema_error(table))
+    }
+}
+
+fn non_final_schema_error(component: &str) -> PortError {
+    PortError::Storage {
+        operation: "validate_sqlite_schema",
+        message: format!("The {component} does not use the current Auralis schema"),
+    }
 }

@@ -47,8 +47,7 @@ describe('Select', () => {
     expect(screen.getByRole('group', { name: 'Light themes' })).not.toBeNull();
     expect(screen.getByRole('group', { name: 'Custom themes' })).not.toBeNull();
     expect(
-      (screen.getByRole('option', { name: 'No custom themes yet' }) as HTMLOptionElement)
-        .disabled,
+      (screen.getByRole('option', { name: 'No custom themes yet' }) as HTMLOptionElement).disabled,
     ).toBe(true);
   });
 });

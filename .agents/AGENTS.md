@@ -156,7 +156,7 @@ Rules:
 2. DB transaction must be short.
 3. File finalization happens after commit through outbox.
 4. Public artifact queries must return only `state = ready`.
-5. UI must not receive legacy `LocalPath`.
+5. UI must receive only artifacts backed by managed `StorageKey` values.
 6. `ArtifactStore` must not know about SQLite.
 7. `ArtifactIndex` must not touch files.
 8. Use cases coordinate storage/index/project/job changes through `TransactionGateway`.

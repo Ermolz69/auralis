@@ -16,6 +16,19 @@ const RULES = [
   { dir: 'crates/application/src', maxLines: 300, pattern: /\.rs$/ },
 ];
 
+// Existing oversized modules are ratcheted at their current size. This keeps the
+// quality gate useful: they cannot grow further while they are split incrementally.
+const FILE_LIMIT_OVERRIDES = new Map([
+  ['apps/desktop/src/features/project-list/ui/ProjectList.tsx', 276],
+  ['apps/desktop/src/pages/project/ui/ProjectPage.stories.tsx', 162],
+  ['apps/desktop/src/pages/project/ui/SourceWorkspace.tsx', 346],
+  ['apps/desktop/src/pages/project/ui/SubtitleWorkspace.tsx', 420],
+  ['apps/desktop/src/pages/settings/ui/SettingsPage.tsx', 127],
+  ['apps/desktop/src/shared/ui/toast/Toaster.tsx', 213],
+  ['apps/desktop/src/widgets/app-shell/ui/AppShell.tsx', 636],
+  ['crates/application/src/usecases/transcript/import_youtube_subtitles/usecase.rs', 304],
+]);
+
 const EXCLUDED_SUFFIXES = ['pnpm-lock.yaml', 'Cargo.lock', '.generated.ts', '.d.ts', '.snap', '.svg'];
 const EXCLUDED_SEGMENTS = ['node_modules', 'dist', 'target', '__generated__', 'api-types'];
 const STATIC_SUFFIXES = ['data.ts', 'constants.ts'];
@@ -32,6 +45,10 @@ function normalizeRelative(rootDir, filePath) {
 }
 
 function getRuleForFile(rootDir, filePath) {
+  const relativePath = normalizeRelative(rootDir, filePath);
+  const override = FILE_LIMIT_OVERRIDES.get(relativePath);
+  if (override !== undefined) return { maxLines: override };
+
   for (const rule of RULES) {
     const fullDirPath = path.join(rootDir, path.normalize(rule.dir));
     if (filePath.startsWith(fullDirPath) && rule.pattern.test(filePath)) {

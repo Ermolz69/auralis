@@ -2,8 +2,7 @@ use sqlx::SqlitePool;
 
 use ports::error::PortError;
 use ports::recovery::{
-    FailInterruptedPairCommand, FailLegacyPairFallbackCommand, ReconcileTerminalPairCommand,
-    RecoveryApplyResult,
+    FailInterruptedPairCommand, ReconcileTerminalPairCommand, RecoveryApplyResult,
 };
 
 use crate::sqlite::helpers::{map_sqlite_error, serialize_enum, serialize_json};
@@ -193,109 +192,6 @@ pub async fn commit_reconciled_terminal_pair(
                     cmd.project.id()
                 ),
             });
-        }
-    }
-
-    tx.commit().await.map_err(map_recovery_sqlite_error)?;
-    Ok(RecoveryApplyResult::Applied)
-}
-
-pub async fn commit_legacy_pair_fallback(
-    pool: &SqlitePool,
-    cmd: FailLegacyPairFallbackCommand,
-) -> Result<RecoveryApplyResult, PortError> {
-    let mut tx = pool.begin().await.map_err(map_recovery_sqlite_error)?;
-
-    let expected_job_status = serialize_enum(&cmd.expected_job_status, "expected_job_status")?;
-
-    let job_affected = sqlx::query(
-        "UPDATE jobs SET status = ?, updated_at = ?, progress_json = ?, error_json = ? 
-         WHERE id = ? AND status = ?",
-    )
-    .bind(serialize_enum(cmd.job.status(), "job.status")?)
-    .bind(cmd.job.updated_at())
-    .bind(serialize_json(cmd.job.progress(), "job.progress")?)
-    .bind(
-        cmd.job
-            .error()
-            .map(|e| serialize_json(&e, "job.error"))
-            .transpose()?,
-    )
-    .bind(cmd.job.id().to_string())
-    .bind(&expected_job_status)
-    .execute(&mut *tx)
-    .await
-    .map_err(map_recovery_sqlite_error)?
-    .rows_affected();
-
-    let expected_project_status =
-        serialize_enum(&cmd.expected_project_status, "expected_project_status")?;
-
-    let expected_last_terminal = cmd
-        .expected_last_terminal_job_id
-        .clone()
-        .map(|id| id.to_string());
-
-    let project_affected = sqlx::query(
-        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?
-         WHERE id = ? AND status = ? AND active_job_id IS NULL AND last_terminal_job_id IS ?",
-    )
-    .bind(serialize_enum(cmd.project.status(), "project.status")?)
-    .bind(cmd.project.updated_at())
-    .bind(cmd.project.active_job_id().map(|id| id.to_string()))
-    .bind(cmd.project.id().to_string())
-    .bind(&expected_project_status)
-    .bind(&expected_last_terminal)
-    .execute(&mut *tx)
-    .await
-    .map_err(map_recovery_sqlite_error)?
-    .rows_affected();
-
-    if job_affected == 0 || project_affected == 0 {
-        let current_job_status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
-                .bind(cmd.job.id().to_string())
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(map_recovery_sqlite_error)?;
-
-        let current_project: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
-            "SELECT status, active_job_id, last_terminal_job_id FROM projects WHERE id = ?",
-        )
-        .bind(cmd.project.id().to_string())
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(map_recovery_sqlite_error)?;
-
-        let new_job_status = serialize_enum(cmd.job.status(), "job.status")?;
-        let new_proj_status = serialize_enum(cmd.project.status(), "project.status")?;
-        let new_active_job = cmd.project.active_job_id().map(|id| id.to_string());
-        let expected_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
-
-        let job_ok = job_affected > 0 || current_job_status == Some(new_job_status);
-        let proj_ok = project_affected > 0
-            || current_project
-                == Some((
-                    new_proj_status.clone(),
-                    new_active_job.clone(),
-                    expected_last_terminal.clone(),
-                ));
-
-        if !job_ok || !proj_ok {
-            let _ = tx.rollback().await; // allow-fallback
-            return Err(PortError::Conflict {
-                resource: "pair".to_string(),
-                message: format!(
-                    "Legacy Pair {}-{} state changed incompatibly",
-                    cmd.project.id(),
-                    cmd.job.id()
-                ),
-            });
-        }
-
-        if job_affected == 0 && project_affected == 0 {
-            let _ = tx.rollback().await; // allow-fallback
-            return Ok(RecoveryApplyResult::AlreadyApplied);
         }
     }
 

@@ -25,7 +25,7 @@ async fn test_finalize_pending_to_ready_and_check_constraint() {
     .unwrap();
 
     sqlx::query(
-        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', 'temp_path', 'pending_finalize', 'now', 'now')",
+        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'StorageKey', '.staging/temp_path', 'pending_finalize', 'now', 'now')",
     )
     .bind(artifact_id.to_string())
     .bind(project_id.to_string())
@@ -168,9 +168,9 @@ async fn test_finalize_conflict_cases() {
         .await
         .unwrap();
 
-    // 2. Ready with LocalPath -> Conflict
+    // 2. Wrong state (deleting) -> Conflict
     sqlx::query(
-        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', 'local_path', 'ready', 'now', 'now')",
+        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'StorageKey', 'deleting_key', 'deleting', 'now', 'now')",
     )
     .bind(artifact_id.to_string())
     .bind(project_id.to_string())
@@ -196,35 +196,7 @@ async fn test_finalize_conflict_cases() {
         .await
         .unwrap();
 
-    // 3. Wrong state (deleting) -> Conflict
-    sqlx::query(
-        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', 'local_path', 'deleting', 'now', 'now')",
-    )
-    .bind(artifact_id.to_string())
-    .bind(project_id.to_string())
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    let cmd = CommitArtifactFinalize {
-        message_id: message_id.clone(),
-        project_id: project_id.clone(),
-        artifact_id: artifact_id.clone(),
-        ready_key: ready_key.to_string(),
-    };
-    let result = uow.commit_artifact_finalize(cmd).await.unwrap();
-    assert!(matches!(
-        result,
-        ports::transaction::CommitArtifactFinalizeResult::Conflict
-    ));
-
-    // Cleanup artifact
-    sqlx::query("DELETE FROM artifacts")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    // 4. Artifact of another project -> Conflict
+    // 3. Artifact of another project -> Conflict
     let other_project_id = ProjectId::new();
     sqlx::query(
         "INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'P2', 'draft', 'now', 'now')",
@@ -235,7 +207,7 @@ async fn test_finalize_conflict_cases() {
     .unwrap();
 
     sqlx::query(
-        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', 'local_path', 'pending_finalize', 'now', 'now')",
+        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'StorageKey', '.staging/other_project', 'pending_finalize', 'now', 'now')",
     )
     .bind(artifact_id.to_string())
     .bind(other_project_id.to_string())
@@ -261,7 +233,7 @@ async fn test_finalize_conflict_cases() {
         .await
         .unwrap();
 
-    // 5. Missing artifact, existing project -> Conflict
+    // 4. Missing artifact, existing project -> Conflict
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
         project_id: project_id.clone(),
@@ -294,7 +266,7 @@ async fn test_finalize_project_deleted_or_outbox_dead() {
     .unwrap();
 
     sqlx::query(
-        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', 'temp_path', 'pending_finalize', 'now', 'now')",
+        "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'StorageKey', '.staging/temp_path', 'pending_finalize', 'now', 'now')",
     )
     .bind(artifact_id.to_string())
     .bind(project_id.to_string())

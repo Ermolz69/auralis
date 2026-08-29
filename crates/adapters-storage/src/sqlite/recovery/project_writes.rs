@@ -2,7 +2,7 @@ use sqlx::SqlitePool;
 
 use ports::error::PortError;
 use ports::recovery::{
-    FailLegacyProjectWithoutJobCommand, FailProjectWithMissingLinkedJobCommand, RecoveryApplyResult,
+    FailProjectWithMissingLinkedJobCommand, FailProjectWithoutActiveJobCommand, RecoveryApplyResult,
 };
 
 use crate::sqlite::helpers::{map_sqlite_error, serialize_enum};
@@ -72,9 +72,9 @@ pub async fn commit_failed_project_with_missing_linked_job(
     Ok(RecoveryApplyResult::Applied)
 }
 
-pub async fn commit_failed_legacy_project_without_job(
+pub async fn commit_failed_project_without_active_job(
     pool: &SqlitePool,
-    cmd: FailLegacyProjectWithoutJobCommand,
+    cmd: FailProjectWithoutActiveJobCommand,
 ) -> Result<RecoveryApplyResult, PortError> {
     let mut tx = pool.begin().await.map_err(map_recovery_sqlite_error)?;
 
@@ -121,7 +121,7 @@ pub async fn commit_failed_legacy_project_without_job(
             return Err(PortError::Conflict {
                 resource: "projects".to_string(),
                 message: format!(
-                    "Strict update failed for legacy project no job {}",
+                    "Strict update failed for project without an active job {}",
                     cmd.project.id()
                 ),
             });

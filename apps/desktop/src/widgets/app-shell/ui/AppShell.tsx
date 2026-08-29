@@ -125,8 +125,13 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
 
   const jobs = useMemo(() => Object.values(jobState?.jobs ?? {}), [jobState?.jobs]);
   const activeJobs = jobs.filter((job) => isActiveJobStatus(job.status));
-  const pipelineStatus = getPipelineStatus(project?.source != null, jobs.map((job) => job.status));
-  const projectTitle = project ? formatProjectTitle(project.title, project.source) : 'Проект не открыт';
+  const pipelineStatus = getPipelineStatus(
+    project?.source != null,
+    jobs.map((job) => job.status),
+  );
+  const projectTitle = project
+    ? formatProjectTitle(project.title, project.source)
+    : 'Проект не открыт';
 
   return (
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-canvas text-text">
@@ -222,7 +227,11 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
                         : 'text-muted hover:bg-surface hover:text-text'
                     }`}
                   >
-                    <Icon name="Folder" size={12} color={projectId === item.id ? 'primary' : 'muted'} />
+                    <Icon
+                      name="Folder"
+                      size={12}
+                      color={projectId === item.id ? 'primary' : 'muted'}
+                    />
                     <span className="min-w-0 flex-1 truncate font-semibold">{item.title}</span>
                   </button>
                 ))
@@ -383,7 +392,9 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
                     {projectTitle}
                   </span>
                   <span className="text-border-strong">/</span>
-                  <span className="truncate px-1 text-xs text-subtle">{stepLabel[pipelineStep]}</span>
+                  <span className="truncate px-1 text-xs text-subtle">
+                    {stepLabel[pipelineStep]}
+                  </span>
                 </>
               )}
               {currentView === 'settings' && (
@@ -479,7 +490,8 @@ function getPipelineStatus(hasSource: boolean, statuses: JobStatus[]) {
   return {
     source: hasSource ? ('completed' as const) : ('idle' as const),
     subtitles:
-      active ?? (failed ? ('failed' as const) : completed ? ('completed' as const) : ('idle' as const)),
+      active ??
+      (failed ? ('failed' as const) : completed ? ('completed' as const) : ('idle' as const)),
   };
 }
 
@@ -548,7 +560,9 @@ function StatusBar({
   return (
     <footer className="hidden h-7 shrink-0 items-center justify-between border-t border-border/70 bg-canvas font-mono text-[10px] text-subtle lg:flex">
       <div className="flex h-full items-center">
-        <span className="flex h-full items-center border-r border-border/70 px-2">v0.1.0 · local</span>
+        <span className="flex h-full items-center border-r border-border/70 px-2">
+          v0.1.0 · local
+        </span>
         <span className="max-w-72 truncate border-r border-border/70 px-3">
           {projectTitle ?? 'Auralis Signal'}
         </span>

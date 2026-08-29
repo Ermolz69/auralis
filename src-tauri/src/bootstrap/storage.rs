@@ -28,116 +28,106 @@ fn resolve_storage_backend(
 
 pub fn setup_storage(
     app_paths: &AppPaths,
-    workspace_root: &std::path::Path,
 ) -> Result<(RuntimeServices, SqliteOutboxRepository), Box<dyn std::error::Error>> {
     match resolve_storage_backend(std::env::var("AURALIS_STORAGE").ok().as_deref())? {
-        StorageBackend::Sqlite => {
-            std::fs::create_dir_all(app_paths.root())?;
-
-            let db_path = app_paths.database();
-
-            let pool =
-                tauri::async_runtime::block_on(adapters_storage::sqlite::connect_sqlite(db_path))?;
-
-            tauri::async_runtime::block_on(
-                adapters_storage::sqlite::migrations_runtime::run_runtime_backfills(
-                    &pool,
-                    workspace_root,
-                ),
-            )?;
-
-            let repo: crate::state::RuntimeProjectRepository =
-                Arc::new(SqliteProjectRepository::new(pool.clone()));
-
-            let idx: crate::state::RuntimeArtifactIndex =
-                Arc::new(SqliteArtifactIndex::new(pool.clone()));
-
-            let sqlite_job_repo = Arc::new(SqliteJobRepository::new(pool.clone()));
-            let job_repo: Arc<dyn JobRepository> = sqlite_job_repo.clone();
-            let job_query: Arc<dyn ports::job_query::JobQueryPort> = sqlite_job_repo;
-
-            let recovery_storage = Arc::new(
-                adapters_storage::sqlite::recovery::SqliteRecoveryStorage::new(pool.clone()),
-            );
-            let use_case =
-            application::usecases::system::recover_interrupted::usecase::RecoverInterruptedStateUseCase::new(
-                recovery_storage,
-            );
-            let report = tauri::async_runtime::block_on(use_case.execute())?;
-
-            if !report.warnings.is_empty() {
-                tracing::warn!(
-                    count = report.warnings.len(),
-                    "Recovery warning(s) occurred"
-                );
-            }
-            if !report.resolved_violations.is_empty() {
-                tracing::info!(
-                    count = report.resolved_violations.len(),
-                    "Recovery resolved violation(s)"
-                );
-            }
-
-            if report.has_blocking_failures() {
-                if !report.persistence_failures.is_empty() {
-                    tracing::error!(
-                        error = %common::observability::redaction::DiagnosticError {
-                            kind: "RecoveryPersistenceFailure",
-                            code: None,
-                            retryable: false,
-                        },
-                        category = "persistence",
-                        action = "startup_recovery",
-                        count = report.persistence_failures.len(),
-                        "Recovery persistence failure occurred"
-                    );
-                }
-                if !report.unresolved_violations.is_empty() {
-                    tracing::error!(
-                        error = %common::observability::redaction::DiagnosticError {
-                            kind: "RecoveryUnresolvedViolation",
-                            code: None,
-                            retryable: false,
-                        },
-                        category = "state_violation",
-                        action = "startup_recovery",
-                        count = report.unresolved_violations.len(),
-                        "Recovery unresolved violation occurred"
-                    );
-                }
-                return Err("Startup halted due to fatal state recovery issues.".into());
-            }
-
-            if report.actions_applied > 0 {
-                tracing::info!(
-                    "Recovery applied {} actions successfully.",
-                    report.actions_applied
-                );
-            }
-
-            let artifacts_dir = app_paths.projects();
-            std::fs::create_dir_all(&artifacts_dir)?;
-            let store: crate::state::RuntimeArtifactStore =
-                Arc::new(LocalArtifactStore::new(artifacts_dir));
-
-            let outbox_repo = SqliteOutboxRepository::new(pool.clone());
-
-            let tx_gateway: crate::state::RuntimeStorageUnitOfWork =
-                Arc::new(SqliteStorageUnitOfWork::new(pool.clone()));
-
-            Ok((
-                RuntimeServices {
-                    project_repo: repo,
-                    job_repo,
-                    job_query,
-                    artifact_index: idx,
-                    artifact_store: store,
-                    storage_uow: tx_gateway,
-                },
-                outbox_repo,
-            ))
-        }
+        StorageBackend::Sqlite => tauri::async_runtime::block_on(setup_storage_at_paths(app_paths)),
     }
+}
+
+pub async fn setup_storage_at_paths(
+    app_paths: &AppPaths,
+) -> Result<(RuntimeServices, SqliteOutboxRepository), Box<dyn std::error::Error>> {
+    std::fs::create_dir_all(app_paths.root())?;
+
+    let pool = adapters_storage::sqlite::connect_sqlite(app_paths.database()).await?;
+
+    let repo: crate::state::RuntimeProjectRepository =
+        Arc::new(SqliteProjectRepository::new(pool.clone()));
+
+    let idx: crate::state::RuntimeArtifactIndex = Arc::new(SqliteArtifactIndex::new(pool.clone()));
+
+    let sqlite_job_repo = Arc::new(SqliteJobRepository::new(pool.clone()));
+    let job_repo: Arc<dyn JobRepository> = sqlite_job_repo.clone();
+    let job_query: Arc<dyn ports::job_query::JobQueryPort> = sqlite_job_repo;
+
+    let recovery_storage =
+        Arc::new(adapters_storage::sqlite::recovery::SqliteRecoveryStorage::new(pool.clone()));
+    let use_case =
+        application::usecases::system::recover_interrupted::usecase::RecoverInterruptedStateUseCase::new(
+            recovery_storage,
+        );
+    let report = use_case.execute().await?;
+
+    if !report.warnings.is_empty() {
+        tracing::warn!(
+            count = report.warnings.len(),
+            "Recovery warning(s) occurred"
+        );
+    }
+    if !report.resolved_violations.is_empty() {
+        tracing::info!(
+            count = report.resolved_violations.len(),
+            "Recovery resolved violation(s)"
+        );
+    }
+
+    if report.has_blocking_failures() {
+        if !report.persistence_failures.is_empty() {
+            tracing::error!(
+                error = %common::observability::redaction::DiagnosticError {
+                    kind: "RecoveryPersistenceFailure",
+                    code: None,
+                    retryable: false,
+                },
+                category = "persistence",
+                action = "startup_recovery",
+                count = report.persistence_failures.len(),
+                "Recovery persistence failure occurred"
+            );
+        }
+        if !report.unresolved_violations.is_empty() {
+            tracing::error!(
+                error = %common::observability::redaction::DiagnosticError {
+                    kind: "RecoveryUnresolvedViolation",
+                    code: None,
+                    retryable: false,
+                },
+                category = "state_violation",
+                action = "startup_recovery",
+                count = report.unresolved_violations.len(),
+                "Recovery unresolved violation occurred"
+            );
+        }
+        return Err("Startup halted due to fatal state recovery issues.".into());
+    }
+
+    if report.actions_applied > 0 {
+        tracing::info!(
+            "Recovery applied {} actions successfully.",
+            report.actions_applied
+        );
+    }
+
+    std::fs::create_dir_all(app_paths.projects().join(".staging"))?;
+    let store: crate::state::RuntimeArtifactStore =
+        Arc::new(LocalArtifactStore::new(app_paths.projects()));
+
+    let outbox_repo = SqliteOutboxRepository::new(pool.clone());
+
+    let tx_gateway: crate::state::RuntimeStorageUnitOfWork =
+        Arc::new(SqliteStorageUnitOfWork::new(pool));
+
+    Ok((
+        RuntimeServices {
+            project_repo: repo,
+            job_repo,
+            job_query,
+            artifact_index: idx,
+            artifact_store: store,
+            storage_uow: tx_gateway,
+        },
+        outbox_repo,
+    ))
 }
 
 #[cfg(test)]
@@ -148,6 +138,7 @@ mod tests {
         PersistenceFailure, RecoveryActionType, RecoveryReport,
     };
     use domain::system::recovery::{RecoveryIssueType, RecoveryViolation};
+    use std::path::{Path, PathBuf};
     use std::sync::{Arc, Mutex};
     use tracing_subscriber::fmt::MakeWriter;
 
@@ -168,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn storage_backend_config_rejects_unknown_and_legacy_memory() {
+    fn storage_backend_config_rejects_unsupported_values() {
         assert_eq!(
             resolve_storage_backend(Some("postgres")).unwrap_err(),
             UnsupportedStorageBackend
@@ -187,6 +178,148 @@ mod tests {
         assert!(!production_source.contains("InMemoryProjectRepository"));
         assert!(!production_source.contains("InMemoryArtifactIndex"));
         assert!(!production_source.contains("InMemoryStorageUnitOfWork"));
+        assert!(production_source.contains("LocalArtifactStore::new(app_paths.projects())"));
+    }
+
+    #[tokio::test]
+    async fn setup_on_empty_root_creates_database_and_projects() {
+        let sandbox = tempfile::tempdir().unwrap();
+        let app_root = sandbox.path().join("app-data");
+        let paths = AppPaths::new(app_root.clone());
+
+        assert!(!app_root.exists());
+        let _storage = setup_storage_at_paths(&paths).await.unwrap();
+
+        assert!(paths.database().is_file());
+        assert!(paths.projects().is_dir());
+        assert!(paths.projects().join(".staging").is_dir());
+    }
+
+    #[tokio::test]
+    async fn setup_is_repeatable_for_the_same_paths() {
+        let sandbox = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(sandbox.path().join("app-data"));
+
+        let first = setup_storage_at_paths(&paths).await.unwrap();
+        drop(first);
+        let second = setup_storage_at_paths(&paths).await;
+
+        assert!(second.is_ok());
+        assert!(paths.database().is_file());
+        assert!(paths.projects().is_dir());
+    }
+
+    #[tokio::test]
+    async fn artifact_store_uses_projects_as_its_root() {
+        let sandbox = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(sandbox.path().join("app-data"));
+        let (services, _outbox) = setup_storage_at_paths(&paths).await.unwrap();
+        let source = sandbox.path().join("source.mp4");
+        tokio::fs::write(&source, b"video").await.unwrap();
+        let project_id = domain::project::ProjectId::new();
+
+        let staged = services
+            .artifact_store
+            .import_external_file(
+                &project_id,
+                domain::media::ArtifactKind::SourceVideo,
+                &source,
+                Some("source.mp4"),
+            )
+            .await
+            .unwrap();
+        services
+            .artifact_store
+            .finalize_staged_artifact(&staged.staging_key, &staged.final_key)
+            .await
+            .unwrap();
+
+        assert!(staged
+            .final_key
+            .starts_with(&format!("{project_id}/source-video/")));
+        assert!(paths.projects().join(&staged.final_key).is_file());
+        assert!(!paths.root().join(&staged.final_key).exists());
+    }
+
+    #[tokio::test]
+    async fn unavailable_app_root_fails_without_writing_to_other_roots() {
+        let sandbox = tempfile::tempdir().unwrap();
+        let blocked_root = sandbox.path().join("app-data");
+        std::fs::write(&blocked_root, b"not a directory").unwrap();
+        let paths = AppPaths::new(blocked_root.clone());
+
+        let observed_roots = unexpected_output_roots(sandbox.path());
+        let before = observed_roots
+            .iter()
+            .map(|path| (path.clone(), path_state(path)))
+            .collect::<Vec<_>>();
+
+        let result = setup_storage_at_paths(&paths).await;
+
+        assert!(result.is_err());
+        assert!(blocked_root.is_file());
+        assert!(!sandbox.path().join("auralis.sqlite").exists());
+        assert!(!sandbox.path().join("projects").exists());
+        for (path, state) in before {
+            assert_eq!(path_state(&path), state, "unexpected write at {path:?}");
+        }
+
+        let source = include_str!("storage.rs");
+        let production_source = source.split("#[cfg(test)]").next().unwrap();
+        assert!(!production_source.contains("current_dir("));
+        assert!(!production_source.contains("temp_dir("));
+    }
+
+    fn unexpected_output_roots(sandbox: &Path) -> Vec<PathBuf> {
+        let mut roots = vec![
+            sandbox.join("auralis.sqlite"),
+            sandbox.join("projects"),
+            std::env::current_dir().unwrap().join("auralis.sqlite"),
+            std::env::current_dir().unwrap().join("projects"),
+            std::env::temp_dir().join("auralis.sqlite"),
+            std::env::temp_dir().join("projects"),
+        ];
+
+        if let Some(executable_dir) = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .map(Path::to_path_buf)
+        {
+            roots.push(executable_dir.join("auralis.sqlite"));
+            roots.push(executable_dir.join("projects"));
+        }
+
+        roots.sort();
+        roots.dedup();
+        roots
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct PathState {
+        exists: bool,
+        is_file: bool,
+        is_dir: bool,
+        len: Option<u64>,
+        modified: Option<std::time::SystemTime>,
+    }
+
+    fn path_state(path: &Path) -> PathState {
+        match std::fs::metadata(path) {
+            Ok(metadata) => PathState {
+                exists: true,
+                is_file: metadata.is_file(),
+                is_dir: metadata.is_dir(),
+                len: Some(metadata.len()),
+                modified: metadata.modified().ok(),
+            },
+            Err(_) => PathState {
+                exists: false,
+                is_file: false,
+                is_dir: false,
+                len: None,
+                modified: None,
+            },
+        }
     }
 
     #[derive(Clone)]

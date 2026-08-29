@@ -1,10 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ColorTheme } from '../config/colorThemes';
-import {
-  applyColorTheme,
-  getStoredColorTheme,
-  persistColorTheme,
-} from './colorThemeStorage';
+import { applyColorTheme, getStoredColorTheme, persistColorTheme } from './colorThemeStorage';
 import { ThemeContext } from './ThemeContext';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

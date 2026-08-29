@@ -10,9 +10,9 @@ use domain::project::{Project, ProjectStatus};
 use domain::system::recovery::RecoveryIssueType;
 use ports::error::PortError;
 use ports::recovery::{
-    FailInterruptedPairCommand, FailLegacyPairFallbackCommand, FailLegacyProjectWithoutJobCommand,
-    FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand, ReconcileTerminalPairCommand,
-    RecoveryApplyResult, RecoverySnapshot, RecoveryStorage,
+    FailInterruptedPairCommand, FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand,
+    FailProjectWithoutActiveJobCommand, ReconcileTerminalPairCommand, RecoveryApplyResult,
+    RecoverySnapshot, RecoveryStorage,
 };
 
 use crate::usecases::system::recover_interrupted::usecase::RecoverInterruptedStateUseCase;
@@ -74,13 +74,6 @@ impl RecoveryStorage for MockRecoveryRepo {
         self.take_result().await
     }
 
-    async fn commit_legacy_pair_fallback(
-        &self,
-        _cmd: FailLegacyPairFallbackCommand,
-    ) -> Result<RecoveryApplyResult, PortError> {
-        self.take_result().await
-    }
-
     async fn commit_failed_project_with_missing_linked_job(
         &self,
         _cmd: FailProjectWithMissingLinkedJobCommand,
@@ -88,9 +81,9 @@ impl RecoveryStorage for MockRecoveryRepo {
         self.take_result().await
     }
 
-    async fn commit_failed_legacy_project_without_job(
+    async fn commit_failed_project_without_active_job(
         &self,
-        _cmd: FailLegacyProjectWithoutJobCommand,
+        _cmd: FailProjectWithoutActiveJobCommand,
     ) -> Result<RecoveryApplyResult, PortError> {
         self.take_result().await
     }
@@ -147,7 +140,7 @@ async fn test_duplicate_active_job_id_blocks_projects_and_jobs() {
 }
 
 #[tokio::test]
-async fn test_legacy_ambiguity_blocks_project() {
+async fn processing_project_without_link_and_orphan_jobs_are_failed_independently() {
     let p1 = make_project_processing("Proj1", None);
 
     let mut job1 = Job::new(p1.id().clone(), "j1".into(), JobKind::Dubbing);
@@ -166,13 +159,9 @@ async fn test_legacy_ambiguity_blocks_project() {
     let usecase = RecoverInterruptedStateUseCase::new(repo.clone());
     let result = usecase.execute().await.unwrap();
 
-    // Planner should block the project and both jobs
-    assert_eq!(*repo.apply_calls.lock().await, 0);
-    assert_eq!(result.unresolved_violations.len(), 1);
-    assert_eq!(
-        result.unresolved_violations[0].issue_type,
-        RecoveryIssueType::AmbiguousLegacyJobs
-    );
+    assert_eq!(*repo.apply_calls.lock().await, 3);
+    assert_eq!(result.unresolved_violations.len(), 0);
+    assert_eq!(result.resolved_violations.len(), 3);
 }
 
 #[tokio::test]
@@ -225,7 +214,7 @@ async fn test_orphan_job_creates_resolved_violation() {
 }
 
 #[tokio::test]
-async fn test_legacy_pair_creates_resolved_violation() {
+async fn processing_project_without_link_and_orphan_job_are_failed_independently() {
     let p1 = make_project_processing("Proj1", None);
     let mut job = Job::new(p1.id().clone(), "j1".into(), JobKind::Dubbing);
     let _ = job.start();
@@ -240,12 +229,8 @@ async fn test_legacy_pair_creates_resolved_violation() {
     let usecase = RecoverInterruptedStateUseCase::new(repo.clone());
     let result = usecase.execute().await.unwrap();
 
-    assert_eq!(*repo.apply_calls.lock().await, 1);
-    assert_eq!(result.resolved_violations.len(), 1);
-    assert_eq!(
-        result.resolved_violations[0].issue_type,
-        RecoveryIssueType::MissingActiveJob
-    );
+    assert_eq!(*repo.apply_calls.lock().await, 2);
+    assert_eq!(result.resolved_violations.len(), 2);
 }
 
 #[tokio::test]

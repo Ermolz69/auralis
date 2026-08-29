@@ -11,7 +11,7 @@ use tempfile::tempdir;
 #[tokio::test]
 async fn test_add_inserts_artifact_and_get_returns_same() {
     let (_temp_dir, _pool, index, _repo, project) = setup_db().await;
-    let artifact = make_artifact(ArtifactKind::LogFile, "1");
+    let artifact = make_artifact(ArtifactKind::GeneratedTranscript, "1");
 
     // 1. add inserts artifact
     index.add(project.id(), &artifact).await.unwrap();
@@ -34,7 +34,7 @@ async fn test_list_by_project_returns_only_project_artifacts() {
     let project2 = Project::new("Test Project 2".to_string());
     repo.create(project2.clone()).await.unwrap();
 
-    let artifact1 = make_artifact(ArtifactKind::LogFile, "p1");
+    let artifact1 = make_artifact(ArtifactKind::GeneratedTranscript, "p1");
     let artifact2 = make_artifact(ArtifactKind::GeneratedTranscript, "p2");
 
     index.add(project1.id(), &artifact1).await.unwrap();
@@ -50,9 +50,9 @@ async fn test_list_by_project_returns_only_project_artifacts() {
 async fn test_list_by_project_and_kind_filters_correctly() {
     let (_temp_dir, _pool, index, _repo, project) = setup_db().await;
 
-    let a_log1 = make_artifact(ArtifactKind::LogFile, "l1");
-    let a_log2 = make_artifact(ArtifactKind::LogFile, "l2");
-    let a_json = make_artifact(ArtifactKind::GeneratedTranscript, "j1");
+    let a_log1 = make_artifact(ArtifactKind::GeneratedTranscript, "l1");
+    let a_log2 = make_artifact(ArtifactKind::GeneratedTranscript, "l2");
+    let a_json = make_artifact(ArtifactKind::TranslatedTranscript, "j1");
 
     index.add(project.id(), &a_log1).await.unwrap();
     index.add(project.id(), &a_log2).await.unwrap();
@@ -60,13 +60,13 @@ async fn test_list_by_project_and_kind_filters_correctly() {
 
     // 4. list_by_project_and_kind filters correctly
     let logs = index
-        .list_by_project_and_kind(project.id(), ArtifactKind::LogFile)
+        .list_by_project_and_kind(project.id(), ArtifactKind::GeneratedTranscript)
         .await
         .unwrap();
     assert_eq!(logs.len(), 2);
 
     let jsons = index
-        .list_by_project_and_kind(project.id(), ArtifactKind::GeneratedTranscript)
+        .list_by_project_and_kind(project.id(), ArtifactKind::TranslatedTranscript)
         .await
         .unwrap();
     assert_eq!(jsons.len(), 1);
@@ -76,7 +76,7 @@ async fn test_list_by_project_and_kind_filters_correctly() {
 #[tokio::test]
 async fn test_delete_removes_artifact_row() {
     let (_temp_dir, _pool, index, _repo, project) = setup_db().await;
-    let artifact = make_artifact(ArtifactKind::LogFile, "del");
+    let artifact = make_artifact(ArtifactKind::GeneratedTranscript, "del");
 
     index.add(project.id(), &artifact).await.unwrap();
     assert!(index.get(&artifact.id).await.unwrap().is_some());
@@ -89,7 +89,7 @@ async fn test_delete_removes_artifact_row() {
 #[tokio::test]
 async fn test_deleting_project_cascades_artifact_rows() {
     let (_temp_dir, _pool, index, repo, project) = setup_db().await;
-    let artifact = make_artifact(ArtifactKind::LogFile, "casc");
+    let artifact = make_artifact(ArtifactKind::GeneratedTranscript, "casc");
     index.add(project.id(), &artifact).await.unwrap();
 
     // 6. deleting project cascades artifact rows
@@ -103,7 +103,7 @@ async fn test_reconnect_sqlite_artifacts_still_available() {
     let db_path = temp_dir.path().join("test.sqlite");
 
     let project = Project::new("Test Project".to_string());
-    let artifact = make_artifact(ArtifactKind::LogFile, "recon");
+    let artifact = make_artifact(ArtifactKind::GeneratedTranscript, "recon");
 
     {
         let pool = connect_sqlite(&db_path).await.unwrap();
@@ -127,7 +127,7 @@ async fn test_reconnect_sqlite_artifacts_still_available() {
 #[tokio::test]
 async fn test_corrupted_location_kind_returns_error() {
     let (_temp_dir, pool, index, _repo, project) = setup_db().await;
-    let artifact = make_artifact(ArtifactKind::LogFile, "corr");
+    let artifact = make_artifact(ArtifactKind::GeneratedTranscript, "corr");
 
     sqlx::query(
         "INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, size_bytes, created_at, updated_at, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -154,4 +154,20 @@ async fn test_corrupted_location_kind_returns_error() {
         }
         _ => panic!("Expected InvalidStoredData PortError"),
     }
+}
+
+#[tokio::test]
+async fn local_path_artifact_cannot_be_persisted() {
+    let (_temp_dir, pool, index, _repo, project) = setup_db().await;
+    let mut artifact = make_artifact(ArtifactKind::SourceVideo, "external");
+    artifact.location = ArtifactLocation::LocalPath("outside-project.mp4".to_string());
+
+    let error = index.add(project.id(), &artifact).await.unwrap_err();
+    assert!(matches!(error, ports::error::PortError::Unsupported { .. }));
+
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM artifacts")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
 }

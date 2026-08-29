@@ -37,14 +37,6 @@ async fn test_project_delete_order_and_filtering() {
         .await
         .unwrap();
 
-    // Artifact B: LocalPath (should NOT create outbox delete payload)
-    sqlx::query("INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'LocalPath', 'project/art-B', 'ready', 'now', 'now')")
-        .bind(ArtifactId::new().to_string())
-        .bind(project_id.to_string())
-        .execute(&pool)
-        .await
-        .unwrap();
-
     // Old project message to cancel
     let old_msg_id = domain::outbox::OutboxMessageId::new();
     sqlx::query("INSERT INTO outbox_messages (id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at, aggregate_type, aggregate_id) VALUES (?, 'finalize_staged_artifact', '{}', 'pending', 0, 'now', 'now', 'now', 'project', ?)")

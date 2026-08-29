@@ -285,8 +285,12 @@ async fn test_commit_project_delete_conflict_when_missing() {
     }
 }
 
-#[sqlx::test]
-async fn test_commit_project_delete_busy_lock_contention(pool: sqlx::SqlitePool) {
+#[tokio::test]
+async fn test_commit_project_delete_busy_lock_contention() {
+    let dir = tempfile::tempdir().unwrap();
+    let pool = crate::sqlite::connect_sqlite(dir.path().join("busy.sqlite"))
+        .await
+        .unwrap();
     let project_id = domain::project::ProjectId::new();
     sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'Test', 'draft', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")
         .bind(project_id.to_string())

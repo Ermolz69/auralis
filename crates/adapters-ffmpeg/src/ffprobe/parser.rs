@@ -22,7 +22,7 @@ pub fn parse_ffprobe_output(output: &FfprobeOutput) -> Result<MediaMetadata, Ffp
     let mut video_metadata = None;
     let mut audio_tracks = Vec::new();
 
-    // Collect first seen for simple legacy fields
+    // Collect the first stream values used by the summary fields.
     let mut first_width = None;
     let mut first_height = None;
     let mut first_fps = None;

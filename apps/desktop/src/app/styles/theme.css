@@ -52,8 +52,8 @@
   --signal-glow-color: rgb(77 226 193 / 10%);
   --signal-glow-strong-color: rgb(77 226 193 / 22%);
 
-  --font-sans: Inter, "Segoe UI Variable", "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --font-sans: Inter, 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
 
   --radius-xs: 0.25rem;
   --radius-sm: 0.375rem;

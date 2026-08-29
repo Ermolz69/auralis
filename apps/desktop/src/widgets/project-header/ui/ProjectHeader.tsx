@@ -48,7 +48,7 @@ export const ProjectHeader = () => {
               <span>Длительность: {formatDuration(project.metadata.durationMs)}</span>
             )}
             {project.source && (
-              <span className="min-w-0 truncate text-info" title={sourceLabel}>
+              <span className="min-w-0 truncate text-accent" title={sourceLabel}>
                 → {sourceLabel}
               </span>
             )}

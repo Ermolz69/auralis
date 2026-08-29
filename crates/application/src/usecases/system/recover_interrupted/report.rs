@@ -6,9 +6,8 @@ use domain::system::recovery::{RecoveryViolation, RecoveryWarning};
 pub enum RecoveryActionType {
     FailInterruptedPair,
     ReconcileTerminalPair,
-    FailLegacyPair,
     FailProjectWithMissingLinkedJob,
-    FailLegacyProjectWithoutJob,
+    FailProjectWithoutActiveJob,
     FailOrphanJob,
 }
 

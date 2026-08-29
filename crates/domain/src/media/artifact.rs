@@ -49,7 +49,6 @@ pub enum ArtifactKind {
     MixedAudio,
     PreviewVideo,
     FinalVideo,
-    LogFile,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

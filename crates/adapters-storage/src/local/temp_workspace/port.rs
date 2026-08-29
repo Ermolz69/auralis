@@ -60,15 +60,6 @@ impl TempWorkspacePort for LocalTempWorkspace {
 
         if path.exists() {
             if let Err(e) = tokio::fs::remove_dir_all(&path).await {
-                // If it fails because it's not a directory (legacy file path), we fallback to remove_file
-                if e.kind() == std::io::ErrorKind::NotADirectory {
-                    if let Err(e2) = tokio::fs::remove_file(&path).await {
-                        return Err(PortError::Io {
-                            message: format!("Failed to remove file: {}", e2),
-                        });
-                    }
-                    return Ok(());
-                }
                 return Err(PortError::Io {
                     message: format!("Failed to remove directory: {}", e),
                 });

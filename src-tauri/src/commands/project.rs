@@ -7,18 +7,18 @@ use application::usecases::project::create_from_youtube::CreateProjectFromYoutub
 use application::usecases::project::delete::DeleteProjectRequest;
 use application::usecases::project::get::GetProjectRequest;
 use application::usecases::project::list::ListProjectsRequest;
+use application::usecases::project::open_folder::OpenProjectFolderRequest;
 use application::usecases::project::rename::RenameProjectRequest;
 use application::usecases::transcript::get::GetTranscriptRequest;
 use application::usecases::transcript::list_youtube_tracks::ListYoutubeSubtitleTracksRequest;
 
 use std::sync::Arc;
-use tauri::{command, AppHandle, State};
+use tauri::{command, State};
 
 #[command]
 pub async fn create_project_cmd(
     title: String,
     usecases: State<'_, Arc<AppUseCases>>,
-    app_paths: State<'_, crate::bootstrap::paths::AppPaths>,
 ) -> Result<ProjectDto, CommandError> {
     let req = CreateProjectRequest { title };
     let create_res = usecases
@@ -27,8 +27,6 @@ pub async fn create_project_cmd(
         .await
         .map_err(CommandError::from)?;
 
-    std::fs::create_dir_all(app_paths.project(create_res.project.id()))
-        .map_err(|_| CommandError::Internal("Failed to create the project folder".to_string()))?;
     Ok(ProjectDto::from(&create_res.project))
 }
 
@@ -52,31 +50,16 @@ pub async fn rename_project_cmd(
 #[command]
 pub async fn open_project_folder_cmd(
     project_id: String,
-    app: AppHandle,
-    app_paths: State<'_, crate::bootstrap::paths::AppPaths>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<(), CommandError> {
-    let project_id = parse_project_id(&project_id)?;
     usecases
-        .get_project
-        .execute(GetProjectRequest {
-            project_id: project_id.clone(),
+        .open_project_folder
+        .execute(OpenProjectFolderRequest {
+            project_id: parse_project_id(&project_id)?,
         })
         .await
         .map_err(CommandError::from)?;
-    let path = app_paths.project(&project_id);
-    std::fs::create_dir_all(&path)
-        .map_err(|_| CommandError::Internal("Failed to create the project folder".to_string()))?;
-    open_folder(&app, &path)?;
     Ok(())
-}
-
-#[allow(deprecated)]
-fn open_folder(app: &AppHandle, path: &std::path::Path) -> Result<(), CommandError> {
-    use tauri_plugin_shell::ShellExt;
-    app.shell()
-        .open(path.to_string_lossy().into_owned(), None)
-        .map_err(|_| CommandError::Internal("Failed to open the project folder".to_string()))
 }
 
 #[command]
@@ -218,4 +201,59 @@ pub async fn start_project_mock_pipeline_cmd(
         project: ProjectDto::from(&response.project),
         job: map_job_dto_result(adapters_tauri::dto::mapper::map_job_dto(&response.job))?,
     })
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    #[test]
+    fn create_project_command_does_not_manage_project_directories() {
+        let source = include_str!("project.rs");
+        let create_command = source
+            .split("pub async fn create_project_cmd")
+            .nth(1)
+            .and_then(|source| source.split("pub async fn rename_project_cmd").next())
+            .expect("create project command source");
+
+        assert!(!create_command.contains("AppPaths"));
+        assert!(!create_command.contains("create_dir_all"));
+    }
+
+    #[test]
+    fn open_project_folder_command_delegates_without_accepting_a_path() {
+        let source = include_str!("project.rs");
+        let open_folder_command = source
+            .split("pub async fn open_project_folder_cmd")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("pub async fn create_project_from_youtube_cmd")
+                    .next()
+            })
+            .expect("open project folder command source");
+
+        assert!(open_folder_command.contains("open_project_folder"));
+        assert!(open_folder_command.contains("parse_project_id(&project_id)"));
+        assert!(!open_folder_command.contains("AppPaths"));
+        assert!(!open_folder_command.contains("create_dir_all"));
+        assert!(!open_folder_command.contains("path: String"));
+    }
+
+    #[test]
+    fn delete_project_command_does_not_delete_project_files_directly() {
+        let source = include_str!("project.rs");
+        let delete_command = source
+            .split("pub async fn delete_project_cmd")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("pub async fn start_project_mock_pipeline_cmd")
+                    .next()
+            })
+            .expect("delete project command source");
+
+        assert!(!delete_command.contains("AppPaths"));
+        assert!(!delete_command.contains("remove_dir"));
+        assert!(!delete_command.contains("delete_project_dir"));
+    }
 }

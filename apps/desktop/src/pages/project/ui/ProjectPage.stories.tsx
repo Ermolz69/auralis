@@ -107,7 +107,11 @@ function viewport(name: string, width: number, height: number) {
   };
 }
 
-function ProjectWorkspaceStory({ initialStep = 'source' }: { initialStep?: 'source' | 'subtitles' }) {
+function ProjectWorkspaceStory({
+  initialStep = 'source',
+}: {
+  initialStep?: 'source' | 'subtitles';
+}) {
   const projectContext: ProjectContextType = {
     projectId: project.id,
     project,

@@ -76,7 +76,10 @@ async function checkColors() {
     '0', '1', '2', '4', '8', 'inset',
     't', 'r', 'b', 'l', 'x', 'y',
     't-0', 'r-0', 'b-0', 'l-0', 'x-0', 'y-0',
-    'clip-text', 'gradient-to-r', 'gradient-to-l', 'gradient-to-t', 'gradient-to-b'
+    't-2', 'r-2', 'b-2', 'l-2', 'x-2', 'y-2',
+    'clip-text',
+    'gradient-to-r', 'gradient-to-l', 'gradient-to-t', 'gradient-to-b',
+    'gradient-to-tr', 'gradient-to-tl', 'gradient-to-br', 'gradient-to-bl'
   ]);
 
   for (const app of apps) {

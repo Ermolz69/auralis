@@ -18,14 +18,6 @@ const SCAN_DIRS = [
   'src-tauri/src',
 ];
 
-const ARTIFACTS_JSON_ALLOWLIST = [
-  'crates/adapters-storage/src/sqlite/migrations_runtime/backfill_artifacts.rs',
-  'crates/adapters-storage/src/sqlite/migrations_runtime/tests.rs',
-  'crates/adapters-storage/src/sqlite/preflight/tests.rs',
-  'crates/adapters-storage/src/sqlite/preflight/inspector.rs',
-  'crates/adapters-storage/src/sqlite/preflight/state_machine.rs',
-];
-
 const TEST_PATTERNS = [/(^|\/)tests\.rs$/, /(^|\/)tests\//, /_tests\.rs$/];
 
 function normalizeRelative(rootDir, filePath) {
@@ -51,10 +43,6 @@ function isTestFile(relativePath) {
   return TEST_PATTERNS.some((pattern) => pattern.test(relativePath));
 }
 
-function isAllowedArtifactsJsonPath(relativePath) {
-  return ARTIFACTS_JSON_ALLOWLIST.includes(relativePath);
-}
-
 function hasInlineAllow(line) {
   return line.includes('allow-fallback');
 }
@@ -63,7 +51,7 @@ function isComment(line) {
   return line.trim().startsWith('//');
 }
 
-function classifyLine(line, relativePath) {
+function classifyLine(line) {
   if (isComment(line) || hasInlineAllow(line)) return null;
 
   if (line.includes('.unwrap_or_default()') && !line.includes('"')) {
@@ -81,10 +69,6 @@ function classifyLine(line, relativePath) {
     return 'ignored cleanup or persistence result';
   }
 
-  if (line.includes('artifacts_json') && !isAllowedArtifactsJsonPath(relativePath)) {
-    return 'legacy artifacts_json outside migration runtime';
-  }
-
   return null;
 }
 
@@ -98,7 +82,7 @@ export function checkStorageFallbacks({ rootDir = defaultRootDir } = {}) {
 
       const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
       lines.forEach((line, index) => {
-        const reason = classifyLine(line, relativePath);
+        const reason = classifyLine(line);
         if (reason) {
           errors.push({
             file: relativePath,

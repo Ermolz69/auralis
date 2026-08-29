@@ -17,7 +17,10 @@ async fn setup_db() -> SqlitePool {
         .await
         .unwrap();
 
-    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    sqlx::raw_sql(crate::sqlite::connection::SCHEMA)
+        .execute(&pool)
+        .await
+        .unwrap();
 
     sqlx::query("PRAGMA foreign_keys = ON")
         .execute(&pool)
@@ -82,7 +85,7 @@ async fn insert_job(pool: &SqlitePool, job: &Job, status: JobStatus) {
 }
 
 #[tokio::test]
-async fn test_fresh_migrated_db_snapshot_is_noop() {
+async fn test_fresh_final_db_snapshot_is_noop() {
     let pool = setup_db().await;
 
     let snapshot = load_snapshot(&pool).await.unwrap();
@@ -302,58 +305,6 @@ async fn test_second_pair_write_failure_rolls_back_first_write() {
 }
 
 #[tokio::test]
-async fn test_already_applied_legacy_fallback() {
-    use crate::sqlite::recovery::pair_writes::commit_legacy_pair_fallback;
-    use ports::recovery::FailLegacyPairFallbackCommand;
-
-    let pool = setup_db().await;
-
-    let tmp_p = Project::new("Proj1".into());
-    let mut snap = tmp_p.to_snapshot();
-    snap.status = ProjectStatus::Processing;
-    snap.active_job_id = None;
-    snap.source = Some(domain::media::MediaSource::ExternalLocalFile {
-        path: "test".into(),
-    });
-    let mut project = Project::from_snapshot(snap).unwrap();
-
-    let mut job = Job::new(project.id().clone(), "Title".into(), JobKind::Dubbing);
-    let _ = job.start();
-
-    insert_project(&pool, &project, ProjectStatus::Processing, None, None).await;
-    insert_job(&pool, &job, JobStatus::Running).await;
-
-    // Simulate Already Applied logic - update BOTH project and job exactly as the command would
-    job.mark_failed(domain::job::JobError::new("ERR", "Interrupted", false))
-        .unwrap();
-    project.force_fail_legacy_recovery();
-
-    sqlx::query("UPDATE projects SET status = ?, active_job_id = ? WHERE id = ?")
-        .bind(enum_text(&ProjectStatus::Failed))
-        .bind(None::<String>)
-        .bind(project.id().to_string())
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE jobs SET status = 'failed' WHERE id = ?")
-        .bind(job.id().to_string())
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    let cmd = FailLegacyPairFallbackCommand {
-        project: project.clone(),
-        job: job.clone(),
-        expected_project_status: ProjectStatus::Processing,
-        expected_job_status: JobStatus::Running,
-        expected_last_terminal_job_id: None,
-    };
-
-    let res = commit_legacy_pair_fallback(&pool, cmd).await.unwrap();
-    assert!(matches!(res, RecoveryApplyResult::AlreadyApplied));
-}
-
-#[tokio::test]
 async fn test_concurrent_zero_row_update() {
     let pool = setup_db().await;
 
@@ -492,7 +443,7 @@ async fn test_missing_linked_job_adapter_write() {
     )
     .await;
 
-    project.force_fail_legacy_recovery();
+    project.force_fail_missing_job_recovery();
 
     let cmd = FailProjectWithMissingLinkedJobCommand {
         project: project.clone(),
@@ -508,9 +459,9 @@ async fn test_missing_linked_job_adapter_write() {
 }
 
 #[tokio::test]
-async fn test_legacy_project_without_job() {
-    use crate::sqlite::recovery::project_writes::commit_failed_legacy_project_without_job;
-    use ports::recovery::FailLegacyProjectWithoutJobCommand;
+async fn test_processing_project_without_active_job() {
+    use crate::sqlite::recovery::project_writes::commit_failed_project_without_active_job;
+    use ports::recovery::FailProjectWithoutActiveJobCommand;
 
     let pool = setup_db().await;
 
@@ -526,15 +477,15 @@ async fn test_legacy_project_without_job() {
 
     insert_project(&pool, &project, ProjectStatus::Processing, None, None).await;
 
-    project.force_fail_legacy_recovery();
+    project.force_fail_missing_job_recovery();
 
-    let cmd = FailLegacyProjectWithoutJobCommand {
+    let cmd = FailProjectWithoutActiveJobCommand {
         project: project.clone(),
         expected_project_status: ProjectStatus::Processing,
         expected_last_terminal_job_id: None,
     };
 
-    let res = commit_failed_legacy_project_without_job(&pool, cmd)
+    let res = commit_failed_project_without_active_job(&pool, cmd)
         .await
         .unwrap();
     assert!(matches!(res, RecoveryApplyResult::Applied));

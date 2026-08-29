@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use tauri::Manager;
 
 const DATABASE_FILE_NAME: &str = "auralis.sqlite";
 const PROJECTS_DIRECTORY_NAME: &str = "projects";
@@ -16,6 +17,10 @@ pub struct AppPaths {
 }
 
 impl AppPaths {
+    pub fn resolve<R: tauri::Runtime, M: Manager<R>>(manager: &M) -> Result<Self, tauri::Error> {
+        Ok(Self::new(manager.path().app_data_dir()?))
+    }
+
     pub fn new(root: PathBuf) -> Self {
         Self { root }
     }
@@ -48,19 +53,57 @@ impl AppPaths {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
     #[test]
-    fn keeps_all_runtime_paths_under_the_application_root() {
+    fn derives_database_under_app_root() {
         let root = PathBuf::from("application-data");
         let paths = AppPaths::new(root.clone());
 
-        assert_eq!(paths.root(), root);
         assert_eq!(paths.database(), root.join("auralis.sqlite"));
+    }
+
+    #[test]
+    fn derives_projects_under_app_root() {
+        let root = PathBuf::from("application-data");
+        let paths = AppPaths::new(root.clone());
+
         assert_eq!(paths.projects(), root.join("projects"));
+    }
+
+    #[test]
+    fn derives_typed_project_directory() {
+        let root = PathBuf::from("application-data");
+        let paths = AppPaths::new(root.clone());
+        let project_id = domain::project::ProjectId::new();
+
+        assert_eq!(
+            paths.project(&project_id),
+            root.join("projects").join(project_id.to_string())
+        );
+    }
+
+    #[test]
+    fn derives_logs_and_workspaces() {
+        let root = PathBuf::from("application-data");
+        let paths = AppPaths::new(root.clone());
+
         assert_eq!(paths.logs(), root.join("logs"));
         assert_eq!(paths.workspaces(), root.join("cache").join("workspaces"));
+    }
+
+    #[test]
+    fn isolates_project_directories() {
+        let paths = AppPaths::new(PathBuf::from("application-data"));
+        let first = "00000000-0000-0000-0000-000000000001"
+            .parse::<domain::project::ProjectId>()
+            .expect("valid first project ID");
+        let second = "00000000-0000-0000-0000-000000000002"
+            .parse::<domain::project::ProjectId>()
+            .expect("valid second project ID");
+
+        assert_ne!(paths.project(&first), paths.project(&second));
     }
 }

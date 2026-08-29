@@ -7,7 +7,6 @@ pub enum RecoveryIssueType {
     MultipleActiveJobs,
     MissingActiveJob,
     JobProjectMismatch,
-    AmbiguousLegacyJobs,
 }
 
 impl std::fmt::Display for RecoveryIssueType {
@@ -24,10 +23,6 @@ impl std::fmt::Display for RecoveryIssueType {
             Self::JobProjectMismatch => {
                 write!(f, "Job's project ID does not match active_job_id owner")
             }
-            Self::AmbiguousLegacyJobs => write!(
-                f,
-                "Legacy project missing active_job_id, unable to resolve unambiguously"
-            ),
         }
     }
 }

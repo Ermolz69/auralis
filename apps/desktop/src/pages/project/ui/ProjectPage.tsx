@@ -15,11 +15,7 @@ export const ProjectPage = () => {
         data-testid="project-workspace"
         aria-label="Project workspace"
       >
-        {pipelineStep === 'source' ? (
-          <SourceWorkspace />
-        ) : (
-          <SubtitleWorkspace />
-        )}
+        {pipelineStep === 'source' ? <SourceWorkspace /> : <SubtitleWorkspace />}
       </section>
     </Page>
   );

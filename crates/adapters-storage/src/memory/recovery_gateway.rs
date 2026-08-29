@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use ports::error::PortError;
 use ports::recovery::{
-    FailInterruptedPairCommand, FailLegacyPairFallbackCommand, FailLegacyProjectWithoutJobCommand,
-    FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand, ReconcileTerminalPairCommand,
-    RecoveryApplyResult, RecoverySnapshot, RecoveryStorage,
+    FailInterruptedPairCommand, FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand,
+    FailProjectWithoutActiveJobCommand, ReconcileTerminalPairCommand, RecoveryApplyResult,
+    RecoverySnapshot, RecoveryStorage,
 };
 
 #[derive(Clone, Default)]
@@ -18,7 +18,6 @@ impl InMemoryRecoveryStorage {
 #[async_trait]
 impl RecoveryStorage for InMemoryRecoveryStorage {
     async fn load_snapshot(&self) -> Result<RecoverySnapshot, PortError> {
-        // Dev-only fallback
         Ok(RecoverySnapshot {
             processing_projects: vec![],
             linked_jobs: vec![],
@@ -40,13 +39,6 @@ impl RecoveryStorage for InMemoryRecoveryStorage {
         Ok(RecoveryApplyResult::Applied)
     }
 
-    async fn commit_legacy_pair_fallback(
-        &self,
-        _cmd: FailLegacyPairFallbackCommand,
-    ) -> Result<RecoveryApplyResult, PortError> {
-        Ok(RecoveryApplyResult::Applied)
-    }
-
     async fn commit_failed_project_with_missing_linked_job(
         &self,
         _cmd: FailProjectWithMissingLinkedJobCommand,
@@ -54,9 +46,9 @@ impl RecoveryStorage for InMemoryRecoveryStorage {
         Ok(RecoveryApplyResult::Applied)
     }
 
-    async fn commit_failed_legacy_project_without_job(
+    async fn commit_failed_project_without_active_job(
         &self,
-        _cmd: FailLegacyProjectWithoutJobCommand,
+        _cmd: FailProjectWithoutActiveJobCommand,
     ) -> Result<RecoveryApplyResult, PortError> {
         Ok(RecoveryApplyResult::Applied)
     }

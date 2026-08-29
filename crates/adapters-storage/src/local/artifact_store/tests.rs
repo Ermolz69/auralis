@@ -14,7 +14,7 @@ async fn test_resolve_artifact() {
 
     let artifact = domain::media::Artifact {
         id: domain::media::ArtifactId::new(),
-        kind: ArtifactKind::LogFile,
+        kind: ArtifactKind::GeneratedTranscript,
         location: domain::media::ArtifactLocation::StorageKey("test.log".to_string()),
         size_bytes: None,
         state: domain::media::ArtifactState::Ready,
@@ -25,11 +25,6 @@ async fn test_resolve_artifact() {
 
     let resolved_path = store.resolve_artifact(&artifact).await.unwrap();
     assert!(resolved_path.starts_with(temp_dir.path()));
-
-    // Also check legacy LocalPath
-
-    let legacy_path = store.resolve_legacy_local_path("/tmp/legacy.log").unwrap();
-    assert_eq!(legacy_path, std::path::PathBuf::from("/tmp/legacy.log"));
 }
 
 #[tokio::test]

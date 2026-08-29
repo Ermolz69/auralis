@@ -36,6 +36,22 @@ test('fails files beyond the configured boundary', () => {
   ]);
 });
 
+test('ratchets existing oversized modules without allowing further growth', () => {
+  const root = fixture();
+  const file = 'apps/desktop/src/widgets/app-shell/ui/AppShell.tsx';
+  writeLines(root, file, 636);
+  assert.deepEqual(checkFileSize({ rootDir: root }), []);
+
+  writeLines(root, file, 637);
+  assert.deepEqual(checkFileSize({ rootDir: root }), [
+    {
+      file,
+      lines: 637,
+      maxLines: 636,
+    },
+  ]);
+});
+
 test('keeps generated and static exclusions narrow', () => {
   const root = fixture();
   writeLines(root, 'apps/desktop/src/features/demo/Feature.generated.ts', 999);

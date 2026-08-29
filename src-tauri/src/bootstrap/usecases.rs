@@ -19,6 +19,7 @@ use application::usecases::project::create_from_youtube::CreateProjectFromYoutub
 use application::usecases::project::delete::DeleteProjectUseCase;
 use application::usecases::project::get::GetProjectUseCase;
 use application::usecases::project::list::ListProjectsUseCase;
+use application::usecases::project::open_folder::OpenProjectFolderUseCase;
 use application::usecases::project::rename::RenameProjectUseCase;
 use application::usecases::transcript::get::GetTranscriptUseCase;
 use application::usecases::transcript::list_youtube_tracks::ListYoutubeSubtitleTracksUseCase;
@@ -40,6 +41,8 @@ pub struct AppUseCases {
     >,
     pub get_project: GetProjectUseCase<RuntimeProjectRepository>,
     pub list_projects: ListProjectsUseCase<RuntimeProjectRepository>,
+    pub open_project_folder:
+        OpenProjectFolderUseCase<RuntimeProjectRepository, adapters_tauri::ProjectWorkspaceOpener>,
     pub rename_project: RenameProjectUseCase<RuntimeProjectRepository>,
     pub delete_project: DeleteProjectUseCase,
     pub start_mock_pipeline:
@@ -54,6 +57,7 @@ pub struct AppUseCases {
 #[allow(clippy::too_many_arguments)]
 pub fn setup_usecases(
     app: &AppHandle,
+    projects_root: std::path::PathBuf,
     project_repo: RuntimeProjectRepository,
     artifact_index: RuntimeArtifactIndex,
     artifact_store: RuntimeArtifactStore,
@@ -70,6 +74,7 @@ pub fn setup_usecases(
     ));
 
     let locks = Arc::new(application::usecases::project::lifecycle::ProjectLifecycleLocks::new());
+    let project_workspace = adapters_tauri::ProjectWorkspaceOpener::new(app.clone(), projects_root);
 
     let usecases = AppUseCases {
         list_project_artifacts: ListProjectArtifactsUseCase::new(artifact_index.clone()),
@@ -95,6 +100,7 @@ pub fn setup_usecases(
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
+        open_project_folder: OpenProjectFolderUseCase::new(project_repo.clone(), project_workspace),
         rename_project: RenameProjectUseCase::new(project_repo.clone()),
         delete_project: DeleteProjectUseCase::new(
             storage_uow.clone(),

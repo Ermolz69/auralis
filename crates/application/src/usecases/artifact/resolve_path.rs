@@ -32,12 +32,6 @@ impl<I: ArtifactIndex, S: ArtifactStore> ResolveArtifactPathUseCase<I, S> {
             }
         })?;
 
-        if let domain::media::ArtifactLocation::LocalPath(_) = artifact.location {
-            return Err(ApplicationError::InvalidOperation {
-                message: "Legacy external artifacts cannot be exposed to UI".into(),
-            });
-        }
-
         let absolute_path = self.store.resolve_artifact(&artifact).await?;
 
         Ok(ResolveArtifactPathResponse { absolute_path })

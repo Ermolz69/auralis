@@ -48,10 +48,7 @@ const ToastItem = ({ toast: t }: { toast: ToastProps }) => {
 
   const pauseTimer = () => {
     if (paused || t.phase !== 'visible' || duration <= 0) return;
-    remainingRef.current = Math.max(
-      0,
-      remainingRef.current - (Date.now() - startedAtRef.current),
-    );
+    remainingRef.current = Math.max(0, remainingRef.current - (Date.now() - startedAtRef.current));
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     setPaused(true);
   };
@@ -113,9 +110,7 @@ const ToastItem = ({ toast: t }: { toast: ToastProps }) => {
               : snappingBack
                 ? 'cursor-grab transition-[transform,opacity] duration-200 ease-out'
                 : 'cursor-grab animate-toast-enter'
-      } ${
-        typeStyles[t.type]
-      }`}
+      } ${typeStyles[t.type]}`}
       role={t.type === 'danger' || t.type === 'warning' ? 'alert' : 'status'}
       onMouseEnter={pauseTimer}
       onMouseLeave={() => {

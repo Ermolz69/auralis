@@ -11,9 +11,9 @@ use sqlx::SqlitePool;
 
 use ports::error::PortError;
 use ports::recovery::{
-    FailInterruptedPairCommand, FailLegacyPairFallbackCommand, FailLegacyProjectWithoutJobCommand,
-    FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand, ReconcileTerminalPairCommand,
-    RecoveryApplyResult, RecoverySnapshot, RecoveryStorage,
+    FailInterruptedPairCommand, FailOrphanJobCommand, FailProjectWithMissingLinkedJobCommand,
+    FailProjectWithoutActiveJobCommand, ReconcileTerminalPairCommand, RecoveryApplyResult,
+    RecoverySnapshot, RecoveryStorage,
 };
 
 pub struct SqliteRecoveryStorage {
@@ -46,13 +46,6 @@ impl RecoveryStorage for SqliteRecoveryStorage {
         pair_writes::commit_reconciled_terminal_pair(&self.pool, cmd).await
     }
 
-    async fn commit_legacy_pair_fallback(
-        &self,
-        cmd: FailLegacyPairFallbackCommand,
-    ) -> Result<RecoveryApplyResult, PortError> {
-        pair_writes::commit_legacy_pair_fallback(&self.pool, cmd).await
-    }
-
     async fn commit_failed_project_with_missing_linked_job(
         &self,
         cmd: FailProjectWithMissingLinkedJobCommand,
@@ -60,11 +53,11 @@ impl RecoveryStorage for SqliteRecoveryStorage {
         project_writes::commit_failed_project_with_missing_linked_job(&self.pool, cmd).await
     }
 
-    async fn commit_failed_legacy_project_without_job(
+    async fn commit_failed_project_without_active_job(
         &self,
-        cmd: FailLegacyProjectWithoutJobCommand,
+        cmd: FailProjectWithoutActiveJobCommand,
     ) -> Result<RecoveryApplyResult, PortError> {
-        project_writes::commit_failed_legacy_project_without_job(&self.pool, cmd).await
+        project_writes::commit_failed_project_without_active_job(&self.pool, cmd).await
     }
 
     async fn commit_failed_orphan_job(

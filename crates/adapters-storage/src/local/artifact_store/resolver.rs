@@ -26,15 +26,10 @@ pub fn resolve_storage_key(base_dir: &Path, key: &str) -> Result<PathBuf, PortEr
     Ok(full_path)
 }
 
-pub fn resolve_legacy_local_path(path: &str) -> Result<PathBuf, PortError> {
-    // legacy only: artifacts created by old builds
-    Ok(PathBuf::from(path))
-}
-
 pub fn resolve_artifact(base_dir: &Path, artifact: &Artifact) -> Result<PathBuf, PortError> {
     match &artifact.location {
         domain::media::ArtifactLocation::LocalPath(_) => Err(PortError::Unsupported {
-            message: "Legacy external artifacts cannot be resolved through general resolve_artifact. Use a migration service.".to_string(),
+            message: "Only managed StorageKey artifact locations can be resolved".to_string(),
         }),
         domain::media::ArtifactLocation::StorageKey(key) => resolve_storage_key(base_dir, key),
     }

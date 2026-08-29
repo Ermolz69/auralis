@@ -100,7 +100,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn maps_youtube_rate_limit_without_exposing_stderr() {
+    fn maps_youtube_rate_limit_without_exposing_command_details() {
         let error = YtDlpError::CommandFailed {
             code: Some(1),
             stderr: "ERROR: HTTP Error 429: Too Many Requests https://secret.example".into(),

@@ -24,10 +24,6 @@ impl LocalArtifactStore {
     pub fn resolve_storage_key(&self, key: &str) -> Result<PathBuf, PortError> {
         resolver::resolve_storage_key(&self.base_dir, key)
     }
-
-    pub fn resolve_legacy_local_path(&self, path: &str) -> Result<PathBuf, PortError> {
-        resolver::resolve_legacy_local_path(path)
-    }
 }
 
 #[async_trait]

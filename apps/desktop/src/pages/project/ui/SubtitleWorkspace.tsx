@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useJobContext } from '@/entities/job';
 import { useProjectContext } from '@/entities/project';
-import {
-  useTranscript,
-  useYoutubeSubtitleTracks,
-  type SubtitleTrack,
-} from '@/entities/transcript';
+import { useTranscript, useYoutubeSubtitleTracks, type SubtitleTrack } from '@/entities/transcript';
 import { RunDubbing } from '@/features/run-dubbing';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
@@ -13,9 +9,12 @@ import { Icon } from '@/shared/ui/icon';
 export function SubtitleWorkspace() {
   const { project } = useProjectContext();
   const { jobs } = useJobContext();
-  const { transcript, isLoading: transcriptLoading, error: transcriptError, refetch } = useTranscript(
-    project?.id ?? null,
-  );
+  const {
+    transcript,
+    isLoading: transcriptLoading,
+    error: transcriptError,
+    refetch,
+  } = useTranscript(project?.id ?? null);
   const { tracks, isLoading, error, refresh } = useYoutubeSubtitleTracks(project?.id ?? null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [trackQuery, setTrackQuery] = useState('');
@@ -66,7 +65,11 @@ export function SubtitleWorkspace() {
               description="Авторские или автоматически созданные дорожки"
               selected
             />
-            <MethodRow title="Импорт SRT" description="Импорт готового файла пока не подключён" disabled />
+            <MethodRow
+              title="Импорт SRT"
+              description="Импорт готового файла пока не подключён"
+              disabled
+            />
             <MethodRow
               title="Speech-to-Text"
               description="Распознавание речи пока не подключено"
@@ -190,15 +193,15 @@ function MethodRow({
   return (
     <div
       className={`flex min-h-[50px] items-center gap-3 rounded-md border px-3 py-2.5 ${
-        selected
-          ? 'border-primary/60 bg-primary/10'
-          : 'border-border bg-surface-raised opacity-65'
+        selected ? 'border-primary/60 bg-primary/10' : 'border-border bg-surface-raised opacity-65'
       }`}
       aria-disabled={disabled || undefined}
     >
       <span
         className={`h-3 w-3 rounded-full border ${
-          selected ? 'border-primary bg-primary shadow-[inset_0_0_0_3px_var(--color-bg)]' : 'border-border-strong'
+          selected
+            ? 'border-primary bg-primary shadow-[inset_0_0_0_3px_var(--color-bg)]'
+            : 'border-border-strong'
         }`}
         aria-hidden="true"
       />
@@ -234,7 +237,11 @@ function TrackList({
   if (tracks.length === 0) {
     return (
       <StatusBox
-        text={hasQuery ? 'По этому запросу дорожек не найдено' : 'YouTube не вернул доступных VTT-дорожек'}
+        text={
+          hasQuery
+            ? 'По этому запросу дорожек не найдено'
+            : 'YouTube не вернул доступных VTT-дорожек'
+        }
       />
     );
   }
@@ -308,7 +315,10 @@ function TranscriptResult({
   const visibleSegments = matchingSegments.slice(0, 50);
 
   return (
-    <section className="rounded-md border border-success/60 bg-success/10 p-3" aria-label="Полученные субтитры">
+    <section
+      className="rounded-md border border-success/60 bg-success/10 p-3"
+      aria-label="Полученные субтитры"
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-success">
           <Icon name="CircleCheck" size={14} />
@@ -360,7 +370,9 @@ function StatusBox({ text, danger = false }: { text: string; danger?: boolean })
   return (
     <div
       className={`rounded-md border px-3 py-4 text-xs ${
-        danger ? 'border-danger/50 bg-danger/10 text-danger' : 'border-border bg-surface text-subtle'
+        danger
+          ? 'border-danger/50 bg-danger/10 text-danger'
+          : 'border-border bg-surface text-subtle'
       }`}
       role={danger ? 'alert' : 'status'}
     >

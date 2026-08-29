@@ -18,7 +18,7 @@ Fundamentally review the architecture of your solution. If a `shared` component 
 
 ## When can an exception be made
 
-In extremely rare cases of complex cross-domain composition that does not fit the standard structure, or during gradual refactoring of legacy code.
+In extremely rare cases of complex cross-domain composition that does not fit the standard structure, or during a staged architectural refactor.
 
 ## Who approves the exception
 

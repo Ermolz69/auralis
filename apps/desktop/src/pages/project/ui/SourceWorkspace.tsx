@@ -69,7 +69,8 @@ export function SourceWorkspace() {
             ? job.error || formatJobState(job.status)
             : job.progress.message || formatJobState(job.status)
         }`,
-        tone: job.status === 'failed' ? 'danger' : job.status === 'completed' ? 'success' : undefined,
+        tone:
+          job.status === 'failed' ? 'danger' : job.status === 'completed' ? 'success' : undefined,
       });
     }
 
@@ -89,31 +90,33 @@ export function SourceWorkspace() {
               <PasteYoutubeLink />
             </div>
           )}
-          {source && <div className="flex flex-col gap-1.5">
-            <label htmlFor="project-source-url" className="text-xs font-medium text-muted">
-              YouTube URL
-            </label>
-            <div className="relative">
-              <input
-                id="project-source-url"
-                type="url"
-                value={isRemoteSource ? sourceValue : ''}
-                readOnly
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="h-[43px] w-full rounded-md border border-primary/45 bg-surface-raised px-3 pr-10 text-[13px] font-medium text-text outline-none transition-colors placeholder:text-subtle focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
-              {isRemoteSource && (
-                <Icon
-                  name="X"
-                  size={13}
-                  color="muted"
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-55"
-                  aria-hidden="true"
+          {source && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="project-source-url" className="text-xs font-medium text-muted">
+                YouTube URL
+              </label>
+              <div className="relative">
+                <input
+                  id="project-source-url"
+                  type="url"
+                  value={isRemoteSource ? sourceValue : ''}
+                  readOnly
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="h-[43px] w-full rounded-md border border-primary/45 bg-surface-raised px-3 pr-10 text-[13px] font-medium text-text outline-none transition-colors placeholder:text-subtle focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-              )}
+                {isRemoteSource && (
+                  <Icon
+                    name="X"
+                    size={13}
+                    color="muted"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-55"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+              <p className="text-[11px] text-subtle">Только для личного локального использования</p>
             </div>
-            <p className="text-[11px] text-subtle">Только для личного локального использования</p>
-          </div>}
+          )}
 
           <div className="flex items-center gap-3" aria-hidden="true">
             <span className="h-px flex-1 bg-border/70" />
@@ -126,25 +129,25 @@ export function SourceWorkspace() {
               <ImportLocalMediaButton />
             </div>
           ) : (
-          <div
-            aria-disabled="true"
-            className="flex min-h-[68px] items-center gap-4 rounded-md border border-border/60 px-4 py-3.5 opacity-45"
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface-active text-subtle">
-              <Icon name="Film" size={15} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-semibold text-muted">
-                {source && !isRemoteSource ? sourceValue : 'Выбрать локальный MP4'}
+            <div
+              aria-disabled="true"
+              className="flex min-h-[68px] items-center gap-4 rounded-md border border-border/60 px-4 py-3.5 opacity-45"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface-active text-subtle">
+                <Icon name="Film" size={15} />
               </span>
-              <span className="mt-0.5 block text-[11px] text-subtle">
-                {source && !isRemoteSource
-                  ? 'Локальный источник уже подключён'
-                  : 'Нажмите или перетащите файл'}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-muted">
+                  {source && !isRemoteSource ? sourceValue : 'Выбрать локальный MP4'}
+                </span>
+                <span className="mt-0.5 block text-[11px] text-subtle">
+                  {source && !isRemoteSource
+                    ? 'Локальный источник уже подключён'
+                    : 'Нажмите или перетащите файл'}
+                </span>
               </span>
-            </span>
-            <span className="shrink-0 font-mono text-[11px] text-subtle">.mp4</span>
-          </div>
+              <span className="shrink-0 font-mono text-[11px] text-subtle">.mp4</span>
+            </div>
           )}
         </div>
 
@@ -227,7 +230,9 @@ export function SourceWorkspace() {
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>{stream.codecName?.toUpperCase() || 'UNKNOWN'}</span>
-                    {stream.codecLongName && <span className="truncate">{stream.codecLongName}</span>}
+                    {stream.codecLongName && (
+                      <span className="truncate">{stream.codecLongName}</span>
+                    )}
                   </div>
                 ))}
               </div>
