@@ -10,10 +10,29 @@ type StoredPreferences = Record<string, ProjectPreferences>;
 
 function readAll(): StoredPreferences {
   try {
-    return JSON.parse(localStorage.getItem(storageKey) ?? '{}') as StoredPreferences;
+    const parsed: unknown = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
+    if (!isRecord(parsed)) return {};
+
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, ProjectPreferences] =>
+        isProjectPreferences(entry[1]),
+      ),
+    );
   } catch {
     return {};
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isProjectPreferences(value: unknown): value is ProjectPreferences {
+  return (
+    isRecord(value) &&
+    typeof value.pinned === 'boolean' &&
+    (typeof value.avatar === 'string' || value.avatar === null)
+  );
 }
 
 export function getProjectPreferences(projectId: string): ProjectPreferences {

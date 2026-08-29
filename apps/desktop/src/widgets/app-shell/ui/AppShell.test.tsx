@@ -1,11 +1,23 @@
 // @vitest-environment jsdom
 import React, { useEffect, useRef, useState } from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, type Mock } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { AppShell } from './AppShell';
-import { ProjectContext, useProjectContext, type Project } from '@/entities/project';
+import {
+  listProjects,
+  ProjectContext,
+  updateProjectPreferences,
+  useProjectContext,
+  type Project,
+} from '@/entities/project';
 import { NavigationProvider, useNavigation, type View } from '@/shared/router';
 import { Toaster, toast } from '@/shared/ui/toast';
+import { JobContext } from '@/entities/job';
+
+vi.mock('@/entities/project', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/entities/project')>();
+  return { ...actual, listProjects: vi.fn() };
+});
 
 const project: Project = {
   id: 'p-1',
@@ -30,7 +42,20 @@ function renderShell({
     <NavigationProvider>
       <InitialView view={initialView} />
       <ProjectHarness initialProject={initialProject}>
-        <AppShell>{children ?? <h1>Content heading</h1>}</AppShell>
+        <JobContext.Provider
+          value={{
+            phase: 'ready',
+            scopeProjectId: initialProject?.id ?? null,
+            jobs: {},
+            buffer: [],
+            pendingRefetch: false,
+            generation: 0,
+          }}
+        >
+          <AppShell jobQueue={<p>Queue contents</p>}>
+            {children ?? <h1>Content heading</h1>}
+          </AppShell>
+        </JobContext.Provider>
         <Toaster />
       </ProjectHarness>
     </NavigationProvider>,
@@ -93,6 +118,8 @@ describe('AppShell', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
+    localStorage.clear();
+    (listProjects as Mock).mockResolvedValue([]);
   });
 
   it('marks the current destination and disables workspace without a project', async () => {
@@ -236,6 +263,39 @@ describe('AppShell', () => {
     fireEvent.keyDown(separator, { key: 'ArrowDown' });
 
     expect(separator.getAttribute('aria-valuenow')).toBe('202');
+  });
+
+  it('closes the job queue with Escape and restores focus to its trigger', async () => {
+    renderShell();
+
+    const trigger = screen.getByRole('button', { name: 'Очередь' });
+    fireEvent.click(trigger);
+    expect(screen.getByText('Queue contents')).not.toBeNull();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Queue contents')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+  });
+
+  it('refreshes pinned projects after preferences change', async () => {
+    (listProjects as Mock).mockResolvedValue([project]);
+    renderShell();
+
+    await screen.findByText('Нет закреплённых проектов');
+    updateProjectPreferences(project.id, { pinned: true });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: project.title })).not.toBeNull();
+    });
+
+    updateProjectPreferences(project.id, { pinned: false });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: project.title })).toBeNull();
+    });
   });
 
   it('dismisses global toast without leaving focus on a removed control', async () => {

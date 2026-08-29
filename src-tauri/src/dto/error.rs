@@ -11,6 +11,7 @@ pub enum CommandError {
     Validation(String),
     Conflict(String),
     Busy(String),
+    Io(String),
     Repository(String),
     RecoveryRequired(String),
     Internal(String),
@@ -76,8 +77,10 @@ impl From<ApplicationError> for CommandError {
                 PortError::AlreadyStopped => {
                     CommandError::Internal("An unexpected internal error occurred".to_string())
                 }
+                PortError::Io { .. } => {
+                    CommandError::Io("A file system operation failed".to_string())
+                }
                 PortError::Storage { .. }
-                | PortError::Io { .. }
                 | PortError::Network { .. }
                 | PortError::InvalidStoredData { .. }
                 | PortError::ExternalToolFailed { .. }
@@ -174,6 +177,10 @@ mod tests {
         let json = serde_json::to_string(&busy).unwrap();
         assert_eq!(json, r#"{"code":"BUSY","message":"database busy"}"#);
 
+        let io = CommandError::Io("workspace unavailable".into());
+        let json = serde_json::to_string(&io).unwrap();
+        assert_eq!(json, r#"{"code":"IO","message":"workspace unavailable"}"#);
+
         let cancelled = CommandError::Cancelled("cancelled".into());
         let json = serde_json::to_string(&cancelled).unwrap();
         assert_eq!(json, r#"{"code":"CANCELLED","message":"cancelled"}"#);
@@ -245,6 +252,13 @@ mod tests {
             CommandError::Busy("The system is busy, please try again".into())
         );
 
+        assert_eq!(
+            CommandError::from(ApplicationError::Port(PortError::Io {
+                message: "C:\\private\\workspace".into()
+            })),
+            CommandError::Io("A file system operation failed".into())
+        );
+
         // Cancelled
         assert_eq!(
             CommandError::from(ApplicationError::Port(PortError::Cancelled)),
@@ -281,7 +295,7 @@ mod tests {
                 PortError::Io {
                     message: "/home/user/secret.mp4".into(),
                 },
-                CommandError::Repository("A repository error occurred".into()),
+                CommandError::Io("A file system operation failed".into()),
             ),
             (
                 PortError::Network {

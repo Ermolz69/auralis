@@ -3,6 +3,7 @@ export type CommandErrorCode =
   | 'VALIDATION'
   | 'CONFLICT'
   | 'BUSY'
+  | 'IO'
   | 'REPOSITORY'
   | 'RECOVERY_REQUIRED'
   | 'INTERNAL'
@@ -18,6 +19,7 @@ const VALID_ERROR_CODES = new Set<CommandErrorCode>([
   'VALIDATION',
   'CONFLICT',
   'BUSY',
+  'IO',
   'REPOSITORY',
   'RECOVERY_REQUIRED',
   'INTERNAL',

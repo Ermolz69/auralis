@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { ProjectList } from './ProjectList';
-import { deleteProject, listProjects, ProjectContext } from '@/entities/project';
+import { deleteProject, listProjects, openProjectFolder, ProjectContext } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { toast } from '@/shared/ui/toast';
 import type { Project } from '@/entities/project';
@@ -15,6 +15,7 @@ vi.mock('@/entities/project', async (importOriginal) => {
     ...actual,
     deleteProject: vi.fn(),
     listProjects: vi.fn(),
+    openProjectFolder: vi.fn(),
   };
 });
 
@@ -138,6 +139,7 @@ describe('ProjectList', () => {
       testProjects = testProjects.filter((p) => p.id !== id);
       return null;
     });
+    (openProjectFolder as Mock).mockResolvedValue(undefined);
   });
 
   it('Delete Button and Open Button are siblings', async () => {
@@ -150,6 +152,29 @@ describe('ProjectList', () => {
     const openBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
     expect(openBtn.parentElement).toBe(deleteBtn.parentElement?.parentElement);
+  });
+
+  it.each([
+    ['NOT_FOUND', 'Project not found'],
+    ['IO', 'A file system operation failed'],
+    ['INTERNAL', 'An unexpected internal error occurred'],
+  ])('shows an error toast when opening a project folder fails with %s', async (code, message) => {
+    (openProjectFolder as Mock).mockRejectedValueOnce({ code, message });
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+
+    const openProject = screen.getByRole('button', { name: /^Open Test Project/ });
+    fireEvent.contextMenu(openProject);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Открыть папку проекта' }));
+
+    await waitFor(() => {
+      expect(openProjectFolder).toHaveBeenCalledWith('p-1');
+      expect(toast.error).toHaveBeenCalledWith(message);
+    });
   });
 
   it('Empty title uses Untitled Project', async () => {

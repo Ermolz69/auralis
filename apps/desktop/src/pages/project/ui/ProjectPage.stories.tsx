@@ -78,7 +78,7 @@ export const Wide1280: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Источник видео' })).toBeInTheDocument();
-    await expect(canvas.getByLabelText('Video source configuration')).toBeInTheDocument();
+    await canvas.findByLabelText('Video source configuration', {}, { timeout: 5_000 });
   },
 };
 
@@ -94,7 +94,7 @@ export const SubtitlesWide: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Субтитры' })).toBeInTheDocument();
-    await expect(canvas.findByText(/Русский \(ru\)/)).resolves.toBeInTheDocument();
+    await canvas.findByText(/Русский \(ru\)/, {}, { timeout: 5_000 });
   },
 };
 

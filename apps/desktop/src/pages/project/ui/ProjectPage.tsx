@@ -1,8 +1,14 @@
+import { lazy, Suspense } from 'react';
 import { ProjectHeader } from '../../../widgets/project-header';
 import { Page } from '../../../shared/ui/page-layout';
-import { SourceWorkspace } from './SourceWorkspace';
 import { useNavigation } from '@/shared/router';
-import { SubtitleWorkspace } from './SubtitleWorkspace';
+
+const SourceWorkspace = lazy(() =>
+  import('./SourceWorkspace').then((module) => ({ default: module.SourceWorkspace })),
+);
+const SubtitleWorkspace = lazy(() =>
+  import('./SubtitleWorkspace').then((module) => ({ default: module.SubtitleWorkspace })),
+);
 
 export const ProjectPage = () => {
   const { pipelineStep } = useNavigation();
@@ -15,8 +21,18 @@ export const ProjectPage = () => {
         data-testid="project-workspace"
         aria-label="Project workspace"
       >
-        {pipelineStep === 'source' ? <SourceWorkspace /> : <SubtitleWorkspace />}
+        <Suspense fallback={<WorkspaceLoading />}>
+          {pipelineStep === 'source' ? <SourceWorkspace /> : <SubtitleWorkspace />}
+        </Suspense>
       </section>
     </Page>
   );
 };
+
+function WorkspaceLoading() {
+  return (
+    <div className="flex h-full items-center justify-center text-xs text-muted" role="status">
+      Loading workspace…
+    </div>
+  );
+}

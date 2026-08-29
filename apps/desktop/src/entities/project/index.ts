@@ -4,3 +4,4 @@ export * from './model/context';
 export * from './model/ProjectProvider';
 export * from './model/useProjectContext';
 export * from './model/preferences';
+export * from './model/projectAvatar';
