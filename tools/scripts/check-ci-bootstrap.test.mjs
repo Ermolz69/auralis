@@ -181,3 +181,12 @@ test('bootstrap and tooling changes trigger the release gate and cannot bypass C
   assert.ok(ci.jobs['ci-summary'].steps[0].run.includes("contains(needs.*.result, 'failure')"));
   assert.ok(ci.jobs['ci-summary'].steps[0].run.includes("contains(needs.*.result, 'cancelled')"));
 });
+
+test('vendored GLib changes require source integrity and optimized Linux regression gates', () => {
+  const filters = load(ci.jobs.changes.steps.find((step) => step.id === 'filter').with.filters);
+  for (const group of ['rust', 'quality']) {
+    assert.ok(filters[group].includes('vendor/glib-0.18.5/**'));
+    assert.ok(filters[group].includes('tools/glib-backport/**'));
+  }
+  assert.ok(ci.jobs.rust.steps.some((step) => step.run === 'task rs:glib:reproduce'));
+});

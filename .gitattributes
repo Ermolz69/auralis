@@ -10,3 +10,5 @@
 *.tsx text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
+vendor/glib-0.18.5/** -text
+vendor/glib-0.18.5/LICENSE whitespace=-blank-at-eof

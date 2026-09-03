@@ -12,8 +12,13 @@ members = [
   "crates/adapters-ffmpeg",
   "crates/adapters-model",
   "crates/jobs",
-  "crates/common"
+  "crates/common",
+  "tools/glib-backport/regression"
 ]
+exclude = ["vendor/glib-0.18.5"]
+
+[patch.crates-io]
+glib = { path = "vendor/glib-0.18.5" }
 
 [profile.dev]
 incremental = true

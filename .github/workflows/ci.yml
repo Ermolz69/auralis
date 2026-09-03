@@ -58,6 +58,8 @@ jobs:
               - 'vite.config.*'
               - '.storybook/**'
             rust:
+              - 'vendor/glib-0.18.5/**'
+              - 'tools/glib-backport/**'
               - 'crates/**'
               - 'src-tauri/**'
               - 'Cargo.toml'
@@ -71,6 +73,8 @@ jobs:
               - 'CHANGELOG.md'
               - '.markdownlint*'
             quality:
+              - 'vendor/glib-0.18.5/**'
+              - 'tools/glib-backport/**'
               - 'tools/scripts/**'
               - 'taskfiles/**'
               - 'Taskfile.yml'
@@ -135,6 +139,9 @@ jobs:
 
       - name: Run rust checks
         run: task check:rust
+
+      - name: Reproduce and verify the GLib safety backport
+        run: task rs:glib:reproduce
 
   docs:
     name: Docs

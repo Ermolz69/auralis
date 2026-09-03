@@ -5,8 +5,8 @@
     "MD040": false,
     "MD033": false,
     "MD024": {
-      "siblings_only": true
-    }
+      "siblings_only": true,
+    },
   },
   "ignores": [
     "**/node_modules",
@@ -14,6 +14,7 @@
     "target",
     "src-tauri/target",
     "crates/**/target",
-    "apps/desktop/dist"
-  ]
+    "apps/desktop/dist",
+    "vendor/glib-0.18.5",
+  ],
 }

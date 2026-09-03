@@ -5,6 +5,7 @@ src-tauri/target/
 src-tauri/gen/
 crates/**/target/
 apps/desktop/dist/
+vendor/glib-0.18.5/
 
 # generated and lock files
 *.generated.*

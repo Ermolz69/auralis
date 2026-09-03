@@ -1,6 +1,22 @@
 version: '3'
 
 tasks:
+  glib:audit:
+    desc: Scan the patched lockfile without advisory exceptions (unrelated rsa remains reportable)
+    cmds:
+      - cargo audit --file Cargo.lock --deny unsound
+
+  glib:vendor:
+    desc: Import the checksum-pinned upstream glib package without overwriting an existing copy
+    cmds:
+      - node tools/glib-backport/package.mjs import
+
+  glib:verify:
+    desc: Verify the complete vendored package against the upstream archive and exact safety patch
+    cmds:
+      - node --test tools/glib-backport/package.test.mjs
+      - node tools/glib-backport/package.mjs verify
+
   all:
     cmds:
       - task: audit
