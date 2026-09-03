@@ -1,6 +1,18 @@
 version: '3'
 
 tasks:
+  tree:
+    desc: Inspect the locked Rust dependency graph
+    cmds:
+      - cargo tree --locked {{.CLI_ARGS}}
+
+  update:
+    desc: Update selected Rust lockfile entries using explicit Cargo arguments
+    requires:
+      vars: [CLI_ARGS]
+    cmds:
+      - cargo update {{.CLI_ARGS}}
+
   fetch:
     cmds:
       - cargo fetch --locked

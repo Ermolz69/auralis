@@ -11,6 +11,9 @@ inputs:
   playwright:
     description: Install Chromium and its system dependencies; requires node
     default: 'false'
+  security:
+    description: Install Rust and pinned dependency security tools without native build dependencies
+    default: 'false'
 
 runs:
   using: composite
@@ -21,8 +24,9 @@ runs:
         BOOTSTRAP_NODE: ${{ inputs.node }}
         BOOTSTRAP_RUST: ${{ inputs.rust }}
         BOOTSTRAP_PLAYWRIGHT: ${{ inputs.playwright }}
+        BOOTSTRAP_SECURITY: ${{ inputs.security }}
       run: |
-        for option in "$BOOTSTRAP_NODE" "$BOOTSTRAP_RUST" "$BOOTSTRAP_PLAYWRIGHT"; do
+        for option in "$BOOTSTRAP_NODE" "$BOOTSTRAP_RUST" "$BOOTSTRAP_PLAYWRIGHT" "$BOOTSTRAP_SECURITY"; do
           case "$option" in
             true|false) ;;
             *) echo 'Bootstrap options must be true or false' >&2; exit 1 ;;
@@ -60,7 +64,7 @@ runs:
         cache-dependency-path: pnpm-lock.yaml
 
     - name: Setup Rust
-      if: inputs.rust == 'true'
+      if: inputs.rust == 'true' || inputs.security == 'true'
       uses: dtolnay/rust-toolchain@stable
       with:
         components: rustfmt, clippy
@@ -78,6 +82,12 @@ runs:
       uses: go-task/setup-task@v2
       with:
         version: 3.x
+
+    - name: Install Rust security tools
+      if: inputs.security == 'true'
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-audit@0.22.2,cargo-deny@0.20.2
 
     - name: Install frontend dependencies
       if: inputs.node == 'true'

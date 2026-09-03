@@ -21,7 +21,7 @@ tasks:
   ci-bootstrap:
     desc: Validate shared CI and release environment contracts
     cmds:
-      - node --test tools/scripts/check-ci-bootstrap.test.mjs tools/scripts/check-install-tasks.test.mjs
+      - node --test tools/scripts/check-ci-bootstrap.test.mjs tools/scripts/check-install-tasks.test.mjs tools/scripts/check-security.test.mjs
 
   runtime-println:
     cmds:
