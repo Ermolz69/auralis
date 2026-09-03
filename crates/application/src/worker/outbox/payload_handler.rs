@@ -86,7 +86,7 @@ where
             OutboxPayload::DeleteProjectArtifactDir { project_id } => {
                 self.artifact_store.delete_project_dir(project_id).await?;
             }
-            OutboxPayload::DeleteWorkspaceFile { workspace_key } => {
+            OutboxPayload::DeleteWorkspaceAllocation { workspace_key } => {
                 if let Err(e) = self.workspace_port.delete_allocation(workspace_key).await {
                     tracing::error!(
                         error = %common::observability::redaction::DiagnosticError {

@@ -12,3 +12,7 @@ pub mod rename;
 mod concurrency_support;
 #[cfg(test)]
 mod concurrency_tests;
+#[cfg(test)]
+mod youtube_storage_support;
+#[cfg(test)]
+mod youtube_storage_tests;

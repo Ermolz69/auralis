@@ -45,6 +45,7 @@ async fn test_download_video_success() {
     let request = DownloadYoutubeVideoRequest {
         project_id,
         temp_dir: temp_dir.clone(),
+        workspace_key: domain::outbox::WorkspaceKey::new("tmp/test/download").unwrap(),
         filename_hint: Some("video.mp4".into()),
     };
 
@@ -74,6 +75,7 @@ async fn test_download_missing_project_fails_before_download() {
     let request = DownloadYoutubeVideoRequest {
         project_id: ProjectId::new(),
         temp_dir,
+        workspace_key: domain::outbox::WorkspaceKey::new("tmp/test/download").unwrap(),
         filename_hint: None,
     };
 
@@ -113,6 +115,7 @@ async fn test_non_youtube_source_fails() {
     let request = DownloadYoutubeVideoRequest {
         project_id,
         temp_dir,
+        workspace_key: domain::outbox::WorkspaceKey::new("tmp/test/download").unwrap(),
         filename_hint: None,
     };
 
@@ -152,6 +155,7 @@ async fn test_wrong_location_from_port_fails() {
     let request = DownloadYoutubeVideoRequest {
         project_id,
         temp_dir,
+        workspace_key: domain::outbox::WorkspaceKey::new("tmp/test/download").unwrap(),
         filename_hint: None,
     };
 
@@ -191,6 +195,7 @@ async fn test_import_failure_propagates() {
     let request = DownloadYoutubeVideoRequest {
         project_id,
         temp_dir,
+        workspace_key: domain::outbox::WorkspaceKey::new("tmp/test/download").unwrap(),
         filename_hint: None,
     };
 
@@ -233,6 +238,7 @@ async fn test_transaction_failure_deletes_staged_artifact() {
     let request = DownloadYoutubeVideoRequest {
         project_id,
         temp_dir,
+        workspace_key: domain::outbox::WorkspaceKey::new("tmp/test/download").unwrap(),
         filename_hint: None,
     };
 

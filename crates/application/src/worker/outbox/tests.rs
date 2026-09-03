@@ -437,9 +437,11 @@ async fn worker_processes_success() {
     repo.messages_to_return
         .lock()
         .unwrap()
-        .push(OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile {
-            workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
-        }));
+        .push(OutboxMessage::new(
+            OutboxPayload::DeleteWorkspaceAllocation {
+                workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
+            },
+        ));
 
     *repo.mark_processing_result.lock().unwrap() = Ok(true);
     *repo.mark_done_result.lock().unwrap() = Ok(());
@@ -462,9 +464,11 @@ async fn worker_handles_claim_conflict() {
     repo.messages_to_return
         .lock()
         .unwrap()
-        .push(OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile {
-            workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
-        }));
+        .push(OutboxMessage::new(
+            OutboxPayload::DeleteWorkspaceAllocation {
+                workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
+            },
+        ));
 
     *repo.mark_processing_result.lock().unwrap() = Ok(false);
 
@@ -487,9 +491,11 @@ async fn worker_handles_claim_error() {
     repo.messages_to_return
         .lock()
         .unwrap()
-        .push(OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile {
-            workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
-        }));
+        .push(OutboxMessage::new(
+            OutboxPayload::DeleteWorkspaceAllocation {
+                workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
+            },
+        ));
 
     *repo.mark_processing_result.lock().unwrap() = Err(PortError::Io {
         message: "db down".to_string(),
@@ -512,9 +518,11 @@ async fn worker_handles_mark_done_error() {
     repo.messages_to_return
         .lock()
         .unwrap()
-        .push(OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile {
-            workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
-        }));
+        .push(OutboxMessage::new(
+            OutboxPayload::DeleteWorkspaceAllocation {
+                workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
+            },
+        ));
 
     *repo.mark_processing_result.lock().unwrap() = Ok(true);
     *repo.mark_done_result.lock().unwrap() = Err(PortError::Io {
@@ -813,9 +821,11 @@ async fn test_run_loop_delivery_during_maintenance() {
     repo.messages_to_return
         .lock()
         .unwrap()
-        .push(OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile {
-            workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
-        }));
+        .push(OutboxMessage::new(
+            OutboxPayload::DeleteWorkspaceAllocation {
+                workspace_key: WorkspaceKey::new("tmp/test_id/purpose_id").unwrap(),
+            },
+        ));
 
     // Advance 5 seconds to trigger delivery tick
     tokio::time::advance(Duration::from_secs(5)).await;

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use domain::media::ArtifactKind;
+use domain::outbox::WorkspaceKey;
 use domain::project::ProjectId;
 use ports::repository::ProjectRepository;
 use ports::source::{DownloadMediaRequest, VideoSourcePort};
@@ -13,6 +14,7 @@ use crate::error::ApplicationError;
 pub struct DownloadYoutubeVideoRequest {
     pub project_id: ProjectId,
     pub temp_dir: PathBuf,
+    pub workspace_key: WorkspaceKey,
     pub filename_hint: Option<String>,
 }
 
@@ -113,19 +115,13 @@ where
             }
         };
 
-        let temp_workspace_key = temp_path
-            .strip_prefix(&request.temp_dir)
-            .ok()
-            .and_then(|p| p.to_str())
-            .and_then(|s| domain::outbox::WorkspaceKey::new(s.replace('\\', "/")).ok());
-
         // 3. Atomically persist to DB and write outbox message
         let commit_cmd = CommitStagedArtifactWrite {
             project_id: request.project_id.clone(),
             artifact: staged.artifact,
             staging_key: staged.staging_key.clone(),
             final_key: staged.final_key.clone(),
-            temp_workspace_key,
+            temp_workspace_key: Some(request.workspace_key),
         };
 
         if let Err(e) = self
