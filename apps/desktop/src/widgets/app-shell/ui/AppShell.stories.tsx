@@ -94,15 +94,17 @@ function ProjectStoryProvider({
   project: Project | null;
 }) {
   const [currentProject, setProject] = useState<Project | null>(project);
-  const [projectId, setProjectId] = useState<string | null>(project?.id ?? null);
+  const projectId = currentProject?.id ?? null;
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const deletingProjectIdRef = useRef<string | null>(null);
 
   return (
     <ProjectContext.Provider
       value={{
+        selection: currentProject
+          ? { status: 'open', project: currentProject }
+          : { status: 'closed' },
         projectId,
-        setProjectId,
         project: currentProject,
         setProject,
         deletingProjectId,

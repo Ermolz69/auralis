@@ -16,7 +16,6 @@ export function useImportLocalMedia() {
   const [sourceLabel, setSourceLabel] = useState<string | null>(null);
   const {
     deletingProjectId,
-    setProjectId,
     setProject,
     projectId,
     project: currentProject,
@@ -95,8 +94,6 @@ export function useImportLocalMedia() {
       setStage('idle');
       activeAttemptRef.current = null;
       setDraftProject(null);
-
-      setProjectId(updatedProject.id);
       setProject(updatedProject);
       setPipelineStep('source');
       setCurrentView('project');
@@ -118,7 +115,6 @@ export function useImportLocalMedia() {
 
   const openDraftProject = () => {
     if (!draftProject) return;
-    setProjectId(draftProject.id);
     setProject(draftProject);
     setPipelineStep('source');
     setCurrentView('project');

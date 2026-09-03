@@ -50,7 +50,7 @@ describe('ProjectProvider', () => {
       </ProjectProvider>,
     );
     await act(async () => {
-      contextValue.setProjectId('p1');
+      contextValue.setProject({ id: 'p1', title: 'Test Project' });
     });
     act(() => {
       void eventCallback({ payload: { projectId: 'p1' } });
@@ -85,7 +85,7 @@ describe('ProjectProvider', () => {
     );
 
     act(() => {
-      contextValue.setProjectId('p1');
+      contextValue.setProject({ id: 'p1', title: 'Test Project' });
     });
 
     await act(async () => {
@@ -130,7 +130,6 @@ describe('ProjectProvider', () => {
     );
 
     act(() => {
-      contextValue.setProjectId('p1');
       contextValue.setProject({ id: 'p1', title: 'Test Project' } as any);
     });
 
@@ -149,7 +148,6 @@ describe('ProjectProvider', () => {
     });
 
     act(() => {
-      contextValue.setProjectId(null);
       contextValue.setProject(null);
       contextValue.finishProjectDeletion('p1');
     });
@@ -178,7 +176,7 @@ describe('ProjectProvider', () => {
     expect(contextValue.validateToken(token1)).toBe(true);
   });
 
-  it('verifies setProjectId behaviour on same and different ID', () => {
+  it('updates selection atomically and invalidates tokens only on project changes', () => {
     let contextValue: any;
     render(
       <ProjectProvider>
@@ -191,19 +189,19 @@ describe('ProjectProvider', () => {
     );
 
     act(() => {
-      contextValue.setProjectId('p1');
+      contextValue.setProject({ id: 'p1', title: 'Test Project' });
     });
     const token1 = contextValue.captureToken();
 
     // Same ID set
     act(() => {
-      contextValue.setProjectId('p1');
+      contextValue.setProject({ id: 'p1', title: 'Test Project' });
     });
     expect(contextValue.validateToken(token1)).toBe(true);
 
     // Different ID set
     act(() => {
-      contextValue.setProjectId('p2');
+      contextValue.setProject({ id: 'p2', title: 'Test Project' });
     });
     expect(contextValue.validateToken(token1)).toBe(false);
   });
@@ -221,7 +219,7 @@ describe('ProjectProvider', () => {
     );
 
     act(() => {
-      contextValue.setProjectId('p1');
+      contextValue.setProject({ id: 'p1', title: 'Test Project' });
     });
 
     const token = contextValue.captureToken();
@@ -301,7 +299,7 @@ describe('ProjectProvider', () => {
     );
 
     act(() => {
-      contextValue.setProjectId('p1');
+      contextValue.setProject({ id: 'p1', title: 'Test Project' });
     });
 
     await act(async () => {
@@ -347,7 +345,7 @@ describe('ProjectProvider', () => {
     );
 
     act(() => {
-      contextValue.setProjectId('p1');
+      contextValue.setProject({ id: 'p1', title: 'Test Project' });
     });
 
     await act(async () => {

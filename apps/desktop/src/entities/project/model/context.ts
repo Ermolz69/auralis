@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import type { Project } from './types';
+import type { ProjectSelection } from './selection';
 
 export interface OperationToken {
   readonly generation: number;
@@ -7,9 +8,9 @@ export interface OperationToken {
 }
 
 export interface ProjectContextType {
-  projectId: string | null;
-  setProjectId: (id: string | null) => void;
-  project: Project | null;
+  readonly selection: ProjectSelection;
+  readonly projectId: string | null;
+  readonly project: Project | null;
   setProject: (project: Project | null) => void;
   deletingProjectId: string | null;
   beginProjectDeletion: (id: string) => boolean;

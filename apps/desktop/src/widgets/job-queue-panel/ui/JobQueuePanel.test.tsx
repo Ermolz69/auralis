@@ -52,9 +52,11 @@ const mockProject: Project = {
 function renderPanel(state: Partial<JobStoreState> = {}, project: Project | null = mockProject) {
   const jobs = state.jobs ?? {};
   const projectContext = {
+    selection: project
+      ? { status: 'open' as const, project: project }
+      : { status: 'closed' as const },
     projectId: project?.id ?? null,
     project,
-    setProjectId: vi.fn(),
     setProject: vi.fn(),
     deletingProjectId: null,
     beginProjectDeletion: vi.fn(),

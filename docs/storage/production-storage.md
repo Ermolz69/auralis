@@ -22,6 +22,14 @@ snapshot cannot overwrite a successful rename. Revision changes roll back with t
 
 ## Project presentation preferences
 
+The selected project is one discriminated `closed`/`open` state. An open selection contains the
+complete project; its ID is derived, never independently assigned. A confirmed `NOT_FOUND` from
+project synchronization atomically closes the selection and synchronously invalidates operation
+tokens. The project route returns to home, workspace controls become unavailable, and the job
+provider masks the old scope immediately while disposing its listeners and pending requests.
+Late responses cannot reopen a closed project or close a different selection. Transient backend
+errors retain the current selection.
+
 Backend delete and rename results are independent of browser preference persistence. Confirmed
 deletion always clears the active project context. `projectUpdated` and `projectRemoved` notify
 UI consumers directly, without dummy localStorage writes. Older in-flight fetches cannot undo

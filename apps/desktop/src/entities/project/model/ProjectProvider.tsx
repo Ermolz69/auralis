@@ -7,16 +7,21 @@ import { ProjectContext } from './context';
 import type { Project } from './types';
 import type { OperationToken } from './context';
 import { subscribeProjectChanges } from './projectChanges';
+import type { ProjectSelection } from './selection';
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [projectId, setProjectIdState] = useState<string | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
+  const [selection, setSelection] = useState<ProjectSelection>({ status: 'closed' });
+  const project = selection.status === 'open' ? selection.project : null;
+  const projectId = project?.id ?? null;
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [operationGeneration, setOperationGeneration] = useState<number>(0);
 
   const deletingProjectIdRef = useRef<string | null>(null);
   const operationGenerationRef = useRef<number>(0);
-  const currentProjectIdRef = useRef<string | null>(null);
+  const selectionRef = useRef<ProjectSelection>(selection);
+  const listenerFetchSequence = useRef(0);
+  const currentProjectId = () =>
+    selectionRef.current.status === 'open' ? selectionRef.current.project.id : null;
 
   const invalidateOperations = () => {
     const nextGeneration = operationGenerationRef.current + 1;
@@ -24,12 +29,16 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setOperationGeneration(nextGeneration);
   };
 
-  const setProjectId = (id: string | null) => {
-    if (id !== currentProjectIdRef.current) {
-      currentProjectIdRef.current = id;
+  const setProject = (nextProject: Project | null) => {
+    if (nextProject === null || nextProject.id !== currentProjectId()) {
       invalidateOperations();
-      setProjectIdState(id);
     }
+    listenerFetchSequence.current += 1;
+    const next: ProjectSelection = nextProject
+      ? { status: 'open', project: nextProject }
+      : { status: 'closed' };
+    selectionRef.current = next;
+    setSelection(next);
   };
 
   const beginProjectDeletion = (id: string) => {
@@ -50,7 +59,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const captureToken = (): OperationToken => {
     return {
       generation: operationGenerationRef.current,
-      projectId: currentProjectIdRef.current,
+      projectId: currentProjectId(),
     };
   };
 
@@ -58,7 +67,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     return (
       deletingProjectIdRef.current === null &&
       token.generation === operationGenerationRef.current &&
-      token.projectId === currentProjectIdRef.current
+      token.projectId === currentProjectId()
     );
   };
 
@@ -67,13 +76,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     let unlisten: (() => void) | undefined;
-    let listenerFetchSequence = 0;
     const unsubscribe = subscribeProjectChanges((change) => {
       const id = change.type === 'updated' ? change.project.id : change.projectId;
-      if (id !== projectId || currentProjectIdRef.current !== id) return;
-      listenerFetchSequence += 1;
+      if (id !== projectId || currentProjectId() !== id) return;
+      listenerFetchSequence.current += 1;
       if (change.type === 'removed') {
-        setProjectId(null);
         setProject(null);
       } else if (deletingProjectIdRef.current === null) {
         setProject(change.project);
@@ -89,28 +96,28 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
             }
 
             const token = captureToken();
-            const currentFetchSeq = ++listenerFetchSequence;
+            const currentFetchSeq = ++listenerFetchSequence.current;
 
             try {
               const updatedProject = await invoke('get_project_cmd', { projectId });
 
               if (
                 cancelled ||
-                currentFetchSeq !== listenerFetchSequence ||
+                currentFetchSeq !== listenerFetchSequence.current ||
                 !validateToken(token) ||
-                currentProjectIdRef.current !== projectId ||
+                currentProjectId() !== projectId ||
                 event.payload.projectId !== projectId
               ) {
                 return;
               }
 
-              setProject(updatedProject);
+              if (updatedProject.id === projectId) setProject(updatedProject);
             } catch (e) {
               if (
                 cancelled ||
-                currentFetchSeq !== listenerFetchSequence ||
+                currentFetchSeq !== listenerFetchSequence.current ||
                 !validateToken(token) ||
-                currentProjectIdRef.current !== projectId ||
+                currentProjectId() !== projectId ||
                 event.payload.projectId !== projectId
               ) {
                 return;
@@ -149,8 +156,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider
       value={{
+        selection,
         projectId,
-        setProjectId,
         project,
         setProject,
         deletingProjectId,
