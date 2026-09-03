@@ -6,6 +6,15 @@ use super::project_row::ProjectRow;
 
 pub fn row_to_project(row: ProjectRow) -> Result<Project, PortError> {
     let id = parse_project_id(&row.id)?;
+    let revision = u64::try_from(row.revision)
+        .ok()
+        .filter(|revision| *revision > 0)
+        .ok_or_else(|| PortError::InvalidStoredData {
+            entity_type: "project".to_string(),
+            entity_id: row.id.clone(),
+            field: "revision".to_string(),
+            message: "Project revision is out of bounds".to_string(),
+        })?;
 
     let title = row.title;
 
@@ -47,6 +56,7 @@ pub fn row_to_project(row: ProjectRow) -> Result<Project, PortError> {
 
     let snapshot = ProjectSnapshot {
         id,
+        revision,
         title,
         status,
         source,
@@ -100,6 +110,10 @@ pub fn project_to_row_values(project: &Project) -> Result<ProjectRow, PortError>
 
     Ok(ProjectRow {
         id: snapshot.id.to_string(),
+        revision: i64::try_from(snapshot.revision).map_err(|e| PortError::Storage {
+            operation: "serialize_project_revision",
+            message: e.to_string(),
+        })?,
         title: snapshot.title,
         status,
         source_json,

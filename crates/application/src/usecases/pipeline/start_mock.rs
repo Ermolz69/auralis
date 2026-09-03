@@ -102,6 +102,7 @@ impl<
             .map_err(|e| ApplicationError::InvalidOperation {
                 message: format!("Failed to commit pipeline start: {}", e),
             })?; // If failed -> no runtime registration
+        project.advance_revision()?;
 
         // 3. job_runtime.reserve()
         if let Err(e) = self

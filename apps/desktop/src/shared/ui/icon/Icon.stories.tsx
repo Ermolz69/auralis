@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect } from 'storybook/test';
 import React from 'react';
 import { Icon } from './Icon';
 import { Button } from '../button';
@@ -24,7 +25,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: { name: 'Home' },
+  args: { name: 'House' },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelector('svg')).not.toBeNull();
+  },
 };
 
 export const IconSizes: Story = {
@@ -39,6 +43,9 @@ export const IconSizes: Story = {
 };
 
 export const IconColors: Story = {
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelectorAll('svg')).toHaveLength(5);
+  },
   render: () => (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
@@ -58,7 +65,7 @@ export const IconColors: Story = {
         <span className="text-sm">Primary</span>
       </div>
       <div className="flex items-center gap-2">
-        <Icon name="HelpCircle" color="muted" />
+        <Icon name="CircleQuestionMark" color="muted" />
         <span className="text-sm">Muted</span>
       </div>
     </div>

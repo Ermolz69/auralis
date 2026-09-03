@@ -10,6 +10,7 @@ use super::{LanguageCode, ProjectId, ProjectStatus};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProjectSnapshot {
     pub id: ProjectId,
+    pub revision: u64,
     pub title: String,
     pub status: ProjectStatus,
     pub source: Option<MediaSource>,

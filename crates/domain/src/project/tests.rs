@@ -6,6 +6,27 @@ use crate::project::entity::{LanguageCode, Project};
 use crate::project::status::{ProjectStatus, TerminalTransitionResult};
 
 #[test]
+fn project_revision_roundtrips_and_cannot_overflow() {
+    let mut project = Project::new("Revision".into());
+    assert_eq!(project.revision(), 1);
+    project.advance_revision().unwrap();
+    assert_eq!(project.revision(), 2);
+    assert_eq!(
+        Project::from_snapshot(project.to_snapshot()).unwrap(),
+        project
+    );
+    let mut snapshot = project.to_snapshot();
+    snapshot.revision = 0;
+    assert!(Project::from_snapshot(snapshot.clone()).is_err());
+    snapshot.revision = i64::MAX as u64;
+    let mut maximum = Project::from_snapshot(snapshot.clone()).unwrap();
+    assert!(maximum.advance_revision().is_err());
+    assert_eq!(maximum.to_snapshot(), snapshot);
+    snapshot.revision += 1;
+    assert!(Project::from_snapshot(snapshot).is_err());
+}
+
+#[test]
 fn test_project_transitions() {
     let mut project = Project::new("Test Video".to_string());
     assert_eq!(project.status(), &ProjectStatus::Draft);

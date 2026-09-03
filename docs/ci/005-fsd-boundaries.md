@@ -12,6 +12,10 @@ It forbids "upward" layer imports. For example, `shared` cannot import `features
 
 In the CI pipeline via the `task q:fsd-boundaries` command, which internally calls ESLint and `eslint-plugin-boundaries`.
 
+The ESLint flat configuration lives in `apps/desktop/eslint.config.mjs`.
+The task first runs configuration regression tests for layer direction, public
+API imports, relative imports within a slice, and Storybook rules.
+
 ## How to fix the error
 
 Fundamentally review the architecture of your solution. If a `shared` component needs a `feature` module, it means either your component is too "smart" and should be elevated to the `feature` level, or the requested logic must be pushed down to the `shared` level.

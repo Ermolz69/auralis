@@ -8,6 +8,7 @@ pub mod job_query;
 pub mod job_runtime_control;
 pub mod job_scheduler;
 pub mod media;
+pub mod project_update;
 pub mod project_workspace;
 pub mod recovery;
 pub mod repository;

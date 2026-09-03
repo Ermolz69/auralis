@@ -6,6 +6,7 @@ use crate::usecases::project::create::{CreateProjectRequest, CreateProjectUseCas
 use crate::usecases::project::import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase};
 use domain::media::MediaSource;
 use domain::project::{Project, ProjectId};
+use ports::project_update::ProjectUpdate;
 use ports::repository::ProjectRepository;
 use ports::source::VideoSourcePort;
 use ports::storage::ArtifactStore;
@@ -121,7 +122,15 @@ impl<
                 message: error.to_string(),
             }
         })?;
-        self.project_repo.save(&project).await?;
+        let project = self
+            .project_repo
+            .update(
+                project.id(),
+                project.revision(),
+                ProjectUpdate::MarkReadyForProcessing,
+                project.updated_at(),
+            )
+            .await?;
 
         Ok(CreateProjectFromYoutubeResponse { project })
     }

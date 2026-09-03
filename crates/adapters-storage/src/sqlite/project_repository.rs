@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 
 use domain::project::{Project, ProjectId};
 use ports::error::PortError;
+use ports::project_update::ProjectUpdate;
 use ports::repository::ProjectRepository;
 
 use super::project_mapper::{project_to_row_values, row_to_project};
@@ -26,13 +27,14 @@ impl ProjectRepository for SqliteProjectRepository {
         sqlx::query(
             r#"
             INSERT INTO projects (
-                id, title, status, source_json, metadata_json, 
+                id, revision, title, status, source_json, metadata_json,
                 source_language, target_language, transcript_json, 
                 active_job_id, last_terminal_job_id, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(values.id)
+        .bind(values.revision)
         .bind(values.title)
         .bind(values.status)
         .bind(values.source_json)
@@ -65,7 +67,7 @@ impl ProjectRepository for SqliteProjectRepository {
         let row = sqlx::query_as::<_, ProjectRow>(
             r#"
             SELECT 
-                id, title, status, source_json, metadata_json, 
+                id, revision, title, status, source_json, metadata_json,
                 source_language, target_language, transcript_json, 
                 active_job_id, last_terminal_job_id, created_at, updated_at
             FROM projects 
@@ -80,54 +82,28 @@ impl ProjectRepository for SqliteProjectRepository {
         row.map(row_to_project).transpose()
     }
 
-    async fn save(&self, project: &Project) -> Result<(), PortError> {
-        let values = project_to_row_values(project)?;
-
-        let result = sqlx::query(
-            r#"
-            UPDATE projects SET
-                title = ?,
-                status = ?,
-                source_json = ?,
-                metadata_json = ?,
-                source_language = ?,
-                target_language = ?,
-                transcript_json = ?,
-                active_job_id = ?,
-                last_terminal_job_id = ?,
-                updated_at = ?
-            WHERE id = ?
-            "#,
+    async fn update(
+        &self,
+        id: &ProjectId,
+        expected_revision: u64,
+        update: ProjectUpdate,
+        updated_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Project, PortError> {
+        super::project_updates::update_project(
+            &self.pool,
+            id,
+            expected_revision,
+            update,
+            updated_at,
         )
-        .bind(values.title)
-        .bind(values.status)
-        .bind(values.source_json)
-        .bind(values.metadata_json)
-        .bind(values.source_language)
-        .bind(values.target_language)
-        .bind(values.transcript_json)
-        .bind(values.active_job_id)
-        .bind(values.last_terminal_job_id)
-        .bind(values.updated_at)
-        .bind(values.id)
-        .execute(&self.pool)
         .await
-        .map_err(|e| crate::sqlite::helpers::map_sqlite_error("save_project", e))?;
-
-        if result.rows_affected() == 0 {
-            return Err(PortError::NotFound {
-                resource: "Project".to_string(),
-            });
-        }
-
-        Ok(())
     }
 
     async fn list(&self) -> Result<Vec<Project>, PortError> {
         let rows = sqlx::query_as::<_, ProjectRow>(
             r#"
             SELECT 
-                id, title, status, source_json, metadata_json, 
+                id, revision, title, status, source_json, metadata_json,
                 source_language, target_language, transcript_json, 
                 active_job_id, last_terminal_job_id, created_at, updated_at
             FROM projects 

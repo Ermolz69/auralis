@@ -9,7 +9,6 @@ permissions:
 env:
   CI: true
   NODE_VERSION: 24
-  PNPM_VERSION: 10
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -41,13 +40,15 @@ jobs:
             patchelf \
             xdg-utils
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v2.1.0
+        with:
+          runtime: node@${{ env.NODE_VERSION }}
+          install: false
 
-      - name: Setup Node
+      - name: Cache pnpm store
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 

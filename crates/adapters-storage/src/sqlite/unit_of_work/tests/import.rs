@@ -70,6 +70,7 @@ async fn test_commit_managed_source_import_writes_atomically() {
             .await
             .unwrap();
     assert_eq!(project_row.status, "ReadyForProcessing");
+    assert_eq!(project_row.revision, 2);
 
     let artifact_row: crate::sqlite::artifact_index::row::ArtifactRow =
         sqlx::query_as("SELECT * FROM artifacts WHERE id = ?")

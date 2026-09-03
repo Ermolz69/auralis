@@ -1,2 +1,16 @@
 packages:
   - 'apps/*'
+
+allowBuilds:
+  esbuild@0.28.1: true
+  unrs-resolver@1.12.2: true
+
+overrides:
+  '@vitest/browser': 4.1.10
+  brace-expansion: 5.0.9
+  browserslist: 4.28.7
+  js-yaml: 5.2.2
+  nanoid: 3.3.18
+  postcss: 8.5.23
+  undici: 7.29.0
+  valibot: 1.4.2

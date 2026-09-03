@@ -26,7 +26,7 @@ pub async fn commit_failed_project_with_missing_linked_job(
         .map(|id| id.to_string());
 
     let rows = sqlx::query(
-        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL
+        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL, revision = revision + 1
          WHERE id = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status(), "project.status")?)
@@ -87,7 +87,7 @@ pub async fn commit_failed_project_without_active_job(
         .map(|id| id.to_string());
 
     let rows = sqlx::query(
-        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL
+        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL, revision = revision + 1
          WHERE id = ? AND status = ? AND active_job_id IS NULL AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status(), "project.status")?)

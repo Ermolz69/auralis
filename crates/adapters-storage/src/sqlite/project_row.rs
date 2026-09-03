@@ -3,6 +3,7 @@ use sqlx::FromRow;
 #[derive(Debug, FromRow)]
 pub struct ProjectRow {
     pub id: String,
+    pub revision: i64,
     pub title: String,
     pub status: String,
     pub source_json: Option<String>,

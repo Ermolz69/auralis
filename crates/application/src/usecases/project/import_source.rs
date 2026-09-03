@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use domain::media::MediaSource;
 use domain::project::{Project, ProjectId};
+use ports::project_update::ProjectUpdate;
 use ports::repository::ProjectRepository;
 use ports::source::VideoSourcePort;
 
@@ -43,8 +44,19 @@ impl<R: ProjectRepository, V: VideoSourcePort> ImportVideoSourceUseCase<R, V> {
         self.video_source.validate_source(&request.source).await?;
         let metadata = self.video_source.fetch_metadata(&request.source).await?;
 
-        project.import_source(request.source, Some(metadata))?;
-        self.project_repo.save(&project).await?;
+        project.import_source(request.source.clone(), Some(metadata.clone()))?;
+        let project = self
+            .project_repo
+            .update(
+                project.id(),
+                project.revision(),
+                ProjectUpdate::ImportSource {
+                    source: request.source,
+                    metadata: Some(Box::new(metadata)),
+                },
+                project.updated_at(),
+            )
+            .await?;
 
         Ok(ImportVideoSourceResponse { project })
     }

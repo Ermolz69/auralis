@@ -14,6 +14,7 @@ pub struct LanguageCode(pub String);
 #[derive(Debug, Clone, PartialEq)]
 pub struct Project {
     id: ProjectId,
+    revision: u64,
     title: String,
     status: ProjectStatus,
     source: Option<MediaSource>,
@@ -31,6 +32,7 @@ impl Project {
     pub fn to_snapshot(&self) -> snapshot::ProjectSnapshot {
         snapshot::ProjectSnapshot {
             id: self.id.clone(),
+            revision: self.revision,
             title: self.title.clone(),
             status: self.status.clone(),
             source: self.source.clone(),
@@ -46,6 +48,11 @@ impl Project {
     }
 
     pub fn from_snapshot(snapshot: snapshot::ProjectSnapshot) -> Result<Self, DomainError> {
+        if snapshot.revision == 0 || snapshot.revision > i64::MAX as u64 {
+            return Err(DomainError::ValidationError(
+                "Project revision is out of bounds".to_string(),
+            ));
+        }
         if snapshot.title.trim().is_empty() {
             return Err(DomainError::ValidationError(
                 "Project title cannot be empty".to_string(),
@@ -89,6 +96,7 @@ impl Project {
 
         Ok(Self {
             id: snapshot.id,
+            revision: snapshot.revision,
             title: snapshot.title,
             status: snapshot.status,
             source: snapshot.source,
@@ -107,6 +115,7 @@ impl Project {
         let now = Utc::now();
         Self {
             id: ProjectId::new(),
+            revision: 1,
             title,
             status: ProjectStatus::Draft,
             source: None,
@@ -124,6 +133,18 @@ impl Project {
     // Getters
     pub fn id(&self) -> &ProjectId {
         &self.id
+    }
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    pub fn advance_revision(&mut self) -> Result<(), DomainError> {
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .filter(|revision| *revision <= i64::MAX as u64)
+            .ok_or_else(|| DomainError::StateOverflow("Project revision overflow".to_string()))?;
+        Ok(())
     }
     pub fn title(&self) -> &str {
         &self.title
