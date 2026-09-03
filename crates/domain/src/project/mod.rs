@@ -1,9 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+pub mod avatar;
 pub mod entity;
 pub mod id;
 pub mod snapshot;
 pub mod status;
 
+#[cfg(test)]
+mod avatar_tests;
 #[cfg(test)]
 mod tests;
 

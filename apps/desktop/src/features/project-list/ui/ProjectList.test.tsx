@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import React, { useState, useRef } from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Mock } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { ProjectList } from './ProjectList';
-import { deleteProject, listProjects, ProjectContext } from '@/entities/project';
+import {
+  deleteProject,
+  listProjects,
+  renameProject,
+  subscribeProjectChanges,
+  ProjectContext,
+  useProjectContext,
+} from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { toast } from '@/shared/ui/toast';
 import type { Project } from '@/entities/project';
@@ -14,7 +21,9 @@ vi.mock('@/entities/project', async (importOriginal) => {
   return {
     ...actual,
     deleteProject: vi.fn(),
+    renameProject: vi.fn(),
     listProjects: vi.fn(),
+    getProjectAvatar: vi.fn().mockResolvedValue({ dataUrl: null, initialized: true }),
   };
 });
 
@@ -117,6 +126,18 @@ const StatefulProjectProvider = ({
   );
 };
 
+function ContextProbe() {
+  const context = useProjectContext();
+  return (
+    <output data-testid="context-state">
+      {context.projectId ?? 'none'}|{context.project?.title ?? 'none'}|
+      {context.deletingProjectId ?? 'none'}
+    </output>
+  );
+}
+
+afterEach(() => vi.restoreAllMocks());
+
 describe('ProjectList', () => {
   let mockSetCurrentView: Mock;
   let testProjects: Project[];
@@ -138,6 +159,87 @@ describe('ProjectList', () => {
       testProjects = testProjects.filter((p) => p.id !== id);
       return null;
     });
+  });
+
+  it.each(['QuotaExceededError', 'SecurityError'])(
+    'clears context after backend delete despite %s',
+    async (name) => {
+      render(
+        <StatefulProjectProvider>
+          <ProjectList />
+          <ContextProbe />
+        </StatefulProjectProvider>,
+      );
+      await screen.findByText('Test Project');
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('blocked', name);
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+      await waitFor(() =>
+        expect(screen.getByTestId('context-state').textContent).toBe('none|none|none'),
+      );
+      expect(mockSetCurrentView).toHaveBeenCalledWith('home');
+      expect(screen.queryByText('Test Project')).toBeNull();
+      expect(toast.error).not.toHaveBeenCalled();
+      expect(toast.warning).toHaveBeenCalledWith(
+        'Project removed, but local preferences could not be cleaned up.',
+      );
+    },
+  );
+
+  it('treats NOT_FOUND as deleted even when preferences cleanup fails', async () => {
+    vi.mocked(deleteProject).mockImplementation(async (id) => {
+      testProjects = testProjects.filter((project) => project.id !== id);
+      throw { code: 'NOT_FOUND', message: 'Already gone' };
+    });
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+        <ContextProbe />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'QuotaExceededError');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('context-state').textContent).toBe('none|none|none'),
+    );
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith('Project was already removed');
+    expect(toast.warning).toHaveBeenCalledWith(
+      'Project removed, but local preferences could not be cleaned up.',
+    );
+  });
+
+  it('publishes successful rename without writing preferences', async () => {
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+        <ContextProbe />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+    const updated = { ...mockProject, title: 'Renamed project' };
+    vi.mocked(renameProject).mockResolvedValue(updated);
+    const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'QuotaExceededError');
+    });
+    const updatedEvent = vi.fn();
+    const unsubscribe = subscribeProjectChanges(updatedEvent);
+    vi.spyOn(window, 'prompt').mockReturnValue('Renamed project');
+    fireEvent.contextMenu(screen.getByRole('button', { name: /^Open Test Project/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Переименовать' }));
+    await screen.findByText('Renamed project');
+    expect(screen.getByTestId('context-state').textContent).toBe('p-1|Renamed project|none');
+    expect(toast.success).toHaveBeenCalledWith('Project renamed');
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(storage).not.toHaveBeenCalled();
+    expect(updatedEvent).toHaveBeenCalledWith({ type: 'updated', project: updated });
+    unsubscribe();
   });
 
   it('Delete Button and Open Button are siblings', async () => {

@@ -3,8 +3,14 @@ import type { Transcript } from './transcript';
 import type { Job } from './job';
 import type { MediaMetadata } from './media';
 import type { SubtitleTrack } from './subtitle';
+import type { ProjectAvatar } from './projectAvatar';
 
 export interface CommandMap {
+  get_project_avatar_cmd: { args: { projectId: string }; result: ProjectAvatar };
+  set_project_avatar_cmd: {
+    args: { projectId: string; dataUrl: string | null; onlyIfMissing: boolean };
+    result: ProjectAvatar;
+  };
   health_check: {
     args: undefined;
     result: string;

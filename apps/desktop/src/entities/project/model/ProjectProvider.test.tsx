@@ -6,6 +6,7 @@ import { ProjectProvider } from './ProjectProvider';
 import { useProjectContext } from './useProjectContext';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@/shared/api/tauri';
+import { projectRemoved, projectUpdated } from './projectChanges';
 
 vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn(),
@@ -24,6 +25,45 @@ const TestComponent = ({ onContext }: { onContext: (ctx: any) => void }) => {
 describe('ProjectProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('applies confirmed local updates and rejects an older backend event response', async () => {
+    let contextValue: any;
+    let eventCallback: any;
+    vi.mocked(listen).mockImplementation((_event, callback) => {
+      eventCallback = callback;
+      return Promise.resolve(() => {});
+    });
+    let resolve!: (value: any) => void;
+    (invoke as Mock).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const view = render(
+      <ProjectProvider>
+        <TestComponent
+          onContext={(value) => {
+            contextValue = value;
+          }}
+        />
+      </ProjectProvider>,
+    );
+    await act(async () => {
+      contextValue.setProjectId('p1');
+    });
+    act(() => {
+      void eventCallback({ payload: { projectId: 'p1' } });
+    });
+    act(() => projectUpdated({ id: 'p1', title: 'Renamed' } as any));
+    await act(async () => resolve({ id: 'p1', title: 'Old snapshot' }));
+    expect(contextValue.project.title).toBe('Renamed');
+    act(() => projectRemoved('other'));
+    expect(contextValue.projectId).toBe('p1');
+    act(() => projectRemoved('p1'));
+    expect(contextValue.projectId).toBeNull();
+    expect(contextValue.project).toBeNull();
+    view.unmount();
   });
 
   it('ignores project-updated event if deletingProjectId matches', async () => {

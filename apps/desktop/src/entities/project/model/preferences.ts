@@ -1,40 +1,36 @@
-const storageKey = 'auralis.project-preferences.v1';
-export const projectPreferencesEvent = 'auralis:project-preferences-changed';
+import { mutatePreferences, readPreferencesStorage } from './preferencesStorage';
+export { projectPreferencesEvent } from './preferencesStorage';
 
-export type ProjectPreferences = {
-  pinned: boolean;
-  avatar: string | null;
-};
-
-type StoredPreferences = Record<string, ProjectPreferences>;
-
-function readAll(): StoredPreferences {
-  try {
-    return JSON.parse(localStorage.getItem(storageKey) ?? '{}') as StoredPreferences;
-  } catch {
-    return {};
-  }
-}
+export type ProjectPreferences = { pinned: boolean };
+export type PreferencesWriteResult = { preferences: ProjectPreferences; persisted: boolean };
 
 export function getProjectPreferences(projectId: string): ProjectPreferences {
-  return readAll()[projectId] ?? { pinned: false, avatar: null };
+  const { entries } = readPreferencesStorage();
+  return { pinned: Object.hasOwn(entries, projectId) && entries[projectId].pinned === true };
 }
 
 export function updateProjectPreferences(
   projectId: string,
   patch: Partial<ProjectPreferences>,
-): ProjectPreferences {
-  const all = readAll();
-  const next = { ...getProjectPreferences(projectId), ...patch };
-  all[projectId] = next;
-  localStorage.setItem(storageKey, JSON.stringify(all));
-  window.dispatchEvent(new CustomEvent(projectPreferencesEvent, { detail: { projectId } }));
-  return next;
+): PreferencesWriteResult {
+  if (patch.pinned === undefined)
+    return { preferences: getProjectPreferences(projectId), persisted: true };
+  const result = mutatePreferences(projectId, (current) => ({
+    ...current,
+    pinned: patch.pinned === true,
+  }));
+  return { preferences: getProjectPreferences(projectId), ...result };
 }
 
 export function removeProjectPreferences(projectId: string) {
-  const all = readAll();
-  delete all[projectId];
-  localStorage.setItem(storageKey, JSON.stringify(all));
-  window.dispatchEvent(new CustomEvent(projectPreferencesEvent, { detail: { projectId } }));
+  return mutatePreferences(projectId, () => null);
+}
+
+export function getLegacyProjectAvatar(projectId: string): string | null {
+  const { entries } = readPreferencesStorage();
+  return Object.hasOwn(entries, projectId) ? (entries[projectId].avatar ?? null) : null;
+}
+
+export function removeLegacyProjectAvatar(projectId: string) {
+  return mutatePreferences(projectId, (current) => ({ pinned: current.pinned }));
 }

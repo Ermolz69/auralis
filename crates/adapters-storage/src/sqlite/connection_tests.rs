@@ -40,6 +40,7 @@ mod tests {
                 "created_at",
                 "updated_at",
                 "revision",
+                "avatar_data_url",
             ]
         );
 

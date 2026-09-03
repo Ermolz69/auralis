@@ -1,19 +1,13 @@
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { JobContext, isActiveJobStatus, type JobStatus } from '@/entities/job';
 import { formatDuration, formatProjectTitle } from '@/entities/media';
-import {
-  createProject,
-  getProjectPreferences,
-  listProjects,
-  projectPreferencesEvent,
-  useProjectContext,
-  type Project,
-} from '@/entities/project';
+import { createProject, useProjectContext } from '@/entities/project';
 import { toCommandError } from '@/shared/api/contracts';
 import { useNavigation, type PipelineStep, type View } from '@/shared/router';
 import { Button } from '@/shared/ui/button';
 import { Icon, type IconName } from '@/shared/ui/icon';
 import { toast } from '@/shared/ui/toast';
+import { usePinnedProjects } from '../model/usePinnedProjects';
 
 const locationLabel: Record<View, string> = {
   home: 'Проекты',
@@ -38,28 +32,8 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
   const [projectName, setProjectName] = useState('');
   const [projectNameRequired, setProjectNameRequired] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [pinnedProjects, setPinnedProjects] = useState<Project[]>([]);
+  const pinnedProjects = usePinnedProjects();
   const [projectsPaneHeight, setProjectsPaneHeight] = useState(190);
-
-  useEffect(() => {
-    let cancelled = false;
-    const refreshPinned = async () => {
-      try {
-        const projects = await listProjects();
-        if (!cancelled) {
-          setPinnedProjects(projects.filter((item) => getProjectPreferences(item.id).pinned));
-        }
-      } catch {
-        if (!cancelled) setPinnedProjects([]);
-      }
-    };
-    void refreshPinned();
-    window.addEventListener(projectPreferencesEvent, refreshPinned);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(projectPreferencesEvent, refreshPinned);
-    };
-  }, []);
 
   useEffect(() => {
     const main = mainRef.current;

@@ -6,6 +6,7 @@ import { toCommandError } from '@/shared/api/contracts';
 import { ProjectContext } from './context';
 import type { Project } from './types';
 import type { OperationToken } from './context';
+import { subscribeProjectChanges } from './projectChanges';
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projectId, setProjectIdState] = useState<string | null>(null);
@@ -67,6 +68,17 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     let unlisten: (() => void) | undefined;
     let listenerFetchSequence = 0;
+    const unsubscribe = subscribeProjectChanges((change) => {
+      const id = change.type === 'updated' ? change.project.id : change.projectId;
+      if (id !== projectId || currentProjectIdRef.current !== id) return;
+      listenerFetchSequence += 1;
+      if (change.type === 'removed') {
+        setProjectId(null);
+        setProject(null);
+      } else if (deletingProjectIdRef.current === null) {
+        setProject(change.project);
+      }
+    });
 
     const setupListener = async () => {
       try {
@@ -129,6 +141,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      unsubscribe();
       if (unlisten) unlisten();
     };
   }, [projectId]);

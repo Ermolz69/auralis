@@ -8,16 +8,42 @@ Desktop production composition always uses SQLite as the durable source of truth
 
 SQLite owns the persistent project, job, artifact, and outbox state. The outbox worker is part of the production storage graph and is started whenever production storage is initialized.
 
-New databases use schema version 2. Valid version-1 databases are upgraded atomically by adding
-`projects.revision` with an initial value of 1; existing project data is preserved. Unsupported
-schemas are rejected at startup without conversion.
+New databases use schema version 3. Valid version-1 databases gain `projects.revision` with an
+initial value of 1, and version-1/version-2 databases gain `projects.avatar_data_url`. Upgrades
+are atomic and preserve existing project data. Unsupported schemas are rejected at startup
+without conversion.
 
-Project revisions advance once per committed project mutation, including pipeline, transcript,
+Project revisions advance once per committed aggregate mutation, including pipeline, transcript,
 source-import, and recovery writes. Rename and metadata-only source import use field-scoped
 updates guarded by the expected revision. An outdated revision returns `Conflict` without changing
 the project; a missing project returns `NotFound`. Callers must reload before retrying a conflict.
 Full project writes inside a unit of work also compare revisions, so a stale pipeline or import
 snapshot cannot overwrite a successful rename. Revision changes roll back with the transaction.
+
+## Project presentation preferences
+
+Backend delete and rename results are independent of browser preference persistence. Confirmed
+deletion always clears the active project context. `projectUpdated` and `projectRemoved` notify
+UI consumers directly, without dummy localStorage writes. Older in-flight fetches cannot undo
+these notifications. Preference cleanup failures produce a separate warning, never a false
+backend-command failure.
+
+Only pin preferences remain in localStorage. Reads validate JSON and entry shapes; inaccessible
+storage retains the last readable snapshot. Failed mutations and deletion tombstones stay in
+memory for the session and are flushed on the next successful preference write. Unreadable or
+malformed storage is not overwritten. This fallback is not durable across application restarts.
+
+Avatars are stored in SQLite's project row, not the shared preferences JSON. These presentation
+writes do not advance the aggregate revision or timestamp, and aggregate saves cannot overwrite
+them. Deleting a project atomically removes its avatar; late avatar writes return `NotFound`.
+The backend accepts base64 PNG, JPEG, GIF, and WebP data URLs with matching file signatures and
+at most 1 MiB of decoded data; SQLite also limits encoded length. SVG is not accepted.
+
+Legacy avatars migrate lazily when their project row is displayed. Conditional initialization
+cannot replace a newer avatar or an explicit removal. SQL NULL means never initialized; an
+empty string is an explicit removal tombstone. The browser copy is removed only after confirmed
+backend persistence. Failed migration retains the old copy and shows a warning; failed legacy
+cleanup leaves the SQLite value authoritative and reports a separate warning.
 
 ## Atomic YouTube import
 

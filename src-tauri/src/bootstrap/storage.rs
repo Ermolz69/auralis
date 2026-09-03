@@ -115,10 +115,13 @@ pub async fn setup_storage_at_paths(
     let outbox_repo = SqliteOutboxRepository::new(pool.clone());
 
     let tx_gateway: crate::state::RuntimeStorageUnitOfWork =
-        Arc::new(SqliteStorageUnitOfWork::new(pool));
+        Arc::new(SqliteStorageUnitOfWork::new(pool.clone()));
 
     Ok((
         RuntimeServices {
+            project_avatar_repo: Arc::new(
+                adapters_storage::sqlite::SqliteProjectAvatarRepository::new(pool.clone()),
+            ),
             project_repo: repo,
             job_repo,
             job_query,

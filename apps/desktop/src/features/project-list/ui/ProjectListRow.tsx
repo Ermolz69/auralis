@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type RefCallback } from 'react';
-import { getProjectPreferences, updateProjectPreferences, type Project } from '@/entities/project';
+import {
+  getProjectPreferences,
+  projectPreferencesEvent,
+  updateProjectPreferences,
+  type Project,
+} from '@/entities/project';
+import { useProjectAvatar } from '../model/useProjectAvatar';
+import { toast } from '@/shared/ui/toast';
 import {
   formatProjectStatus,
   formatProjectTitle,
@@ -35,6 +42,12 @@ export const ProjectListRow = ({
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [preferences, setPreferences] = useState(() => getProjectPreferences(project.id));
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { avatar, updateAvatar, isSaving } = useProjectAvatar(project.id, isAnyDeleting);
+  useEffect(() => {
+    const refresh = () => setPreferences(getProjectPreferences(project.id));
+    window.addEventListener(projectPreferencesEvent, refresh);
+    return () => window.removeEventListener(projectPreferencesEvent, refresh);
+  }, [project.id]);
   useEffect(() => {
     if (!menu) return;
     const close = () => setMenu(null);
@@ -72,16 +85,12 @@ export const ProjectListRow = ({
         type="file"
         accept="image/png,image/jpeg,image/webp,image/gif"
         className="hidden"
+        disabled={isAnyDeleting || isSaving}
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.currentTarget.value = '';
           if (!file) return;
-          const reader = new FileReader();
-          reader.onload = () => {
-            if (typeof reader.result !== 'string') return;
-            setPreferences(updateProjectPreferences(project.id, { avatar: reader.result }));
-          };
-          reader.readAsDataURL(file);
+          void updateAvatar(file);
         }}
       />
       <button
@@ -93,8 +102,8 @@ export const ProjectListRow = ({
         aria-label={`Open ${displayTitle}. Status: ${statusLabel}. Source: ${sourceLabel}`}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-surface-raised text-muted transition-colors group-hover:bg-surface-hover">
-          {preferences.avatar ? (
-            <img src={preferences.avatar} alt="" className="h-full w-full object-cover" />
+          {avatar ? (
+            <img src={avatar} alt="" className="h-full w-full object-cover" />
           ) : (
             <Icon
               name={
@@ -164,12 +173,12 @@ export const ProjectListRow = ({
               avatarInputRef.current?.click();
             }}
           />
-          {preferences.avatar && (
+          {avatar && (
             <MenuItem
               icon="ImageOff"
               label="Убрать аватарку"
               onClick={() => {
-                setPreferences(updateProjectPreferences(project.id, { avatar: null }));
+                void updateAvatar(null);
                 setMenu(null);
               }}
             />
@@ -178,7 +187,12 @@ export const ProjectListRow = ({
             icon={preferences.pinned ? 'PinOff' : 'Pin'}
             label={preferences.pinned ? 'Открепить' : 'Закрепить'}
             onClick={() => {
-              setPreferences(updateProjectPreferences(project.id, { pinned: !preferences.pinned }));
+              const result = updateProjectPreferences(project.id, { pinned: !preferences.pinned });
+              setPreferences(result.preferences);
+              if (!result.persisted)
+                toast.warning(
+                  'Pin preference is only saved for this session because local storage is unavailable.',
+                );
               setMenu(null);
             }}
           />
