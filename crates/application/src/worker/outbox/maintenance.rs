@@ -1,88 +1,7 @@
+pub use super::maintenance_config::OutboxMaintenanceConfig;
 use ports::{repository::OutboxRepository, storage::ArtifactStore, workspace::TempWorkspacePort};
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use tokio::sync::watch;
-
-#[derive(Debug, Clone)]
-pub struct OutboxMaintenanceConfig {
-    pub interval: Duration,
-    pub staging_max_age: Duration,
-    pub workspace_max_age: Duration,
-    pub done_retention: domain::chrono::TimeDelta,
-    pub dead_retention: domain::chrono::TimeDelta,
-    pub per_status_batch_limit: u32,
-    pub max_batches: u32,
-    pub run_on_startup: bool,
-    pub shutdown_timeout: Duration,
-}
-
-impl OutboxMaintenanceConfig {
-    pub fn try_default() -> Result<Self, crate::error::ApplicationError> {
-        Ok(Self {
-            interval: Duration::from_secs(3600),
-            staging_max_age: Duration::from_secs(86400),
-            workspace_max_age: Duration::from_secs(86400),
-            done_retention: domain::chrono::TimeDelta::try_days(7).ok_or_else(|| {
-                crate::error::ApplicationError::Configuration("Invalid done_retention".into())
-            })?,
-            dead_retention: domain::chrono::TimeDelta::try_days(30).ok_or_else(|| {
-                crate::error::ApplicationError::Configuration("Invalid dead_retention".into())
-            })?,
-            per_status_batch_limit: 500,
-            max_batches: 10,
-            run_on_startup: true,
-            shutdown_timeout: Duration::from_secs(30),
-        })
-    }
-
-    pub fn validate(&self) -> Result<(), crate::error::ApplicationError> {
-        if self.interval.is_zero() {
-            return Err(crate::error::ApplicationError::Configuration(
-                "interval must be non-zero".to_string(),
-            ));
-        }
-        if self.staging_max_age.is_zero() {
-            return Err(crate::error::ApplicationError::Configuration(
-                "staging_max_age must be non-zero".to_string(),
-            ));
-        }
-        if self.workspace_max_age.is_zero() {
-            return Err(crate::error::ApplicationError::Configuration(
-                "workspace_max_age must be non-zero".to_string(),
-            ));
-        }
-        if self.done_retention.num_seconds() <= 0 {
-            return Err(crate::error::ApplicationError::Configuration(
-                "done_retention must be strictly positive".to_string(),
-            ));
-        }
-        if self.dead_retention.num_seconds() <= 0 {
-            return Err(crate::error::ApplicationError::Configuration(
-                "dead_retention must be strictly positive".to_string(),
-            ));
-        }
-        if self.dead_retention < self.done_retention {
-            return Err(crate::error::ApplicationError::Configuration(
-                "dead_retention must be >= done_retention".to_string(),
-            ));
-        }
-        if self.per_status_batch_limit == 0 {
-            return Err(crate::error::ApplicationError::Configuration(
-                "per_status_batch_limit must be non-zero".to_string(),
-            ));
-        }
-        if self.max_batches == 0 {
-            return Err(crate::error::ApplicationError::Configuration(
-                "max_batches must be non-zero".to_string(),
-            ));
-        }
-        if self.shutdown_timeout.is_zero() {
-            return Err(crate::error::ApplicationError::Configuration(
-                "shutdown_timeout must be non-zero".to_string(),
-            ));
-        }
-        Ok(())
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MaintenanceStepOutcome {
@@ -109,6 +28,7 @@ pub struct MaintenanceCoordinator<O, S> {
     artifact_store: S,
     workspace_provider: Arc<dyn TempWorkspacePort>,
     config: OutboxMaintenanceConfig,
+    imports: Option<Arc<dyn ports::youtube_import::YoutubeImportJournal>>,
 }
 
 impl<O, S> MaintenanceCoordinator<O, S>
@@ -127,7 +47,16 @@ where
             artifact_store,
             workspace_provider,
             config,
+            imports: None,
         }
+    }
+
+    pub fn with_imports(
+        mut self,
+        imports: Option<Arc<dyn ports::youtube_import::YoutubeImportJournal>>,
+    ) -> Self {
+        self.imports = imports;
+        self
     }
 
     pub fn run_maintenance<'a>(
@@ -196,6 +125,32 @@ where
         let mut report = OutboxMaintenanceReport::default();
         let done_before = now - self.config.done_retention;
         let dead_before = now - self.config.dead_retention;
+        let sessions = match &self.imports {
+            Some(imports) => match imports.list().await {
+                Ok(sessions) => sessions,
+                Err(_) => {
+                    report.staging_cleanup = MaintenanceStepOutcome::Failed;
+                    report.workspace_cleanup = MaintenanceStepOutcome::Failed;
+                    return report;
+                }
+            },
+            None => Vec::new(),
+        };
+        let staging = match &self.imports {
+            Some(imports) => match imports.protected_staging_keys().await {
+                Ok(keys) => keys,
+                Err(_) => {
+                    report.staging_cleanup = MaintenanceStepOutcome::Failed;
+                    report.workspace_cleanup = MaintenanceStepOutcome::Failed;
+                    return report;
+                }
+            },
+            None => Vec::new(),
+        };
+        let workspaces: Vec<_> = sessions
+            .into_iter()
+            .map(|session| session.workspace_key)
+            .collect();
 
         if *cancel_token.borrow() {
             report.cancelled = true;
@@ -210,7 +165,7 @@ where
         }
         match self
             .artifact_store
-            .cleanup_stale_staging(self.config.staging_max_age)
+            .cleanup_stale_staging_excluding(self.config.staging_max_age, &staging)
             .await
         {
             Ok(_) => {
@@ -230,7 +185,7 @@ where
         report.workspace_cleanup = MaintenanceStepOutcome::NotStarted;
         match self
             .workspace_provider
-            .cleanup_stale_allocations(self.config.workspace_max_age)
+            .cleanup_stale_allocations_excluding(self.config.workspace_max_age, &workspaces)
             .await
         {
             Ok(_) => {

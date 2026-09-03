@@ -35,7 +35,8 @@ where
                 self.handler.artifact_store.clone(),
                 self.handler.workspace_port.clone(),
                 self.config.clone(),
-            );
+            )
+            .with_imports(self.imports.clone());
             let token = cancel_rx.clone();
             maintenance_join_set.spawn(async move { coordinator.run_maintenance(token).await });
         }
@@ -87,7 +88,7 @@ where
                             self.handler.artifact_store.clone(),
                             self.handler.workspace_port.clone(),
                             self.config.clone(),
-                        );
+                        ).with_imports(self.imports.clone());
                         let token = cancel_rx.clone();
                         maintenance_join_set.spawn(async move {
                             coordinator.run_maintenance(token).await

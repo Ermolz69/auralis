@@ -3,6 +3,7 @@ mod command;
 mod containment;
 mod dto;
 mod error;
+mod owned_process;
 mod parser;
 mod validation;
 

@@ -145,6 +145,28 @@ jobs:
       - name: Reproduce and verify the GLib safety backport
         run: task rs:glib:reproduce
 
+  crash-recovery:
+    name: Crash Recovery (${{ matrix.os }})
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.quality == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Bootstrap native recovery tests
+        uses: ./.github/actions/bootstrap
+        with:
+          rust: 'true'
+      - name: Verify SQLite crash recovery
+        run: task rs:test:storage
+      - name: Verify YouTube resume and downloader process ownership
+        run: task rs:test:youtube
+
   docs:
     name: Docs
     needs: changes
@@ -218,6 +240,7 @@ jobs:
       - changes
       - frontend
       - rust
+      - crash-recovery
       - docs
       - quality-global
       - security

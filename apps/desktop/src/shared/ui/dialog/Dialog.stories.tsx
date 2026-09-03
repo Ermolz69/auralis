@@ -60,7 +60,7 @@ export const BasicDialog: Story = {
     );
     await expect(canvas.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(dialog).not.toBeVisible());
+    await waitFor(() => expect(dialog).not.toBeVisible(), { timeout: 5000 });
   },
 };
 

@@ -4,3 +4,4 @@ export * from './transcript';
 export * from './project';
 export * from './commandMap';
 export * from './error';
+export type { PendingYoutubeImport } from './youtubeImport';

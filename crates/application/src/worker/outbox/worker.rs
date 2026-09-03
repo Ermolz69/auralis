@@ -23,6 +23,7 @@ where
     pub(super) outbox_repo: O,
     pub(super) handler: PayloadHandler<S, I, U>,
     pub(super) config: OutboxMaintenanceConfig,
+    pub(super) imports: Option<Arc<dyn ports::youtube_import::YoutubeImportJournal>>,
 }
 
 impl<O, S, I, U> OutboxWorker<O, S, I, U>
@@ -53,7 +54,16 @@ where
             outbox_repo,
             handler,
             config,
+            imports: None,
         }
+    }
+
+    pub fn with_imports(
+        mut self,
+        imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
+    ) -> Self {
+        self.imports = Some(imports);
+        self
     }
 
     pub fn process_pending_messages<'a>(

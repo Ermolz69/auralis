@@ -6,7 +6,7 @@ use super::{
 };
 use adapters_storage::{
     local::{LocalArtifactStore, LocalTempWorkspace},
-    sqlite::{SqliteProjectRepository, SqliteStorageUnitOfWork, connect_sqlite},
+    sqlite::{SqliteProjectRepository, connect_sqlite},
 };
 use async_trait::async_trait;
 use domain::media::{Artifact, MediaMetadata, MediaSource};
@@ -109,18 +109,22 @@ impl Fixture {
         Arc<SqliteProjectRepository>,
         ControlledSource,
         Arc<LocalArtifactStore>,
-        Arc<SqliteStorageUnitOfWork>,
     > {
         CreateProjectFromYoutubeUseCase::new(
             self.repo.clone(),
             self.source.clone(),
             self.store.clone(),
-            Arc::new(SqliteStorageUnitOfWork::new(self.pool.clone())),
+            Arc::new(
+                adapters_storage::sqlite::youtube_import_journal::SqliteYoutubeImportJournal::new(
+                    self.pool.clone(),
+                ),
+            ),
             self.workspace.clone(),
             self.locks.clone(),
         )
     }
     pub async fn assert_unchanged(&self, original: Option<&Project>) {
+        assert!(self.root.path().exists());
         assert_eq!(
             self.repo.list().await.unwrap(),
             original.cloned().into_iter().collect::<Vec<_>>()
@@ -137,25 +141,9 @@ impl Fixture {
         }
         for path in self.source.paths.lock().unwrap().iter() {
             assert!(
-                !path.parent().unwrap().exists(),
-                "allocation must be removed"
+                path.parent().unwrap().exists(),
+                "allocation must be retained for resume"
             );
         }
-        assert_no_files(&self.root.path().join("artifacts"));
-    }
-}
-
-fn assert_no_files(path: &std::path::Path) {
-    if !path.exists() {
-        return;
-    }
-    for entry in std::fs::read_dir(path).unwrap() {
-        let entry = entry.unwrap();
-        assert!(
-            entry.file_type().unwrap().is_dir(),
-            "unexpected staged file: {:?}",
-            entry.path()
-        );
-        assert_no_files(&entry.path());
     }
 }

@@ -29,7 +29,6 @@ async fn assert_download_cleanup(extension: &'static str) {
     let artifact_store = Arc::new(LocalArtifactStore::new(root.path().join("artifacts")));
     let artifact_index = Arc::new(SqliteArtifactIndex::new(pool.clone()));
     let outbox_repo = SqliteOutboxRepository::new(pool.clone());
-    let uow = Arc::new(SqliteStorageUnitOfWork::new(pool.clone()));
     let workspace = Arc::new(LocalTempWorkspace::new(root.path().to_path_buf()));
     let downloaded_paths = Arc::new(Mutex::new(Vec::new()));
 
@@ -40,7 +39,11 @@ async fn assert_download_cleanup(extension: &'static str) {
             downloaded_paths: downloaded_paths.clone(),
         },
         artifact_store.clone(),
-        uow.clone(),
+        Arc::new(
+            adapters_storage::sqlite::youtube_import_journal::SqliteYoutubeImportJournal::new(
+                pool.clone(),
+            ),
+        ),
         workspace.clone(),
         Arc::new(super::lifecycle::ProjectLifecycleLocks::new()),
     )
@@ -56,10 +59,10 @@ async fn assert_download_cleanup(extension: &'static str) {
         downloaded_path.file_name().unwrap(),
         format!("original.{extension}").as_str()
     );
-    assert!(!downloaded_path.exists());
+    assert!(downloaded_path.exists());
     let allocation_dir = downloaded_path.parent().unwrap();
     assert!(allocation_dir.is_dir());
-    assert_eq!(std::fs::read_dir(allocation_dir).unwrap().count(), 0);
+    assert_eq!(std::fs::read_dir(allocation_dir).unwrap().count(), 1);
 
     let sibling = workspace
         .create_allocation(response.project.id(), "keep-other-download")
@@ -84,10 +87,11 @@ async fn assert_download_cleanup(extension: &'static str) {
     let OutboxPayload::DeleteWorkspaceAllocation { workspace_key } = &cleanup.payload else {
         unreachable!()
     };
-    assert!(workspace_key.as_str().starts_with(&format!(
-        "tmp/{}/youtube-video-download_",
-        response.project.id()
-    )));
+    assert!(
+        workspace_key
+            .as_str()
+            .starts_with(&format!("tmp/{}/youtube-resume_", response.project.id()))
+    );
     assert_eq!(
         workspace.resolve_key(workspace_key).await.unwrap(),
         allocation_dir

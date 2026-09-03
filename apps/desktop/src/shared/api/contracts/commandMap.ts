@@ -4,8 +4,12 @@ import type { Job } from './job';
 import type { MediaMetadata } from './media';
 import type { SubtitleTrack } from './subtitle';
 import type { ProjectAvatar } from './projectAvatar';
+import type { PendingYoutubeImport } from './youtubeImport';
 
 export interface CommandMap {
+  list_pending_youtube_imports_cmd: { args: undefined; result: PendingYoutubeImport[] };
+  resume_youtube_import_cmd: { args: { projectId: string }; result: Project };
+  discard_youtube_import_cmd: { args: { projectId: string }; result: null };
   get_project_avatar_cmd: { args: { projectId: string }; result: ProjectAvatar };
   set_project_avatar_cmd: {
     args: { projectId: string; dataUrl: string | null; onlyIfMissing: boolean };

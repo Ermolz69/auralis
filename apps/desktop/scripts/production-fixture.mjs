@@ -49,6 +49,7 @@ export function installFixture() {
       if (command === 'plugin:event|listen') return ++callbackId;
       if (command === 'plugin:event|unlisten') return null;
       if (command === 'list_projects_cmd') return [project];
+      if (command === 'list_pending_youtube_imports_cmd') return [];
       if (command === 'list_jobs_cmd') return [job];
       if (command === 'get_project_cmd') return project;
       if (command === 'get_project_avatar_cmd') return { dataUrl: null, initialized: true };

@@ -35,6 +35,21 @@ impl<V: VideoSourcePort, S: ArtifactStore> DownloadYoutubeVideoUseCase<V, S> {
         &self,
         request: DownloadYoutubeVideoRequest,
     ) -> Result<CommitStagedArtifactWrite, ApplicationError> {
+        self.download(request, false).await
+    }
+
+    pub async fn execute_resumable(
+        &self,
+        request: DownloadYoutubeVideoRequest,
+    ) -> Result<CommitStagedArtifactWrite, ApplicationError> {
+        self.download(request, true).await
+    }
+
+    async fn download(
+        &self,
+        request: DownloadYoutubeVideoRequest,
+        preserve_source: bool,
+    ) -> Result<CommitStagedArtifactWrite, ApplicationError> {
         if !matches!(request.source, MediaSource::YoutubeUrl { .. }) {
             return Err(ApplicationError::InvalidOperation {
                 message: "Source is not a YouTube URL".into(),
@@ -53,15 +68,25 @@ impl<V: VideoSourcePort, S: ArtifactStore> DownloadYoutubeVideoUseCase<V, S> {
                 message: "Expected LocalPath from download_media".into(),
             });
         };
-        let staged = self
-            .artifact_store
-            .stage_owned_temp_file(
-                &request.project_id,
-                ArtifactKind::DownloadedVideo,
-                std::path::Path::new(&path),
-                request.filename_hint.as_deref(),
-            )
-            .await?;
+        let staged = if preserve_source {
+            self.artifact_store
+                .import_external_file(
+                    &request.project_id,
+                    ArtifactKind::DownloadedVideo,
+                    std::path::Path::new(&path),
+                    request.filename_hint.as_deref(),
+                )
+                .await?
+        } else {
+            self.artifact_store
+                .stage_owned_temp_file(
+                    &request.project_id,
+                    ArtifactKind::DownloadedVideo,
+                    std::path::Path::new(&path),
+                    request.filename_hint.as_deref(),
+                )
+                .await?
+        };
         Ok(CommitStagedArtifactWrite {
             project_id: request.project_id,
             artifact: staged.artifact,

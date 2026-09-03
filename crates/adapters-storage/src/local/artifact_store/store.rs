@@ -28,6 +28,23 @@ impl LocalArtifactStore {
 
 #[async_trait]
 impl ArtifactStore for LocalArtifactStore {
+    async fn verify_staging(&self, key: &str, size: u64) -> Result<bool, PortError> {
+        let path = resolver::resolve_storage_key(&self.base_dir, key)?;
+        match tokio::fs::symlink_metadata(path).await {
+            Ok(metadata) => Ok(metadata.is_file() && metadata.len() == size),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(PortError::Io {
+                message: error.to_string(),
+            }),
+        }
+    }
+    async fn cleanup_stale_staging_excluding(
+        &self,
+        age: std::time::Duration,
+        protected: &[String],
+    ) -> Result<(), PortError> {
+        cleanup::cleanup_stale_staging_excluding(&self.base_dir, age, protected).await
+    }
     async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError> {
         resolver::resolve_artifact(&self.base_dir, artifact)
     }

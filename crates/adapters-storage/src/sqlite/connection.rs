@@ -3,7 +3,10 @@ use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 use std::path::Path;
 
-pub(crate) const SCHEMA: &str = include_str!("schema.sql");
+pub(crate) const SCHEMA: &str = concat!(
+    include_str!("schema.sql"),
+    include_str!("youtube_import_schema.sql")
+);
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
     let options = SqliteConnectOptions::new()
@@ -65,7 +68,11 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
         .map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
         })?;
-    if table_names != FINAL_TABLES || ![1, 2, 3].contains(&schema_marker) {
+    let mut expected_tables = FINAL_TABLES.to_vec();
+    if schema_marker == 4 {
+        expected_tables.push("youtube_imports");
+    }
+    if table_names != expected_tables || ![1, 2, 3, 4].contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -87,7 +94,7 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker >= 2 {
         project_columns.push("revision");
     }
-    if schema_marker == 3 {
+    if schema_marker >= 3 {
         project_columns.push("avatar_data_url");
     }
     validate_columns(pool, "projects", &project_columns).await?;
@@ -156,6 +163,15 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 3 {
         super::project_revision_migration::migrate(pool).await?;
     }
+    if schema_marker < 4 {
+        super::youtube_import_migration::migrate(pool).await?;
+    }
+    validate_columns(
+        pool,
+        "youtube_imports",
+        &["project_id", "request_key", "revision", "payload_json"],
+    )
+    .await?;
 
     Ok(false)
 }

@@ -32,3 +32,5 @@ mod driver_compatibility_tests;
 mod project_avatar_tests;
 #[cfg(test)]
 mod project_revision_migration_tests;
+pub mod youtube_import_journal;
+mod youtube_import_migration;

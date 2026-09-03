@@ -5,6 +5,14 @@ pub async fn cleanup_stale_staging(
     base_dir: &Path,
     max_age: std::time::Duration,
 ) -> Result<(), PortError> {
+    cleanup_stale_staging_excluding(base_dir, max_age, &[]).await
+}
+
+pub async fn cleanup_stale_staging_excluding(
+    base_dir: &Path,
+    max_age: std::time::Duration,
+    protected: &[String],
+) -> Result<(), PortError> {
     let staging_dir = base_dir.join(".staging");
     if !tokio::fs::try_exists(&staging_dir).await.unwrap_or(false) {
         return Ok(());
@@ -20,6 +28,12 @@ pub async fn cleanup_stale_staging(
 
     while let Ok(Some(entry)) = entries.next_entry().await {
         let path = entry.path();
+        if protected
+            .iter()
+            .any(|key| base_dir.join(key).starts_with(&path))
+        {
+            continue;
+        }
         if path.is_dir()
             && let Ok(metadata) = entry.metadata().await
             && let Ok(modified) = metadata.modified()

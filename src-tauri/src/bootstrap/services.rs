@@ -8,6 +8,7 @@ use ports::repository::JobRepository;
 use std::sync::Arc;
 
 pub struct RuntimeServices {
+    pub youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
     pub project_repo: RuntimeProjectRepository,
     pub project_avatar_repo: Arc<dyn ports::project_avatar::ProjectAvatarRepository>,
     pub job_repo: Arc<dyn JobRepository>,

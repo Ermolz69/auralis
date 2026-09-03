@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 use ports::error::PortError;
-use ports::workspace::WorkspaceCleanupReport;
+use ports::workspace::{TempWorkspacePort, WorkspaceCleanupReport};
 
 #[async_trait::async_trait]
 pub(crate) trait JanitorOps: Send + Sync {
@@ -22,6 +22,7 @@ pub struct TempWorkspaceJanitor {
     workspace_root: PathBuf,
     age_threshold: Duration,
     ops: Box<dyn JanitorOps>,
+    protected: std::collections::HashSet<PathBuf>,
 }
 
 impl TempWorkspaceJanitor {
@@ -30,7 +31,16 @@ impl TempWorkspaceJanitor {
             workspace_root,
             age_threshold,
             ops: Box::new(DefaultJanitorOps),
+            protected: Default::default(),
         }
+    }
+
+    pub fn with_exclusions(mut self, keys: &[domain::outbox::WorkspaceKey]) -> Self {
+        self.protected = keys
+            .iter()
+            .map(|key| self.workspace_root.join(key.as_str()))
+            .collect();
+        self
     }
 
     #[cfg(test)]
@@ -43,6 +53,7 @@ impl TempWorkspaceJanitor {
             workspace_root,
             age_threshold,
             ops,
+            protected: Default::default(),
         }
     }
 
@@ -78,6 +89,27 @@ impl TempWorkspaceJanitor {
 
             if let Ok(mut alloc_dirs) = tokio::fs::read_dir(project_entry.path()).await {
                 while let Ok(Some(alloc_entry)) = alloc_dirs.next_entry().await {
+                    if self.protected.contains(&alloc_entry.path()) {
+                        continue;
+                    }
+                    let _lease = if alloc_entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with("youtube-resume_")
+                    {
+                        let Ok(id) = project_entry.file_name().to_string_lossy().parse() else {
+                            continue;
+                        };
+                        match super::port::LocalTempWorkspace::new(self.workspace_root.clone())
+                            .acquire_import_lease(&id)
+                            .await
+                        {
+                            Ok(lease) => Some(lease),
+                            Err(_) => continue,
+                        }
+                    } else {
+                        None
+                    };
                     if let Ok(metadata) = tokio::fs::symlink_metadata(alloc_entry.path()).await {
                         if metadata.is_symlink() {
                             continue;

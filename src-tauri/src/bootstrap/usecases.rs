@@ -38,7 +38,6 @@ pub struct AppUseCases {
         RuntimeProjectRepository,
         YtDlpAdapter,
         RuntimeArtifactStore,
-        RuntimeStorageUnitOfWork,
     >,
     pub get_project: GetProjectUseCase<RuntimeProjectRepository>,
     pub list_projects: ListProjectsUseCase<RuntimeProjectRepository>,
@@ -67,6 +66,7 @@ pub fn setup_usecases(
     job_scheduler: Arc<dyn JobSchedulerPort>,
     workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
     job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+    youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
 ) {
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
     let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates);
@@ -100,7 +100,7 @@ pub fn setup_usecases(
             project_repo.clone(),
             ytdlp_adapter.clone(),
             artifact_store.clone(),
-            storage_uow.clone(),
+            youtube_imports,
             workspace_port.clone(),
             locks.clone(),
         ),

@@ -68,9 +68,12 @@ pub async fn run_ytdlp_download(
     timeout_ms: u64,
 ) -> Result<PathBuf, YtDlpError> {
     for candidate in candidates {
-        let child = match Command::new(candidate)
+        let mut command = Command::new(candidate);
+        command
             .arg("--ignore-config")
             .arg("--no-playlist")
+            .arg("--continue")
+            .arg("--part")
             .arg("--no-warnings")
             .arg("--windows-filenames")
             .arg("--print")
@@ -82,9 +85,8 @@ pub async fn run_ytdlp_download(
             .arg(url)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .kill_on_drop(true)
-            .spawn()
-        {
+            .kill_on_drop(true);
+        let child = match super::owned_process::spawn(command) {
             Ok(c) => c,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
             Err(e) => {
@@ -108,6 +110,11 @@ pub async fn run_ytdlp_download(
                     return Err(YtDlpError::Timeout { timeout_ms });
                 }
             };
+
+        #[cfg(unix)]
+        if output.status.code() == Some(127) {
+            continue;
+        }
 
         if !output.status.success() {
             return Err(YtDlpError::CommandFailed {

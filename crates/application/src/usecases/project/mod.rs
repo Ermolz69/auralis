@@ -37,6 +37,8 @@ mod youtube_commit_tests;
 #[cfg(test)]
 mod youtube_race_tests;
 #[cfg(test)]
+mod youtube_resume;
+#[cfg(test)]
 mod youtube_storage_support;
 #[cfg(test)]
 mod youtube_storage_tests;

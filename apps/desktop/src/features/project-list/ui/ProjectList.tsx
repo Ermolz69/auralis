@@ -16,6 +16,7 @@ import { toast } from '@/shared/ui/toast';
 import { toCommandError } from '@/shared/api/contracts';
 import { DeleteProjectDialog } from './DeleteProjectDialog';
 import { ProjectListRows } from './ProjectListRows';
+import { PendingYoutubeImports } from './PendingYoutubeImports';
 import {
   ProjectListEmptyState,
   ProjectListErrorState,
@@ -232,6 +233,7 @@ export const ProjectList = () => {
 
   return (
     <section className="flex w-full flex-col gap-3" aria-labelledby="recent-projects-heading">
+      <PendingYoutubeImports onCompleted={() => void fetchProjects()} />
       <DeleteProjectDialog
         project={projectToDelete}
         isDeleting={deletingProjectId !== null}

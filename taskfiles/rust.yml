@@ -11,6 +11,12 @@ tasks:
     cmds:
       - cargo test --locked -p adapters-storage {{.CLI_ARGS}}
 
+  test:youtube:
+    desc: Run YouTube import and crash recovery regressions
+    cmds:
+      - cargo test --locked -p application youtube_ {{.CLI_ARGS}}
+      - cargo test --locked -p adapters-ytdlp owned_process {{.CLI_ARGS}}
+
   exec:wsl:
     desc: Run explicit Cargo verification arguments in Ubuntu WSL with an isolated Linux target directory
     platforms: [windows]
