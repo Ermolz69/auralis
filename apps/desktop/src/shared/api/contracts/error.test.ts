@@ -6,6 +6,10 @@ describe('isCommandError', () => {
     expect(isCommandError({ code: 'NOT_FOUND', message: 'test' })).toBe(true);
   });
 
+  it('returns true for valid IO error', () => {
+    expect(isCommandError({ code: 'IO', message: 'workspace unavailable' })).toBe(true);
+  });
+
   it('returns true for valid CONFLICT error', () => {
     expect(isCommandError({ code: 'CONFLICT', message: 'test' })).toBe(true);
   });

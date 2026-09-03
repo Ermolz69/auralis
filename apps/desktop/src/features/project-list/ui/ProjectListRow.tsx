@@ -5,8 +5,6 @@ import {
   updateProjectPreferences,
   type Project,
 } from '@/entities/project';
-import { useProjectAvatar } from '../model/useProjectAvatar';
-import { toast } from '@/shared/ui/toast';
 import {
   formatProjectStatus,
   formatProjectTitle,
@@ -15,6 +13,9 @@ import {
 } from '@/entities/media';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
+import { toast } from '@/shared/ui/toast';
+import { useProjectAvatar } from '../model/useProjectAvatar';
+import { ProjectListContextMenu } from './ProjectListContextMenu';
 
 type ProjectListRowProps = {
   project: Project;
@@ -48,16 +49,23 @@ export const ProjectListRow = ({
     window.addEventListener(projectPreferencesEvent, refresh);
     return () => window.removeEventListener(projectPreferencesEvent, refresh);
   }, [project.id]);
-  useEffect(() => {
-    if (!menu) return;
-    const close = () => setMenu(null);
-    window.addEventListener('click', close);
-    window.addEventListener('blur', close);
-    return () => {
-      window.removeEventListener('click', close);
-      window.removeEventListener('blur', close);
-    };
-  }, [menu]);
+  const openButtonElementRef = useRef<HTMLButtonElement>(null);
+  const menuTriggerRef = useRef<HTMLElement | null>(null);
+  const closeMenu = (restoreFocus: boolean) => {
+    const trigger = menuTriggerRef.current;
+    setMenu(null);
+    if (restoreFocus) {
+      queueMicrotask(() => {
+        if (trigger?.isConnected) trigger.focus();
+      });
+    }
+  };
+  const openMenu = (x: number, y: number, target: EventTarget | null) => {
+    menuTriggerRef.current =
+      (target instanceof HTMLElement ? target.closest<HTMLElement>('button') : null) ??
+      openButtonElementRef.current;
+    setMenu({ x, y });
+  };
   const displayTitle = formatProjectTitle(project.title, project.source);
   const sourceLabel = formatSourceLabel(project.source);
   const statusLabel = formatProjectStatus(project.status);
@@ -77,7 +85,18 @@ export const ProjectListRow = ({
       aria-busy={isDeleting}
       onContextMenu={(event) => {
         event.preventDefault();
-        setMenu({ x: event.clientX, y: event.clientY });
+        openMenu(event.clientX, event.clientY, event.target);
+      }}
+      onKeyDown={(event) => {
+        const opensMenu =
+          (event.shiftKey && event.key === 'F10') ||
+          event.key === 'ContextMenu' ||
+          event.key === 'Menu';
+        if (!opensMenu) return;
+        event.preventDefault();
+        const target = event.target instanceof HTMLElement ? event.target : event.currentTarget;
+        const bounds = target.getBoundingClientRect();
+        openMenu(bounds.left, bounds.bottom, target);
       }}
     >
       <input
@@ -89,13 +108,15 @@ export const ProjectListRow = ({
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.currentTarget.value = '';
-          if (!file) return;
-          void updateAvatar(file);
+          if (file) void updateAvatar(file);
         }}
       />
       <button
         type="button"
-        ref={openButtonRef}
+        ref={(element) => {
+          openButtonElementRef.current = element;
+          openButtonRef(element);
+        }}
         className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2.5 text-left focus:outline-none"
         onClick={() => onOpen(project)}
         disabled={isAnyDeleting}
@@ -146,100 +167,32 @@ export const ProjectListRow = ({
         />
       </div>
       {menu && (
-        <div
-          role="menu"
-          aria-label={`Actions for ${displayTitle}`}
-          onClick={(event) => event.stopPropagation()}
-          style={{
-            left: Math.min(menu.x, window.innerWidth - 190),
-            top: Math.min(menu.y, window.innerHeight - 230),
+        <ProjectListContextMenu
+          position={menu}
+          projectLabel={displayTitle}
+          hasAvatar={avatar !== null}
+          pinned={preferences.pinned}
+          onDismiss={closeMenu}
+          onRename={() => {
+            const title = window.prompt('Новое название проекта', project.title)?.trim();
+            if (title && title !== project.title) onRename(project, title);
           }}
-          className="fixed z-50 w-48 rounded-md border border-border bg-surface p-1 shadow-lg"
-        >
-          <MenuItem
-            icon="Pencil"
-            label="Переименовать"
-            onClick={() => {
-              setMenu(null);
-              const title = window.prompt('Новое название проекта', project.title)?.trim();
-              if (title && title !== project.title) onRename(project, title);
-            }}
-          />
-          <MenuItem
-            icon="ImagePlus"
-            label="Выбрать аватарку"
-            onClick={() => {
-              setMenu(null);
-              avatarInputRef.current?.click();
-            }}
-          />
-          {avatar && (
-            <MenuItem
-              icon="ImageOff"
-              label="Убрать аватарку"
-              onClick={() => {
-                void updateAvatar(null);
-                setMenu(null);
-              }}
-            />
-          )}
-          <MenuItem
-            icon={preferences.pinned ? 'PinOff' : 'Pin'}
-            label={preferences.pinned ? 'Открепить' : 'Закрепить'}
-            onClick={() => {
-              const result = updateProjectPreferences(project.id, { pinned: !preferences.pinned });
-              setPreferences(result.preferences);
-              if (!result.persisted)
-                toast.warning(
-                  'Pin preference is only saved for this session because local storage is unavailable.',
-                );
-              setMenu(null);
-            }}
-          />
-          <MenuItem
-            icon="FolderOpen"
-            label="Открыть папку проекта"
-            onClick={() => {
-              setMenu(null);
-              onOpenFolder(project);
-            }}
-          />
-          <div className="my-1 h-px bg-border" />
-          <MenuItem
-            icon="Trash2"
-            label="Удалить"
-            danger
-            onClick={() => {
-              setMenu(null);
-              onDelete(project);
-            }}
-          />
-        </div>
+          onChooseAvatar={() => avatarInputRef.current?.click()}
+          onRemoveAvatar={() => {
+            void updateAvatar(null);
+          }}
+          onTogglePinned={() => {
+            const result = updateProjectPreferences(project.id, { pinned: !preferences.pinned });
+            setPreferences(result.preferences);
+            if (!result.persisted)
+              toast.warning(
+                'Pin preference is only saved for this session because local storage is unavailable.',
+              );
+          }}
+          onOpenFolder={() => onOpenFolder(project)}
+          onDelete={() => onDelete(project)}
+        />
       )}
     </div>
   );
 };
-
-function MenuItem({
-  icon,
-  label,
-  onClick,
-  danger = false,
-}: {
-  icon: 'Pencil' | 'ImagePlus' | 'ImageOff' | 'Pin' | 'PinOff' | 'FolderOpen' | 'Trash2';
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-surface-hover ${danger ? 'text-danger' : 'text-muted'}`}
-    >
-      <Icon name={icon} size={13} />
-      {label}
-    </button>
-  );
-}

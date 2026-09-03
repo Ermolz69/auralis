@@ -1,6 +1,19 @@
 version: '3'
 
 tasks:
+  tree:
+    desc: Inspect the locked Rust dependency graph
+    cmds:
+      - cargo tree --locked {{.CLI_ARGS}}
+
+  update:
+    desc: Update selected Rust dependencies with explicit Cargo arguments
+    preconditions:
+      - sh: test -n '{{.CLI_ARGS}}'
+        msg: Pass an explicit package and version with -- --package <crate> --precise <version>
+    cmds:
+      - cargo update {{.CLI_ARGS}}
+
   fetch:
     cmds:
       - cargo fetch --locked

@@ -7,3 +7,4 @@ export * from './model/useProjectContext';
 export * from './model/preferences';
 export * from './model/projectChanges';
 export * from './api/projectAvatarApi';
+export * from './model/projectAvatar';

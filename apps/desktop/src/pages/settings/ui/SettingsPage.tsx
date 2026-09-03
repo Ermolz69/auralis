@@ -1,51 +1,9 @@
 import { Badge } from '../../../shared/ui/badge';
-import { Icon, type IconName } from '../../../shared/ui/icon';
+import { Icon } from '../../../shared/ui/icon';
 import { Page } from '../../../shared/ui/page-layout';
-import { Select, type SelectOptionGroup } from '../../../shared/ui/select';
+import { Select } from '../../../shared/ui/select';
 import { COLOR_THEMES, isColorTheme, useColorTheme } from '../../../shared/theme';
-
-const colorThemeOptionGroups: SelectOptionGroup[] = [
-  {
-    label: 'Light themes',
-    options: COLOR_THEMES.filter((theme) => theme.appearance === 'light').map((theme) => ({
-      value: theme.id,
-      label: theme.label,
-    })),
-  },
-  {
-    label: 'Dark themes',
-    options: COLOR_THEMES.filter((theme) => theme.appearance === 'dark').map((theme) => ({
-      value: theme.id,
-      label: theme.label,
-    })),
-  },
-  {
-    label: 'Custom themes',
-    options: [
-      {
-        value: '__custom-themes-empty',
-        label: 'No custom themes yet',
-        disabled: true,
-      },
-    ],
-  },
-];
-
-const unavailableSections: Array<{
-  label: string;
-  description: string;
-  detail: string;
-  ariaLabel: string;
-  icon: IconName;
-}> = [
-  {
-    label: 'Export defaults',
-    description: 'Output directory, resolution and format',
-    detail: 'Export defaults are not part of the current app contract.',
-    ariaLabel: 'Export defaults unavailable',
-    icon: 'FolderOutput',
-  },
-];
+import { colorThemeOptionGroups, unavailableSections } from './settings.data';
 
 export const SettingsPage = () => {
   const { colorTheme, setColorTheme } = useColorTheme();

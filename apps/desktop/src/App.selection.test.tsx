@@ -13,13 +13,16 @@ import {
 } from '@/entities/project';
 import { JobContext, useProjectJobs, type JobDto } from '@/entities/job';
 import { AppJobProvider } from './app/providers';
-import { CurrentStepSummary } from './pages/project/ui/CurrentStepSummary';
+import { CurrentStepSummary } from './pages/project';
 import App from './App';
 
 vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn() }));
 vi.mock('@/shared/api/tauri', () => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock('./pages/home', () => ({ HomePage: () => <h1>Home page</h1> }));
-vi.mock('./pages/project', () => ({ ProjectPage: () => <button>Project controls</button> }));
+vi.mock('./pages/project', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./pages/project')>()),
+  ProjectPage: () => <button>Project controls</button>,
+}));
 vi.mock('./pages/settings', () => ({ SettingsPage: () => <h1>Settings page</h1> }));
 
 const project: Project = {
@@ -172,8 +175,11 @@ it('closes missing selection and clears project selectors while the global queue
 
 it('switches job scope in the same render as the selected project', async () => {
   await openWorkspace();
-  fireEvent.click(screen.getByRole('button', { name: /Очередь/ }));
-  expect(screen.getByRole('progressbar', { name: 'Old job progress' })).toBeTruthy();
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /Очередь/ }));
+    await vi.dynamicImportSettled();
+  });
+  expect(await screen.findByRole('progressbar', { name: 'Old job progress' })).toBeTruthy();
   const listener = jobListeners.get('job-event');
   jobSnapshot = [];
   await act(async () => context.setProject({ ...project, id: 'p2' }));
@@ -220,7 +226,7 @@ it('switches job scope in the same render as the selected project', async () => 
 it('returns home if the selected project disappears while settings are visible', async () => {
   await openWorkspace();
   act(() => navigation.setCurrentView('settings'));
-  expect(screen.getByRole('heading', { name: 'Settings page' })).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: 'Settings page' })).toBeTruthy();
   missing = true;
   await act(async () => projectEvent({ payload: { projectId: project.id } }));
   expect(navigation.currentView).toBe('home');
