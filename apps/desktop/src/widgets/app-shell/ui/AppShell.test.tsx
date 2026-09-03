@@ -54,16 +54,18 @@ function ProjectHarness({
   children: React.ReactNode;
   initialProject: Project | null;
 }) {
-  const [projectId, setProjectId] = useState<string | null>(initialProject?.id ?? null);
   const [currentProject, setProject] = useState<Project | null>(initialProject);
+  const projectId = currentProject?.id ?? null;
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const deletingProjectIdRef = useRef<string | null>(null);
 
   return (
     <ProjectContext.Provider
       value={{
+        selection: currentProject
+          ? { status: 'open', project: currentProject }
+          : { status: 'closed' },
         projectId,
-        setProjectId,
         project: currentProject,
         setProject,
         deletingProjectId,
@@ -260,13 +262,12 @@ describe('AppShell', () => {
 });
 
 function ClearProjectButton() {
-  const { setProjectId, setProject } = useProjectContext();
+  const { setProject } = useProjectContext();
 
   return (
     <button
       type="button"
       onClick={() => {
-        setProjectId(null);
         setProject(null);
       }}
     >

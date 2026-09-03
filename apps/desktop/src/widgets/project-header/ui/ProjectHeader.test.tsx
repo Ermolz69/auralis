@@ -39,9 +39,11 @@ afterEach(() => {
 describe('ProjectHeader', () => {
   it('renders safe project title, source label, and status label', () => {
     vi.mocked(useProjectContext).mockReturnValue({
+      selection: project
+        ? { status: 'open' as const, project: project }
+        : { status: 'closed' as const },
       projectId: project.id,
       project,
-      setProjectId: vi.fn(),
       setProject: vi.fn(),
       deletingProjectId: null,
       beginProjectDeletion: vi.fn(),

@@ -41,5 +41,6 @@ export function JobProvider({
     }
   }, [state.pendingRefetch, state.generation]);
 
-  return <JobContext.Provider value={state}>{children}</JobContext.Provider>;
+  const scopedState = state.scopeProjectId === projectId ? state : initializeStore(projectId);
+  return <JobContext.Provider value={scopedState}>{children}</JobContext.Provider>;
 }

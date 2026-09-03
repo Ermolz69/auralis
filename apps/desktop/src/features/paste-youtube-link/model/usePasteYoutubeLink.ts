@@ -12,7 +12,6 @@ export function usePasteYoutubeLink() {
   const [error, setError] = useState<string | null>(null);
   const {
     deletingProjectId,
-    setProjectId,
     setProject,
     projectId,
     operationGeneration,
@@ -61,7 +60,6 @@ export function usePasteYoutubeLink() {
       activeAttemptRef.current = null;
 
       setUrl('');
-      setProjectId(project.id);
       setProject(project);
       setPipelineStep('source');
       setCurrentView('project');

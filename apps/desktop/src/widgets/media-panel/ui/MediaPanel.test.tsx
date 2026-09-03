@@ -85,9 +85,11 @@ describe('MediaPanel', () => {
 
 function createProjectContext(projectValue: Project) {
   return {
+    selection: projectValue
+      ? { status: 'open' as const, project: projectValue }
+      : { status: 'closed' as const },
     projectId: projectValue.id,
     project: projectValue,
-    setProjectId: () => {},
     setProject: () => {},
     deletingProjectId: null,
     beginProjectDeletion: () => false,

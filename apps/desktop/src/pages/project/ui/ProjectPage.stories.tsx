@@ -113,9 +113,9 @@ function ProjectWorkspaceStory({
   initialStep?: 'source' | 'subtitles';
 }) {
   const projectContext: ProjectContextType = {
+    selection: { status: 'open', project },
     projectId: project.id,
     project,
-    setProjectId: () => undefined,
     setProject: () => undefined,
     deletingProjectId: null,
     beginProjectDeletion: () => false,

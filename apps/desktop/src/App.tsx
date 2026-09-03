@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { HomePage } from './pages/home';
 import { ProjectPage } from './pages/project';
 import { SettingsPage } from './pages/settings';
@@ -9,19 +9,24 @@ import { useProjectContext } from './entities/project';
 
 function App() {
   const { currentView, setCurrentView } = useNavigation();
-  const { projectId } = useProjectContext();
+  const { selection } = useProjectContext();
+  const previousSelectionStatus = useRef(selection.status);
+  const view = currentView === 'project' && selection.status === 'closed' ? 'home' : currentView;
 
-  useEffect(() => {
-    if (currentView === 'project' && !projectId) {
+  useLayoutEffect(() => {
+    const selectionClosed =
+      previousSelectionStatus.current === 'open' && selection.status === 'closed';
+    previousSelectionStatus.current = selection.status;
+    if (selectionClosed || (currentView === 'project' && selection.status === 'closed')) {
       setCurrentView('home');
     }
-  }, [currentView, projectId, setCurrentView]);
+  }, [currentView, selection.status, setCurrentView]);
 
   return (
     <AppShell jobQueue={<JobQueuePanel className="h-[calc(100%-2.5rem)]" />}>
-      {currentView === 'home' && <HomePage />}
-      {currentView === 'project' && projectId && <ProjectPage />}
-      {currentView === 'settings' && <SettingsPage />}
+      {view === 'home' && <HomePage />}
+      {view === 'project' && selection.status === 'open' && <ProjectPage />}
+      {view === 'settings' && <SettingsPage />}
     </AppShell>
   );
 }

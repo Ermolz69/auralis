@@ -35,7 +35,6 @@ describe('useImportLocalMedia', () => {
     vi.clearAllMocks();
     mockContextValue = {
       projectId: 'p-1',
-      setProjectId: vi.fn(),
       setProject: vi.fn(),
       deletingProjectId: null,
       beginProjectDeletion: vi.fn(),
@@ -226,8 +225,6 @@ describe('useImportLocalMedia', () => {
     act(() => {
       result.current.openDraftProject();
     });
-
-    expect(mockContextValue.setProjectId).toHaveBeenCalledWith('p-new');
     expect(mockContextValue.setProject).toHaveBeenCalledWith({ id: 'p-new', title: 'video.mp4' });
     expect(mockSetCurrentView).toHaveBeenCalledWith('project');
   });
@@ -262,7 +259,7 @@ describe('useImportLocalMedia', () => {
     // Verify: importLocalMedia not called, deleteProject not called (no compensating delete), context unchanged
     expect(importLocalMedia).not.toHaveBeenCalled();
     expect(deleteProject).not.toHaveBeenCalled();
-    expect(mockContextValue.setProjectId).not.toHaveBeenCalled();
+    expect(mockContextValue.setProject).not.toHaveBeenCalled();
   });
 
   it('stale local REPOSITORY error does not set the error state', async () => {

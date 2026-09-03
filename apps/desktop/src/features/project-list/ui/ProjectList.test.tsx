@@ -79,15 +79,13 @@ const mockProject2: Project = {
 
 const StatefulProjectProvider = ({
   children,
-  initialProjectId = 'p-1',
   initialProject = mockProject,
 }: {
   children: React.ReactNode;
-  initialProjectId?: string | null;
   initialProject?: Project | null;
 }) => {
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId);
   const [project, setProject] = useState<Project | null>(initialProject);
+  const projectId = project?.id ?? null;
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
   const deletingProjectIdRef = useRef<string | null>(null);
@@ -109,8 +107,8 @@ const StatefulProjectProvider = ({
   return (
     <ProjectContext.Provider
       value={{
+        selection: project ? { status: 'open', project } : { status: 'closed' },
         projectId,
-        setProjectId,
         project,
         setProject,
         deletingProjectId,
@@ -342,7 +340,7 @@ describe('ProjectList', () => {
 
   it('opening deleting project is blocked', async () => {
     render(
-      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+      <StatefulProjectProvider initialProject={mockProject}>
         <ProjectList />
       </StatefulProjectProvider>,
     );
@@ -400,7 +398,7 @@ describe('ProjectList', () => {
     };
 
     render(
-      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+      <StatefulProjectProvider initialProject={mockProject}>
         <ProjectList />
         <TestConsumer />
       </StatefulProjectProvider>,
@@ -424,7 +422,7 @@ describe('ProjectList', () => {
     };
 
     render(
-      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+      <StatefulProjectProvider initialProject={mockProject}>
         <ProjectList />
         <TestConsumer />
       </StatefulProjectProvider>,
@@ -458,7 +456,7 @@ describe('ProjectList', () => {
     };
 
     render(
-      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+      <StatefulProjectProvider initialProject={mockProject}>
         <ProjectList />
         <TestConsumer />
       </StatefulProjectProvider>,
@@ -496,7 +494,7 @@ describe('ProjectList', () => {
     (deleteProject as Mock).mockReturnValueOnce(deletePromise);
 
     render(
-      <StatefulProjectProvider initialProjectId="p-1" initialProject={mockProject}>
+      <StatefulProjectProvider initialProject={mockProject}>
         <ProjectList />
       </StatefulProjectProvider>,
     );

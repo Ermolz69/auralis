@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useProjectContext } from '@/entities/project';
-import type { ProjectContextType } from '@/entities/project';
+import type { Project, ProjectContextType } from '@/entities/project';
 import { useTranscript } from '@/entities/transcript';
 import { JobContext } from '@/entities/job';
 import type { JobDto, JobStoreState } from '@/entities/job';
@@ -18,21 +18,23 @@ vi.mock('@/entities/transcript', () => ({
 
 type TranscriptHookState = ReturnType<typeof useTranscript>;
 
-const defaultProjectContext: ProjectContextType = {
-  projectId: 'project-1',
-  setProjectId: vi.fn(),
-  project: {
-    id: 'project-1',
-    title: 'Demo project',
-    status: 'completed',
-    createdAt: '2026-08-02T00:00:00.000Z',
-    updatedAt: '2026-08-02T00:00:01.000Z',
-    source: {
-      kind: 'youtubeUrl',
-      url: 'https://youtube.com/watch?v=demo',
-    },
-    metadata: null,
+const defaultProject: Project = {
+  id: 'project-1',
+  title: 'Demo project',
+  status: 'completed',
+  createdAt: '2026-08-02T00:00:00.000Z',
+  updatedAt: '2026-08-02T00:00:01.000Z',
+  source: {
+    kind: 'youtubeUrl',
+    url: 'https://youtube.com/watch?v=demo',
   },
+  metadata: null,
+};
+
+const defaultProjectContext: ProjectContextType = {
+  selection: { status: 'open', project: defaultProject },
+  projectId: defaultProject.id,
+  project: defaultProject,
   setProject: vi.fn(),
   deletingProjectId: null,
   beginProjectDeletion: vi.fn(),

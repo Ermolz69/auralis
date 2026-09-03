@@ -42,9 +42,9 @@ describe('RunDubbing', () => {
 
   const createMockContext = (overrides = {}) => {
     const ctx = {
+      selection: { status: 'open' as const, project: mockProject },
       projectId: mockProject.id,
       project: mockProject,
-      setProjectId: vi.fn(),
       setProject: vi.fn(),
       deletingProjectId: null as string | null,
       beginProjectDeletion: vi.fn(),

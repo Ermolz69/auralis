@@ -113,8 +113,10 @@ export const AudioOnlyWarning: Story = {
 
 function createProjectContext(project: Project) {
   return {
+    selection: project
+      ? { status: 'open' as const, project: project }
+      : { status: 'closed' as const },
     projectId: project.id,
-    setProjectId: () => undefined,
     project,
     setProject: () => undefined,
     deletingProjectId: null,

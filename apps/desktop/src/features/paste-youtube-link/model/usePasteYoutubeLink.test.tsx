@@ -24,7 +24,6 @@ describe('usePasteYoutubeLink', () => {
     vi.clearAllMocks();
     mockContextValue = {
       projectId: 'p-1',
-      setProjectId: vi.fn(),
       setProject: vi.fn(),
       deletingProjectId: null,
       beginProjectDeletion: vi.fn(),
@@ -110,7 +109,6 @@ describe('usePasteYoutubeLink', () => {
     });
     expect(res).not.toBeNull();
     expect(createProjectFromYoutube).toHaveBeenCalledWith('https://youtube.com/watch?v=123', 'p-1');
-    expect(mockContextValue.setProjectId).toHaveBeenCalledWith('p-new');
     expect(mockContextValue.setProject).toHaveBeenCalledWith({ id: 'p-new', title: 'New' });
     expect(mockSetPipelineStep).toHaveBeenCalledWith('source');
     expect(mockSetCurrentView).toHaveBeenCalledWith('project');
@@ -142,7 +140,7 @@ describe('usePasteYoutubeLink', () => {
       await startPromise;
     });
     expect(result.current.url).toBe('https://youtube.com/watch?v=123');
-    expect(mockContextValue.setProjectId).not.toHaveBeenCalled();
+    expect(mockContextValue.setProject).not.toHaveBeenCalled();
     expect(result.current.isStarting).toBe(false);
   });
 
@@ -170,7 +168,7 @@ describe('usePasteYoutubeLink', () => {
       await startPromise;
     });
     expect(result.current.url).toBe('https://youtube.com/watch?v=123');
-    expect(mockContextValue.setProjectId).not.toHaveBeenCalled();
+    expect(mockContextValue.setProject).not.toHaveBeenCalled();
     expect(result.current.isStarting).toBe(false);
   });
 

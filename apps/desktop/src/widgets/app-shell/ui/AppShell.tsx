@@ -22,7 +22,7 @@ const stepLabel: Record<PipelineStep, string> = {
 
 export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue?: ReactNode }) {
   const { currentView, setCurrentView, pipelineStep, setPipelineStep } = useNavigation();
-  const { projectId, project, setProjectId, setProject } = useProjectContext();
+  const { projectId, project, setProject, captureToken, validateToken } = useProjectContext();
   const jobState = useContext(JobContext);
   const mainRef = useRef<HTMLElement>(null);
   const projectNameRef = useRef<HTMLInputElement>(null);
@@ -80,10 +80,12 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
       return;
     }
     if (isCreating) return;
+    const token = captureToken();
+    if (!validateToken(token)) return;
     setIsCreating(true);
     try {
       const created = await createProject(title);
-      setProjectId(created.id);
+      if (!validateToken(token)) return;
       setProject(created);
       setPipelineStep('source');
       setCurrentView('project');
@@ -91,6 +93,7 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
       setProjectNameRequired(false);
       toast.success('Project created');
     } catch (error) {
+      if (!validateToken(token)) return;
       toast.error(toCommandError(error).message);
     } finally {
       setIsCreating(false);
@@ -190,7 +193,6 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
                     key={item.id}
                     type="button"
                     onClick={() => {
-                      setProjectId(item.id);
                       setProject(item);
                       setPipelineStep('source');
                       setCurrentView('project');

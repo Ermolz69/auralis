@@ -2,6 +2,7 @@ export * from './model/types';
 export * from './api/projectApi';
 export * from './model/context';
 export * from './model/ProjectProvider';
+export type { ProjectSelection } from './model/selection';
 export * from './model/useProjectContext';
 export * from './model/preferences';
 export * from './model/projectChanges';

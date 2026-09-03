@@ -29,7 +29,6 @@ export const ProjectList = () => {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const {
     projectId: currentProjectId,
-    setProjectId,
     setProject,
     deletingProjectId,
     beginProjectDeletion,
@@ -56,7 +55,6 @@ export const ProjectList = () => {
 
   const clearProjectContextIfCurrent = (deletedProjectId: string) => {
     if (currentProjectIdRef.current !== deletedProjectId) return;
-    setProjectId(null);
     setProject(null);
     setCurrentView('home');
   };
@@ -129,7 +127,6 @@ export const ProjectList = () => {
 
   const handleOpenProject = (project: Project) => {
     if (deletingProjectIdRef.current !== null) return;
-    setProjectId(project.id);
     setProject(project);
     setPipelineStep('source');
     setCurrentView('project');

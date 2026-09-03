@@ -72,8 +72,10 @@ function ProjectHeaderStory({ project }: { project: Project }) {
     <NavigationProvider>
       <ProjectContext.Provider
         value={{
+          selection: project
+            ? { status: 'open' as const, project: project }
+            : { status: 'closed' as const },
           projectId: project.id,
-          setProjectId: () => undefined,
           project,
           setProject: () => undefined,
           deletingProjectId: null,
