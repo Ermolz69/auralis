@@ -28,6 +28,12 @@ impl MockStorageUnitOfWork {
 
 #[async_trait]
 impl StorageUnitOfWork for MockStorageUnitOfWork {
+    async fn commit_youtube_import(
+        &self,
+        _command: ports::transaction::CommitYoutubeImport,
+    ) -> Result<(), PortError> {
+        unreachable!()
+    }
     async fn commit_transcript_import(&self, _c: CommitTranscriptImport) -> Result<(), PortError> {
         Ok(())
     }

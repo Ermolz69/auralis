@@ -17,6 +17,7 @@ function mockHook(overrides: Partial<ReturnType<typeof usePasteYoutubeLink>> = {
     setUrl: mockSetUrl,
     startProject: mockStartProject,
     isStarting: false,
+    status: 'Idle',
     isBlockedByDeletion: false,
     error: null,
     ...overrides,
@@ -45,6 +46,13 @@ describe('PasteYoutubeLink', () => {
     expect(screen.getByRole('button', { name: 'Add from YouTube' })).not.toBeNull();
     expect(screen.getByRole('status').textContent).toContain('Loading video metadata');
     expect(screen.getByText(/subtitles start on step 2/i)).not.toBeNull();
+  });
+
+  it('offers an explicit retry after a failed download', () => {
+    mockHook({ status: 'DownloadFailed', error: 'Download failed' });
+    render(<PasteYoutubeLink />);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry download' }));
+    expect(mockStartProject).toHaveBeenCalledTimes(1);
   });
 
   it('links accessible errors to the input', () => {

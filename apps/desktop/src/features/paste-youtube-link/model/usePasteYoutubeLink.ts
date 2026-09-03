@@ -3,10 +3,12 @@ import { createProjectFromYoutube, useProjectContext } from '@/entities/project'
 import type { Project } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { toCommandError } from '@/shared/api/contracts';
+import type { YoutubeImportStatus } from './status';
 
 export function usePasteYoutubeLink() {
   const [url, setUrl] = useState('');
-  const [isStarting, setIsStarting] = useState(false);
+  const [status, setStatus] = useState<YoutubeImportStatus>('Idle');
+  const isStarting = status === 'Downloading';
   const [error, setError] = useState<string | null>(null);
   const {
     deletingProjectId,
@@ -23,7 +25,8 @@ export function usePasteYoutubeLink() {
   const activeAttemptRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
-    setIsStarting(false);
+    setStatus('Idle');
+    setError(null);
     activeAttemptRef.current = null;
     latestAttemptRef.current += 1;
   }, [operationGeneration, projectId]);
@@ -46,7 +49,7 @@ export function usePasteYoutubeLink() {
 
     const isCurrentAttempt = () => ownsAttempt() && validateToken(token);
 
-    setIsStarting(true);
+    setStatus('Downloading');
     setError(null);
     try {
       const project = projectId
@@ -54,10 +57,10 @@ export function usePasteYoutubeLink() {
         : await createProjectFromYoutube(trimmedUrl);
       if (!isCurrentAttempt()) return null;
 
-      setIsStarting(false);
+      setStatus('Ready');
       activeAttemptRef.current = null;
 
-      setUrl(''); // clear input
+      setUrl('');
       setProjectId(project.id);
       setProject(project);
       setPipelineStep('source');
@@ -66,14 +69,12 @@ export function usePasteYoutubeLink() {
     } catch (err: any) {
       if (!isCurrentAttempt()) return null;
       const cmdErr = toCommandError(err);
+      setStatus('DownloadFailed');
       setError(cmdErr.message);
       return null;
     } finally {
       if (ownsAttempt()) {
         activeAttemptRef.current = null;
-        if (validateToken(token)) {
-          setIsStarting(false);
-        }
       }
     }
   };
@@ -83,6 +84,7 @@ export function usePasteYoutubeLink() {
     setUrl,
     startProject,
     isStarting,
+    status,
     isBlockedByDeletion,
     error,
   };

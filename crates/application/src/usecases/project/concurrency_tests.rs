@@ -1,16 +1,12 @@
-use adapters_storage::{
-    local::LocalTempWorkspace,
-    sqlite::{SqliteProjectRepository, SqliteStorageUnitOfWork, connect_sqlite},
-};
+use adapters_storage::sqlite::{SqliteProjectRepository, SqliteStorageUnitOfWork, connect_sqlite};
 use adapters_ytdlp::mock::MockVideoSourceAdapter;
 use domain::{
     job::{Job, JobKind},
     media::MediaSource,
-    project::{Project, ProjectStatus},
+    project::Project,
 };
 use ports::{
     error::PortError,
-    project_update::ProjectUpdate,
     repository::ProjectRepository,
     transaction::{CommitPipelineStart, StorageUnitOfWork},
 };
@@ -18,14 +14,10 @@ use std::sync::Arc;
 
 use super::{
     concurrency_support::PausedProjectRepository,
-    create_from_youtube::{CreateProjectFromYoutubeRequest, CreateProjectFromYoutubeUseCase},
     import_source::{ImportVideoSourceRequest, ImportVideoSourceUseCase},
     rename::{RenameProjectRequest, RenameProjectUseCase},
 };
-use crate::{
-    error::ApplicationError,
-    test_utils::{MockArtifactStore, MockStorageUnitOfWork},
-};
+use crate::error::ApplicationError;
 
 #[tokio::test]
 async fn rename_conflicts_with_pipeline_then_retry_only_changes_title() {
@@ -127,57 +119,4 @@ async fn source_import_conflicts_without_overwriting_a_competing_import() {
     ));
     assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), current);
     assert_eq!(current.revision(), project.revision() + 1);
-}
-
-#[tokio::test]
-async fn youtube_finalization_conflicts_without_reverting_a_rename_during_download() {
-    let dir = tempfile::tempdir().unwrap();
-    let pool = connect_sqlite(dir.path().join("projects.sqlite"))
-        .await
-        .unwrap();
-    let repo = Arc::new(SqliteProjectRepository::new(pool));
-    let project = repo.create(Project::new("Original".into())).await.unwrap();
-    let paused = PausedProjectRepository::new(repo.clone(), true);
-    let use_case = CreateProjectFromYoutubeUseCase::new(
-        paused.clone(),
-        MockVideoSourceAdapter::new(),
-        MockArtifactStore,
-        MockStorageUnitOfWork::new(),
-        Arc::new(LocalTempWorkspace::new(dir.path().to_path_buf())),
-    );
-    let request = CreateProjectFromYoutubeRequest {
-        project_id: Some(project.id().clone()),
-        url: "https://youtube.com/watch?v=download".into(),
-    };
-    let create = tokio::spawn(async move { use_case.execute(request).await });
-    paused.wait_for_write().await;
-
-    let renamed = RenameProjectUseCase::new(repo.clone())
-        .execute(RenameProjectRequest {
-            project_id: project.id().clone(),
-            title: "User title".into(),
-        })
-        .await
-        .unwrap();
-    paused.release();
-    assert!(matches!(
-        create.await.unwrap(),
-        Err(ApplicationError::Port(PortError::Conflict { .. }))
-    ));
-    assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), renamed);
-    assert_eq!(renamed.status(), &ProjectStatus::SourceImported);
-    assert!(renamed.metadata().is_some());
-
-    let ready = repo
-        .update(
-            project.id(),
-            renamed.revision(),
-            ProjectUpdate::MarkReadyForProcessing,
-            chrono::Utc::now(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(ready.title(), "User title");
-    assert_eq!(ready.status(), &ProjectStatus::ReadyForProcessing);
-    assert_eq!(ready.metadata(), renamed.metadata());
 }

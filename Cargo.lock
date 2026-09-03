@@ -150,6 +150,7 @@ dependencies = [
  "domain",
  "futures",
  "ports",
+ "sqlx",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",

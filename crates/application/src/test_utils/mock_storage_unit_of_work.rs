@@ -43,6 +43,19 @@ impl MockStorageUnitOfWork {
 
 #[async_trait]
 impl StorageUnitOfWork for MockStorageUnitOfWork {
+    async fn commit_youtube_import(
+        &self,
+        command: ports::transaction::CommitYoutubeImport,
+    ) -> Result<(), PortError> {
+        command.validate()?;
+        if self.should_fail {
+            return Err(PortError::Unexpected {
+                message: "Mock transaction failure".into(),
+            });
+        }
+        self.projects_saved.lock().await.push(command.project);
+        Ok(())
+    }
     async fn commit_artifact_finalize(
         &self,
         _command: ports::transaction::CommitArtifactFinalize,

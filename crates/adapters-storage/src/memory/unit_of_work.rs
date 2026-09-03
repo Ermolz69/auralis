@@ -41,6 +41,14 @@ impl InMemoryStorageUnitOfWork {
 
 #[async_trait]
 impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
+    async fn commit_youtube_import(
+        &self,
+        _command: ports::transaction::CommitYoutubeImport,
+    ) -> Result<(), PortError> {
+        Err(PortError::Unsupported {
+            message: "Atomic YouTube imports require durable artifact and outbox storage".into(),
+        })
+    }
     async fn commit_transcript_import(
         &self,
         command: CommitTranscriptImport,

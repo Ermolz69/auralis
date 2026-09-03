@@ -2,17 +2,20 @@ pub mod artifact;
 pub mod pipeline_start;
 pub mod project_delete;
 pub mod terminal_lifecycle;
+pub mod youtube_import;
 
 pub use artifact::*;
 pub use pipeline_start::*;
 pub use project_delete::*;
 pub use terminal_lifecycle::*;
+pub use youtube_import::*;
 
 use crate::error::PortError;
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait StorageUnitOfWork: Send + Sync {
+    async fn commit_youtube_import(&self, command: CommitYoutubeImport) -> Result<(), PortError>;
     async fn commit_transcript_import(
         &self,
         command: CommitTranscriptImport,
@@ -51,6 +54,9 @@ pub trait StorageUnitOfWork: Send + Sync {
 
 #[async_trait]
 impl<T: ?Sized + StorageUnitOfWork> StorageUnitOfWork for std::sync::Arc<T> {
+    async fn commit_youtube_import(&self, command: CommitYoutubeImport) -> Result<(), PortError> {
+        (**self).commit_youtube_import(command).await
+    }
     async fn commit_transcript_import(
         &self,
         command: CommitTranscriptImport,
