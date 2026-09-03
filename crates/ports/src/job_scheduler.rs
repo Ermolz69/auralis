@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use domain::dubbing::DubbingPipelineStage;
-use domain::job::{JobId, JobProgress, JobStatus};
+use domain::job::{JobId, JobKind, JobProgress, JobStatus};
 use domain::project::ProjectId;
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +18,7 @@ pub struct StartDubbingJobRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledJob {
     pub id: JobId,
+    pub kind: JobKind,
     pub revision: u64,
     pub project_id: Option<ProjectId>,
     pub title: String,

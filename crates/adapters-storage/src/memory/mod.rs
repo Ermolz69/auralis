@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used)]
 //! In-memory storage test doubles.
 //!
 //! These adapters exist for application and adapter tests that need cheap

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::youtube_cleanup::cleanup_failed_import;
 use crate::error::ApplicationError;
 use crate::usecases::transcript::import_youtube_subtitles::mocks::{

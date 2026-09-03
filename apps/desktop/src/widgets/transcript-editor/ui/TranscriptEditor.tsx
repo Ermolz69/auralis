@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { useTranscript } from '@/entities/transcript';
 import { useProjectContext } from '@/entities/project';
-import { formatJobStatus, isActiveJobStatus, JobContext } from '@/entities/job';
+import { formatJobStatus, isActiveJobStatus, JobContext, selectProjectJobs } from '@/entities/job';
 import { TranscriptPanelView } from './TranscriptPanelView';
 
 export const TranscriptEditor = () => {
@@ -9,7 +9,7 @@ export const TranscriptEditor = () => {
   const { transcript, isLoading, error, refetch } = useTranscript(projectId);
   const jobState = useContext(JobContext);
   const sourceKind = project?.source?.kind;
-  const activeTranscriptJob = Object.values(jobState?.jobs ?? {}).find((job) =>
+  const activeTranscriptJob = selectProjectJobs(jobState?.jobs ?? {}, projectId).find((job) =>
     isActiveJobStatus(job.status),
   );
   const activeJobStatus = activeTranscriptJob ? formatJobStatus(activeTranscriptJob) : null;

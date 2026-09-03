@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use super::{
     create_from_youtube::CreateProjectFromYoutubeRequest, youtube_atomic_support::Fixture,
 };
@@ -22,7 +24,7 @@ async fn source_failures_leave_new_and_existing_projects_unchanged_and_retryable
                 Some(
                     fixture
                         .repo
-                        .create(Project::new("Keep title".into()))
+                        .create(Project::new("Keep title".into()).unwrap())
                         .await
                         .unwrap(),
                 )
@@ -83,7 +85,7 @@ async fn artifact_and_each_outbox_failure_roll_back_every_write_and_allow_retry(
                 Some(
                     fixture
                         .repo
-                        .create(Project::new("Keep title".into()))
+                        .create(Project::new("Keep title".into()).unwrap())
                         .await
                         .unwrap(),
                 )
@@ -115,7 +117,7 @@ async fn rename_during_download_is_preserved_and_the_import_can_be_retried() {
     let fixture = Fixture::new().await;
     let project = fixture
         .repo
-        .create(Project::new("Original".into()))
+        .create(Project::new("Original".into()).unwrap())
         .await
         .unwrap();
     fixture.source.failure.store(5, Ordering::SeqCst);
@@ -162,7 +164,7 @@ async fn deleting_a_project_during_download_does_not_resurrect_it() {
     let fixture = Fixture::new().await;
     let project = fixture
         .repo
-        .create(Project::new("Delete".into()))
+        .create(Project::new("Delete".into()).unwrap())
         .await
         .unwrap();
     fixture.source.failure.store(5, Ordering::SeqCst);

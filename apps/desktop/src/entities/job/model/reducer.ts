@@ -1,10 +1,9 @@
 import type { JobStoreState, JobDto, JobEventDto } from './types';
 import { DEFAULT_JOB_SYNCHRONIZATION_CONFIG } from './types';
 
-export function initializeStore(projectId: string | null): JobStoreState {
+export function initializeStore(): JobStoreState {
   return {
     phase: 'idle',
-    scopeProjectId: projectId,
     jobs: {},
     buffer: [],
     pendingRefetch: false,
@@ -13,20 +12,18 @@ export function initializeStore(projectId: string | null): JobStoreState {
 }
 
 export type JobStoreAction =
-  | { type: 'SWITCH_PROJECT'; projectId: string | null; generation: number }
   | { type: 'INITIALIZATION_CYCLE'; generation: number }
   | { type: 'LISTENERS_FAILED'; generation: number }
   | { type: 'LISTENERS_REGISTERED'; generation: number }
   | { type: 'FETCH_STARTED'; generation: number }
-  | { type: 'SNAPSHOT_RESOLVED'; generation: number; projectId: string | null; jobs: JobDto[] }
+  | { type: 'SNAPSHOT_RESOLVED'; generation: number; jobs: JobDto[] }
   | { type: 'FETCH_FAILED'; generation: number }
   | { type: 'EVENT_RECEIVED'; event: JobEventDto; generation: number }
   | { type: 'INVALIDATION_RECEIVED'; generation: number }
   | { type: 'CLEAR_PENDING_REFETCH'; generation: number };
 
 export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): JobStoreState {
-  const isStartingAction =
-    action.type === 'SWITCH_PROJECT' || action.type === 'INITIALIZATION_CYCLE';
+  const isStartingAction = action.type === 'INITIALIZATION_CYCLE';
 
   if (isStartingAction) {
     if (action.generation <= state.generation) {
@@ -39,16 +36,6 @@ export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): J
   }
 
   switch (action.type) {
-    case 'SWITCH_PROJECT':
-      return {
-        phase: 'idle',
-        scopeProjectId: action.projectId,
-        jobs: {},
-        buffer: [],
-        pendingRefetch: false,
-        generation: action.generation,
-      };
-
     case 'INITIALIZATION_CYCLE':
       return {
         ...state,
@@ -71,16 +58,14 @@ export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): J
       };
 
     case 'FETCH_STARTED':
-      return state;
+      // Buffer events during every snapshot, including background refreshes.
+      return { ...state, phase: 'synchronizing' };
 
     case 'SNAPSHOT_RESOLVED': {
-      if (action.projectId !== state.scopeProjectId) {
-        return state;
-      }
-
       const newJobs: Record<string, JobDto> = {};
       for (const job of action.jobs) {
-        newJobs[job.id] = job;
+        const current = state.jobs[job.id];
+        newJobs[job.id] = current && current.revision > job.revision ? current : job;
       }
 
       let hasGap = false;
@@ -97,7 +82,7 @@ export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): J
           replayedJobs[jobId] = event.job;
         } else {
           hasGap = true;
-          break;
+          continue;
         }
       }
 
@@ -126,10 +111,6 @@ export function jobStoreReducer(state: JobStoreState, action: JobStoreAction): J
       };
 
     case 'EVENT_RECEIVED': {
-      if (action.event.job.projectId !== state.scopeProjectId) {
-        return state;
-      }
-
       if (state.phase === 'ready') {
         const jobId = action.event.job.id;
         const currentJob = state.jobs[jobId];

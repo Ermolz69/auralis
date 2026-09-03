@@ -63,6 +63,7 @@ const defaultTranscriptState: TranscriptHookState = {
 };
 
 const activeJob: JobDto = {
+  kind: 'dubbing',
   id: 'job-1',
   revision: 1,
   projectId: 'project-1',
@@ -83,7 +84,6 @@ const activeJob: JobDto = {
 
 const jobState: JobStoreState = {
   phase: 'ready',
-  scopeProjectId: 'project-1',
   jobs: {
     'job-1': activeJob,
   },
@@ -194,6 +194,12 @@ describe('TranscriptEditor', () => {
     expect(
       screen.getByText(/Linked operation: Running: Importing YouTube subtitles/i),
     ).not.toBeNull();
+  });
+
+  it.each(['project-2', null])('ignores an active job attached to %s', (projectId) => {
+    mockState({ transcriptState: { ...defaultTranscriptState, transcript: null } });
+    renderTranscript({ ...jobState, jobs: { other: { ...activeJob, projectId } } });
+    expect(screen.queryByText(/Linked operation:/i)).toBeNull();
   });
 
   it('explains that local media transcription is unavailable', () => {

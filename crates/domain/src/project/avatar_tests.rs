@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::avatar::{MAX_AVATAR_BYTES, ProjectAvatar};
 use base64::{Engine, engine::general_purpose::STANDARD};
 

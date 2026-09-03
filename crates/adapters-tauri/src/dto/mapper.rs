@@ -57,6 +57,7 @@ pub fn map_job_dto(job: &ScheduledJob) -> Result<JobDto, JobDtoMappingError> {
 
     Ok(JobDto {
         id: job.id.to_string(),
+        kind: job.kind.clone(),
         revision: job.revision,
         project_id: job.project_id.as_ref().map(|id| id.to_string()),
         title: job.title.clone(),
@@ -94,8 +95,9 @@ mod tests {
     use ports::job_scheduler::ScheduledJob;
 
     #[test]
-    fn test_unconditional_job_error_sanitization() {
+    fn test_job_dto_preserves_kind_and_sanitizes_errors() {
         let job = ScheduledJob {
+            kind: domain::job::JobKind::Dubbing,
             id: JobId::new(),
             revision: 1,
             project_id: Some(ProjectId::new()),
@@ -117,6 +119,8 @@ mod tests {
         };
 
         let dto = map_job_dto(&job).unwrap();
+        assert_eq!(dto.kind, job.kind);
+        assert_eq!(serde_json::to_value(&dto).unwrap()["kind"], "dubbing");
         assert_eq!(
             dto.error,
             Some("An error occurred during job execution.".to_string())
@@ -128,6 +132,9 @@ mod tests {
             job,
         };
         let event_dto = map_job_event_dto(&event).unwrap();
+        let payload = serde_json::to_value(&event_dto).unwrap();
+        assert_eq!(payload["kind"], "failed");
+        assert_eq!(payload["job"]["kind"], "dubbing");
         assert_eq!(
             event_dto.job.error,
             Some("An error occurred during job execution.".to_string())

@@ -12,7 +12,7 @@ async fn test_commit_managed_source_import_writes_atomically() {
     let pool = setup_db().await;
     let uow = SqliteStorageUnitOfWork::new(pool.clone());
 
-    let mut project = Project::new("Tx Test".to_string());
+    let mut project = Project::new("Tx Test".to_string()).unwrap();
     let original_updated_at = project.updated_at();
 
     sqlx::query(
@@ -100,7 +100,7 @@ async fn test_commit_managed_source_import_missing_project_returns_not_found() {
     let pool = setup_db().await;
     let uow = SqliteStorageUnitOfWork::new(pool.clone());
 
-    let mut project = Project::new("Missing".to_string());
+    let mut project = Project::new("Missing".to_string()).unwrap();
     let artifact_id = ArtifactId::new();
     let final_key = format!("{}/source-video/{}.mp4", project.id(), artifact_id);
     let staging_key = format!(".staging/uuid/{}.mp4", artifact_id);
@@ -151,7 +151,7 @@ async fn test_commit_managed_source_import_status_mismatch_returns_conflict() {
     let pool = setup_db().await;
     let uow = SqliteStorageUnitOfWork::new(pool.clone());
 
-    let mut project = Project::new("Status Mismatch".to_string());
+    let mut project = Project::new("Status Mismatch".to_string()).unwrap();
     let original_updated_at = project.updated_at();
 
     sqlx::query(

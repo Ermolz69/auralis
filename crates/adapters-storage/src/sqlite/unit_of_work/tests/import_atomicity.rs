@@ -65,10 +65,10 @@ async fn managed_source_import_artifact_id_conflict_rolls_back_project() {
     let pool = setup_db().await;
     let uow = SqliteStorageUnitOfWork::new(pool.clone());
 
-    let existing_project = Project::new("Existing Artifact Owner".to_string());
+    let existing_project = Project::new("Existing Artifact Owner".to_string()).unwrap();
     insert_draft_project(&pool, &existing_project).await;
 
-    let import_project = Project::new("Import Target".to_string());
+    let import_project = Project::new("Import Target".to_string()).unwrap();
     let original_updated_at = import_project.updated_at();
     insert_draft_project(&pool, &import_project).await;
 
@@ -128,7 +128,7 @@ async fn managed_source_import_outbox_failure_rolls_back_project_and_artifact() 
     let pool = setup_db().await;
     let uow = SqliteStorageUnitOfWork::new(pool.clone());
 
-    let project = Project::new("Outbox Failure".to_string());
+    let project = Project::new("Outbox Failure".to_string()).unwrap();
     let original_updated_at = project.updated_at();
     insert_draft_project(&pool, &project).await;
 

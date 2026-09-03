@@ -16,6 +16,7 @@ export function validateJobDto(job: unknown): job is JobDto {
   const j = job as Record<string, unknown>;
 
   if (typeof j.id !== 'string') return false;
+  if (typeof j.kind !== 'string' || j.kind.trim().length === 0) return false;
   if (!isSafeRevision(j.revision)) return false;
   if (j.projectId !== null && typeof j.projectId !== 'string') return false;
   if (typeof j.title !== 'string') return false;
@@ -56,16 +57,12 @@ export function validateJobEventDto(event: unknown): event is JobEventDto {
   return true;
 }
 
-export function validateJobSnapshot(
-  snapshot: unknown,
-  expectedProjectId: string | null,
-): snapshot is JobDto[] {
+export function validateJobSnapshot(snapshot: unknown): snapshot is JobDto[] {
   if (!Array.isArray(snapshot)) return false;
 
   const ids = new Set<string>();
   for (const job of snapshot) {
     if (!validateJobDto(job)) return false;
-    if (job.projectId !== expectedProjectId) return false;
     if (ids.has(job.id)) return false;
     ids.add(job.id);
   }

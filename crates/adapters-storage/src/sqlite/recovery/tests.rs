@@ -118,7 +118,7 @@ async fn test_fresh_final_db_snapshot_is_noop() {
 async fn test_already_applied_partial_pair() {
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
     let expected_active = job.id().clone();
@@ -186,7 +186,7 @@ async fn test_already_applied_partial_pair() {
 async fn test_snapshot_apply_reload_interrupted_pair() {
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
     let expected_active = job.id().clone();
@@ -240,7 +240,7 @@ async fn test_snapshot_apply_reload_interrupted_pair() {
 #[tokio::test]
 async fn test_corrupted_processing_project_maps_to_invalid_stored_data() {
     let pool = setup_db().await;
-    let project = Project::new("Proj1".into());
+    let project = Project::new("Proj1".into()).unwrap();
 
     insert_project(&pool, &project, ProjectStatus::Processing, None, None).await;
     sqlx::query("UPDATE projects SET created_at = 'not-a-date' WHERE id = ?")
@@ -263,7 +263,7 @@ async fn test_corrupted_processing_project_maps_to_invalid_stored_data() {
 async fn test_second_pair_write_failure_rolls_back_first_write() {
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
     let expected_active = job.id().clone();
@@ -329,7 +329,7 @@ async fn test_second_pair_write_failure_rolls_back_first_write() {
 async fn test_concurrent_zero_row_update() {
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
     let expected_active = job.id().clone();
@@ -396,7 +396,7 @@ async fn test_terminal_pair_reconciliation() {
 
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
     job.mark_failed(domain::job::JobError::new("ERR", "Failed", false))
@@ -445,7 +445,7 @@ async fn test_missing_linked_job_adapter_write() {
 
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let missing_job_id = domain::job::JobId::new();
 
     let mut snap = tmp_p.to_snapshot();
@@ -488,7 +488,7 @@ async fn test_processing_project_without_active_job() {
 
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
 
     let mut snap = tmp_p.to_snapshot();
     snap.status = ProjectStatus::Processing;
@@ -522,7 +522,7 @@ async fn test_orphan_adapter_conflict() {
 
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
 
@@ -553,7 +553,7 @@ async fn test_orphan_adapter_conflict() {
 async fn test_last_terminal_job_id_conflict() {
     let pool = setup_db().await;
 
-    let tmp_p = Project::new("Proj1".into());
+    let tmp_p = Project::new("Proj1".into()).unwrap();
     let mut job = Job::new(tmp_p.id().clone(), "Title".into(), JobKind::Dubbing);
     let _ = job.start();
     let expected_active = job.id().clone();

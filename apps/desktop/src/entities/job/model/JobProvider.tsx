@@ -1,38 +1,27 @@
-import { createContext, useEffect, useReducer, useRef } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { JobContext } from './context';
 import { jobStoreReducer, initializeStore } from './reducer';
 import { JobStoreSynchronizer } from './synchronization';
-import type { JobStoreState } from './types';
 
-export const JobContext = createContext<JobStoreState | null>(null);
-
-export function JobProvider({
-  projectId,
-  children,
-}: {
-  projectId: string | null;
-  children: ReactNode;
-}) {
-  const [state, dispatch] = useReducer(jobStoreReducer, projectId, initializeStore);
-
-  const stateRef = useRef<JobStoreState>(state);
-  stateRef.current = state;
+export function JobProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(jobStoreReducer, undefined, initializeStore);
 
   const synchronizerRef = useRef<JobStoreSynchronizer | null>(null);
   if (!synchronizerRef.current) {
-    synchronizerRef.current = new JobStoreSynchronizer(dispatch, () => stateRef.current);
+    synchronizerRef.current = new JobStoreSynchronizer(dispatch);
   }
 
-  // Handle mount, project switch, and unmount
+  // Synchronization belongs to the app lifetime, independent of project selection.
   useEffect(() => {
     const sync = synchronizerRef.current;
     if (sync) {
-      void sync.startCycle(projectId);
+      void sync.startCycle();
     }
     return () => {
       sync?.dispose();
     };
-  }, [projectId]);
+  }, []);
 
   // Handle follow-up fetches triggered by pendingRefetch from the reducer
   useEffect(() => {
@@ -41,6 +30,5 @@ export function JobProvider({
     }
   }, [state.pendingRefetch, state.generation]);
 
-  const scopedState = state.scopeProjectId === projectId ? state : initializeStore(projectId);
-  return <JobContext.Provider value={scopedState}>{children}</JobContext.Provider>;
+  return <JobContext.Provider value={state}>{children}</JobContext.Provider>;
 }

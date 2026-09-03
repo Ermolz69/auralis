@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use std::path::PathBuf;
 
 use domain::media::MediaMetadata;
@@ -43,6 +42,8 @@ impl<P: MediaProbePort> ProbeLocalMediaUseCase<P> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use adapters_ffmpeg::mock::MockMediaProbeAdapter;
     use std::fs::File;

@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { useJobContext } from '@/entities/job';
+import { useProjectJobs } from '@/entities/job';
 import { formatDuration } from '@/entities/media';
 import { useProjectContext } from '@/entities/project';
 import type { MediaSource } from '@/shared/api/contracts/media';
@@ -9,7 +9,7 @@ import { PasteYoutubeLink } from '@/features/paste-youtube-link';
 
 export function SourceWorkspace() {
   const { project } = useProjectContext();
-  const { jobs } = useJobContext();
+  const { jobs } = useProjectJobs(project?.id ?? null);
   const source = project?.source ?? null;
   const metadata = project?.metadata ?? null;
   const sourceValue = getSourceValue(source);
@@ -17,9 +17,9 @@ export function SourceWorkspace() {
   const activity = useMemo(() => {
     if (!project) return [];
 
-    const projectJobs = Object.values(jobs)
-      .filter((job) => job.projectId === project.id)
-      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    const projectJobs = [...jobs].sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt),
+    );
     const items: Array<{
       timestamp: string;
       time: string;

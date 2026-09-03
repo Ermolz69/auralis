@@ -205,6 +205,7 @@ impl ports::job_query::JobQueryPort for SqliteJobRepository {
             let snap = job.to_snapshot();
             jobs.push(ports::job_scheduler::ScheduledJob {
                 id: snap.id,
+                kind: snap.kind,
                 revision: snap.revision,
                 project_id: Some(snap.project_id),
                 title: snap.title,

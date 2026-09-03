@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::*;
 use crate::test_utils::{MockArtifactStore, MockStorageUnitOfWork};
 use adapters_storage::{local::LocalTempWorkspace, memory::InMemoryProjectRepository};
@@ -112,7 +114,7 @@ async fn completion_failure_requires_recovery_without_fail_job_overwrite() {
     let project_repo = InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(
         adapters_storage::memory::InMemoryDatabase::new(),
     )));
-    let mut project = domain::project::Project::new("Test".into());
+    let mut project = domain::project::Project::new("Test".into()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::RemoteUrl {
@@ -155,6 +157,7 @@ async fn completion_failure_requires_recovery_without_fail_job_overwrite() {
 
 fn scheduled(job_id: &JobId, status: JobStatus) -> ScheduledJob {
     ScheduledJob {
+        kind: domain::job::JobKind::Dubbing,
         id: job_id.clone(),
         revision: 1,
         project_id: None,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useJobContext } from '@/entities/job';
+import { useProjectJobs } from '@/entities/job';
 import { useProjectContext } from '@/entities/project';
 import { useTranscript, useYoutubeSubtitleTracks, type SubtitleTrack } from '@/entities/transcript';
 import { RunDubbing } from '@/features/run-dubbing';
@@ -8,7 +8,7 @@ import { Icon } from '@/shared/ui/icon';
 
 export function SubtitleWorkspace() {
   const { project } = useProjectContext();
-  const { jobs } = useJobContext();
+  const { jobs } = useProjectJobs(project?.id ?? null);
   const {
     transcript,
     isLoading: transcriptLoading,
@@ -43,11 +43,8 @@ export function SubtitleWorkspace() {
     );
   }, [trackQuery, tracks]);
   const activity = useMemo(
-    () =>
-      Object.values(jobs)
-        .filter((job) => job.projectId === project?.id)
-        .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)),
-    [jobs, project?.id],
+    () => [...jobs].sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)),
+    [jobs],
   );
   const isRunning = activity.some((job) => job.status === 'pending' || job.status === 'running');
 

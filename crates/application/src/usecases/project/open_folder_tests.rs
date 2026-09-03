@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::lifecycle::ProjectLifecycleLocks;
 use super::open_folder::*;
 use crate::error::ApplicationError;
@@ -34,7 +36,7 @@ fn repository() -> InMemoryProjectRepository {
 #[tokio::test]
 async fn existing_project_workspace_is_opened() {
     let repo = repository();
-    let project = Project::new("Workspace".to_string());
+    let project = Project::new("Workspace".to_string()).unwrap();
     repo.create(project.clone()).await.unwrap();
     let workspace = RecordingWorkspace::default();
     let opened = workspace.opened.clone();

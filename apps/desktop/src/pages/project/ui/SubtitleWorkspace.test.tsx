@@ -11,7 +11,7 @@ vi.mock('@/entities/project', () => ({
 }));
 
 vi.mock('@/entities/job', () => ({
-  useJobContext: () => ({ jobs: {} }),
+  useProjectJobs: () => ({ jobs: [] }),
 }));
 
 vi.mock('@/entities/transcript', () => ({

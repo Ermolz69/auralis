@@ -14,7 +14,7 @@ use crate::test_utils::MockStorageUnitOfWork;
 
 #[tokio::test]
 async fn test_rollback_on_transaction_failure() {
-    let mut project = Project::new("Test".into());
+    let mut project = Project::new("Test".into()).unwrap();
     project
         .import_source(MediaSource::YoutubeUrl { url: "test".into() }, None)
         .unwrap();

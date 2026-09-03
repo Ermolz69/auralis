@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use application::error::ApplicationError;
 use domain::error::DomainError;
 use ports::error::PortError;
@@ -127,6 +126,8 @@ pub fn map_job_dto_result<T, E>(res: Result<T, E>) -> Result<T, CommandError> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use application::error::CleanupReport;
     use domain::job::JobId;

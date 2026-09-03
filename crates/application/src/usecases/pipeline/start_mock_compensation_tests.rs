@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::*;
 use crate::test_utils::{MockArtifactStore, MockJobScheduler, MockStorageUnitOfWork};
 use adapters_storage::{local::LocalTempWorkspace, memory::InMemoryProjectRepository};
@@ -77,7 +79,7 @@ async fn test_enqueue_failure_compensates_and_marks_failed() {
     let job_scheduler = Arc::new(job_scheduler);
     let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
-    let mut project = Project::new("Test".to_string());
+    let mut project = Project::new("Test".to_string()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::RemoteUrl {
@@ -226,7 +228,7 @@ async fn test_enqueue_and_compensation_failure_returns_both_errors() {
         inner: Arc::new(MockStorageUnitOfWork::new()),
     });
 
-    let mut project = Project::new("Test".to_string());
+    let mut project = Project::new("Test".to_string()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::RemoteUrl {

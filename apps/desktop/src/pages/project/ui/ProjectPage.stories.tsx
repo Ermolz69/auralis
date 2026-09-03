@@ -44,6 +44,7 @@ const project: Project = {
 };
 
 const runningJob: JobDto = {
+  kind: 'dubbing',
   id: 'job-running',
   revision: 2,
   projectId: project.id,
@@ -152,7 +153,6 @@ function InitialProjectView({ step }: { step: 'source' | 'subtitles' }) {
 function createJobState(): JobStoreState {
   return {
     phase: 'ready',
-    scopeProjectId: project.id,
     jobs: { [runningJob.id]: runningJob },
     buffer: [],
     pendingRefetch: false,

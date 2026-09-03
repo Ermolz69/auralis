@@ -16,7 +16,7 @@ use ports::{
 };
 
 fn ready_project() -> Project {
-    let mut project = Project::new("Original".into());
+    let mut project = Project::new("Original".into()).unwrap();
     project
         .import_source(
             MediaSource::YoutubeUrl {

@@ -93,11 +93,10 @@ pub(crate) async fn stage_owned_temp_file_with_ops<F: FileOps>(
             // IMPORTANT: Since this is an owned file, we must delete it even on failure
             let _source_rm_err = ops.remove_file(source_path).await;
 
-            if staging_rm_err
-                .as_ref()
-                .is_err_and(|e| e.kind() != std::io::ErrorKind::NotFound)
+            if let Some(rollback_err) = staging_rm_err
+                .err()
+                .filter(|e| e.kind() != std::io::ErrorKind::NotFound)
             {
-                let rollback_err = staging_rm_err.unwrap_err();
                 return Err(PortError::Io {
                     message: format!(
                         "Failed to copy to {:?}: rename err: {}, copy err: {}. Rollback of staging copy also failed: {}",

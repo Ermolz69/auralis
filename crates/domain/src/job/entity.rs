@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use chrono::{DateTime, Utc};
 
 use crate::dubbing::DubbingPipelineStage;

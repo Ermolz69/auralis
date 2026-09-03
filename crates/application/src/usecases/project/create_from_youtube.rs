@@ -68,7 +68,7 @@ impl<
                 .get(id)
                 .await?
                 .ok_or_else(|| ApplicationError::ProjectNotFound(id.clone()))?,
-            None => Project::new(request.url.trim().into()),
+            None => Project::new(request.url.clone())?,
         };
         if project.status() != &ProjectStatus::Draft || project.active_job_id().is_some() {
             return Err(ApplicationError::InvalidOperation {

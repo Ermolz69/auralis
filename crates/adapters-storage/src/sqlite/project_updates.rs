@@ -1,4 +1,4 @@
-use domain::project::{Project, ProjectId};
+use domain::project::{Project, ProjectId, ProjectTitle};
 use ports::{error::PortError, project_update::ProjectUpdate};
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
@@ -20,13 +20,13 @@ pub(super) async fn update_project(
     query.push_bind(updated_at.to_rfc3339());
     let expected_status = match update {
         ProjectUpdate::Rename { title } => {
-            if title.trim().is_empty() {
-                return Err(PortError::Conflict {
-                    resource: "Project".to_string(),
-                    message: "Project title cannot be empty".to_string(),
-                });
-            }
-            query.push(", title = ").push_bind(title.trim().to_string());
+            let title = ProjectTitle::new(title).map_err(|error| PortError::Conflict {
+                resource: "Project".to_string(),
+                message: error.to_string(),
+            })?;
+            query
+                .push(", title = ")
+                .push_bind(title.as_str().to_string());
             None
         }
         ProjectUpdate::ImportSource { source, metadata } => {

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { JobContext, isActiveJobStatus, type JobStatus } from '@/entities/job';
+import { JobContext, isActiveJobStatus, selectProjectJobs } from '@/entities/job';
 import { formatDuration, formatProjectTitle } from '@/entities/media';
 import { createProject, useProjectContext } from '@/entities/project';
 import { toCommandError } from '@/shared/api/contracts';
@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/button';
 import { Icon, type IconName } from '@/shared/ui/icon';
 import { toast } from '@/shared/ui/toast';
 import { usePinnedProjects } from '../model/usePinnedProjects';
+import { getPipelineStatus, type PipelineDisplayStatus } from '../model/pipelineStatus';
 
 const locationLabel: Record<View, string> = {
   home: 'Проекты',
@@ -52,7 +53,6 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
     if (!projectId && settingsReturnView === 'project') {
       setSettingsReturnView('home');
     }
-    if (!projectId) setQueueOpen(false);
   }, [projectId, settingsReturnView]);
 
   const goToHome = () => setCurrentView('home');
@@ -104,7 +104,7 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
   const activeJobs = jobs.filter((job) => isActiveJobStatus(job.status));
   const pipelineStatus = getPipelineStatus(
     project?.source != null,
-    jobs.map((job) => job.status),
+    selectProjectJobs(jobState?.jobs ?? {}, projectId),
   );
   const projectTitle = project
     ? formatProjectTitle(project.title, project.source)
@@ -247,8 +247,10 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
               onKeyDown={(event) => {
                 if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
                 event.preventDefault();
+                const bodyHeight = sidebarBodyRef.current?.clientHeight ?? 0;
+                const maxHeight = Math.max(150, bodyHeight - 120);
                 setProjectsPaneHeight((height) =>
-                  Math.max(120, height + (event.key === 'ArrowUp' ? -12 : 12)),
+                  Math.min(maxHeight, Math.max(120, height + (event.key === 'ArrowUp' ? -12 : 12))),
                 );
               }}
               className="group relative h-1.5 shrink-0 cursor-row-resize touch-none border-y border-border/60 bg-canvas outline-none hover:bg-primary/15 focus-visible:bg-primary/20"
@@ -383,7 +385,7 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
               )}
             </div>
 
-            {projectId && jobState && (
+            {jobState && (
               <button
                 type="button"
                 aria-expanded={queueOpen}
@@ -454,21 +456,6 @@ function SectionLabel({ label }: { label: string }) {
       <Icon name="ChevronDown" size={12} color="muted" />
     </div>
   );
-}
-
-type PipelineDisplayStatus = JobStatus | 'idle' | 'unavailable';
-
-function getPipelineStatus(hasSource: boolean, statuses: JobStatus[]) {
-  const active = statuses.find((status) => status === 'running' || status === 'pending');
-  const failed = statuses.includes('failed');
-  const completed = statuses.includes('completed');
-
-  return {
-    source: hasSource ? ('completed' as const) : ('idle' as const),
-    subtitles:
-      active ??
-      (failed ? ('failed' as const) : completed ? ('completed' as const) : ('idle' as const)),
-  };
 }
 
 function PipelineItem({

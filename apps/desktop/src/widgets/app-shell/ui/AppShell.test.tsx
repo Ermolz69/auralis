@@ -6,6 +6,7 @@ import { AppShell } from './AppShell';
 import { ProjectContext, useProjectContext, type Project } from '@/entities/project';
 import { NavigationProvider, useNavigation, type View } from '@/shared/router';
 import { Toaster, toast } from '@/shared/ui/toast';
+import { JobContext, type JobDto, type JobStoreState } from '@/entities/job';
 
 const project: Project = {
   id: 'p-1',
@@ -20,17 +21,21 @@ const project: Project = {
 function renderShell({
   initialView = 'home',
   initialProject = project,
+  jobState = null,
   children,
 }: {
   initialView?: View;
   initialProject?: Project | null;
+  jobState?: JobStoreState | null;
   children?: React.ReactNode;
 } = {}) {
   return render(
     <NavigationProvider>
       <InitialView view={initialView} />
       <ProjectHarness initialProject={initialProject}>
-        <AppShell>{children ?? <h1>Content heading</h1>}</AppShell>
+        <JobContext.Provider value={jobState}>
+          <AppShell>{children ?? <h1>Content heading</h1>}</AppShell>
+        </JobContext.Provider>
         <Toaster />
       </ProjectHarness>
     </NavigationProvider>,
@@ -95,6 +100,46 @@ describe('AppShell', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
+  });
+
+  it('keeps unrelated jobs in the global counter without marking the subtitle step as running', () => {
+    const base: JobDto = {
+      id: 'unrelated',
+      kind: 'export',
+      projectId: project.id,
+      revision: 1,
+      title: 'Export',
+      status: 'running',
+      stage: null,
+      error: null,
+      progress: {
+        percent: 50,
+        message: '',
+        currentStep: null,
+        processedItems: null,
+        totalItems: null,
+      },
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    };
+    renderShell({
+      initialView: 'project',
+      jobState: {
+        phase: 'ready',
+        buffer: [],
+        pendingRefetch: false,
+        generation: 1,
+        jobs: {
+          unrelated: base,
+          foreign: { ...base, id: 'foreign', projectId: 'another-project', kind: 'dubbing' },
+          subtitles: { ...base, id: 'subtitles', kind: 'dubbing', status: 'completed' },
+        },
+      },
+    });
+    const step = screen.getByRole('button', { name: /Субтитры/ });
+    expect(step.querySelector('.bg-success')).toBeTruthy();
+    expect(step.querySelector('.animate-pulse')).toBeNull();
+    expect(screen.getByRole('button', { name: /Очередь/ }).textContent).toContain('2');
   });
 
   it('marks the current destination and disables workspace without a project', async () => {
@@ -233,11 +278,33 @@ describe('AppShell', () => {
     const separator = screen.getByRole('separator', {
       name: 'Resize projects and pipeline panels',
     });
+    const sidebarBody = separator.parentElement!;
+    Object.defineProperty(sidebarBody, 'clientHeight', { configurable: true, value: 400 });
     expect(separator.getAttribute('aria-valuenow')).toBe('190');
 
     fireEvent.keyDown(separator, { key: 'ArrowDown' });
 
     expect(separator.getAttribute('aria-valuenow')).toBe('202');
+
+    fireEvent.keyDown(separator, { key: 'ArrowUp' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('190');
+
+    for (let i = 0; i < 10; i++) {
+      fireEvent.keyDown(separator, { key: 'ArrowDown' });
+    }
+    expect(separator.getAttribute('aria-valuenow')).toBe('280');
+
+    Object.defineProperty(sidebarBody, 'clientHeight', { configurable: true, value: 350 });
+    fireEvent.keyDown(separator, { key: 'ArrowDown' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('230');
+
+    for (let i = 0; i < 10; i++) {
+      fireEvent.keyDown(separator, { key: 'ArrowUp' });
+    }
+    expect(separator.getAttribute('aria-valuenow')).toBe('120');
+
+    fireEvent.keyDown(separator, { key: 'ArrowDown' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('132');
   });
 
   it('dismisses global toast without leaving focus on a removed control', async () => {

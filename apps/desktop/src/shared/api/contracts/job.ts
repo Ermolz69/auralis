@@ -1,5 +1,8 @@
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
+// Keep future kinds in the global queue; only explicitly mapped kinds affect pipeline steps.
+export type JobKind = 'dubbing' | (string & {});
+
 export type JobStage =
   | 'validateSource'
   | 'inspectSubtitles'
@@ -24,6 +27,7 @@ export type JobProgress = {
 
 export type Job = {
   id: string;
+  kind: JobKind;
   revision: number;
   projectId: string | null;
   title: string;
