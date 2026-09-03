@@ -8,9 +8,9 @@ tasks:
       - node tools/scripts/check-sqlite-dependencies.mjs
 
   rust:audit:
-    desc: Scan the Rust lockfile without advisory exceptions
+    desc: Compatibility alias for the Rust vulnerability audit
     cmds:
-      - cargo audit --file Cargo.lock --deny unsound
+      - task: audit:rust
 
   glib:audit:
     desc: Compatibility alias for the complete Rust vulnerability audit
@@ -34,4 +34,27 @@ tasks:
 
   audit:
     cmds:
+      - task: audit:npm
+      - task: audit:rust
+      - task: deny:rust
+
+  setup:rust:
+    desc: Install pinned Rust dependency security tools
+    cmds:
+      - cargo install cargo-audit --version 0.22.2 --locked
+      - cargo install cargo-deny --version 0.20.2 --locked
+
+  audit:npm:
+    desc: Audit all npm dependencies, including development tooling
+    cmds:
       - pnpm audit
+
+  audit:rust:
+    desc: Audit Cargo.lock against RustSec
+    cmds:
+      - cargo audit --file Cargo.lock --deny unsound
+
+  deny:rust:
+    desc: Check Rust advisories and allowed dependency sources
+    cmds:
+      - cargo deny --locked check advisories sources

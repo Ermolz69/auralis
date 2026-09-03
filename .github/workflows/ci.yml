@@ -75,6 +75,8 @@ jobs:
             quality:
               - 'vendor/glib-0.18.5/**'
               - 'tools/glib-backport/**'
+              - 'deny.toml'
+              - '.cargo/**'
               - 'tools/scripts/**'
               - 'taskfiles/**'
               - 'Taskfile.yml'
@@ -184,6 +186,22 @@ jobs:
       - name: Run global quality checks
         run: task check:quality:global
 
+  security:
+    name: Dependency Security
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.rust == 'true' || needs.changes.outputs.quality == 'true' || needs.changes.outputs.release == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Bootstrap security checks
+        uses: ./.github/actions/bootstrap
+        with:
+          node: 'true'
+          security: 'true'
+
       - name: Run security checks
         run: task check:quality:security
 
@@ -202,6 +220,7 @@ jobs:
       - rust
       - docs
       - quality-global
+      - security
       - release-checks
     if: always()
 

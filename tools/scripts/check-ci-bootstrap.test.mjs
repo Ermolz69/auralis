@@ -19,6 +19,8 @@ function enabledSteps(options, os) {
   const conditions = {
     "inputs.node == 'true'": enabled('node'),
     "inputs.rust == 'true'": enabled('rust'),
+    "inputs.security == 'true'": enabled('security'),
+    "inputs.rust == 'true' || inputs.security == 'true'": enabled('rust') || enabled('security'),
     "inputs.playwright == 'true'": enabled('playwright'),
     "inputs.rust == 'true' && runner.os == 'Linux'": enabled('rust') && os === 'Linux',
   };
@@ -30,12 +32,13 @@ function enabledSteps(options, os) {
 }
 
 function assertFullEnvironment(action) {
-  for (const option of ['node', 'rust', 'playwright']) assert.equal(action.with[option], 'true');
+  for (const option of ['node', 'rust', 'playwright', 'security'])
+    assert.equal(action.with[option], 'true');
 }
 
 test('full-check configuration requires both native and browser dependencies', () => {
   const action = configured(full.jobs.check);
-  for (const option of ['node', 'rust', 'playwright']) {
+  for (const option of ['node', 'rust', 'playwright', 'security']) {
     const broken = structuredClone(action);
     delete broken.with[option];
     assert.throws(() => assertFullEnvironment(broken));
@@ -72,6 +75,7 @@ test('all toolchain consumers use the same bootstrap after checkout', () => {
     ci.jobs.rust,
     ci.jobs.docs,
     ci.jobs['quality-global'],
+    ci.jobs.security,
     full.jobs.check,
     release.jobs.release,
     tauri.jobs.build,

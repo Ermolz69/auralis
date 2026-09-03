@@ -55,8 +55,9 @@ No external input reaches these test-only assertions.
   and `task rs:exec:wsl -- build --locked --release -p auralis-app` verify the Linux
   workspace and native production executable with warnings denied.
 - `task sec:rust:audit` scans the complete lockfile without ignored advisories.
-  It requires cargo-audit to be installed. The separate dependency-security
-  rollout owns audit-tool installation and the mandatory Rust advisory CI gate.
+  It aliases `task sec:audit:rust`; run `task sec:setup:rust` to install the pinned
+  audit tools. The integrated security job and release gate require both Rust
+  advisory and dependency-source checks.
 
 The GLib backport and its optimized regression remain independently maintained.
 GTK3, `unic-*` and `proc-macro-error` maintenance notices are not fixed by this

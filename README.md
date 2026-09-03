@@ -21,6 +21,7 @@ Set up dependencies and the Playwright Chromium runtime before running checks:
 ```bash
 task install:all
 task fe:setup:playwright
+task sec:setup:rust
 task setup:media-tools
 task media:doctor
 ```
@@ -30,6 +31,10 @@ Chromium. On Linux, use `task fe:setup:playwright:ci` instead of
 `task fe:setup:playwright` to install its system libraries too; package installation
 requires elevated permissions. Repeat browser setup after upgrading Playwright.
 Dependency installation alone does not install browsers.
+
+The full `task check` and `task ci` suites also require the Rust security tools installed
+by `task sec:setup:rust`. Frontend-only and docs-only checks do not require these tools.
+See [dependency security](docs/ci/010-rust-security.md) for gate scope and current blockers.
 
 Start development or run the full check suite:
 
