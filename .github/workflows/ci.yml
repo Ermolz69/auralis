@@ -20,7 +20,6 @@ concurrency:
 
 env:
   CI: true
-  NODE_VERSION: 24
   CARGO_TERM_COLOR: always
   RUSTFLAGS: '-D warnings'
 
@@ -85,6 +84,7 @@ jobs:
               - 'src-tauri/icons/**'
             ci:
               - '.github/workflows/**'
+              - '.github/actions/**'
             global:
               - 'Taskfile.yml'
               - '.editorconfig'
@@ -102,28 +102,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup pnpm and Node
-        uses: pnpm/setup@v2.1.0
+      - name: Bootstrap frontend checks
+        uses: ./.github/actions/bootstrap
         with:
-          runtime: node@${{ env.NODE_VERSION }}
-          install: false
-
-      - name: Cache pnpm store
-        uses: actions/setup-node@v6
-        with:
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Setup Task
-        uses: go-task/setup-task@v2
-        with:
-          version: 3.x
-
-      - name: Install dependencies
-        run: task install
-
-      - name: Install Playwright Browsers
-        run: task frontend:setup:playwright
+          node: 'true'
+          playwright: 'true'
 
       - name: Run frontend checks
         run: task check:frontend
@@ -145,33 +128,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            xdg-utils
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Bootstrap Rust checks
+        uses: ./.github/actions/bootstrap
         with:
-          components: rustfmt, clippy
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            . -> target
-            src-tauri -> src-tauri/target
-          cache-on-failure: true
-
-      - name: Setup Task
-        uses: go-task/setup-task@v2
-        with:
-          version: 3.x
+          rust: 'true'
 
       - name: Run rust checks
         run: task check:rust
@@ -187,25 +147,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup pnpm and Node
-        uses: pnpm/setup@v2.1.0
+      - name: Bootstrap documentation checks
+        uses: ./.github/actions/bootstrap
         with:
-          runtime: node@${{ env.NODE_VERSION }}
-          install: false
-
-      - name: Cache pnpm store
-        uses: actions/setup-node@v6
-        with:
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Setup Task
-        uses: go-task/setup-task@v2
-        with:
-          version: 3.x
-
-      - name: Install dependencies
-        run: task install
+          node: 'true'
 
       - name: Run docs checks
         run: task check:docs
@@ -224,31 +169,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup pnpm and Node
-        uses: pnpm/setup@v2.1.0
+      - name: Bootstrap quality checks
+        uses: ./.github/actions/bootstrap
         with:
-          runtime: node@${{ env.NODE_VERSION }}
-          install: false
-
-      - name: Cache pnpm store
-        uses: actions/setup-node@v6
-        with:
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Setup Task
-        uses: go-task/setup-task@v2
-        with:
-          version: 3.x
-
-      - name: Install dependencies
-        run: task install
+          node: 'true'
 
       - name: Run global quality checks
         run: task check:quality:global
 
       - name: Run security checks
         run: task check:quality:security
+
+  release-checks:
+    name: Release Check Parity
+    needs: changes
+    if: ${{ needs.changes.outputs.release == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.quality == 'true' || needs.changes.outputs.global == 'true' }}
+    uses: ./.github/workflows/full-checks.yml
 
   ci-summary:
     name: CI Summary
@@ -259,6 +195,7 @@ jobs:
       - rust
       - docs
       - quality-global
+      - release-checks
     if: always()
 
     steps:

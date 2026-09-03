@@ -1,6 +1,10 @@
 version: '3'
 
 tasks:
+  fetch:
+    cmds:
+      - cargo fetch --locked
+
   all:
     cmds:
       - task: fmt

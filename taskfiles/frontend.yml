@@ -19,7 +19,12 @@ tasks:
 
   setup:playwright:
     cmds:
-      - pnpm --filter desktop exec playwright install
+      - pnpm --filter desktop exec playwright install chromium
+
+  setup:playwright:ci:
+    desc: Install Chromium and required system libraries for browser tests
+    cmds:
+      - pnpm --filter desktop exec playwright install --with-deps chromium
 
   lint:
     cmds:

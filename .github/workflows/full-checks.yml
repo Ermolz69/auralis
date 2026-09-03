@@ -1,0 +1,31 @@
+name: Full Checks
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-D warnings'
+
+jobs:
+  check:
+    name: Full Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Bootstrap full checks
+        uses: ./.github/actions/bootstrap
+        with:
+          node: 'true'
+          rust: 'true'
+          playwright: 'true'
+
+      - name: Run checks
+        run: task check
