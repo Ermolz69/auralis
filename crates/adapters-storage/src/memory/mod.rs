@@ -10,6 +10,7 @@ pub mod artifact_index;
 pub mod database;
 pub mod job_repository;
 pub mod project_repository;
+mod project_writes;
 pub mod recovery_gateway;
 pub mod unit_of_work;
 #[cfg(test)]

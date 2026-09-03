@@ -64,8 +64,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
             });
         }
 
-        db.projects
-            .insert(command.project.id().clone(), command.project.clone());
+        super::project_writes::update_project(&mut db, &command.project)?;
         Ok(())
     }
 
@@ -127,8 +126,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
                 });
             }
 
-            db.projects
-                .insert(command.project.id().clone(), command.project.clone());
+            super::project_writes::update_project(&mut db, &command.project)?;
         }
 
         self.artifact_index
@@ -203,8 +201,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
                 message: format!("Job with id {} already exists", command.job.id()),
             });
         }
-        db.projects
-            .insert(command.project.id().clone(), command.project.clone());
+        super::project_writes::update_project(&mut db, &command.project)?;
         db.jobs
             .insert(command.job.id().clone(), command.job.clone());
         Ok(())
@@ -237,8 +234,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
                 resource: "Job".to_string(),
             });
         }
-        db.projects
-            .insert(command.project.id().clone(), command.project.clone());
+        super::project_writes::update_project(&mut db, &command.project)?;
         db.jobs
             .insert(command.job.id().clone(), command.job.clone());
         Ok(())
@@ -293,8 +289,7 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
             res,
             domain::project::status::TerminalTransitionResult::Applied { .. }
         ) {
-            db.projects
-                .insert(updated_project.id().clone(), updated_project);
+            super::project_writes::update_project(&mut db, &updated_project)?;
         }
 
         Ok(res)

@@ -1,4 +1,5 @@
 use domain::project::{Project, ProjectId};
+use ports::project_update::ProjectUpdate;
 use ports::repository::ProjectRepository;
 
 use crate::error::ApplicationError;
@@ -28,7 +29,16 @@ impl<R: ProjectRepository> RenameProjectUseCase<R> {
             .await?
             .ok_or_else(|| ApplicationError::ProjectNotFound(request.project_id.clone()))?;
         project.set_title(request.title)?;
-        self.project_repo.save(&project).await?;
-        Ok(project)
+        Ok(self
+            .project_repo
+            .update(
+                project.id(),
+                project.revision(),
+                ProjectUpdate::Rename {
+                    title: project.title().to_string(),
+                },
+                project.updated_at(),
+            )
+            .await?)
     }
 }

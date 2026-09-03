@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 
 use crate::error::PortError;
+use crate::project_update::ProjectUpdate;
 use domain::job::{Job, JobId};
 use domain::project::{Project, ProjectId};
 
@@ -8,7 +9,13 @@ use domain::project::{Project, ProjectId};
 pub trait ProjectRepository: Send + Sync {
     async fn create(&self, project: Project) -> Result<Project, PortError>;
     async fn get(&self, id: &ProjectId) -> Result<Option<Project>, PortError>;
-    async fn save(&self, project: &Project) -> Result<(), PortError>;
+    async fn update(
+        &self,
+        id: &ProjectId,
+        expected_revision: u64,
+        update: ProjectUpdate,
+        updated_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Project, PortError>;
     async fn list(&self) -> Result<Vec<Project>, PortError>;
     async fn delete(&self, id: &ProjectId) -> Result<(), PortError>;
 }
@@ -70,8 +77,16 @@ where
         (**self).get(id).await
     }
 
-    async fn save(&self, project: &Project) -> Result<(), PortError> {
-        (**self).save(project).await
+    async fn update(
+        &self,
+        id: &ProjectId,
+        expected_revision: u64,
+        update: ProjectUpdate,
+        updated_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Project, PortError> {
+        (**self)
+            .update(id, expected_revision, update, updated_at)
+            .await
     }
 
     async fn list(&self) -> Result<Vec<Project>, PortError> {

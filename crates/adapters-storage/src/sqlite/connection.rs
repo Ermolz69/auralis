@@ -65,7 +65,7 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
         .map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
         })?;
-    if table_names != FINAL_TABLES || schema_marker != 1 {
+    if table_names != FINAL_TABLES || ![1, 2].contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -83,7 +83,11 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
         "created_at",
         "updated_at",
     ];
-    validate_columns(pool, "projects", &FINAL_PROJECT_COLUMNS).await?;
+    let mut project_columns = FINAL_PROJECT_COLUMNS.to_vec();
+    if schema_marker == 2 {
+        project_columns.push("revision");
+    }
+    validate_columns(pool, "projects", &project_columns).await?;
 
     const FINAL_JOB_COLUMNS: [&str; 13] = [
         "id",
@@ -144,6 +148,10 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     })?;
     if !artifact_sql.contains("location_kind = 'StorageKey'") {
         return Err(non_final_schema_error("artifacts table"));
+    }
+
+    if schema_marker == 1 {
+        super::project_revision_migration::migrate(pool).await?;
     }
 
     Ok(false)

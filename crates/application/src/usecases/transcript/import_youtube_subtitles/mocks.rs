@@ -21,8 +21,14 @@ impl ProjectRepository for MockProjectRepo {
     async fn get(&self, _id: &ProjectId) -> Result<Option<Project>, PortError> {
         Ok(self.project.clone())
     }
-    async fn save(&self, _project: &Project) -> Result<(), PortError> {
-        Ok(())
+    async fn update(
+        &self,
+        _id: &ProjectId,
+        _expected_revision: u64,
+        _update: ports::project_update::ProjectUpdate,
+        _updated_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Project, PortError> {
+        unreachable!()
     }
     async fn list(&self) -> Result<Vec<Project>, PortError> {
         Ok(vec![])

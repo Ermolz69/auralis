@@ -5,6 +5,7 @@ mod delete;
 mod finalize;
 mod import;
 mod import_atomicity;
+mod project_revision;
 
 pub(super) async fn setup_db() -> SqlitePool {
     let pool = SqlitePoolOptions::new()

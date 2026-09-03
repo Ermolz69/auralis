@@ -101,6 +101,12 @@ async fn managed_source_import_artifact_id_conflict_rolls_back_project() {
         .await
         .unwrap();
     assert_eq!(status, "Draft");
+    let revision: i64 = sqlx::query_scalar("SELECT revision FROM projects WHERE id = ?")
+        .bind(import_project.id().to_string())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(revision, 1);
 
     let artifact_owner: String =
         sqlx::query_scalar("SELECT project_id FROM artifacts WHERE id = ?")
@@ -149,6 +155,12 @@ async fn managed_source_import_outbox_failure_rolls_back_project_and_artifact() 
         .await
         .unwrap();
     assert_eq!(status, "Draft");
+    let revision: i64 = sqlx::query_scalar("SELECT revision FROM projects WHERE id = ?")
+        .bind(project.id().to_string())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(revision, 1);
 
     let artifact_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM artifacts WHERE id = ?")
         .bind(artifact_id.to_string())

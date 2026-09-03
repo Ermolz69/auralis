@@ -48,7 +48,7 @@ pub async fn commit_failed_interrupted_pair(
         .map(|id| id.to_string());
 
     let project_affected = sqlx::query(
-        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?, last_terminal_job_id = ?
+        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?, last_terminal_job_id = ?, revision = revision + 1
          WHERE id = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status(), "project.status")?)
@@ -152,7 +152,7 @@ pub async fn commit_reconciled_terminal_pair(
         .map(|id| id.to_string());
 
     let rows = sqlx::query(
-        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?, last_terminal_job_id = ?
+        "UPDATE projects SET status = ?, updated_at = ?, active_job_id = ?, last_terminal_job_id = ?, revision = revision + 1
          WHERE id = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status(), "project.status")?)

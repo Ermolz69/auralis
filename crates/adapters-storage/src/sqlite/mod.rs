@@ -9,7 +9,9 @@ pub mod outbox_repository;
 pub mod outbox_row;
 pub mod project_mapper;
 pub mod project_repository;
+mod project_revision_migration;
 pub mod project_row;
+mod project_updates;
 pub mod recovery;
 pub mod unit_of_work;
 
@@ -23,3 +25,5 @@ pub use unit_of_work::SqliteStorageUnitOfWork;
 
 #[cfg(test)]
 mod connection_tests;
+#[cfg(test)]
+mod project_revision_migration_tests;

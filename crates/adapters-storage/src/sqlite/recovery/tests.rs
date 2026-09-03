@@ -10,6 +10,25 @@ use ports::recovery::{FailInterruptedPairCommand, RecoveryApplyResult};
 use sqlx::SqlitePool;
 use sqlx::sqlite::SqlitePoolOptions;
 
+async fn assert_recovery_revision(pool: &SqlitePool, project: &Project) {
+    use ports::repository::ProjectRepository;
+    let repo = crate::sqlite::SqliteProjectRepository::new(pool.clone());
+    let current = repo.get(project.id()).await.unwrap().unwrap();
+    assert_eq!(current.revision(), 2);
+    let result = repo
+        .update(
+            project.id(),
+            1,
+            ports::project_update::ProjectUpdate::Rename {
+                title: "Stale".into(),
+            },
+            project.updated_at(),
+        )
+        .await;
+    assert!(matches!(result, Err(PortError::Conflict { .. })));
+    assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), current);
+}
+
 async fn setup_db() -> SqlitePool {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
@@ -147,6 +166,7 @@ async fn test_already_applied_partial_pair() {
 
     let res = commit_failed_interrupted_pair(&pool, cmd).await.unwrap();
     assert!(matches!(res, RecoveryApplyResult::Applied));
+    assert_recovery_revision(&pool, &project).await;
 
     // If we run it AGAIN, BOTH will be 0, and it should return AlreadyApplied.
     let cmd2 = FailInterruptedPairCommand {
@@ -159,6 +179,7 @@ async fn test_already_applied_partial_pair() {
     };
     let res2 = commit_failed_interrupted_pair(&pool, cmd2).await.unwrap();
     assert!(matches!(res2, RecoveryApplyResult::AlreadyApplied));
+    assert_recovery_revision(&pool, &project).await;
 }
 
 #[tokio::test]
@@ -414,6 +435,7 @@ async fn test_terminal_pair_reconciliation() {
 
     let res = commit_reconciled_terminal_pair(&pool, cmd).await.unwrap();
     assert!(matches!(res, RecoveryApplyResult::Applied));
+    assert_recovery_revision(&pool, &project).await;
 }
 
 #[tokio::test]
@@ -456,6 +478,7 @@ async fn test_missing_linked_job_adapter_write() {
         .await
         .unwrap();
     assert!(matches!(res, RecoveryApplyResult::Applied));
+    assert_recovery_revision(&pool, &project).await;
 }
 
 #[tokio::test]
@@ -489,6 +512,7 @@ async fn test_processing_project_without_active_job() {
         .await
         .unwrap();
     assert!(matches!(res, RecoveryApplyResult::Applied));
+    assert_recovery_revision(&pool, &project).await;
 }
 
 #[tokio::test]

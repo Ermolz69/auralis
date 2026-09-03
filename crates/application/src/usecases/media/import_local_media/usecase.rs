@@ -138,6 +138,7 @@ impl<
             };
 
             self.storage_uow.commit_managed_source_import(cmd).await?;
+            reloaded.advance_revision()?;
 
             Ok(reloaded)
         }

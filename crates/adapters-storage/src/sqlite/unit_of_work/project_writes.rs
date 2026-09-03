@@ -14,6 +14,7 @@ pub(super) async fn update_project(
     let result = sqlx::query(
         r#"
         UPDATE projects SET
+            revision = revision + 1,
             title = ?,
             status = ?,
             source_json = ?,
@@ -24,7 +25,7 @@ pub(super) async fn update_project(
             active_job_id = ?,
             last_terminal_job_id = ?,
             updated_at = ?
-        WHERE id = ?
+        WHERE id = ? AND revision = ? AND revision < 9223372036854775807
         "#,
     )
     .bind(row.title)
@@ -38,14 +39,15 @@ pub(super) async fn update_project(
     .bind(row.last_terminal_job_id)
     .bind(row.updated_at)
     .bind(row.id)
+    .bind(row.revision)
     .execute(&mut **tx)
     .await
     .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to update project in tx", e))?;
 
     if result.rows_affected() == 0 {
-        return Err(PortError::NotFound {
-            resource: "Project".to_string(),
-        });
+        return Err(
+            crate::sqlite::project_updates::project_write_error(&mut **tx, project.id()).await?,
+        );
     }
 
     Ok(())
@@ -72,6 +74,7 @@ pub(super) async fn update_project_conditional(
     let result = sqlx::query(
         r#"
         UPDATE projects SET
+            revision = revision + 1,
             title = ?,
             status = ?,
             source_json = ?,
@@ -83,6 +86,7 @@ pub(super) async fn update_project_conditional(
             last_terminal_job_id = ?,
             updated_at = ?
         WHERE id = ?
+          AND revision = ? AND revision < 9223372036854775807
           AND updated_at = ?
           AND status = ?
           AND (active_job_id = ? OR (active_job_id IS NULL AND ? IS NULL))
@@ -99,6 +103,7 @@ pub(super) async fn update_project_conditional(
     .bind(row.last_terminal_job_id)
     .bind(row.updated_at)
     .bind(row.id.clone())
+    .bind(row.revision)
     .bind(expected_updated_at.to_rfc3339())
     .bind(expected_status_str)
     .bind(expected_active_job_id_str.clone())

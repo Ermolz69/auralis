@@ -1,4 +1,4 @@
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;
 
 CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY NOT NULL,
@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS projects (
     active_job_id TEXT,
     last_terminal_job_id TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1
+        CHECK (typeof(revision) = 'integer' AND revision >= 1)
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at);
