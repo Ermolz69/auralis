@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 mod cleanup;
 mod deletion;
 mod path_guard;

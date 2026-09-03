@@ -194,7 +194,7 @@ mod tests {
         let final_key = format!("{}/source-video/{}.mp4", project_id, artifact_id);
         let staging_key = format!(".staging/{}/{}.mp4", ArtifactId::new(), artifact_id);
 
-        let mut project = Project::new("Test".into());
+        let mut project = Project::new("Test".into()).unwrap();
         // Force project ID
         let mut snapshot = project.to_snapshot();
         snapshot.id = project_id.clone();

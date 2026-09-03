@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   getLegacyProjectAvatar,
   getProjectAvatar,
+  normalizeProjectAvatar,
   removeLegacyProjectAvatar,
   setProjectAvatar,
 } from '@/entities/project';
@@ -54,7 +55,7 @@ export function useProjectAvatar(projectId: string, blocked: boolean) {
     setIsSaving(true);
     const sequence = ++generation.current;
     try {
-      const dataUrl = file ? await readAvatar(file) : null;
+      const dataUrl = file ? await normalizeProjectAvatar(file) : null;
       if (sequence !== generation.current || blockedRef.current) return;
       const record = await setProjectAvatar(projectId, dataUrl);
       if (sequence !== generation.current) return;
@@ -63,7 +64,7 @@ export function useProjectAvatar(projectId: string, blocked: boolean) {
     } catch {
       if (sequence === generation.current)
         toast.warning(
-          'Could not save the avatar. Choose a PNG, JPEG, WebP or GIF image up to 1 MiB and try again.',
+          'Could not save the avatar. Choose a valid PNG, JPEG, WebP or GIF image up to 5 MiB and try again.',
         );
     } finally {
       if (sequence === generation.current) {
@@ -73,23 +74,4 @@ export function useProjectAvatar(projectId: string, blocked: boolean) {
     }
   };
   return { avatar, updateAvatar, isSaving };
-}
-
-function readAvatar(file: File): Promise<string> {
-  if (
-    file.size > 1024 * 1024 ||
-    !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)
-  ) {
-    return Promise.reject(new Error('Unsupported avatar'));
-  }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Could not read avatar'));
-    reader.onabort = () => reject(new Error('Avatar reading was cancelled'));
-    reader.onload = () =>
-      typeof reader.result === 'string'
-        ? resolve(reader.result)
-        : reject(new Error('Invalid avatar data'));
-    reader.readAsDataURL(file);
-  });
 }

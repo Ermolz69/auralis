@@ -15,6 +15,7 @@ pub struct JobProgressDto {
 #[serde(rename_all = "camelCase")]
 pub struct JobDto {
     pub id: String,
+    pub kind: domain::job::JobKind,
     pub revision: u64,
     pub project_id: Option<String>,
     pub title: String,

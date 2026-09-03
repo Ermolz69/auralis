@@ -2,7 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 import React, { useContext } from 'react';
-import { JobProvider, JobContext } from '../JobProvider';
+import { JobContext } from '../context';
+import { JobProvider } from '../JobProvider';
 
 // Mock the synchronizer constructor and methods to spy on them
 const mockConstructor = vi.fn();
@@ -13,11 +14,11 @@ const mockRequestFetch = vi.fn();
 vi.mock('../synchronization', () => {
   return {
     JobStoreSynchronizer: class MockJobStoreSynchronizer {
-      constructor(dispatch: any, getState: any) {
-        mockConstructor(dispatch, getState);
+      constructor(dispatch: any) {
+        mockConstructor(dispatch);
       }
-      startCycle(projectId: string | null) {
-        mockStartCycle(projectId);
+      startCycle() {
+        mockStartCycle();
       }
       dispose() {
         mockDispose();
@@ -44,7 +45,7 @@ describe('JobProvider React Integration', () => {
     let capturedState: any = null;
 
     const { rerender } = render(
-      <JobProvider projectId="project-1">
+      <JobProvider>
         <TestConsumer
           onState={(s) => {
             capturedState = s;
@@ -55,7 +56,7 @@ describe('JobProvider React Integration', () => {
 
     // Initial render
     expect(mockConstructor).toHaveBeenCalledTimes(1);
-    expect(mockStartCycle).toHaveBeenCalledWith('project-1');
+    expect(mockStartCycle).toHaveBeenCalledWith();
 
     // Get the dispatch passed to the synchronizer
     const dispatch = mockConstructor.mock.calls[0][0];
@@ -68,9 +69,9 @@ describe('JobProvider React Integration', () => {
     // Verify state changed (phase should become synchronizing)
     expect(capturedState.phase).toBe('synchronizing');
 
-    // Re-render the provider with the same project ID
+    // Re-render the provider
     rerender(
-      <JobProvider projectId="project-1">
+      <JobProvider>
         <TestConsumer
           onState={(s) => {
             capturedState = s;
@@ -83,36 +84,36 @@ describe('JobProvider React Integration', () => {
     expect(mockConstructor).toHaveBeenCalledTimes(1);
   });
 
-  it('triggers startCycle and dispose on project switch and unmount', () => {
+  it('keeps synchronization alive across rerenders and disposes on unmount', () => {
     const { rerender, unmount } = render(
-      <JobProvider projectId="project-1">
+      <JobProvider>
         <div />
       </JobProvider>,
     );
 
-    expect(mockStartCycle).toHaveBeenLastCalledWith('project-1');
+    expect(mockStartCycle).toHaveBeenCalledWith();
     expect(mockDispose).toHaveBeenCalledTimes(0);
 
-    // Switch project
+    // Rerender the app subtree
     rerender(
-      <JobProvider projectId="project-2">
+      <JobProvider>
         <div />
       </JobProvider>,
     );
 
-    expect(mockDispose).toHaveBeenCalledTimes(1);
-    expect(mockStartCycle).toHaveBeenLastCalledWith('project-2');
+    expect(mockDispose).not.toHaveBeenCalled();
+    expect(mockStartCycle).toHaveBeenCalledTimes(1);
 
     // Unmount
     unmount();
-    expect(mockDispose).toHaveBeenCalledTimes(2);
+    expect(mockDispose).toHaveBeenCalledTimes(1);
   });
 
   it('triggers requestFetch(generation) when pendingRefetch transitions to true', () => {
     let capturedState: any = null;
 
     render(
-      <JobProvider projectId="project-1">
+      <JobProvider>
         <TestConsumer
           onState={(s) => {
             capturedState = s;
@@ -136,19 +137,19 @@ describe('JobProvider React Integration', () => {
     // Simulate StrictMode mount
     const { unmount } = render(
       <React.StrictMode>
-        <JobProvider projectId="project-1">
+        <JobProvider>
           <div />
         </JobProvider>
       </React.StrictMode>,
     );
 
     // StrictMode setup -> cleanup -> setup replay will result in:
-    // 1. startCycle('project-1')
+    // 1. startCycle()
     // 2. dispose()
-    // 3. startCycle('project-1')
+    // 3. startCycle()
     expect(mockStartCycle).toHaveBeenCalledTimes(2);
     expect(mockDispose).toHaveBeenCalledTimes(1);
-    expect(mockStartCycle).toHaveBeenLastCalledWith('project-1');
+    expect(mockStartCycle).toHaveBeenCalledWith();
 
     unmount();
     expect(mockDispose).toHaveBeenCalledTimes(2);

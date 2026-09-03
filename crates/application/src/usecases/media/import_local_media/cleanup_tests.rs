@@ -15,7 +15,7 @@ use adapters_storage::memory::{InMemoryDatabase, InMemoryProjectRepository};
 async fn test_commit_fail_cleanup_success() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let project = Project::new("Commit Fail".to_string());
+    let project = Project::new("Commit Fail".to_string()).unwrap();
     let project_id = project.id().clone();
     repo.create(project).await.unwrap();
 
@@ -45,7 +45,7 @@ async fn test_commit_fail_cleanup_success() {
 async fn test_commit_fail_cleanup_fail() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let project = Project::new("Double Fail".to_string());
+    let project = Project::new("Double Fail".to_string()).unwrap();
     let project_id = project.id().clone();
     repo.create(project).await.unwrap();
 
@@ -82,7 +82,7 @@ async fn test_commit_fail_cleanup_fail() {
 async fn test_command_validation_failure_triggers_cleanup() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let project = Project::new("Validation Fail".to_string());
+    let project = Project::new("Validation Fail".to_string()).unwrap();
     let project_id = project.id().clone();
     repo.create(project).await.unwrap();
 

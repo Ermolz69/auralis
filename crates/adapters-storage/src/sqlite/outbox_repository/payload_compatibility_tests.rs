@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::SqliteOutboxRepository;
 use domain::outbox::{OutboxMessageId, OutboxPayload, WorkspaceKey};
 use ports::repository::OutboxRepository;

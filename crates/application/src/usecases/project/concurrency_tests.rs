@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use adapters_storage::sqlite::{SqliteProjectRepository, SqliteStorageUnitOfWork, connect_sqlite};
 use adapters_ytdlp::mock::MockVideoSourceAdapter;
 use domain::{
@@ -27,7 +29,7 @@ async fn rename_conflicts_with_pipeline_then_retry_only_changes_title() {
         .unwrap();
     let repo = Arc::new(SqliteProjectRepository::new(pool.clone()));
     let uow = SqliteStorageUnitOfWork::new(pool);
-    let mut project = Project::new("Original".into());
+    let mut project = Project::new("Original".into()).unwrap();
     project
         .import_source(
             MediaSource::YoutubeUrl {
@@ -90,7 +92,10 @@ async fn source_import_conflicts_without_overwriting_a_competing_import() {
         .await
         .unwrap();
     let repo = Arc::new(SqliteProjectRepository::new(pool));
-    let project = repo.create(Project::new("Original".into())).await.unwrap();
+    let project = repo
+        .create(Project::new("Original".into()).unwrap())
+        .await
+        .unwrap();
     let paused = PausedProjectRepository::new(repo.clone(), false);
     let use_case = ImportVideoSourceUseCase::new(paused.clone(), MockVideoSourceAdapter::new());
     let request = ImportVideoSourceRequest {

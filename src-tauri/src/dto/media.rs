@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use domain::media::{MediaMetadata, MediaSource};
 use serde::Serialize;
 
@@ -165,6 +164,8 @@ impl From<&MediaMetadata> for MediaMetadataDto {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use domain::media::{ArtifactId, MediaSource};
 

@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 #[tokio::test]
 async fn test_workspace_error_composites_with_primary_error() {
-    let mut project = Project::new("Test".into());
+    let mut project = Project::new("Test".into()).unwrap();
     project
         .import_source(MediaSource::YoutubeUrl { url: "test".into() }, None)
         .unwrap();
@@ -75,7 +75,7 @@ async fn test_workspace_error_composites_with_primary_error() {
 
 #[tokio::test]
 async fn test_cancellation_during_download() {
-    let mut project = Project::new("Test".into());
+    let mut project = Project::new("Test".into()).unwrap();
     project
         .import_source(MediaSource::YoutubeUrl { url: "test".into() }, None)
         .unwrap();
@@ -147,7 +147,7 @@ async fn test_cancellation_during_download() {
 
 #[tokio::test]
 async fn test_revalidation_job_id_mismatch_fails() {
-    let mut project = Project::new("Test".into());
+    let mut project = Project::new("Test".into()).unwrap();
     project
         .import_source(MediaSource::YoutubeUrl { url: "test".into() }, None)
         .unwrap();
@@ -213,7 +213,7 @@ async fn test_revalidation_job_id_mismatch_fails() {
 
 #[tokio::test]
 async fn test_revalidation_status_mismatch_fails() {
-    let mut project = Project::new("Test".into());
+    let mut project = Project::new("Test".into()).unwrap();
     project
         .import_source(MediaSource::YoutubeUrl { url: "test".into() }, None)
         .unwrap();

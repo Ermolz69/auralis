@@ -31,7 +31,7 @@ async fn test_add_inserts_artifact_and_get_returns_same() {
 #[tokio::test]
 async fn test_list_by_project_returns_only_project_artifacts() {
     let (_temp_dir, _pool, index, repo, project1) = setup_db().await;
-    let project2 = Project::new("Test Project 2".to_string());
+    let project2 = Project::new("Test Project 2".to_string()).unwrap();
     repo.create(project2.clone()).await.unwrap();
 
     let artifact1 = make_artifact(ArtifactKind::GeneratedTranscript, "p1");
@@ -102,7 +102,7 @@ async fn test_reconnect_sqlite_artifacts_still_available() {
     let temp_dir = tempdir().unwrap();
     let db_path = temp_dir.path().join("test.sqlite");
 
-    let project = Project::new("Test Project".to_string());
+    let project = Project::new("Test Project".to_string()).unwrap();
     let artifact = make_artifact(ArtifactKind::GeneratedTranscript, "recon");
 
     {

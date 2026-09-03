@@ -1,9 +1,8 @@
-import { getJobsSnapshot, subscribeJobEvents, subscribeJobsInvalidated } from '../api/jobApi';
+import { listJobs, subscribeJobEvents, subscribeJobsInvalidated } from '../api/jobApi';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import type { Dispatch } from 'react';
 import type { JobStoreAction } from './reducer';
 import { DEFAULT_JOB_SYNCHRONIZATION_CONFIG } from './types';
-import type { JobStoreState } from './types';
 import { validateJobEventDto, validateJobSnapshot } from './validation';
 import { toCommandError } from '@/shared/api/contracts';
 
@@ -11,7 +10,6 @@ export class JobStoreSynchronizer {
   private unlistenJobs: UnlistenFn | null = null;
   private unlistenInvalidation: UnlistenFn | null = null;
   private activeGeneration: number = 0;
-  private activeProjectId: string | null = null;
 
   // Single-flight and readiness
   private fetchInProgress = false;
@@ -26,21 +24,16 @@ export class JobStoreSynchronizer {
   private snapshotRetryAttempt = 0;
 
   private dispatch: Dispatch<JobStoreAction>;
-  private getState: () => JobStoreState;
-
-  constructor(dispatch: Dispatch<JobStoreAction>, getState: () => JobStoreState) {
+  constructor(dispatch: Dispatch<JobStoreAction>) {
     this.dispatch = dispatch;
-    this.getState = getState;
   }
 
-  public async startCycle(projectId: string | null) {
-    const previousProjectId = this.activeProjectId;
+  public async startCycle() {
     const newGeneration = ++this.activeGeneration;
     const expectedGen = newGeneration;
 
     this.cleanupCycle();
 
-    this.activeProjectId = projectId;
     this.listenersReadyGeneration = null;
     this.activeFetchGeneration = null;
     this.fetchInProgress = false;
@@ -48,16 +41,7 @@ export class JobStoreSynchronizer {
     this.listenerRetryAttempt = 0;
     this.snapshotRetryAttempt = 0;
 
-    if (projectId === null) {
-      this.dispatch({ type: 'SWITCH_PROJECT', projectId: null, generation: expectedGen });
-      return;
-    }
-
-    if (projectId !== previousProjectId) {
-      this.dispatch({ type: 'SWITCH_PROJECT', projectId, generation: expectedGen });
-    } else {
-      this.dispatch({ type: 'INITIALIZATION_CYCLE', generation: expectedGen });
-    }
+    this.dispatch({ type: 'INITIALIZATION_CYCLE', generation: expectedGen });
 
     await this.registerListeners(expectedGen);
   }
@@ -186,8 +170,7 @@ export class JobStoreSynchronizer {
   }
 
   public requestFetch(expectedGeneration: number) {
-    this.getState(); // read to satisfy noUnusedLocals check
-    if (expectedGeneration !== this.activeGeneration || this.activeProjectId === null) {
+    if (expectedGeneration !== this.activeGeneration) {
       return;
     }
     this.performFetch(expectedGeneration);
@@ -201,6 +184,12 @@ export class JobStoreSynchronizer {
       return;
     }
 
+    // Coalesce refresh requests during backoff instead of retrying a failing backend immediately.
+    if (this.snapshotRetryTimer !== null) {
+      this.pendingFetch = true;
+      return;
+    }
+
     if (this.fetchInProgress && this.activeFetchGeneration === expectedGen) {
       this.pendingFetch = true;
       return;
@@ -210,29 +199,18 @@ export class JobStoreSynchronizer {
     this.activeFetchGeneration = expectedGen;
     this.pendingFetch = false;
 
-    if (this.snapshotRetryTimer !== null) {
-      clearTimeout(this.snapshotRetryTimer);
-      this.snapshotRetryTimer = null;
-    }
-
-    const expectedProj = this.activeProjectId;
-
     try {
       this.dispatch({ type: 'CLEAR_PENDING_REFETCH', generation: expectedGen });
       this.dispatch({ type: 'FETCH_STARTED', generation: expectedGen });
 
-      if (!expectedProj) {
-        throw new Error('Cannot fetch snapshot without a projectId');
-      }
-
-      const snapshot = await getJobsSnapshot(expectedProj);
+      const snapshot = await listJobs();
 
       if (this.activeGeneration !== expectedGen) {
         return;
       }
 
-      if (!validateJobSnapshot(snapshot, expectedProj)) {
-        throw new Error('Invalid snapshot payload or contained foreign/duplicate jobs');
+      if (!validateJobSnapshot(snapshot)) {
+        throw new Error('Invalid snapshot payload or duplicate jobs');
       }
 
       this.snapshotRetryAttempt = 0;
@@ -240,7 +218,6 @@ export class JobStoreSynchronizer {
       this.dispatch({
         type: 'SNAPSHOT_RESOLVED',
         generation: expectedGen,
-        projectId: expectedProj,
         jobs: snapshot,
       });
     } catch (err) {
@@ -255,7 +232,7 @@ export class JobStoreSynchronizer {
         this.fetchInProgress = false;
         this.activeFetchGeneration = null;
 
-        if (this.pendingFetch) {
+        if (this.pendingFetch && this.snapshotRetryTimer === null) {
           this.pendingFetch = false;
           this.performFetch(expectedGen);
         }

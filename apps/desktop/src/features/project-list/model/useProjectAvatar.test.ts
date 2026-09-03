@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getLegacyProjectAvatar,
   getProjectAvatar,
+  normalizeProjectAvatar,
   removeLegacyProjectAvatar,
   setProjectAvatar,
 } from '@/entities/project';
@@ -13,6 +14,7 @@ import { useProjectAvatar } from './useProjectAvatar';
 vi.mock('@/entities/project', () => ({
   getLegacyProjectAvatar: vi.fn(),
   getProjectAvatar: vi.fn(),
+  normalizeProjectAvatar: vi.fn(),
   removeLegacyProjectAvatar: vi.fn(),
   setProjectAvatar: vi.fn(),
 }));
@@ -21,6 +23,7 @@ vi.mock('@/shared/ui/toast', () => ({ toast: { warning: vi.fn() } }));
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(getProjectAvatar).mockResolvedValue({ dataUrl: 'saved', initialized: true });
+  vi.mocked(normalizeProjectAvatar).mockResolvedValue('data:image/webp;base64,bm9ybWFsaXplZA==');
   vi.mocked(removeLegacyProjectAvatar).mockReturnValue({ persisted: true });
 });
 afterEach(cleanup);
@@ -84,10 +87,11 @@ describe('durable project avatars', () => {
 
   it.each([
     new File(['<svg/>'], 'avatar.svg', { type: 'image/svg+xml' }),
-    new File([new Uint8Array(1024 * 1024 + 1)], 'large.png', { type: 'image/png' }),
+    new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }),
   ])(
     'rejects unsupported or oversized uploads without replacing the saved avatar',
     async (file) => {
+      vi.mocked(normalizeProjectAvatar).mockRejectedValue(new Error('Invalid image'));
       const { result } = renderHook(() => useProjectAvatar('p', false));
       await waitFor(() => expect(result.current.avatar).toBe('saved'));
       await act(async () => result.current.updateAvatar(file));
@@ -108,9 +112,35 @@ describe('durable project avatars', () => {
     await act(async () =>
       result.current.updateAvatar(new File(['image'], 'avatar.png', { type: 'image/png' })),
     );
-    expect(setProjectAvatar).toHaveBeenCalledWith('p', 'data:image/png;base64,aW1hZ2U=');
+    expect(normalizeProjectAvatar).toHaveBeenCalledWith(expect.any(File));
+    expect(setProjectAvatar).toHaveBeenCalledWith('p', 'data:image/webp;base64,bm9ybWFsaXplZA==');
     expect(removeLegacyProjectAvatar).not.toHaveBeenCalled();
-    expect(result.current.avatar).toBe('data:image/png;base64,aW1hZ2U=');
+    expect(result.current.avatar).toBe('data:image/webp;base64,bm9ybWFsaXplZA==');
+  });
+
+  it('does not save an image that finishes normalization after switching projects', async () => {
+    let finish!: (value: string) => void;
+    vi.mocked(normalizeProjectAvatar).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const { result, rerender } = renderHook(({ id }) => useProjectAvatar(id, false), {
+      initialProps: { id: 'old' },
+    });
+    await waitFor(() => expect(result.current.avatar).toBe('saved'));
+    let update!: Promise<void>;
+    act(() => {
+      update = result.current.updateAvatar(
+        new File(['image'], 'avatar.png', { type: 'image/png' }),
+      );
+    });
+    rerender({ id: 'new' });
+    await act(async () => {
+      finish('normalized');
+      await update;
+    });
+    expect(setProjectAvatar).not.toHaveBeenCalled();
   });
 
   it('blocks avatar changes while deleting', async () => {

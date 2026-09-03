@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::dto::media::{MediaMetadataDto, MediaSourceDto};
 use domain::project::{Project, ProjectStatus};
 use serde::Serialize;
@@ -109,12 +108,14 @@ impl From<&domain::transcript::TranscriptSegment> for TranscriptSegmentDto {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use domain::project::Project;
 
     #[test]
     fn test_empty_project_serialization() {
-        let project = Project::new("Empty Test".to_string());
+        let project = Project::new("Empty Test".to_string()).unwrap();
         let dto: ProjectDto = (&project).into();
 
         let json = serde_json::to_string(&dto).unwrap();

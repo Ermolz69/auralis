@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use async_trait::async_trait;
 use domain::project::{Project, ProjectId};
 use ports::{error::PortError, project_update::ProjectUpdate, repository::ProjectRepository};

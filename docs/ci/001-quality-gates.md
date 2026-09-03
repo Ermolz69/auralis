@@ -17,8 +17,8 @@ The local and CI entrypoints are:
 - **frontend install**: Installs frozen pnpm dependencies without Rust (`task install:frontend`).
 - **Rust install**: Fetches locked Cargo dependencies without frontend tooling (`task install:rust`).
 - **full install**: Runs both installers (`task install:all`, also available as `task install`); browser setup is a separate prerequisite for checks.
-- **frontend**: Runs typecheck, lint, tests, and build (`task check:frontend`).
-- **frontend quality**: Runs FSD boundary checks, color-token checks, and file-size checks (`task check:quality:frontend`).
+- **frontend**: Runs typecheck, lint, tests, build with bundle budgets, and production CSP browser smoke tests (`task check:frontend`).
+- **frontend quality**: Runs FSD boundary checks, color-token checks, file-size checks, and bundle/CSP policy regression tests (`task check:quality:frontend`).
 - **Rust**: Runs `cargo fmt`, `cargo clippy`, `cargo check`, and workspace tests (`task check:rust`).
 - **docs**: Runs markdown checks (`task check:docs`).
 - **docs quality**: Runs markdown formatting checks (`task check:quality:docs`).

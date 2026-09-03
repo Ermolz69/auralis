@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::{
     delete::DeleteProjectRequest,
     open_folder::{OpenProjectFolderRequest, OpenProjectFolderUseCase},

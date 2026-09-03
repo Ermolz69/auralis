@@ -20,6 +20,7 @@ vi.mock('@/entities/project', () => {
 });
 
 const makeJob = (overrides: Partial<JobDto>): JobDto => ({
+  kind: 'dubbing',
   id: 'job-1',
   revision: 1,
   projectId: 'project-1',
@@ -74,7 +75,6 @@ function renderPanel(state: Partial<JobStoreState> = {}, project: Project | null
       <JobContext.Provider
         value={{
           phase: 'ready',
-          scopeProjectId: 'project-1',
           jobs,
           buffer: [],
           pendingRefetch: false,
@@ -92,6 +92,31 @@ afterEach(() => cleanup());
 afterEach(() => vi.clearAllMocks());
 
 describe('JobQueuePanel', () => {
+  it('shows all projects and unattached jobs when no project is selected', () => {
+    renderPanel(
+      {
+        jobs: {
+          first: makeJob({ id: 'first', title: 'First project job' }),
+          second: makeJob({ id: 'second', projectId: 'project-2', title: 'Second project job' }),
+          unattached: makeJob({ id: 'unattached', projectId: null, title: 'Unattached job' }),
+          failed: makeJob({ id: 'failed', title: 'Failed job', status: 'failed' }),
+        },
+      },
+      null,
+    );
+    expect(screen.getByRole('list', { name: 'Active operations' }).children).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: 'Cancel' })).toHaveLength(3);
+    expect(screen.getByRole('list', { name: 'Operation history' }).textContent).toContain(
+      'Failed job',
+    );
+    expect(screen.queryByRole('button', { name: 'Retry subtitle import' })).toBeNull();
+  });
+
+  it('announces synchronization errors even without a selected project', () => {
+    renderPanel({ phase: 'stale', pendingRefetch: true }, null);
+    expect(screen.getByRole('alert').textContent).toContain('Job state may be outdated');
+  });
+
   it('does not force a fixed desktop width on its root panel', () => {
     renderPanel();
 

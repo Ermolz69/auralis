@@ -1,5 +1,5 @@
 import React from 'react';
-import { icons } from 'lucide-react';
+import { icons } from './registry';
 
 export type IconName = keyof typeof icons;
 

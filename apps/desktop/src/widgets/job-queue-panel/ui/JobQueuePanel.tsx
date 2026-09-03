@@ -5,22 +5,14 @@ import { JobCard } from './JobCard';
 
 const isActiveJob = (job: JobDto) => isActiveJobStatus(job.status);
 
-const getSyncNotice = (
-  phase: JobStoreState['phase'],
-  pendingRefetch: boolean,
-  scopeProjectId: string | null,
-) => {
-  if (!scopeProjectId) {
-    return null;
-  }
-
+const getSyncNotice = (phase: JobStoreState['phase'], pendingRefetch: boolean) => {
   if (phase === 'initializing') {
     return {
       role: 'status' as const,
       icon: 'LoaderCircle' as const,
       tone: 'text-muted border-muted/40 bg-bg',
       title: 'Opening job sync',
-      body: 'Jobs for this project are being connected.',
+      body: 'Jobs across all projects are being connected.',
     };
   }
 
@@ -52,8 +44,8 @@ type JobQueuePanelProps = {
 };
 
 export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
-  const { activeJobs, completedJobs, phase, pendingRefetch, scopeProjectId } = useJobContext();
-  const syncNotice = getSyncNotice(phase, pendingRefetch, scopeProjectId);
+  const { activeJobs, completedJobs, phase, pendingRefetch } = useJobContext();
+  const syncNotice = getSyncNotice(phase, pendingRefetch);
   const hasActiveJobs = activeJobs.some(isActiveJob);
 
   return (

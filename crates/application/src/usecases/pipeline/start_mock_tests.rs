@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::*;
 use crate::test_utils::{MockJobScheduler, MockStorageUnitOfWork};
 use adapters_storage::memory::InMemoryProjectRepository;
@@ -73,7 +75,7 @@ async fn test_success_saves_project_processing_and_job_pending_running() {
     let job_scheduler = Arc::new(MockJobScheduler::new());
     let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
-    let mut project = Project::new("Test".to_string());
+    let mut project = Project::new("Test".to_string()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::RemoteUrl {
@@ -126,7 +128,7 @@ async fn test_transaction_failure_does_not_enqueue_job() {
     let job_scheduler = Arc::new(MockJobScheduler::new());
     let tx_gateway = Arc::new(MockStorageUnitOfWork::with_failure()); // Will fail
 
-    let mut project = Project::new("Test".to_string());
+    let mut project = Project::new("Test".to_string()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::RemoteUrl {
@@ -172,7 +174,7 @@ async fn test_cannot_start_from_draft() {
     let job_scheduler = Arc::new(MockJobScheduler::new());
     let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
-    let project = Project::new("Test".to_string());
+    let project = Project::new("Test".to_string()).unwrap();
     project_repo.create(project.clone()).await.unwrap();
 
     let use_case = StartMockPipelineUseCase::new(
@@ -202,7 +204,7 @@ async fn test_cannot_start_from_completed() {
     let job_scheduler = Arc::new(MockJobScheduler::new());
     let tx_gateway = Arc::new(MockStorageUnitOfWork::new());
 
-    let mut project = Project::new("Test".to_string());
+    let mut project = Project::new("Test".to_string()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::RemoteUrl {

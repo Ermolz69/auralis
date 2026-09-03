@@ -38,16 +38,41 @@ test('fails files beyond the configured boundary', () => {
 
 test('ratchets existing oversized modules without allowing further growth', () => {
   const root = fixture();
-  const file = 'apps/desktop/src/widgets/app-shell/ui/AppShell.tsx';
-  writeLines(root, file, 636);
+  const file = 'apps/desktop/src/features/project-list/ui/ProjectList.tsx';
+  writeLines(root, file, 276);
   assert.deepEqual(checkFileSize({ rootDir: root }), []);
 
-  writeLines(root, file, 637);
+  writeLines(root, file, 277);
   assert.deepEqual(checkFileSize({ rootDir: root }), [
     {
       file,
-      lines: 637,
-      maxLines: 636,
+      lines: 277,
+      maxLines: 276,
+    },
+  ]);
+});
+
+test('checks former oversized modules with their regular architectural limits', () => {
+  const root = fixture();
+  writeLines(root, 'apps/desktop/src/widgets/app-shell/ui/AppShell.tsx', 251);
+  writeLines(root, 'apps/desktop/src/pages/project/ui/SourceWorkspace.tsx', 121);
+  writeLines(root, 'apps/desktop/src/pages/project/ui/SubtitleWorkspace.tsx', 121);
+
+  assert.deepEqual(checkFileSize({ rootDir: root }), [
+    {
+      file: 'apps/desktop/src/pages/project/ui/SourceWorkspace.tsx',
+      lines: 121,
+      maxLines: 120,
+    },
+    {
+      file: 'apps/desktop/src/pages/project/ui/SubtitleWorkspace.tsx',
+      lines: 121,
+      maxLines: 120,
+    },
+    {
+      file: 'apps/desktop/src/widgets/app-shell/ui/AppShell.tsx',
+      lines: 251,
+      maxLines: 250,
     },
   ]);
 });

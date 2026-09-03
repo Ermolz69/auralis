@@ -36,6 +36,8 @@ task fe:lint
 task fe:typecheck
 task fe:test
 task fe:build
+task fe:bundle:check
+task fe:smoke
 task fe:setup:playwright
 task fe:setup:playwright:ci
 ```
@@ -44,6 +46,11 @@ task fe:setup:playwright:ci
 run `task fe:install-update` and commit the updated `pnpm-lock.yaml`.
 Dependency overrides and explicitly approved build scripts live in
 `pnpm-workspace.yaml`; unreviewed dependency build scripts fail installation.
+
+`task fe:build` enforces production bundle budgets and prints an analysis of the
+largest modules. `task fe:smoke` requires that build and Chromium; it tests the
+production output under the desktop CSP with a mocked IPC boundary. Both checks
+are included in `task check:frontend`. See [bundle and CSP policy](../ci/011-desktop-bundle-and-csp.md).
 
 `task fe:setup:playwright` installs Chromium for local browser tests. CI uses
 `task fe:setup:playwright:ci` to also install Chromium's system dependencies.

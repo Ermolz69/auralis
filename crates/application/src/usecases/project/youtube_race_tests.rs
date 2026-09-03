@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::{
     create_from_youtube::CreateProjectFromYoutubeRequest, youtube_atomic_support::Fixture,
 };
@@ -11,7 +13,7 @@ async fn a_competing_import_wins_without_being_overwritten_by_the_slow_download(
     let fixture = Fixture::new().await;
     let original = fixture
         .repo
-        .create(Project::new("Original".into()))
+        .create(Project::new("Original".into()).unwrap())
         .await
         .unwrap();
     fixture.source.failure.store(5, Ordering::SeqCst);

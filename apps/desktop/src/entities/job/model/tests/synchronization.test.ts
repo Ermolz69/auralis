@@ -1,21 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JobStoreSynchronizer } from '../synchronization';
-import { getJobsSnapshot, subscribeJobEvents, subscribeJobsInvalidated } from '../../api/jobApi';
+import { initializeStore, jobStoreReducer, type JobStoreAction } from '../reducer';
+import { listJobs, subscribeJobEvents, subscribeJobsInvalidated } from '../../api/jobApi';
 import type { JobDto, JobEventDto, JobStoreState } from '../types';
 
 vi.mock('../../api/jobApi', () => ({
   subscribeJobEvents: vi.fn(),
   subscribeJobsInvalidated: vi.fn(),
-  getJobsSnapshot: vi.fn(),
+  listJobs: vi.fn(),
 }));
 
 describe('JobStoreSynchronizer - Core', () => {
-  let dispatch: ReturnType<typeof vi.fn>;
-  let getState: ReturnType<typeof vi.fn>;
+  let dispatch: ReturnType<typeof vi.fn<(action: JobStoreAction) => void>>;
   let synchronizer: JobStoreSynchronizer;
   let currentState: JobStoreState;
 
   const createJob = (id: string, revision: number, projectId: string | null = 'p1'): JobDto => ({
+    kind: 'dubbing',
     id,
     revision,
     projectId,
@@ -41,38 +42,18 @@ describe('JobStoreSynchronizer - Core', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
-    currentState = {
-      phase: 'idle',
-      generation: 0,
-      scopeProjectId: 'p1',
-      jobs: {},
-      buffer: [],
-      pendingRefetch: false,
-    };
-
-    dispatch = vi.fn().mockImplementation((action: any) => {
-      if (action.type === 'SWITCH_PROJECT') {
-        currentState.generation = action.generation;
-        currentState.scopeProjectId = action.projectId;
-        currentState.phase = 'idle';
-      } else if (action.type === 'INITIALIZATION_CYCLE') {
-        currentState.generation = action.generation;
-        currentState.phase = 'initializing';
-      } else if (action.type === 'LISTENERS_REGISTERED') {
-        currentState.phase = 'synchronizing';
-      } else if (action.type === 'LISTENERS_FAILED' || action.type === 'FETCH_FAILED') {
-        currentState.phase = 'stale';
-      } else if (action.type === 'INVALIDATION_RECEIVED') {
-        currentState.pendingRefetch = true;
-      } else if (action.type === 'CLEAR_PENDING_REFETCH') {
-        currentState.pendingRefetch = false;
-      }
+    currentState = initializeStore();
+    dispatch = vi.fn((action: JobStoreAction) => {
+      currentState = jobStoreReducer(currentState, action);
     });
+    synchronizer = new JobStoreSynchronizer(dispatch);
+  });
 
-    getState = vi.fn().mockImplementation(() => currentState);
-    synchronizer = new JobStoreSynchronizer(dispatch as any, getState as any);
+  afterEach(() => {
+    synchronizer.dispose();
+    vi.useRealTimers();
   });
 
   it('registers listeners and executes initial snapshot fetch in sequence', async () => {
@@ -91,14 +72,14 @@ describe('JobStoreSynchronizer - Core', () => {
         resolveInvalidated = r;
       });
     });
-    (getJobsSnapshot as any).mockImplementation(() => {
-      order.push('getJobsSnapshot');
+    (listJobs as any).mockImplementation(() => {
+      order.push('listJobs');
       return new Promise((r) => {
         resolveSnapshot = r;
       });
     });
 
-    const promise = synchronizer.startCycle('p1');
+    const promise = synchronizer.startCycle();
 
     await act(async () => {
       resolveEvents(vi.fn());
@@ -113,7 +94,24 @@ describe('JobStoreSynchronizer - Core', () => {
       await promise;
     });
 
-    expect(order).toEqual(['subscribeJobEvents', 'subscribeJobsInvalidated', 'getJobsSnapshot']);
+    expect(order).toEqual(['subscribeJobEvents', 'subscribeJobsInvalidated', 'listJobs']);
+  });
+
+  it('rejects duplicate IDs across projects and preserves the last valid global state', async () => {
+    vi.mocked(subscribeJobEvents).mockResolvedValue(vi.fn());
+    vi.mocked(subscribeJobsInvalidated).mockResolvedValue(vi.fn());
+    const jobs = [createJob('j1', 1), createJob('j2', 1, 'p2'), createJob('j3', 1, null)];
+    vi.mocked(listJobs).mockResolvedValue(jobs);
+    await synchronizer.startCycle();
+    expect(Object.values(currentState.jobs)).toEqual(jobs);
+    vi.mocked(listJobs).mockResolvedValue([jobs[0], { ...jobs[1], id: 'j1' }]);
+    synchronizer.requestFetch(1);
+    await Promise.resolve();
+    expect(currentState.phase).toBe('stale');
+    expect(Object.values(currentState.jobs)).toEqual(jobs);
+    vi.mocked(listJobs).mockResolvedValue(jobs);
+    await vi.runAllTimersAsync();
+    expect(currentState.phase).toBe('ready');
   });
 
   it('rejects unknown event kinds and logs only generic static message without payload', async () => {
@@ -125,9 +123,9 @@ describe('JobStoreSynchronizer - Core', () => {
       return Promise.resolve(vi.fn());
     });
     (subscribeJobsInvalidated as any).mockImplementation(() => Promise.resolve(vi.fn()));
-    (getJobsSnapshot as any).mockResolvedValue([]);
+    (listJobs as any).mockResolvedValue([]);
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
 
     const invalidEvent = { kind: 'unknown_kind', job: createJob('j1', 1) };
     eventCallback(invalidEvent);
@@ -147,7 +145,7 @@ describe('JobStoreSynchronizer - Core', () => {
     (subscribeJobEvents as any).mockResolvedValue(unlistenFirst);
     (subscribeJobsInvalidated as any).mockRejectedValue(new Error('Failed to register'));
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
 
     expect(unlistenFirst).toHaveBeenCalledTimes(1);
     expect(dispatch).toHaveBeenCalledWith({ type: 'LISTENERS_FAILED', generation: 1 });
@@ -163,7 +161,7 @@ describe('JobStoreSynchronizer - Core', () => {
     );
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
-    const promise = synchronizer.startCycle('p1');
+    const promise = synchronizer.startCycle();
     synchronizer.dispose();
 
     await act(async () => {
@@ -185,40 +183,41 @@ describe('JobStoreSynchronizer - Core', () => {
         }),
     );
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
-    (getJobsSnapshot as any).mockResolvedValue([]);
+    (listJobs as any).mockResolvedValue([]);
 
-    const promise = synchronizer.startCycle('p1');
+    const promise = synchronizer.startCycle();
     synchronizer.requestFetch(1);
 
-    expect(getJobsSnapshot).not.toHaveBeenCalled();
+    expect(listJobs).not.toHaveBeenCalled();
 
     await act(async () => {
       resolveEvents(vi.fn());
       await promise;
     });
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+    expect(listJobs).toHaveBeenCalledTimes(1);
   });
 
   it('waits for retry backoff on snapshot failure and preserves pendingFetch', async () => {
     (subscribeJobEvents as any).mockResolvedValue(vi.fn());
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
-    (getJobsSnapshot as any).mockRejectedValueOnce(new Error('Snapshot failed'));
+    (listJobs as any).mockRejectedValueOnce(new Error('Snapshot failed'));
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
     expect(dispatch).toHaveBeenCalledWith({ type: 'FETCH_FAILED', generation: 1 });
 
     synchronizer.requestFetch(1);
 
-    (getJobsSnapshot as any).mockResolvedValue([]);
+    expect(listJobs).toHaveBeenCalledTimes(1);
+    (listJobs as any).mockResolvedValue([]);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(2);
+    expect(listJobs).toHaveBeenCalledTimes(2);
   });
 
-  it('ignores old listener events and invalidation callbacks after project switch', async () => {
+  it('ignores old listener events and invalidation callbacks after synchronization restarts', async () => {
     let eventCallback1: any;
     let invalidationCallback1: any;
 
@@ -230,13 +229,13 @@ describe('JobStoreSynchronizer - Core', () => {
       invalidationCallback1 = cb;
       return Promise.resolve(vi.fn());
     });
-    (getJobsSnapshot as any).mockResolvedValue([]);
+    (listJobs as any).mockResolvedValue([]);
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
 
     (subscribeJobEvents as any).mockResolvedValue(vi.fn());
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
-    await synchronizer.startCycle('p2');
+    await synchronizer.startCycle();
 
     eventCallback1(createEvent(createJob('j1', 1)));
     invalidationCallback1();
@@ -254,33 +253,33 @@ describe('JobStoreSynchronizer - Core', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveFetch: any;
-    (getJobsSnapshot as any).mockImplementation(
+    (listJobs as any).mockImplementation(
       () =>
         new Promise((r) => {
           resolveFetch = r;
         }),
     );
 
-    await synchronizer.startCycle('p1');
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+    await synchronizer.startCycle();
+    expect(listJobs).toHaveBeenCalledTimes(1);
 
     synchronizer.requestFetch(1);
     synchronizer.requestFetch(1);
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+    expect(listJobs).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       resolveFetch([]);
       await vi.runAllTimersAsync();
     });
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(2);
+    expect(listJobs).toHaveBeenCalledTimes(2);
   });
 
   it('runs infinite capped retries for listener failures and resets on success', async () => {
     (subscribeJobEvents as any).mockRejectedValue(new Error('Failed'));
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
     expect(dispatch).toHaveBeenLastCalledWith({ type: 'LISTENERS_FAILED', generation: 1 });
 
     for (let i = 0; i < 10; i++) {
@@ -293,7 +292,7 @@ describe('JobStoreSynchronizer - Core', () => {
 
     (subscribeJobEvents as any).mockResolvedValue(vi.fn());
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
-    (getJobsSnapshot as any).mockResolvedValue([]);
+    (listJobs as any).mockResolvedValue([]);
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -305,12 +304,12 @@ describe('JobStoreSynchronizer - Core', () => {
   it('resets retry attempt counters on successful snapshot resolution', async () => {
     (subscribeJobEvents as any).mockResolvedValue(vi.fn());
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
-    (getJobsSnapshot as any).mockRejectedValueOnce(new Error('Fail'));
+    (listJobs as any).mockRejectedValueOnce(new Error('Fail'));
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
     expect(dispatch).toHaveBeenCalledWith({ type: 'FETCH_FAILED', generation: 1 });
 
-    (getJobsSnapshot as any).mockResolvedValue([]);
+    (listJobs as any).mockResolvedValue([]);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
@@ -324,10 +323,8 @@ describe('JobStoreSynchronizer - Core', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     (subscribeJobEvents as any).mockResolvedValue(vi.fn());
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
-    (getJobsSnapshot as any).mockRejectedValue(
-      new Error('C:\\Users\\secret\\video.mp4 token=SECRET'),
-    );
-    await synchronizer.startCycle('p1');
+    (listJobs as any).mockRejectedValue(new Error('C:\\Users\\secret\\video.mp4 token=SECRET'));
+    await synchronizer.startCycle();
     expect(dispatch).toHaveBeenCalledWith({ type: 'FETCH_FAILED', generation: 1 });
     spy.mock.calls.forEach((call) => {
       const log = JSON.stringify(call);

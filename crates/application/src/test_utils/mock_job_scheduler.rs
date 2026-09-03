@@ -34,6 +34,7 @@ impl JobSchedulerPort for MockJobScheduler {
         request: StartDubbingJobRequest,
     ) -> Result<ScheduledJob, PortError> {
         let job = ScheduledJob {
+            kind: domain::job::JobKind::Dubbing,
             id: JobId::new(),
             revision: 0,
             project_id: request.project_id,
@@ -59,6 +60,7 @@ impl JobSchedulerPort for MockJobScheduler {
             });
         }
         let job = ScheduledJob {
+            kind: domain::job::JobKind::Dubbing,
             id: job_id.clone(),
             revision: 0,
             project_id: None,

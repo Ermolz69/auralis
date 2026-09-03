@@ -6,6 +6,12 @@ tasks:
       - task: fsd-boundaries
       - task: color-tokens
       - task: file-size
+      - task: desktop-policies
+
+  desktop-policies:
+    desc: Validate bundle budgets and desktop content security policy
+    cmds:
+      - node --test tools/scripts/check-bundle.test.mjs tools/scripts/check-csp.test.mjs
 
   docs:
     cmds:

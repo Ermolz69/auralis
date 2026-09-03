@@ -1,21 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JobStoreSynchronizer } from '../synchronization';
-import { getJobsSnapshot, subscribeJobEvents, subscribeJobsInvalidated } from '../../api/jobApi';
+import { initializeStore, jobStoreReducer, type JobStoreAction } from '../reducer';
+import { listJobs, subscribeJobEvents, subscribeJobsInvalidated } from '../../api/jobApi';
 import type { JobDto, JobEventDto, JobStoreState } from '../types';
 
 vi.mock('../../api/jobApi', () => ({
   subscribeJobEvents: vi.fn(),
   subscribeJobsInvalidated: vi.fn(),
-  getJobsSnapshot: vi.fn(),
+  listJobs: vi.fn(),
 }));
 
 describe('JobStoreSynchronizer - Race Conditions', () => {
-  let dispatch: ReturnType<typeof vi.fn>;
-  let getState: ReturnType<typeof vi.fn>;
+  let dispatch: ReturnType<typeof vi.fn<(action: JobStoreAction) => void>>;
   let synchronizer: JobStoreSynchronizer;
   let currentState: JobStoreState;
 
   const createJob = (id: string, revision: number, projectId: string | null = 'p1'): JobDto => ({
+    kind: 'dubbing',
     id,
     revision,
     projectId,
@@ -41,40 +42,18 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
-    currentState = {
-      phase: 'idle',
-      generation: 0,
-      scopeProjectId: 'p1',
-      jobs: {},
-      buffer: [],
-      pendingRefetch: false,
-    };
-
-    dispatch = vi.fn().mockImplementation((action: any) => {
-      if (action.type === 'SWITCH_PROJECT') {
-        currentState.generation = action.generation;
-        currentState.scopeProjectId = action.projectId;
-        currentState.phase = 'idle';
-      }
-      if (action.type === 'INITIALIZATION_CYCLE') {
-        currentState.generation = action.generation;
-        currentState.phase = 'initializing';
-      }
-      if (action.type === 'LISTENERS_REGISTERED') {
-        currentState.phase = 'synchronizing';
-      }
-      if (action.type === 'INVALIDATION_RECEIVED') {
-        currentState.pendingRefetch = true;
-      }
-      if (action.type === 'CLEAR_PENDING_REFETCH') {
-        currentState.pendingRefetch = false;
-      }
+    currentState = initializeStore();
+    dispatch = vi.fn((action: JobStoreAction) => {
+      currentState = jobStoreReducer(currentState, action);
     });
+    synchronizer = new JobStoreSynchronizer(dispatch);
+  });
 
-    getState = vi.fn().mockImplementation(() => currentState);
-    synchronizer = new JobStoreSynchronizer(dispatch as any, getState as any);
+  afterEach(() => {
+    synchronizer.dispose();
+    vi.useRealTimers();
   });
 
   it('buffers event received after listeners registered but before snapshot completes', async () => {
@@ -86,14 +65,14 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveSnapshot: any;
-    (getJobsSnapshot as any).mockImplementation(
+    (listJobs as any).mockImplementation(
       () =>
         new Promise((r) => {
           resolveSnapshot = r;
         }),
     );
 
-    const startPromise = synchronizer.startCycle('p1');
+    const startPromise = synchronizer.startCycle();
 
     await act(async () => {
       await Promise.resolve();
@@ -116,15 +95,15 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveFetch: any;
-    (getJobsSnapshot as any).mockImplementation(
+    (listJobs as any).mockImplementation(
       () =>
         new Promise((r) => {
           resolveFetch = r;
         }),
     );
 
-    await synchronizer.startCycle('p1');
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+    await synchronizer.startCycle();
+    expect(listJobs).toHaveBeenCalledTimes(1);
 
     synchronizer.requestFetch(1);
     synchronizer.requestFetch(1);
@@ -135,7 +114,7 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(2);
+    expect(listJobs).toHaveBeenCalledTimes(2);
   });
 
   it('backend invalidation callback during active fetch schedules one canonical follow-up fetch', async () => {
@@ -147,28 +126,28 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     });
 
     let resolveFetch: any;
-    (getJobsSnapshot as any).mockImplementation(
+    (listJobs as any).mockImplementation(
       () =>
         new Promise((r) => {
           resolveFetch = r;
         }),
     );
 
-    await synchronizer.startCycle('p1');
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+    await synchronizer.startCycle();
+    expect(listJobs).toHaveBeenCalledTimes(1);
 
     invalidationCallback();
     invalidationCallback();
     invalidationCallback();
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(1);
+    expect(listJobs).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       resolveFetch([]);
       await vi.runAllTimersAsync();
     });
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(2);
+    expect(listJobs).toHaveBeenCalledTimes(2);
   });
 
   it('schedules another fetch for invalidation during follow-up fetch', async () => {
@@ -176,7 +155,8 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveFetch1: any, resolveFetch2: any;
-    (getJobsSnapshot as any)
+    (listJobs as any)
+      .mockResolvedValue([])
       .mockImplementationOnce(
         () =>
           new Promise((r) => {
@@ -190,7 +170,7 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
           }),
       );
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
 
     synchronizer.requestFetch(1);
 
@@ -199,7 +179,7 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(2);
+    expect(listJobs).toHaveBeenCalledTimes(2);
 
     synchronizer.requestFetch(1);
 
@@ -208,25 +188,25 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(getJobsSnapshot).toHaveBeenCalledTimes(3);
+    expect(listJobs).toHaveBeenCalledTimes(3);
   });
 
-  it('ignores snapshot resolution of old generation after project switch', async () => {
+  it('ignores snapshot resolution of old generation after synchronization restarts', async () => {
     (subscribeJobEvents as any).mockResolvedValue(vi.fn());
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveSnapshotProj1: any;
-    (getJobsSnapshot as any).mockImplementationOnce(
+    (listJobs as any).mockImplementationOnce(
       () =>
         new Promise((r) => {
           resolveSnapshotProj1 = r;
         }),
     );
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
 
-    (getJobsSnapshot as any).mockResolvedValue([]);
-    await synchronizer.startCycle('p2');
+    (listJobs as any).mockResolvedValue([]);
+    await synchronizer.startCycle();
 
     await act(async () => {
       resolveSnapshotProj1([]);
@@ -243,14 +223,14 @@ describe('JobStoreSynchronizer - Race Conditions', () => {
     (subscribeJobsInvalidated as any).mockResolvedValue(vi.fn());
 
     let resolveSnapshot: any;
-    (getJobsSnapshot as any).mockImplementation(
+    (listJobs as any).mockImplementation(
       () =>
         new Promise((r) => {
           resolveSnapshot = r;
         }),
     );
 
-    await synchronizer.startCycle('p1');
+    await synchronizer.startCycle();
     synchronizer.dispose();
 
     await act(async () => {

@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::event_publisher::FrontendJobEventPublisher;
 use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
 use ports::job_scheduler::JobLifecycleEvent;
@@ -102,9 +101,9 @@ impl Default for JobEventBridgeConfig {
 
 pub struct PreparedJobEventBridge {
     tx: broadcast::Sender<JobLifecycleEvent>,
-    shutdown_tx: Option<oneshot::Sender<()>>,
-    shutdown_rx: Option<oneshot::Receiver<()>>,
-    receiver: Option<broadcast::Receiver<JobLifecycleEvent>>,
+    shutdown_tx: oneshot::Sender<()>,
+    shutdown_rx: oneshot::Receiver<()>,
+    receiver: broadcast::Receiver<JobLifecycleEvent>,
 }
 
 pub struct RunningJobEventBridge {
@@ -118,9 +117,9 @@ impl PreparedJobEventBridge {
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         Self {
             tx,
-            shutdown_tx: Some(shutdown_tx),
-            shutdown_rx: Some(shutdown_rx),
-            receiver: Some(rx),
+            shutdown_tx,
+            shutdown_rx,
+            receiver: rx,
         }
     }
 
@@ -141,7 +140,7 @@ impl PreparedJobEventBridge {
     }
 
     pub fn start<P>(
-        mut self,
+        self,
         publisher: P,
         coordinator: Arc<JobLifecycleCoordinator>,
     ) -> RunningJobEventBridge
@@ -151,8 +150,8 @@ impl PreparedJobEventBridge {
         let worker = JobLifecycleWorker {
             publisher,
             coordinator,
-            receiver: self.receiver.take().unwrap(),
-            shutdown_rx: self.shutdown_rx.take().unwrap(),
+            receiver: self.receiver,
+            shutdown_rx: self.shutdown_rx,
         };
 
         let worker_handle = tauri::async_runtime::handle().inner().spawn(async move {
@@ -160,7 +159,7 @@ impl PreparedJobEventBridge {
         });
 
         let bridge_handle = JobEventBridgeHandle {
-            shutdown_tx: self.shutdown_tx.take(),
+            shutdown_tx: Some(self.shutdown_tx),
             worker_handle: Some(worker_handle),
         };
 
@@ -179,6 +178,8 @@ impl RunningJobEventBridge {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use domain::job::{JobId, JobProgress, JobStatus};
     use ports::error::PortError;
@@ -234,6 +235,7 @@ mod tests {
         let event1 = JobLifecycleEvent {
             kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
             job: ports::job_scheduler::ScheduledJob {
+                kind: domain::job::JobKind::Dubbing,
                 id: JobId::new(),
                 revision: 1,
                 title: "Test".to_string(),
@@ -250,6 +252,7 @@ mod tests {
         let event2 = JobLifecycleEvent {
             kind: ports::job_scheduler::JobLifecycleEventKind::Completed,
             job: ports::job_scheduler::ScheduledJob {
+                kind: domain::job::JobKind::Dubbing,
                 id: JobId::new(),
                 revision: 2,
                 title: "Test".to_string(),
@@ -301,6 +304,7 @@ mod tests {
         let event1 = JobLifecycleEvent {
             kind: ports::job_scheduler::JobLifecycleEventKind::Started,
             job: ports::job_scheduler::ScheduledJob {
+                kind: domain::job::JobKind::Dubbing,
                 id: JobId::new(),
                 revision: 1,
                 title: "Test".to_string(),
@@ -317,6 +321,7 @@ mod tests {
         let event2 = JobLifecycleEvent {
             kind: ports::job_scheduler::JobLifecycleEventKind::Completed,
             job: ports::job_scheduler::ScheduledJob {
+                kind: domain::job::JobKind::Dubbing,
                 id: JobId::new(),
                 revision: 2,
                 title: "Test".to_string(),
@@ -376,6 +381,7 @@ mod tests {
             let event = JobLifecycleEvent {
                 kind: ports::job_scheduler::JobLifecycleEventKind::Progressed,
                 job: ports::job_scheduler::ScheduledJob {
+                    kind: domain::job::JobKind::Dubbing,
                     id: JobId::new(),
                     revision: 1,
                     title: "Test".to_string(),

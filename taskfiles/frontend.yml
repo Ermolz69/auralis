@@ -7,6 +7,7 @@ tasks:
       - task: lint
       - task: test
       - task: build
+      - task: smoke
 
   install:
     cmds:
@@ -36,11 +37,22 @@ tasks:
 
   test:
     cmds:
-      - pnpm --filter desktop test
+      - pnpm --filter desktop test {{.CLI_ARGS}}
 
   build:
     cmds:
       - pnpm --filter desktop build
+      - task: bundle:check
+
+  bundle:check:
+    desc: Enforce production bundle budgets and print the largest modules
+    cmds:
+      - node tools/scripts/check-bundle.mjs
+
+  smoke:
+    desc: Test the production build under CSP in Chromium with a mocked IPC boundary
+    cmds:
+      - pnpm --filter desktop exec node --test scripts/production-smoke.test.mjs
 
   storybook:
     cmds:

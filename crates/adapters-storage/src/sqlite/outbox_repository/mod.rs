@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use sqlx::{Pool, Sqlite};
 
 pub mod claim;

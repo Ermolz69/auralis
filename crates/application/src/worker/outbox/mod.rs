@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 pub mod maintenance;
 pub mod payload_handler;
 pub mod report;

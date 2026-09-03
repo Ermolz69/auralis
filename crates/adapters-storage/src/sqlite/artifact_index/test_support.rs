@@ -22,7 +22,7 @@ pub async fn setup_db() -> (
     let artifact_index = SqliteArtifactIndex::new(pool.clone());
     let repo = SqliteProjectRepository::new(pool.clone());
 
-    let project = Project::new("Test Project".to_string());
+    let project = Project::new("Test Project".to_string()).unwrap();
     repo.create(project.clone()).await.unwrap();
 
     (temp_dir, pool, artifact_index, repo, project)

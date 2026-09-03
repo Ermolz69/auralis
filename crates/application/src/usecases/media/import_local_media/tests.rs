@@ -204,7 +204,7 @@ async fn test_missing_project_before_stage() {
 async fn test_successful_import_returns_and_persists_ready() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let project = Project::new("Import Test".to_string());
+    let project = Project::new("Import Test".to_string()).unwrap();
     let project_id = project.id().clone();
     repo.create(project).await.unwrap();
 
@@ -239,7 +239,7 @@ async fn test_successful_import_returns_and_persists_ready() {
 async fn test_invalid_domain_transition_non_draft_rejected() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let mut project = Project::new("Ready Project".to_string());
+    let mut project = Project::new("Ready Project".to_string()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::ManagedLocalFile {
