@@ -6,6 +6,8 @@ pub mod mutations;
 pub mod queries;
 
 #[cfg(test)]
+mod payload_compatibility_tests;
+#[cfg(test)]
 mod tests;
 
 #[derive(Clone)]

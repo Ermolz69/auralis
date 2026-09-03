@@ -69,17 +69,11 @@ pub(crate) async fn stage_owned_temp_file_with_ops<F: FileOps>(
         });
     }
 
-    let ext = if let Some(hint) = filename_hint {
-        Path::new(hint)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("bin")
-    } else {
-        source_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("bin")
-    };
+    let ext = filename_hint
+        .and_then(|hint| Path::new(hint).extension())
+        .or_else(|| source_path.extension())
+        .and_then(|extension| extension.to_str())
+        .unwrap_or("bin");
 
     let artifact_id = ArtifactId::new();
     let final_key = make_storage_key(project_id, &artifact_id, &kind, ext);
@@ -191,17 +185,11 @@ pub async fn import_external_file(
         });
     }
 
-    let ext = if let Some(hint) = filename_hint {
-        Path::new(hint)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("bin")
-    } else {
-        source_path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("bin")
-    };
+    let ext = filename_hint
+        .and_then(|hint| Path::new(hint).extension())
+        .or_else(|| source_path.extension())
+        .and_then(|extension| extension.to_str())
+        .unwrap_or("bin");
 
     let artifact_id = ArtifactId::new();
     let final_key = make_storage_key(project_id, &artifact_id, &kind, ext);

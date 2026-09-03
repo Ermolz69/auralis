@@ -65,7 +65,8 @@ pub enum OutboxPayload {
     DeleteProjectArtifactDir {
         project_id: ProjectId,
     },
-    DeleteWorkspaceFile {
+    #[serde(alias = "delete_workspace_file")]
+    DeleteWorkspaceAllocation {
         workspace_key: crate::outbox::WorkspaceKey,
     },
     HandleTerminalJobState {
@@ -85,7 +86,7 @@ impl OutboxPayload {
             OutboxPayload::DeleteProjectArtifactDir { project_id } => {
                 (Some("project".to_string()), Some(project_id.to_string()))
             }
-            OutboxPayload::DeleteWorkspaceFile { .. } => (None, None),
+            OutboxPayload::DeleteWorkspaceAllocation { .. } => (None, None),
             OutboxPayload::HandleTerminalJobState { project_id, .. } => {
                 (Some("project".to_string()), Some(project_id.to_string()))
             }

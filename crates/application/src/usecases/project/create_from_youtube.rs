@@ -105,6 +105,7 @@ impl<
             .execute(DownloadYoutubeVideoRequest {
                 project_id: import_res.project.id().clone(),
                 temp_dir: allocation.absolute_path,
+                workspace_key: allocation.workspace_key.clone(),
                 filename_hint: Some("original".to_string()),
             })
             .await

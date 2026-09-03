@@ -7,6 +7,8 @@ mod staging;
 mod store;
 
 #[cfg(test)]
+mod extension_tests;
+#[cfg(test)]
 mod tests;
 
 pub use store::LocalArtifactStore;

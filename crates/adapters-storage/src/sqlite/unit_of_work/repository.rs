@@ -54,7 +54,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         if let Some(key) = command.temp_workspace_key {
             let del_msg =
-                OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile { workspace_key: key });
+                OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key: key });
             save_outbox_message(&mut tx, &del_msg).await?;
         }
 
@@ -87,7 +87,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         if let Some(key) = command.temp_workspace_key {
             let del_msg =
-                OutboxMessage::new(OutboxPayload::DeleteWorkspaceFile { workspace_key: key });
+                OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key: key });
             save_outbox_message(&mut tx, &del_msg).await?;
         }
 
