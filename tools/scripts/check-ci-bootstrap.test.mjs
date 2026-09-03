@@ -108,13 +108,13 @@ test('dependency installation is ordered and frozen before browser installation'
     return result;
   };
   const task = index((step) => step.uses?.startsWith('go-task/setup-task@'));
-  const dependencies = index((step) => step.run === 'task frontend:install');
+  const dependencies = index((step) => step.run === 'task install:frontend');
   const browser = index((step) => step.run === 'task frontend:setup:playwright:ci');
   assert.ok(task < dependencies && dependencies < browser);
   assert.ok(index((step) => step.uses?.startsWith('pnpm/setup@')) < dependencies);
   assert.ok(
     index((step) => step.uses?.startsWith('dtolnay/rust-toolchain@')) <
-      index((step) => step.run === 'task rust:fetch'),
+      index((step) => step.run === 'task install:rust'),
   );
   assert.equal(
     read('taskfiles/frontend.yml').tasks.install.cmds[0],
@@ -153,7 +153,7 @@ test('lightweight jobs skip unneeded browsers, native libraries and Rust fetchin
     assert.deepEqual(configured(job).with, { node: 'true' });
     const steps = enabledSteps(configured(job).with, 'Linux');
     assert.equal(
-      steps.some((step) => /playwright|apt-get|rust:fetch/.test(step.run ?? '')),
+      steps.some((step) => /playwright|apt-get|install:rust|install:all/.test(step.run ?? '')),
       false,
     );
   }
