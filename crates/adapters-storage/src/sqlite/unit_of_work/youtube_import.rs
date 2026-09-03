@@ -19,10 +19,21 @@ pub(super) async fn commit(
         .begin()
         .await
         .map_err(|e| map_sqlite_error("begin_youtube_import", e))?;
+    write(&mut tx, command).await?;
+    tx.commit()
+        .await
+        .map_err(|e| map_sqlite_error("commit_youtube_import", e))
+}
+
+pub(crate) async fn write(
+    tx: &mut Transaction<'_, Sqlite>,
+    command: CommitYoutubeImport,
+) -> Result<(), PortError> {
+    command.validate()?;
     match command.original_updated_at {
         Some(updated_at) => {
             update_project_conditional(
-                &mut tx,
+                tx,
                 &command.project,
                 updated_at,
                 &ProjectStatus::Draft,
@@ -30,12 +41,12 @@ pub(super) async fn commit(
             )
             .await?;
         }
-        None => insert_project(&mut tx, &command.project).await?,
+        None => insert_project(tx, &command.project).await?,
     }
     let write = command.write;
-    insert_new_artifact(&mut tx, &write.project_id, &write.artifact).await?;
+    insert_new_artifact(tx, &write.project_id, &write.artifact).await?;
     save_outbox_message(
-        &mut tx,
+        tx,
         &OutboxMessage::new(OutboxPayload::FinalizeStagedArtifact {
             project_id: write.project_id,
             artifact_id: write.artifact.id,
@@ -46,14 +57,12 @@ pub(super) async fn commit(
     .await?;
     if let Some(workspace_key) = write.temp_workspace_key {
         save_outbox_message(
-            &mut tx,
+            tx,
             &OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key }),
         )
         .await?;
     }
-    tx.commit()
-        .await
-        .map_err(|e| map_sqlite_error("commit_youtube_import", e))
+    Ok(())
 }
 
 async fn insert_project(

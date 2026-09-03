@@ -2,7 +2,7 @@ use domain::outbox::{OutboxMessage, OutboxPayload};
 use ports::error::PortError;
 use sqlx::{Sqlite, Transaction};
 
-pub(super) async fn save_outbox_message(
+pub(crate) async fn save_outbox_message(
     tx: &mut Transaction<'_, Sqlite>,
     msg: &OutboxMessage,
 ) -> Result<(), PortError> {

@@ -67,16 +67,17 @@ pub fn setup(
     usecases::setup_usecases(
         app.handle(),
         app_paths.projects(),
-        services.project_repo,
-        services.project_avatar_repo,
+        services.project_repo.clone(),
+        services.project_avatar_repo.clone(),
         services.artifact_index.clone(),
         services.artifact_store.clone(),
         services.storage_uow.clone(),
         job_manager.clone() as Arc<dyn ports::job_scheduler::JobSchedulerPort>,
         temp_workspace.clone(),
         job_manager.clone() as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+        services.youtube_imports.clone(),
     );
-    app.manage(services.job_query);
+    app.manage(services.job_query.clone());
 
     // 5. Spawn background workers only after all fallible operations have succeeded
     let publisher = TauriEventPublisher::new(app_handle.clone());
@@ -86,9 +87,7 @@ pub fn setup(
 
     let outbox_shutdown = workers::spawn_outbox_worker(
         outbox_repo.clone(),
-        services.artifact_store.clone(),
-        services.artifact_index.clone(),
-        services.storage_uow.clone(),
+        &services,
         Arc::new(publisher.clone()),
         temp_workspace,
         outbox_config,

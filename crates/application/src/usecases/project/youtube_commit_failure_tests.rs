@@ -39,7 +39,7 @@ async fn a_commit_time_failure_rolls_back_new_and_existing_imports_and_allows_re
             matches!(
                 &error,
                 crate::error::ApplicationError::Port(ports::error::PortError::Storage {
-                    operation: "commit_youtube_import",
+                    operation: "commit_youtube_resume",
                     ..
                 })
             ),

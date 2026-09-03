@@ -1,10 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
-use super::{
-    SqliteProjectRepository, connect_sqlite,
-    connection::{SCHEMA, create_pool},
-};
+use super::{SqliteProjectRepository, connect_sqlite, connection::create_pool};
 use ports::repository::ProjectRepository;
+
+const SCHEMA: &str = include_str!("schema.sql");
 
 #[tokio::test]
 async fn version_two_upgrade_preserves_revision_and_starts_avatar_uninitialized() {
@@ -96,7 +95,7 @@ async fn version_one_upgrade_preserves_project_data_and_is_idempotent() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(version, 3);
+    assert_eq!(version, 4);
     let repo = SqliteProjectRepository::new(pool.clone());
     assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), project);
     let renamed = repo

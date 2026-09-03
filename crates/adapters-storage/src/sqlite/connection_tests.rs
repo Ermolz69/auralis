@@ -17,7 +17,16 @@ mod tests {
         .fetch_all(&pool)
         .await
         .unwrap();
-        assert_eq!(tables, ["artifacts", "jobs", "outbox_messages", "projects"]);
+        assert_eq!(
+            tables,
+            [
+                "artifacts",
+                "jobs",
+                "outbox_messages",
+                "projects",
+                "youtube_imports"
+            ]
+        );
 
         let project_columns: Vec<String> =
             sqlx::query_scalar("SELECT name FROM pragma_table_info('projects') ORDER BY cid")

@@ -1,9 +1,17 @@
 import { invoke } from '@/shared/api/tauri';
 import type { Project, CreateProjectResponse } from '../model/types';
 import type { SubtitleTrack } from '@/shared/api/contracts/subtitle';
+import { youtubeImportsChanged } from '../model/youtubeImportChanges';
 
 export async function createProjectFromYoutube(url: string, projectId?: string): Promise<Project> {
-  return invoke('create_project_from_youtube_cmd', { url, ...(projectId ? { projectId } : {}) });
+  try {
+    return await invoke('create_project_from_youtube_cmd', {
+      url,
+      ...(projectId ? { projectId } : {}),
+    });
+  } finally {
+    youtubeImportsChanged();
+  }
 }
 
 export async function startProjectMockPipeline(

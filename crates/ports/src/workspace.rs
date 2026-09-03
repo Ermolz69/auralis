@@ -21,6 +21,27 @@ pub struct WorkspaceCleanupReport {
 
 #[async_trait]
 pub trait TempWorkspacePort: Send + Sync {
+    async fn acquire_import_lease(
+        &self,
+        _project_id: &ProjectId,
+    ) -> Result<Box<dyn WorkspaceLease>, PortError> {
+        Err(PortError::Unsupported {
+            message: "Import leases are not supported".into(),
+        })
+    }
+
+    async fn cleanup_stale_allocations_excluding(
+        &self,
+        age: Duration,
+        protected: &[WorkspaceKey],
+    ) -> Result<WorkspaceCleanupReport, PortError> {
+        if !protected.is_empty() {
+            return Err(PortError::Unsupported {
+                message: "Protected workspace cleanup is not supported".into(),
+            });
+        }
+        self.cleanup_stale_allocations(age).await
+    }
     /// Creates a unique workspace allocation (directory) for a project/purpose.
     async fn create_allocation(
         &self,
@@ -58,3 +79,6 @@ pub trait TempWorkspacePort: Send + Sync {
         relative_file: &str,
     ) -> Result<PathBuf, PortError>;
 }
+
+pub trait WorkspaceLease: Send + Sync {}
+impl<T: Send + Sync> WorkspaceLease for T {}

@@ -79,6 +79,7 @@ test('all toolchain consumers use the same bootstrap after checkout', () => {
   const jobs = [
     ci.jobs.frontend,
     ci.jobs.rust,
+    ci.jobs['crash-recovery'],
     ci.jobs.docs,
     ci.jobs['quality-global'],
     ci.jobs.security,
@@ -135,6 +136,16 @@ test('dependency installation is ordered and frozen before browser installation'
     read('taskfiles/frontend.yml').tasks['setup:playwright:ci'].cmds[0],
     'pnpm --filter desktop exec playwright install --with-deps chromium',
   );
+});
+
+test('native crash recovery is required on Windows and macOS as well as the Linux Rust gate', () => {
+  const job = ci.jobs['crash-recovery'];
+  assert.deepEqual(job.strategy.matrix.os, ['windows-latest', 'macos-latest']);
+  assert.deepEqual(configured(job).with, { rust: 'true' });
+  assert.ok(job.steps.some((step) => step.run === 'task rs:test:storage'));
+  assert.ok(job.steps.some((step) => step.run === 'task rs:test:youtube'));
+  assert.ok(ci.jobs['ci-summary'].needs.includes('crash-recovery'));
+  assert.ok(job.steps.every((step) => !step['continue-on-error']));
 });
 
 test('Node version and Tauri dependency list have one shared definition', () => {

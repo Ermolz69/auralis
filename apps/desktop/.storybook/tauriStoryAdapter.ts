@@ -156,6 +156,8 @@ export function installTauriStoryAdapter() {
         return handleGetTranscript(readPayload<CommandMap['get_transcript_cmd']['args']>(payload));
       case 'list_projects_cmd':
         return handleListProjects();
+      case 'list_pending_youtube_imports_cmd':
+        return [];
       case 'get_project_cmd':
         return handleGetProject(readPayload<CommandMap['get_project_cmd']['args']>(payload));
       case 'create_project_cmd':

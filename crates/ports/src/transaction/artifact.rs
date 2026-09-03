@@ -118,6 +118,7 @@ impl CommitManagedSourceImport {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CommitStagedArtifactWrite {
     pub project_id: ProjectId,
     pub artifact: Artifact,

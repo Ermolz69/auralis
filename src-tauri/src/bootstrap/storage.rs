@@ -119,6 +119,11 @@ pub async fn setup_storage_at_paths(
 
     Ok((
         RuntimeServices {
+            youtube_imports: Arc::new(
+                adapters_storage::sqlite::youtube_import_journal::SqliteYoutubeImportJournal::new(
+                    pool.clone(),
+                ),
+            ),
             project_avatar_repo: Arc::new(
                 adapters_storage::sqlite::SqliteProjectAvatarRepository::new(pool.clone()),
             ),

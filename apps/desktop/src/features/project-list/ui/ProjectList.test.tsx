@@ -43,6 +43,7 @@ vi.mock('@/shared/ui/toast', () => ({
 }));
 
 vi.mock('@/shared/api/tauri', () => ({
+  invoke: vi.fn().mockResolvedValue([]),
   listen: vi.fn().mockResolvedValue(() => {}),
 }));
 

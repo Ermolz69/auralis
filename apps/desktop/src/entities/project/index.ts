@@ -6,5 +6,6 @@ export type { ProjectSelection } from './model/selection';
 export * from './model/useProjectContext';
 export * from './model/preferences';
 export * from './model/projectChanges';
+export * from './model/youtubeImportChanges';
 export * from './api/projectAvatarApi';
 export * from './model/projectAvatar';

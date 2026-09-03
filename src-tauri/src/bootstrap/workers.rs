@@ -1,4 +1,4 @@
-use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore};
+use super::services::RuntimeServices;
 use adapters_storage::sqlite::SqliteOutboxRepository;
 use application::worker::outbox::OutboxWorker;
 use std::sync::Arc;
@@ -23,22 +23,21 @@ impl OutboxWorkerHandle {
 
 pub fn spawn_outbox_worker(
     outbox_repo: SqliteOutboxRepository,
-    artifact_store: RuntimeArtifactStore,
-    artifact_index: RuntimeArtifactIndex,
-    uow: Arc<dyn ports::transaction::StorageUnitOfWork>,
+    services: &RuntimeServices,
     event_publisher: Arc<dyn ports::events::AppEventPublisher>,
     workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
     config: OutboxMaintenanceConfig,
 ) -> OutboxWorkerHandle {
     let worker = OutboxWorker::new(
         outbox_repo,
-        artifact_store,
-        artifact_index,
-        uow,
+        services.artifact_store.clone(),
+        services.artifact_index.clone(),
+        services.storage_uow.clone(),
         event_publisher,
         workspace_port,
         config,
-    );
+    )
+    .with_imports(services.youtube_imports.clone());
     let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
     let worker_task = tauri::async_runtime::handle()
         .inner()

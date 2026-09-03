@@ -14,6 +14,23 @@ pub struct StagedArtifact {
 
 #[async_trait]
 pub trait ArtifactStore: Send + Sync {
+    async fn verify_staging(&self, _key: &str, _size: u64) -> Result<bool, PortError> {
+        Err(PortError::Unsupported {
+            message: "Staging verification is not supported".into(),
+        })
+    }
+    async fn cleanup_stale_staging_excluding(
+        &self,
+        max_age: std::time::Duration,
+        protected: &[String],
+    ) -> Result<(), PortError> {
+        if !protected.is_empty() {
+            return Err(PortError::Unsupported {
+                message: "Protected staging cleanup is not supported".into(),
+            });
+        }
+        self.cleanup_stale_staging(max_age).await
+    }
     async fn stage_owned_temp_file(
         &self,
         project_id: &ProjectId,
@@ -63,6 +80,18 @@ impl<T> ArtifactStore for Arc<T>
 where
     T: ArtifactStore + ?Sized,
 {
+    async fn verify_staging(&self, key: &str, size: u64) -> Result<bool, PortError> {
+        (**self).verify_staging(key, size).await
+    }
+    async fn cleanup_stale_staging_excluding(
+        &self,
+        max_age: std::time::Duration,
+        protected: &[String],
+    ) -> Result<(), PortError> {
+        (**self)
+            .cleanup_stale_staging_excluding(max_age, protected)
+            .await
+    }
     async fn stage_owned_temp_file(
         &self,
         project_id: &ProjectId,

@@ -26,6 +26,46 @@ impl LocalTempWorkspace {
 
 #[async_trait]
 impl TempWorkspacePort for LocalTempWorkspace {
+    async fn acquire_import_lease(
+        &self,
+        project_id: &ProjectId,
+    ) -> Result<Box<dyn ports::workspace::WorkspaceLease>, PortError> {
+        let path = reject_symlinks_in_existing_key_path(
+            &self.workspace_root,
+            &format!(".import-locks/{project_id}.lock"),
+        )
+        .await?;
+        tokio::fs::create_dir_all(self.workspace_root.join(".import-locks"))
+            .await
+            .map_err(|e| PortError::Io {
+                message: e.to_string(),
+            })?;
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(path)
+            .map_err(|e| PortError::Io {
+                message: e.to_string(),
+            })?;
+        file.try_lock().map_err(|_| PortError::Conflict {
+            resource: "YouTube import".into(),
+            message: "Download is already running".into(),
+        })?;
+        Ok(Box::new(file))
+    }
+
+    async fn cleanup_stale_allocations_excluding(
+        &self,
+        age: Duration,
+        protected: &[WorkspaceKey],
+    ) -> Result<WorkspaceCleanupReport, PortError> {
+        TempWorkspaceJanitor::new(self.workspace_root.clone(), age)
+            .with_exclusions(protected)
+            .run()
+            .await
+    }
     async fn create_allocation(
         &self,
         project_id: &ProjectId,
@@ -57,6 +97,27 @@ impl TempWorkspacePort for LocalTempWorkspace {
     #[allow(clippy::collapsible_if)]
     async fn delete_allocation(&self, key: &WorkspaceKey) -> Result<(), PortError> {
         let path = self.resolve_key(key).await?;
+        let _lease = if key
+            .as_str()
+            .split('/')
+            .nth(2)
+            .is_some_and(|name| name.starts_with("youtube-resume_"))
+        {
+            let project_id = key
+                .as_str()
+                .split('/')
+                .nth(1)
+                .ok_or_else(|| PortError::Io {
+                    message: "Invalid allocation".into(),
+                })?
+                .parse()
+                .map_err(|_| PortError::Io {
+                    message: "Invalid allocation project".into(),
+                })?;
+            Some(self.acquire_import_lease(&project_id).await?)
+        } else {
+            None
+        };
 
         if path.exists() {
             if let Err(e) = tokio::fs::remove_dir_all(&path).await {
