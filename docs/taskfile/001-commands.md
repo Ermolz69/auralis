@@ -14,6 +14,8 @@ task ci
 
 Use Node.js 24 and the pnpm version pinned in the root `package.json`.
 CI uses `pnpm/setup` to install both tools consistently across workflows.
+`actions/setup-node` handles only dependency caching; it does not select a second
+Node version. This avoids the pnpm setup action's deprecated cache-pruning hook.
 
 ```bash
 task fe:install
