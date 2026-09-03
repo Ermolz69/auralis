@@ -29,6 +29,7 @@ tasks:
 
   fsd-boundaries:
     cmds:
+      - pnpm --filter desktop exec node --test eslint.config.test.mjs
       - pnpm --filter desktop fsd-boundaries
       - node tools/scripts/check-fsd-imports.mjs
 
@@ -46,5 +47,7 @@ tasks:
       - pnpm prettier --check "**/*.{ts,tsx,css,json,yaml,yml,md}"
 
   format-write:
+    vars:
+      FORMAT_TARGETS: '{{default "\"**/*.{ts,tsx,css,json,yaml,yml,md}\"" .CLI_ARGS}}'
     cmds:
-      - pnpm prettier --write "**/*.{ts,tsx,css,json,yaml,yml,md}"
+      - pnpm prettier --write {{.FORMAT_TARGETS}}

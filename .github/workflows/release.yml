@@ -11,7 +11,6 @@ permissions:
 env:
   CI: true
   NODE_VERSION: 24
-  PNPM_VERSION: 10
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -24,14 +23,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v1
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
+          runtime: node@${{ env.NODE_VERSION }}
+          install: false
+          cache: true
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Setup Rust
@@ -79,14 +76,12 @@ jobs:
             patchelf \
             xdg-utils
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Setup pnpm and Node
+        uses: pnpm/setup@v1
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
+          runtime: node@${{ env.NODE_VERSION }}
+          install: false
+          cache: true
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Setup Rust

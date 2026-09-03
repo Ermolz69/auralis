@@ -12,6 +12,11 @@ tasks:
     cmds:
       - pnpm install --frozen-lockfile
 
+  install-update:
+    desc: Install dependencies and refresh the lockfile after manifest changes
+    cmds:
+      - pnpm install --no-frozen-lockfile
+
   setup:playwright:
     cmds:
       - pnpm --filter desktop exec playwright install
