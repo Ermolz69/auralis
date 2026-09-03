@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { root, upstream, vendor, verifyTrees, patchManifest } from './package.mjs';
+import { controlOutput, verifyNegativeControl } from './control.mjs';
 
 assert.equal(process.platform, 'linux', 'The regression must execute against Linux GLib');
 const original = await upstream();
@@ -41,20 +42,13 @@ const negative = spawnSync(
     },
   },
 );
-const output = `${negative.stdout ?? ''}\n${negative.stderr ?? ''}`;
-console.log(output.slice(-8000));
-assert.ok(!negative.error, negative.error?.message);
-assert.match(output, /Running unittests/, 'A compile/setup failure is not evidence of the defect');
-assert.notEqual(
-  negative.status,
-  0,
-  'The unpatched control unexpectedly passed; investigate before accepting the backport',
-);
-assert.match(
-  output,
-  /signal: (6, SIGABRT|11, SIGSEGV)/,
-  'Expected the upstream invalid-pointer failure',
-);
+try {
+  const crash = verifyNegativeControl(negative);
+  console.log(`Expected unpatched negative control confirmed: ${crash}.`);
+} catch (error) {
+  console.error(controlOutput(negative).slice(-8000));
+  throw error;
+}
 console.log(
   'Unpatched GLib reproduces the optimized pointer crash; patched GLib passes the same test.',
 );

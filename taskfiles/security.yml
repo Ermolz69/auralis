@@ -25,7 +25,7 @@ tasks:
   glib:verify:
     desc: Verify the complete vendored package against the upstream archive and exact safety patch
     cmds:
-      - node --test tools/glib-backport/package.test.mjs
+      - node --test tools/glib-backport/package.test.mjs tools/glib-backport/control.test.mjs
       - node tools/glib-backport/package.mjs verify
 
   all:

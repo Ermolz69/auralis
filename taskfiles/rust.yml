@@ -23,7 +23,7 @@ tasks:
     desc: Run the patched and unpatched optimized GLib controls in Ubuntu WSL
     platforms: [windows]
     cmds:
-      - wsl -d Ubuntu-24.04 -- env RUSTUP_TOOLCHAIN=1.95.0 RUSTFLAGS=-Dwarnings CARGO_TARGET_DIR=/tmp/auralis-glib-backport-target node tools/glib-backport/reproduce.mjs
+      - wsl -d Ubuntu-24.04 -- env RUSTUP_TOOLCHAIN=1.95.0 RUSTFLAGS=-Dwarnings CARGO_TERM_COLOR=always CARGO_TARGET_DIR=/tmp/auralis-glib-backport-target node tools/glib-backport/reproduce.mjs
 
   setup:wsl:
     desc: Install Linux verification prerequisites in the local Ubuntu WSL distribution

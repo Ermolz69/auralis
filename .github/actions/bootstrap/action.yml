@@ -73,9 +73,9 @@ runs:
       if: inputs.rust == 'true'
       uses: Swatinem/rust-cache@v2
       with:
+        prefix-key: v1-rust
         workspaces: |
           . -> target
-          src-tauri -> src-tauri/target
         cache-on-failure: true
 
     - name: Setup Task

@@ -34,7 +34,7 @@ Dependency installation alone does not install browsers.
 
 The full `task check` and `task ci` suites also require the Rust security tools installed
 by `task sec:setup:rust`. Frontend-only and docs-only checks do not require these tools.
-See [dependency security](docs/ci/010-rust-security.md) for gate scope and current blockers.
+See [dependency security](docs/ci/010-rust-security.md) for gate scope and remediation status.
 
 Start development or run the full check suite:
 

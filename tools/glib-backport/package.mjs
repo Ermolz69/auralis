@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 export const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -41,6 +42,10 @@ async function files(directory, prefix = '') {
   return result.sort();
 }
 
+export async function createUpstreamDirectory() {
+  return mkdtemp(path.join(os.tmpdir(), 'auralis-glib-source-'));
+}
+
 export async function upstream() {
   const cache = path.join(root, 'target', 'glib-backport-upstream');
   await mkdir(cache, { recursive: true });
@@ -68,7 +73,7 @@ export async function upstream() {
   assert.ok(
     entries.every((name) => name.startsWith(`${packageName}/`) && !name.split('/').includes('..')),
   );
-  const extraction = await mkdtemp(path.join(cache, 'source-'));
+  const extraction = await createUpstreamDirectory();
   execFileSync('tar', ['-xzf', archivePath, '-C', extraction]);
   return path.join(extraction, packageName);
 }

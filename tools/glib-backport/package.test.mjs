@@ -3,9 +3,22 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { patchIterator, patchManifest, verifyTrees } from './package.mjs';
+import { createUpstreamDirectory, patchIterator, patchManifest, verifyTrees } from './package.mjs';
 
 const source = 'let p: *mut libc::c_char = std::ptr::null_mut();\n                &p,\n';
+
+test('upstream sources are isolated per invocation outside the Cargo target cache', async () => {
+  const directories = await Promise.all([createUpstreamDirectory(), createUpstreamDirectory()]);
+  for (const directory of directories) {
+    assert.equal(path.dirname(directory), path.resolve(os.tmpdir()));
+    assert.ok(path.basename(directory).startsWith('auralis-glib-source-'));
+  }
+  try {
+    assert.notEqual(directories[0], directories[1]);
+  } finally {
+    for (const directory of directories) await rm(directory, { recursive: true });
+  }
+});
 
 test('the patch requires the exact single upstream out-pointer operation', () => {
   assert.match(patchIterator(source), /let mut p:/);

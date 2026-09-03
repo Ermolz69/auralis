@@ -14,6 +14,12 @@ const actionPath = './.github/actions/bootstrap';
 const fullPath = './.github/workflows/full-checks.yml';
 const configured = (job) => job.steps.find((step) => step.uses === actionPath);
 
+test('Rust cache tracks the single workspace and excludes obsolete source-containing caches', () => {
+  const cache = bootstrap.runs.steps.find((step) => step.uses === 'Swatinem/rust-cache@v2');
+  assert.equal(cache.with.workspaces.trim(), '. -> target');
+  assert.equal(cache.with['prefix-key'], 'v1-rust');
+});
+
 function enabledSteps(options, os) {
   const enabled = (name) => options[name] === 'true';
   const conditions = {

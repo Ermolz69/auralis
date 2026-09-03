@@ -48,10 +48,23 @@ On Linux:
 - `task rs:build:release` builds the production native executable after frontend
   assets have been built with `task fe:build`.
 
+The control parser removes terminal color codes before inspecting Cargo output;
+fixture tests cover both plain and CI-colored logs and still reject compilation
+failures, a successful unpatched run, and unrelated signals. An expected pointer
+crash is reported as a successful negative-control assertion; unexpected output
+is printed in full up to the diagnostic limit and fails the gate.
+
+Each upstream extraction uses its own system temporary directory outside Cargo's
+`target` cache. Only the checksum-verified archive is cached under `target`.
+Keeping source manifests out of that build cache prevents its cleanup from
+misinterpreting upstream test directories as generated build output. The shared
+bootstrap caches the root workspace once and uses a new cache generation after
+this layout change, so old source-containing caches cannot be restored.
+
 For pre-commit Linux verification from Windows, `task rs:setup:wsl` prepares the
 existing `Ubuntu-24.04` distribution with native build libraries and Rust 1.95.0.
 It installs packages in that distribution, not on the Windows host.
-`task rs:glib:wsl` runs both controls. Other checks use
+`task rs:glib:wsl` runs both controls with CI-style colored Cargo output. Other checks use
 `task rs:exec:wsl -- <Cargo verification arguments>`, for example
 `task rs:exec:wsl -- test --locked --workspace` and
 `task rs:exec:wsl -- build --locked --release -p auralis-app`.
