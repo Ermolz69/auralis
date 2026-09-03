@@ -65,7 +65,7 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
         .map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
         })?;
-    if table_names != FINAL_TABLES || ![1, 2].contains(&schema_marker) {
+    if table_names != FINAL_TABLES || ![1, 2, 3].contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -84,8 +84,11 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
         "updated_at",
     ];
     let mut project_columns = FINAL_PROJECT_COLUMNS.to_vec();
-    if schema_marker == 2 {
+    if schema_marker >= 2 {
         project_columns.push("revision");
+    }
+    if schema_marker == 3 {
+        project_columns.push("avatar_data_url");
     }
     validate_columns(pool, "projects", &project_columns).await?;
 
@@ -150,7 +153,7 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
         return Err(non_final_schema_error("artifacts table"));
     }
 
-    if schema_marker == 1 {
+    if schema_marker < 3 {
         super::project_revision_migration::migrate(pool).await?;
     }
 

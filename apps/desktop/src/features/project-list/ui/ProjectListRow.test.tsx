@@ -4,6 +4,11 @@ import { cleanup, render, screen } from '@testing-library/react';
 import type { Project } from '@/entities/project';
 import { ProjectListRow } from './ProjectListRow';
 
+vi.mock('@/entities/project', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/project')>()),
+  getProjectAvatar: vi.fn().mockResolvedValue({ dataUrl: null, initialized: true }),
+}));
+
 const project: Project = {
   id: 'project-1',
   title: 'C:\\Users\\person\\Videos\\private-folder\\clip.mp4',

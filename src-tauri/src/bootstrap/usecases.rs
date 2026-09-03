@@ -26,6 +26,7 @@ use application::usecases::transcript::list_youtube_tracks::ListYoutubeSubtitleT
 use ports::job_scheduler::JobSchedulerPort;
 
 pub struct AppUseCases {
+    pub project_avatar: application::usecases::project::avatar::ProjectAvatarUseCase,
     pub list_project_artifacts: ListProjectArtifactsUseCase<RuntimeArtifactIndex>,
     pub resolve_artifact_path:
         ResolveArtifactPathUseCase<RuntimeArtifactIndex, RuntimeArtifactStore>,
@@ -59,6 +60,7 @@ pub fn setup_usecases(
     app: &AppHandle,
     projects_root: std::path::PathBuf,
     project_repo: RuntimeProjectRepository,
+    project_avatar_repo: Arc<dyn ports::project_avatar::ProjectAvatarRepository>,
     artifact_index: RuntimeArtifactIndex,
     artifact_store: RuntimeArtifactStore,
     storage_uow: RuntimeStorageUnitOfWork,
@@ -77,6 +79,9 @@ pub fn setup_usecases(
     let project_workspace = adapters_tauri::ProjectWorkspaceOpener::new(app.clone(), projects_root);
 
     let usecases = AppUseCases {
+        project_avatar: application::usecases::project::avatar::ProjectAvatarUseCase::new(
+            project_avatar_repo,
+        ),
         list_project_artifacts: ListProjectArtifactsUseCase::new(artifact_index.clone()),
         resolve_artifact_path: ResolveArtifactPathUseCase::new(
             artifact_index.clone(),

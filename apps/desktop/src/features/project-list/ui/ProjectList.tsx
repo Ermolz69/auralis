@@ -5,7 +5,8 @@ import {
   openProjectFolder,
   removeProjectPreferences,
   renameProject,
-  updateProjectPreferences,
+  projectUpdated,
+  projectRemoved,
   useProjectContext,
 } from '@/entities/project';
 import { listen } from '@/shared/api/tauri';
@@ -154,51 +155,44 @@ export const ProjectList = () => {
     setProjectToDelete(null);
 
     try {
-      await deleteProject(project.id);
+      let alreadyRemoved = false;
+      try {
+        await deleteProject(project.id);
+      } catch (error) {
+        const commandError = toCommandError(error);
+        if (commandError.code === 'NOT_FOUND') {
+          alreadyRemoved = true;
+        } else {
+          pendingFocusTargetRef.current = {
+            deletedIndex,
+            deletedProjectId: project.id,
+            reason: 'error',
+          };
+          if (commandError.code === 'CONFLICT' || commandError.code === 'BUSY') {
+            toast.warning(commandError.message);
+            await fetchProjects();
+          } else {
+            toast.error(commandError.message);
+          }
+          return;
+        }
+      }
 
+      fetchGenerationRef.current += 1;
       pendingFocusTargetRef.current = {
         deletedIndex,
         deletedProjectId: project.id,
         reason: 'success',
       };
-      setProjects((prev) => prev.filter((p) => p.id !== project.id));
-      removeProjectPreferences(project.id);
+      setProjects((prev) => prev.filter((item) => item.id !== project.id));
       clearProjectContextIfCurrent(project.id);
-
-      await fetchProjects();
-    } catch (error) {
-      const commandError = toCommandError(error);
-      const errorMessage = commandError.message;
-      const errorCode = commandError.code;
-
-      if (errorCode === 'NOT_FOUND') {
-        pendingFocusTargetRef.current = {
-          deletedIndex,
-          deletedProjectId: project.id,
-          reason: 'success',
-        };
-        setProjects((prev) => prev.filter((p) => p.id !== project.id));
-        removeProjectPreferences(project.id);
-        clearProjectContextIfCurrent(project.id);
-
-        await fetchProjects();
-        toast.success('Project was already removed');
-      } else if (errorCode === 'CONFLICT' || errorCode === 'BUSY') {
-        pendingFocusTargetRef.current = {
-          deletedIndex,
-          deletedProjectId: project.id,
-          reason: 'error',
-        };
-        toast.warning(errorMessage);
-        await fetchProjects();
-      } else {
-        pendingFocusTargetRef.current = {
-          deletedIndex,
-          deletedProjectId: project.id,
-          reason: 'error',
-        };
-        toast.error(errorMessage);
+      projectRemoved(project.id);
+      const cleanup = removeProjectPreferences(project.id);
+      if (!cleanup.persisted) {
+        toast.warning('Project removed, but local preferences could not be cleaned up.');
       }
+      await fetchProjects();
+      if (alreadyRemoved) toast.success('Project was already removed');
     } finally {
       finishProjectDeletion(project.id);
     }
@@ -217,15 +211,18 @@ export const ProjectList = () => {
   };
 
   const handleRename = async (project: Project, title: string) => {
+    let updated: Project;
     try {
-      const updated = await renameProject(project.id, title);
-      setProjects((items) => items.map((item) => (item.id === updated.id ? updated : item)));
-      if (currentProjectIdRef.current === updated.id) setProject(updated);
-      updateProjectPreferences(updated.id, {});
-      toast.success('Project renamed');
+      updated = await renameProject(project.id, title);
     } catch (error) {
       toast.error(toCommandError(error).message);
+      return;
     }
+    fetchGenerationRef.current += 1;
+    setProjects((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+    if (currentProjectIdRef.current === updated.id) setProject(updated);
+    projectUpdated(updated);
+    toast.success('Project renamed');
   };
 
   const handleOpenFolder = async (project: Project) => {

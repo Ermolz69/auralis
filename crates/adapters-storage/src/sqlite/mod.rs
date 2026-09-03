@@ -7,6 +7,7 @@ pub mod job_row;
 pub mod outbox_mapper;
 pub mod outbox_repository;
 pub mod outbox_row;
+pub mod project_avatar_repository;
 pub mod project_mapper;
 pub mod project_repository;
 mod project_revision_migration;
@@ -20,10 +21,13 @@ pub use artifact_index::SqliteArtifactIndex;
 pub use connection::connect_sqlite;
 pub use job_repository::SqliteJobRepository;
 pub use outbox_repository::SqliteOutboxRepository;
+pub use project_avatar_repository::SqliteProjectAvatarRepository;
 pub use project_repository::SqliteProjectRepository;
 pub use unit_of_work::SqliteStorageUnitOfWork;
 
 #[cfg(test)]
 mod connection_tests;
+#[cfg(test)]
+mod project_avatar_tests;
 #[cfg(test)]
 mod project_revision_migration_tests;

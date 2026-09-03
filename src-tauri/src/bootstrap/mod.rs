@@ -68,6 +68,7 @@ pub fn setup(
         app.handle(),
         app_paths.projects(),
         services.project_repo,
+        services.project_avatar_repo,
         services.artifact_index.clone(),
         services.artifact_store.clone(),
         services.storage_uow.clone(),

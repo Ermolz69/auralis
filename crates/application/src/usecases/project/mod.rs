@@ -1,3 +1,6 @@
+pub mod avatar;
+#[cfg(test)]
+mod avatar_tests;
 pub mod create;
 pub mod create_from_youtube;
 pub mod delete;

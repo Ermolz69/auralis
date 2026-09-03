@@ -22,6 +22,10 @@ pub(super) async fn migrate(pool: &SqlitePool) -> Result<(), PortError> {
         .await
         .map_err(|e| map_sqlite_error("migrate_project_revision", e))?;
     }
+    if version <= 2 {
+        sqlx::raw_sql("ALTER TABLE projects ADD COLUMN avatar_data_url TEXT CHECK (avatar_data_url IS NULL OR length(avatar_data_url) <= 1398200); PRAGMA user_version = 3;")
+            .execute(&mut *tx).await.map_err(|e| map_sqlite_error("migrate_project_avatar", e))?;
+    }
     tx.commit()
         .await
         .map_err(|e| map_sqlite_error("migrate_project_revision", e))

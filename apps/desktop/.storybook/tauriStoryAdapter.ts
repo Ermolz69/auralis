@@ -134,10 +134,22 @@ const storyJobs: Job[] = [
 ];
 
 export function installTauriStoryAdapter() {
+  const avatars = new Map<string, CommandMap['get_project_avatar_cmd']['result']>();
   mockIPC(async (cmd, payload) => {
     if (cmd === 'plugin:event|listen' || cmd === 'plugin:event|unlisten') return null;
 
     switch (cmd) {
+      case 'get_project_avatar_cmd': {
+        const { projectId } = readPayload<CommandMap['get_project_avatar_cmd']['args']>(payload);
+        return avatars.get(projectId) ?? { dataUrl: null, initialized: false };
+      }
+      case 'set_project_avatar_cmd': {
+        const { projectId, dataUrl, onlyIfMissing } =
+          readPayload<CommandMap['set_project_avatar_cmd']['args']>(payload);
+        if (!onlyIfMissing || !avatars.has(projectId))
+          avatars.set(projectId, { dataUrl, initialized: true });
+        return avatars.get(projectId);
+      }
       case 'health_check':
         return handleHealthCheck();
       case 'get_transcript_cmd':

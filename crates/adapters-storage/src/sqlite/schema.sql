@@ -1,4 +1,4 @@
-PRAGMA user_version = 2;
+PRAGMA user_version = 3;
 
 CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY NOT NULL,
@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS projects (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     revision INTEGER NOT NULL DEFAULT 1
-        CHECK (typeof(revision) = 'integer' AND revision >= 1)
+        CHECK (typeof(revision) = 'integer' AND revision >= 1),
+    avatar_data_url TEXT CHECK (avatar_data_url IS NULL OR length(avatar_data_url) <= 1398200)
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at);

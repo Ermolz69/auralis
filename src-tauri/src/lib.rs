@@ -80,6 +80,8 @@ pub fn run() -> Result<(), AppRunError> {
         })
         .invoke_handler(tauri::generate_handler![
             commands::project::create_project_cmd,
+            commands::project_avatar::get_project_avatar_cmd,
+            commands::project_avatar::set_project_avatar_cmd,
             commands::project::rename_project_cmd,
             commands::project::open_project_folder_cmd,
             commands::project::create_project_from_youtube_cmd,
