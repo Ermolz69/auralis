@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::ffprobe::dto::FfprobeOutput;
 use crate::ffprobe::error::FfprobeError;
 use domain::media::{
@@ -157,6 +156,8 @@ fn parse_codec_type(codec_type: Option<&str>) -> CodecType {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use crate::ffprobe::dto::{FfprobeFormat, FfprobeStream};
     use std::collections::HashMap;

@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::error::ApplicationError;
 use domain::media::{Artifact, ArtifactKind};
 use domain::project::ProjectId;
@@ -44,6 +43,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use domain::media::{ArtifactId, ArtifactLocation};
 

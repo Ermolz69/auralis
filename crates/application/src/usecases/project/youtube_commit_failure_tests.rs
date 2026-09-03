@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use super::{
     create_from_youtube::CreateProjectFromYoutubeRequest, youtube_atomic_support::Fixture,
 };
@@ -12,7 +14,7 @@ async fn a_commit_time_failure_rolls_back_new_and_existing_imports_and_allows_re
             Some(
                 fixture
                     .repo
-                    .create(Project::new("Keep".into()))
+                    .create(Project::new("Keep".into()).unwrap())
                     .await
                     .unwrap(),
             )

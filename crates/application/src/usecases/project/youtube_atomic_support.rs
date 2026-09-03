@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::{
     create_from_youtube::CreateProjectFromYoutubeUseCase, lifecycle::ProjectLifecycleLocks,
     youtube_storage_support::FileVideoSource,

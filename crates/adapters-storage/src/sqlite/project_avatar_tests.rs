@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::{
     SqliteProjectAvatarRepository, SqliteProjectRepository, SqliteStorageUnitOfWork, connect_sqlite,
 };
@@ -20,7 +22,7 @@ async fn avatar_survives_project_updates_and_database_reopen() {
     let pool = connect_sqlite(&path).await.unwrap();
     let projects = SqliteProjectRepository::new(pool.clone());
     let avatars = SqliteProjectAvatarRepository::new(pool.clone());
-    let project = Project::new("Original".into());
+    let project = Project::new("Original".into()).unwrap();
     projects.create(project.clone()).await.unwrap();
     assert!(!avatars.get(project.id()).await.unwrap().initialized);
     avatars
@@ -63,7 +65,7 @@ async fn stale_legacy_migration_cannot_replace_saved_or_removed_avatar() {
         .unwrap();
     let projects = SqliteProjectRepository::new(pool.clone());
     let avatars = SqliteProjectAvatarRepository::new(pool);
-    let project = Project::new("Project".into());
+    let project = Project::new("Project".into()).unwrap();
     projects.create(project.clone()).await.unwrap();
     let saved = avatars
         .set(project.id(), Some(avatar()), true)
@@ -96,7 +98,7 @@ async fn deletion_removes_avatar_and_late_writes_cannot_recreate_project() {
         .unwrap();
     let projects = SqliteProjectRepository::new(pool.clone());
     let avatars = SqliteProjectAvatarRepository::new(pool.clone());
-    let project = Project::new("Project".into());
+    let project = Project::new("Project".into()).unwrap();
     projects.create(project.clone()).await.unwrap();
     avatars
         .set(project.id(), Some(avatar()), false)
@@ -143,7 +145,7 @@ async fn aggregate_pipeline_commit_preserves_avatar_written_after_snapshot_read(
         .unwrap();
     let projects = SqliteProjectRepository::new(pool.clone());
     let avatars = SqliteProjectAvatarRepository::new(pool.clone());
-    let mut project = Project::new("Project".into());
+    let mut project = Project::new("Project".into()).unwrap();
     project
         .import_source(
             domain::media::MediaSource::YoutubeUrl {
@@ -183,7 +185,7 @@ async fn database_enforces_size_and_reports_corrupt_avatars_without_the_payload(
     let pool = connect_sqlite(&dir.path().join("avatars.sqlite"))
         .await
         .unwrap();
-    let project = Project::new("Project".into());
+    let project = Project::new("Project".into()).unwrap();
     SqliteProjectRepository::new(pool.clone())
         .create(project.clone())
         .await

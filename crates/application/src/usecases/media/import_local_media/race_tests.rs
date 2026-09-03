@@ -52,7 +52,7 @@ impl MediaProbePort for BarrierProbe {
 async fn test_delete_during_probe() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let project = Project::new("Delete during probe".to_string());
+    let project = Project::new("Delete during probe".to_string()).unwrap();
     let project_id = project.id().clone();
     repo.create(project).await.unwrap();
 
@@ -91,7 +91,7 @@ async fn test_delete_during_probe() {
 async fn test_delete_after_stage_before_revalidation() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let project = Project::new("Concurrent Delete".to_string());
+    let project = Project::new("Concurrent Delete".to_string()).unwrap();
     let project_id = project.id().clone();
     repo.create(project).await.unwrap();
 
@@ -125,7 +125,7 @@ async fn test_delete_after_stage_before_revalidation() {
 async fn test_delete_competing_with_db_phase_delete_wins() {
     let repo =
         InMemoryProjectRepository::new(Arc::new(std::sync::Mutex::new(InMemoryDatabase::new())));
-    let project = Project::new("Delete Wins".to_string());
+    let project = Project::new("Delete Wins".to_string()).unwrap();
     let project_id = project.id().clone();
     repo.create(project).await.unwrap();
 

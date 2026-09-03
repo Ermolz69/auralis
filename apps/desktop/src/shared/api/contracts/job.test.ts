@@ -3,6 +3,7 @@ import type { Job, JobEvent, JobStatus, JobStage } from './job';
 
 test('Job and JobEvent types match backend DTO shapes', () => {
   const mockJob = {
+    kind: 'dubbing',
     id: 'job-1',
     revision: 1,
     projectId: 'proj-1',

@@ -44,6 +44,7 @@ const project: Project = {
 };
 
 const runningJob: JobDto = {
+  kind: 'dubbing',
   id: 'job-running',
   revision: 2,
   projectId: project.id,
@@ -78,7 +79,7 @@ export const Wide1280: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Источник видео' })).toBeInTheDocument();
-    await expect(canvas.getByLabelText('Video source configuration')).toBeInTheDocument();
+    await canvas.findByLabelText('Video source configuration', {}, { timeout: 5_000 });
   },
 };
 
@@ -94,7 +95,7 @@ export const SubtitlesWide: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Субтитры' })).toBeInTheDocument();
-    await expect(canvas.findByText(/Русский \(ru\)/)).resolves.toBeInTheDocument();
+    await canvas.findByText(/Русский \(ru\)/, {}, { timeout: 5_000 });
   },
 };
 
@@ -152,7 +153,6 @@ function InitialProjectView({ step }: { step: 'source' | 'subtitles' }) {
 function createJobState(): JobStoreState {
   return {
     phase: 'ready',
-    scopeProjectId: project.id,
     jobs: { [runningJob.id]: runningJob },
     buffer: [],
     pendingRefetch: false,

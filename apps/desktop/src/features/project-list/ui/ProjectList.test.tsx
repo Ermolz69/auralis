@@ -6,12 +6,14 @@ import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-libra
 import { ProjectList } from './ProjectList';
 import {
   deleteProject,
+  openProjectFolder,
   listProjects,
   renameProject,
   subscribeProjectChanges,
   ProjectContext,
   useProjectContext,
 } from '@/entities/project';
+
 import { useNavigation } from '@/shared/router';
 import { toast } from '@/shared/ui/toast';
 import type { Project } from '@/entities/project';
@@ -24,6 +26,7 @@ vi.mock('@/entities/project', async (importOriginal) => {
     renameProject: vi.fn(),
     listProjects: vi.fn(),
     getProjectAvatar: vi.fn().mockResolvedValue({ dataUrl: null, initialized: true }),
+    openProjectFolder: vi.fn(),
   };
 });
 
@@ -157,6 +160,7 @@ describe('ProjectList', () => {
       testProjects = testProjects.filter((p) => p.id !== id);
       return null;
     });
+    (openProjectFolder as Mock).mockResolvedValue(undefined);
   });
 
   it.each(['QuotaExceededError', 'SecurityError'])(
@@ -250,6 +254,29 @@ describe('ProjectList', () => {
     const openBtn = screen.getByRole('button', { name: /^Open Test Project/ });
     const deleteBtn = screen.getByRole('button', { name: 'Delete Test Project' });
     expect(openBtn.parentElement).toBe(deleteBtn.parentElement?.parentElement);
+  });
+
+  it.each([
+    ['NOT_FOUND', 'Project not found'],
+    ['IO', 'A file system operation failed'],
+    ['INTERNAL', 'An unexpected internal error occurred'],
+  ])('shows an error toast when opening a project folder fails with %s', async (code, message) => {
+    (openProjectFolder as Mock).mockRejectedValueOnce({ code, message });
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+
+    const openProject = screen.getByRole('button', { name: /^Open Test Project/ });
+    fireEvent.contextMenu(openProject);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Открыть папку проекта' }));
+
+    await waitFor(() => {
+      expect(openProjectFolder).toHaveBeenCalledWith('p-1');
+      expect(toast.error).toHaveBeenCalledWith(message);
+    });
   });
 
   it('Empty title uses Untitled Project', async () => {

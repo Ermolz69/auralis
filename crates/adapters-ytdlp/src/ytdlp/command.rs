@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;

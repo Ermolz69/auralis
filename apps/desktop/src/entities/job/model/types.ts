@@ -1,3 +1,6 @@
+import type { JobKind } from '@/shared/api/contracts/job';
+export type { JobKind } from '@/shared/api/contracts/job';
+
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type JobLifecycleEventKindDto =
   'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
@@ -12,6 +15,7 @@ export type JobProgressDto = {
 
 export type JobDto = {
   id: string;
+  kind: JobKind;
   revision: number;
   projectId: string | null;
   title: string;
@@ -34,7 +38,6 @@ export type JobEventDto = {
 
 export type JobStoreState = {
   phase: 'idle' | 'initializing' | 'synchronizing' | 'ready' | 'stale';
-  scopeProjectId: string | null;
   jobs: Record<string, JobDto>;
   buffer: JobEventDto[];
   pendingRefetch: boolean;

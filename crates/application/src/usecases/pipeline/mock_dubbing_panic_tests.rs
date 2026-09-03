@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::*;
 use crate::test_utils::{MockArtifactStore, MockStorageUnitOfWork};
 use adapters_storage::{local::LocalTempWorkspace, memory::InMemoryProjectRepository};
@@ -123,6 +125,7 @@ async fn spawned_runner_panic_is_durably_terminalized() {
 
 fn scheduled(job_id: &JobId) -> ScheduledJob {
     ScheduledJob {
+        kind: domain::job::JobKind::Dubbing,
         id: job_id.clone(),
         revision: 1,
         project_id: None,

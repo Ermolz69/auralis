@@ -111,6 +111,7 @@ impl ports::job_query::JobQueryPort for InMemoryJobRepository {
             let snap = job.to_snapshot();
             dtos.push(ports::job_scheduler::ScheduledJob {
                 id: snap.id,
+                kind: snap.kind,
                 revision: snap.revision,
                 project_id: Some(snap.project_id),
                 title: snap.title,

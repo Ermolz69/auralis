@@ -3,7 +3,7 @@ import {
   formatJobStatus,
   getJobStatusTone,
   isActiveJobStatus,
-  useJobContext,
+  useProjectJobs,
 } from '@/entities/job';
 import { ProjectContext } from '@/entities/project';
 import { formatProjectTitle } from '@/entities/media';
@@ -11,11 +11,11 @@ import { Badge } from '@/shared/ui/badge';
 import { Progress } from '@/shared/ui/progress';
 
 export function CurrentStepSummary() {
-  const { activeJobs, phase, pendingRefetch, scopeProjectId } = useJobContext();
   const project = useContext(ProjectContext)?.project ?? null;
+  const { activeJobs, phase, pendingRefetch } = useProjectJobs(project?.id ?? null);
   const activeJob = activeJobs.find((job) => isActiveJobStatus(job.status));
 
-  if (!scopeProjectId) return null;
+  if (!project) return null;
 
   if (!activeJob) {
     return (

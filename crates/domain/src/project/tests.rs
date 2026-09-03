@@ -7,7 +7,7 @@ use crate::project::status::{ProjectStatus, TerminalTransitionResult};
 
 #[test]
 fn project_revision_roundtrips_and_cannot_overflow() {
-    let mut project = Project::new("Revision".into());
+    let mut project = Project::new("Revision".into()).unwrap();
     assert_eq!(project.revision(), 1);
     project.advance_revision().unwrap();
     assert_eq!(project.revision(), 2);
@@ -28,7 +28,7 @@ fn project_revision_roundtrips_and_cannot_overflow() {
 
 #[test]
 fn test_project_transitions() {
-    let mut project = Project::new("Test Video".to_string());
+    let mut project = Project::new("Test Video".to_string()).unwrap();
     assert_eq!(project.status(), &ProjectStatus::Draft);
 
     // Cannot start processing from Draft
@@ -81,7 +81,7 @@ fn test_project_transitions() {
 
 #[test]
 fn test_project_fail_and_retry() {
-    let mut project = Project::new("Retry Test".to_string());
+    let mut project = Project::new("Retry Test".to_string()).unwrap();
     let source = MediaSource::RemoteUrl {
         url: "https://example.com/video.mp4".to_string(),
     };
@@ -119,16 +119,21 @@ fn test_project_fail_and_retry() {
 
 #[test]
 fn test_from_snapshot_rejects_empty_title() {
-    let mut snapshot = Project::new("Valid Title".to_string()).to_snapshot();
-    snapshot.title = "   ".to_string(); // Empty/whitespace title
-
-    let result = Project::from_snapshot(snapshot);
-    assert!(matches!(result, Err(DomainError::ValidationError(_))));
+    let mut snapshot = Project::new("Valid Title".to_string())
+        .unwrap()
+        .to_snapshot();
+    for title in ["", "   ", "\t\r\n", "\u{a0}\u{2003}\u{3000}"] {
+        snapshot.title = title.to_string();
+        let result = Project::from_snapshot(snapshot.clone());
+        assert!(matches!(result, Err(DomainError::ValidationError(_))));
+    }
 }
 
 #[test]
 fn test_from_snapshot_rejects_empty_language_code() {
-    let mut snapshot = Project::new("Valid Title".to_string()).to_snapshot();
+    let mut snapshot = Project::new("Valid Title".to_string())
+        .unwrap()
+        .to_snapshot();
     snapshot.source_language = Some(LanguageCode("   ".to_string()));
 
     let result = Project::from_snapshot(snapshot);
@@ -137,7 +142,9 @@ fn test_from_snapshot_rejects_empty_language_code() {
 
 #[test]
 fn test_from_snapshot_rejects_active_status_without_source() {
-    let mut snapshot = Project::new("Valid Title".to_string()).to_snapshot();
+    let mut snapshot = Project::new("Valid Title".to_string())
+        .unwrap()
+        .to_snapshot();
     snapshot.source = None;
 
     // Try states that require a source

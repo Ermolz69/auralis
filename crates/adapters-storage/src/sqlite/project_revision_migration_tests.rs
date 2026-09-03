@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::{
     SqliteProjectRepository, connect_sqlite,
     connection::{SCHEMA, create_pool},
@@ -12,7 +14,7 @@ async fn version_two_upgrade_preserves_revision_and_starts_avatar_uninitialized(
     let old_schema = SCHEMA.replace("\r\n", "\n").replace("PRAGMA user_version = 3;", "PRAGMA user_version = 2;")
         .replace(",\n    avatar_data_url TEXT CHECK (avatar_data_url IS NULL OR length(avatar_data_url) <= 1398200)", "");
     sqlx::raw_sql(&old_schema).execute(&pool).await.unwrap();
-    let project = domain::project::Project::new("Preserved".into());
+    let project = domain::project::Project::new("Preserved".into()).unwrap();
     SqliteProjectRepository::new(pool.clone())
         .create(project.clone())
         .await
@@ -77,7 +79,7 @@ async fn version_one_upgrade_preserves_project_data_and_is_idempotent() {
         .replace(",\n    avatar_data_url TEXT CHECK (avatar_data_url IS NULL OR length(avatar_data_url) <= 1398200)", "")
         .replace(",\n    revision INTEGER NOT NULL DEFAULT 1\n        CHECK (typeof(revision) = 'integer' AND revision >= 1)", "");
     sqlx::raw_sql(&old_schema).execute(&pool).await.unwrap();
-    let project = domain::project::Project::new("Preserved title".into());
+    let project = domain::project::Project::new("Preserved title".into()).unwrap();
     sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, ?, 'Draft', ?, ?)")
         .bind(project.id().to_string()).bind(project.title()).bind(project.created_at().to_rfc3339()).bind(project.updated_at().to_rfc3339())
         .execute(&pool).await.unwrap();

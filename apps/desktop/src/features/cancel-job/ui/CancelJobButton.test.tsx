@@ -52,6 +52,7 @@ describe('CancelJobButton', () => {
     );
 
     resolveCancel({
+      kind: 'dubbing',
       id: 'job-1',
       revision: 1,
       projectId: 'project-1',
@@ -96,6 +97,7 @@ describe('CancelJobButton', () => {
     expect(cancelJob).toHaveBeenCalledTimes(1);
 
     resolveCancel({
+      kind: 'dubbing',
       id: 'job-1',
       revision: 1,
       projectId: 'project-1',

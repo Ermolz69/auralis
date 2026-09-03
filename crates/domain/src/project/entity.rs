@@ -1,10 +1,10 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::error::DomainError;
 use crate::job::{JobId, TerminalOutcome};
 use crate::media::{MediaMetadata, MediaSource};
 use crate::project::id::ProjectId;
 use crate::project::snapshot;
 use crate::project::status::{ProjectStatus, TerminalTransitionResult};
+use crate::project::title::ProjectTitle;
 use crate::transcript::Transcript;
 use chrono::{DateTime, Utc};
 
@@ -15,7 +15,7 @@ pub struct LanguageCode(pub String);
 pub struct Project {
     id: ProjectId,
     revision: u64,
-    title: String,
+    title: ProjectTitle,
     status: ProjectStatus,
     source: Option<MediaSource>,
     metadata: Option<MediaMetadata>,
@@ -33,7 +33,7 @@ impl Project {
         snapshot::ProjectSnapshot {
             id: self.id.clone(),
             revision: self.revision,
-            title: self.title.clone(),
+            title: self.title.as_str().to_string(),
             status: self.status.clone(),
             source: self.source.clone(),
             metadata: self.metadata.clone(),
@@ -53,11 +53,7 @@ impl Project {
                 "Project revision is out of bounds".to_string(),
             ));
         }
-        if snapshot.title.trim().is_empty() {
-            return Err(DomainError::ValidationError(
-                "Project title cannot be empty".to_string(),
-            ));
-        }
+        let title = ProjectTitle::new(snapshot.title)?;
 
         if snapshot
             .source_language
@@ -97,7 +93,7 @@ impl Project {
         Ok(Self {
             id: snapshot.id,
             revision: snapshot.revision,
-            title: snapshot.title,
+            title,
             status: snapshot.status,
             source: snapshot.source,
             metadata: snapshot.metadata,
@@ -111,9 +107,10 @@ impl Project {
         })
     }
 
-    pub fn new(title: String) -> Self {
+    pub fn new(title: String) -> Result<Self, DomainError> {
+        let title = ProjectTitle::new(title)?;
         let now = Utc::now();
-        Self {
+        Ok(Self {
             id: ProjectId::new(),
             revision: 1,
             title,
@@ -127,7 +124,7 @@ impl Project {
             last_terminal_job_id: None,
             created_at: now,
             updated_at: now,
-        }
+        })
     }
 
     // Getters
@@ -147,7 +144,7 @@ impl Project {
         Ok(())
     }
     pub fn title(&self) -> &str {
-        &self.title
+        self.title.as_str()
     }
     pub fn status(&self) -> &ProjectStatus {
         &self.status
@@ -182,13 +179,7 @@ impl Project {
 
     // Setters for basic info
     pub fn set_title(&mut self, title: String) -> Result<(), DomainError> {
-        let title = title.trim();
-        if title.is_empty() {
-            return Err(DomainError::ValidationError(
-                "Project title cannot be empty".to_string(),
-            ));
-        }
-        self.title = title.to_string();
+        self.title = ProjectTitle::new(title)?;
         self.updated_at = Utc::now();
         Ok(())
     }

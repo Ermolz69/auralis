@@ -3,6 +3,8 @@ pub mod avatar;
 mod avatar_tests;
 pub mod create;
 pub mod create_from_youtube;
+#[cfg(test)]
+mod create_tests;
 pub mod delete;
 pub mod get;
 pub mod import_source;

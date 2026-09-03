@@ -14,7 +14,7 @@ async fn validates_avatar_before_persistence_and_supports_read_clear_and_migrati
     let pool = connect_sqlite(dir.path().join("avatars.sqlite"))
         .await
         .unwrap();
-    let project = Project::new("Project".into());
+    let project = Project::new("Project".into()).unwrap();
     SqliteProjectRepository::new(pool.clone())
         .create(project.clone())
         .await

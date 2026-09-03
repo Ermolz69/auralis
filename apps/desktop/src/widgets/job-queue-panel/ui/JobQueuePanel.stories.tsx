@@ -5,6 +5,7 @@ import { ProjectContext, type Project } from '@/entities/project';
 import { JobQueuePanel } from './JobQueuePanel';
 
 const runningJob: JobDto = {
+  kind: 'dubbing',
   id: 'job-running',
   revision: 3,
   projectId: 'project-1',
@@ -70,6 +71,7 @@ const terminalJobs: JobDto[] = [
 ];
 
 const restartRecoveredJob: JobDto = {
+  kind: 'dubbing',
   ...runningJob,
   id: 'job-recovered-after-restart',
   title: 'Subtitle import',
@@ -154,7 +156,6 @@ function createJobState(
 ): JobStoreState {
   return {
     phase: overrides.phase ?? 'ready',
-    scopeProjectId: 'project-1',
     jobs: Object.fromEntries(jobs.map((job) => [job.id, job])),
     buffer: [],
     pendingRefetch: overrides.pendingRefetch ?? false,

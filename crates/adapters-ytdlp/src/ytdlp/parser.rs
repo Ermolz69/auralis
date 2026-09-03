@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use domain::media::{MediaMetadata, VideoStreamMetadata};
 
 use super::dto::YtDlpOutput;
@@ -148,6 +147,8 @@ pub fn parse_subtitle_tracks(value: &serde_json::Value) -> Vec<domain::media::Su
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
 
     #[test]

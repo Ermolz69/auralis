@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import {
   Dialog,
   DialogHeader,
@@ -60,7 +60,7 @@ export const BasicDialog: Story = {
     );
     await expect(canvas.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
-    await expect(dialog).not.toBeVisible();
+    await waitFor(() => expect(dialog).not.toBeVisible());
   },
 };
 

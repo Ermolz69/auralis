@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::youtube_atomic_support::Fixture;
 use crate::usecases::media::download_youtube_video::{
     DownloadYoutubeVideoRequest, DownloadYoutubeVideoUseCase,
@@ -61,7 +63,7 @@ async fn transaction_rechecks_revision_status_and_active_job_even_after_applicat
         let fixture = Fixture::new().await;
         let original = fixture
             .repo
-            .create(Project::new("Original".into()))
+            .create(Project::new("Original".into()).unwrap())
             .await
             .unwrap();
         let command = prepare(&fixture, original.clone(), true).await;
@@ -117,7 +119,7 @@ async fn a_new_project_id_collision_does_not_overwrite_the_existing_project() {
     let fixture = Fixture::new().await;
     let original = fixture
         .repo
-        .create(Project::new("Original".into()))
+        .create(Project::new("Original".into()).unwrap())
         .await
         .unwrap();
     let command = prepare(&fixture, original.clone(), false).await;
@@ -147,7 +149,7 @@ async fn atomic_command_rejects_inconsistent_ownership_and_artifact_state_before
         "location",
         "revision",
     ] {
-        let mut command = prepare(&fixture, Project::new("Candidate".into()), false).await;
+        let mut command = prepare(&fixture, Project::new("Candidate".into()).unwrap(), false).await;
         match invalid {
             "workspace" => {
                 command.write.temp_workspace_key =
@@ -158,7 +160,7 @@ async fn atomic_command_rejects_inconsistent_ownership_and_artifact_state_before
                 command.write.artifact.kind = domain::media::ArtifactKind::SourceVideo
             }
             "project" => command.write.project_id = domain::project::ProjectId::new(),
-            "source" => command.project = Project::new("Draft".into()),
+            "source" => command.project = Project::new("Draft".into()).unwrap(),
             "staging" => command.write.staging_key = "../escape".into(),
             "location" => {
                 command.write.artifact.location =

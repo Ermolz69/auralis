@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use std::sync::{Arc, Mutex};
 
 use adapters_storage::local::{LocalArtifactStore, LocalTempWorkspace};

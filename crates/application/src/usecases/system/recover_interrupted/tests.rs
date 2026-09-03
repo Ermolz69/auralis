@@ -97,7 +97,7 @@ impl RecoveryStorage for MockRecoveryRepo {
 }
 
 fn make_project_processing(id: &str, active_job_id: Option<domain::job::JobId>) -> Project {
-    let p = Project::new(id.to_string());
+    let p = Project::new(id.to_string()).unwrap();
     let mut snap = p.to_snapshot();
     snap.status = ProjectStatus::Processing;
     snap.active_job_id = active_job_id;

@@ -13,7 +13,7 @@ use ports::{error::PortError, project_update::ProjectUpdate, repository::Project
 use std::sync::{Arc, Mutex};
 
 async fn repository_contract(repo: &dyn ProjectRepository) {
-    let mut project = Project::new("Original".into());
+    let mut project = Project::new("Original".into()).unwrap();
     project.set_languages(
         Some(LanguageCode("en".into())),
         Some(LanguageCode("ru".into())),
@@ -30,8 +30,23 @@ async fn repository_contract(repo: &dyn ProjectRepository) {
         .unwrap();
     assert_eq!(project.revision(), 1);
     let timestamp = project.updated_at();
+    for title in ["", " \t\n", "\u{a0}\u{2003}"] {
+        assert!(matches!(
+            repo.update(
+                project.id(),
+                project.revision(),
+                ProjectUpdate::Rename {
+                    title: title.into()
+                },
+                timestamp,
+            )
+            .await,
+            Err(PortError::Conflict { .. })
+        ));
+        assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), project);
+    }
     let rename = ProjectUpdate::Rename {
-        title: "Renamed".into(),
+        title: " \tRenamed\u{a0}".into(),
     };
     let (first, second) = tokio::join!(
         repo.update(project.id(), 1, rename.clone(), timestamp),
@@ -106,7 +121,9 @@ async fn repository_contract(repo: &dyn ProjectRepository) {
     }
     assert!(repo.get(project.id()).await.unwrap().is_none());
 
-    let mut snapshot = Project::new("Maximum revision".into()).to_snapshot();
+    let mut snapshot = Project::new("Maximum revision".into())
+        .unwrap()
+        .to_snapshot();
     snapshot.revision = i64::MAX as u64;
     let maximum = repo
         .create(Project::from_snapshot(snapshot).unwrap())

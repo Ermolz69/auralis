@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::LocalArtifactStore;
 use domain::media::{ArtifactKind, ArtifactLocation};
 use domain::project::ProjectId;

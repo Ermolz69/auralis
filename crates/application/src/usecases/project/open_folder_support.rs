@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use super::{
     delete::DeleteProjectUseCase, lifecycle::ProjectLifecycleLocks,
     youtube_storage_support::UnusedEventPublisher,
@@ -165,7 +167,10 @@ impl Fixture {
         let root = tempfile::tempdir().unwrap();
         let pool = connect_sqlite(root.path().join("test.db")).await.unwrap();
         let repo = Arc::new(SqliteProjectRepository::new(pool.clone()));
-        let project = repo.create(Project::new("Workspace".into())).await.unwrap();
+        let project = repo
+            .create(Project::new("Workspace".into()).unwrap())
+            .await
+            .unwrap();
         Self {
             root,
             pool,

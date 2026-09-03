@@ -4,6 +4,7 @@ import type { JobDto, JobEventDto, JobStoreState } from '../types';
 
 describe('jobStoreReducer', () => {
   const createJob = (id: string, revision: number, projectId: string | null = 'p1'): JobDto => ({
+    kind: 'dubbing',
     id,
     revision,
     projectId,
@@ -27,27 +28,8 @@ describe('jobStoreReducer', () => {
     job,
   });
 
-  it('generation-starting actions (SWITCH_PROJECT) reject equal or smaller generation', () => {
-    const state = initializeStore('p1');
-    state.generation = 5;
-
-    const action = { type: 'SWITCH_PROJECT' as const, projectId: 'p2', generation: 5 };
-    const nextState = jobStoreReducer(state, action);
-    expect(nextState).toBe(state); // ignored
-
-    const actionOlder = { type: 'SWITCH_PROJECT' as const, projectId: 'p2', generation: 4 };
-    const nextStateOlder = jobStoreReducer(state, actionOlder);
-    expect(nextStateOlder).toBe(state); // ignored
-
-    const actionNewer = { type: 'SWITCH_PROJECT' as const, projectId: 'p2', generation: 6 };
-    const nextStateNewer = jobStoreReducer(state, actionNewer);
-    expect(nextStateNewer.generation).toBe(6);
-    expect(nextStateNewer.scopeProjectId).toBe('p2');
-    expect(nextStateNewer.phase).toBe('idle');
-  });
-
   it('generation-starting actions (INITIALIZATION_CYCLE) reject equal or smaller generation', () => {
-    const state = initializeStore('p1');
+    const state = initializeStore();
     state.generation = 5;
 
     const action = { type: 'INITIALIZATION_CYCLE' as const, generation: 5 };
@@ -63,7 +45,6 @@ describe('jobStoreReducer', () => {
   it('INITIALIZATION_CYCLE clears buffer and pendingRefetch but preserves existing jobs', () => {
     const state: JobStoreState = {
       phase: 'ready',
-      scopeProjectId: 'p1',
       jobs: {
         j1: createJob('j1', 1),
       },
@@ -81,32 +62,9 @@ describe('jobStoreReducer', () => {
     expect(nextState.jobs).toEqual(state.jobs); // preserved!
   });
 
-  it('SWITCH_PROJECT clears jobs, buffer, and pendingRefetch', () => {
-    const state: JobStoreState = {
-      phase: 'ready',
-      scopeProjectId: 'p1',
-      jobs: {
-        j1: createJob('j1', 1),
-      },
-      buffer: [createEvent(createJob('j2', 1))],
-      pendingRefetch: true,
-      generation: 5,
-    };
-
-    const action = { type: 'SWITCH_PROJECT' as const, projectId: 'p2', generation: 6 };
-    const nextState = jobStoreReducer(state, action);
-    expect(nextState.phase).toBe('idle');
-    expect(nextState.scopeProjectId).toBe('p2');
-    expect(nextState.generation).toBe(6);
-    expect(nextState.jobs).toEqual({});
-    expect(nextState.buffer).toEqual([]);
-    expect(nextState.pendingRefetch).toBe(false);
-  });
-
   it('cycle-scoped actions check and enforce exact matching generation', () => {
     const state: JobStoreState = {
       phase: 'ready',
-      scopeProjectId: 'p1',
       jobs: {},
       buffer: [],
       pendingRefetch: false,
@@ -136,7 +94,6 @@ describe('jobStoreReducer', () => {
     const jobV2 = createJob('j1', 2);
     const state: JobStoreState = {
       phase: 'ready',
-      scopeProjectId: 'p1',
       jobs: {
         j1: jobV2,
       },
@@ -168,7 +125,6 @@ describe('jobStoreReducer', () => {
     const jobV1 = createJob('j1', 1);
     const state: JobStoreState = {
       phase: 'ready',
-      scopeProjectId: 'p1',
       jobs: {
         j1: jobV1,
       },
@@ -190,7 +146,6 @@ describe('jobStoreReducer', () => {
     const jobV1 = createJob('j1', 1);
     const state: JobStoreState = {
       phase: 'ready',
-      scopeProjectId: 'p1',
       jobs: {
         j1: jobV1,
       },
@@ -213,7 +168,6 @@ describe('jobStoreReducer', () => {
   it('buffer overflow clears buffer, sets state to stale, and sets pendingRefetch', () => {
     const state: JobStoreState = {
       phase: 'synchronizing',
-      scopeProjectId: 'p1',
       jobs: {},
       buffer: Array.from({ length: 256 }, (_, i) => createEvent(createJob(`j${i}`, 1))),
       pendingRefetch: false,
@@ -229,10 +183,45 @@ describe('jobStoreReducer', () => {
     expect(nextState.pendingRefetch).toBe(true);
   });
 
+  it('keeps newer known revisions when a background snapshot is older', () => {
+    const latest = createJob('j1', 5);
+    const state: JobStoreState = {
+      ...initializeStore(),
+      phase: 'ready',
+      jobs: { j1: latest },
+    };
+    const fetching = jobStoreReducer(state, { type: 'FETCH_STARTED', generation: 0 });
+    expect(fetching.phase).toBe('synchronizing');
+    const next = jobStoreReducer(fetching, {
+      type: 'SNAPSHOT_RESOLVED',
+      generation: 0,
+      jobs: [createJob('j1', 4)],
+    });
+    expect(next.jobs.j1).toBe(latest);
+  });
+
+  it('replays events for other projects even when one buffered job has a revision gap', () => {
+    const other = createJob('j2', 2, 'p2');
+    const unattached = createJob('j3', 1, null);
+    const state: JobStoreState = {
+      ...initializeStore(),
+      phase: 'synchronizing',
+      buffer: [createEvent(createJob('j1', 4)), createEvent(other), createEvent(unattached)],
+    };
+    const next = jobStoreReducer(state, {
+      type: 'SNAPSHOT_RESOLVED',
+      generation: 0,
+      jobs: [createJob('j1', 1), createJob('j2', 1, 'p2')],
+    });
+    expect(next.pendingRefetch).toBe(true);
+    expect(next.phase).toBe('stale');
+    expect(next.jobs.j2).toBe(other);
+    expect(next.jobs.j3).toBe(unattached);
+  });
+
   it('stale-generation event does not cause buffer overflow of a new cycle', () => {
     const state: JobStoreState = {
       phase: 'synchronizing',
-      scopeProjectId: 'p1',
       jobs: {},
       buffer: Array.from({ length: 256 }, (_, i) => createEvent(createJob(`j${i}`, 1))),
       pendingRefetch: false,

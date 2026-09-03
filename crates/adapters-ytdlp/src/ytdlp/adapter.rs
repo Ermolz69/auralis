@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use async_trait::async_trait;
 use std::path::PathBuf;
 
@@ -229,6 +228,8 @@ fn sanitize_filename(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
     use super::*;
     use domain::media::ArtifactKind;
     use std::env;

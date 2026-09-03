@@ -1,4 +1,3 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
 use domain::media::MediaSource;
 use domain::project::{Project, ProjectId};
 use ports::project_update::ProjectUpdate;
@@ -64,6 +63,8 @@ impl<R: ProjectRepository, V: VideoSourcePort> ImportVideoSourceUseCase<R, V> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
     use adapters_storage::memory::InMemoryProjectRepository;
     use adapters_ytdlp::mock::MockVideoSourceAdapter;
@@ -75,7 +76,7 @@ mod tests {
             adapters_storage::memory::InMemoryDatabase::new(),
         )));
         // Create project first
-        let project = Project::new("Test Project".to_string());
+        let project = Project::new("Test Project".to_string()).unwrap();
         let project_id = project.id().clone();
         repo.create(project).await.unwrap();
 
@@ -124,7 +125,7 @@ mod tests {
         )));
         let port = MockVideoSourceAdapter::failing();
 
-        let project = Project::new("Test".to_string());
+        let project = Project::new("Test".to_string()).unwrap();
         repo.create(project.clone()).await.unwrap();
 
         let use_case = ImportVideoSourceUseCase::new(repo.clone(), port);
