@@ -12,6 +12,14 @@ It strictly forbids mixing CI (for developers) and CD (publishing for users). It
 
 Only on GitHub Actions (`release.yml`) and strictly only upon pushing a git tag (`app-v*`).
 
+## Shared check environment
+
+Before building release artifacts, `release.yml` calls `.github/workflows/full-checks.yml`. This reusable workflow checks out the source and uses `.github/actions/bootstrap/action.yml` to install Node/pnpm, Rust, Task, frozen frontend dependencies, locked Rust dependencies, Linux Tauri/GTK libraries, and Playwright Chromium with its system dependencies. It then runs `task check`.
+
+CI also calls this full-check workflow for changes to CI, release, or repository tooling configuration. These PR checks have read-only repository permissions and do not create tags or publish releases. Write permission is scoped to the release build job, which starts only after the full check succeeds.
+
+Release and manual desktop build jobs use the same bootstrap with Node and Rust enabled but skip browser installation. Linux native packages are installed only on Linux runners; Windows and macOS retain their platform-specific build behavior.
+
 ## How to fix the error
 
 If the release pipeline fails:

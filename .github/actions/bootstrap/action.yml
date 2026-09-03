@@ -1,0 +1,95 @@
+name: Bootstrap Auralis
+description: Prepare shared toolchains, caches and system dependencies for checks and builds
+
+inputs:
+  node:
+    description: Install Node, pnpm and frozen frontend dependencies
+    default: 'false'
+  rust:
+    description: Install Rust, its cache and Linux Tauri build dependencies
+    default: 'false'
+  playwright:
+    description: Install Chromium and its system dependencies; requires node
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Validate options
+      shell: bash
+      env:
+        BOOTSTRAP_NODE: ${{ inputs.node }}
+        BOOTSTRAP_RUST: ${{ inputs.rust }}
+        BOOTSTRAP_PLAYWRIGHT: ${{ inputs.playwright }}
+      run: |
+        for option in "$BOOTSTRAP_NODE" "$BOOTSTRAP_RUST" "$BOOTSTRAP_PLAYWRIGHT"; do
+          case "$option" in
+            true|false) ;;
+            *) echo 'Bootstrap options must be true or false' >&2; exit 1 ;;
+          esac
+        done
+        if [ "$BOOTSTRAP_PLAYWRIGHT" = true ] && [ "$BOOTSTRAP_NODE" != true ]; then
+          echo 'Playwright bootstrap requires node=true' >&2
+          exit 1
+        fi
+
+    - name: Install Linux Tauri dependencies
+      if: inputs.rust == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libwebkit2gtk-4.1-dev \
+          libappindicator3-dev \
+          librsvg2-dev \
+          patchelf \
+          xdg-utils
+
+    - name: Setup pnpm and Node
+      if: inputs.node == 'true'
+      uses: pnpm/setup@v2.1.0
+      with:
+        runtime: node@24
+        install: false
+
+    - name: Cache pnpm store
+      if: inputs.node == 'true'
+      uses: actions/setup-node@v6
+      with:
+        cache: pnpm
+        cache-dependency-path: pnpm-lock.yaml
+
+    - name: Setup Rust
+      if: inputs.rust == 'true'
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Rust cache
+      if: inputs.rust == 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          . -> target
+          src-tauri -> src-tauri/target
+        cache-on-failure: true
+
+    - name: Setup Task
+      uses: go-task/setup-task@v2
+      with:
+        version: 3.x
+
+    - name: Install frontend dependencies
+      if: inputs.node == 'true'
+      shell: bash
+      run: task frontend:install
+
+    - name: Fetch Rust dependencies
+      if: inputs.rust == 'true'
+      shell: bash
+      run: task rust:fetch
+
+    - name: Install Playwright Chromium
+      if: inputs.playwright == 'true'
+      shell: bash
+      run: task frontend:setup:playwright:ci

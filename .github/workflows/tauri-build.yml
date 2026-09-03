@@ -8,7 +8,6 @@ permissions:
 
 env:
   CI: true
-  NODE_VERSION: 24
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -29,47 +28,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            xdg-utils
-
-      - name: Setup pnpm and Node
-        uses: pnpm/setup@v2.1.0
+      - name: Bootstrap desktop build
+        uses: ./.github/actions/bootstrap
         with:
-          runtime: node@${{ env.NODE_VERSION }}
-          install: false
-
-      - name: Cache pnpm store
-        uses: actions/setup-node@v6
-        with:
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            . -> target
-            src-tauri -> src-tauri/target
-          cache-on-failure: true
-
-      - name: Setup Task
-        uses: go-task/setup-task@v2
-        with:
-          version: 3.x
-
-      - name: Install dependencies
-        run: task install
+          node: 'true'
+          rust: 'true'
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1

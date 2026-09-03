@@ -16,6 +16,12 @@ tasks:
       - task: format-check
       - task: runtime-println
       - task: storage-fallbacks
+      - task: ci-bootstrap
+
+  ci-bootstrap:
+    desc: Validate shared CI and release environment contracts
+    cmds:
+      - node --test tools/scripts/check-ci-bootstrap.test.mjs
 
   runtime-println:
     cmds:
