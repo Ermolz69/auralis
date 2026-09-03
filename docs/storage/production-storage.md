@@ -46,6 +46,17 @@ across restarts is not provided; abandoned temporary files are handled by existi
 
 ## Workspace ownership
 
+Opening a project folder holds the same per-project lifecycle lock as deletion, from the
+repository existence check through the workspace adapter call. The existence check happens
+after acquiring the lock, never against a pre-lock snapshot. If deletion wins, opening returns
+`ProjectNotFound` without touching the filesystem. If opening wins, deletion waits until the
+adapter finishes and then removes the workspace through the existing outbox cleanup.
+
+Empty Draft projects still use lazy workspace creation on their first successful open. This
+operation is allowed only under the lifecycle lock for a project that still exists; it cannot
+recreate a workspace after application-level project deletion. Folder provisioning is not
+moved into project creation in this change.
+
 YouTube downloads pass the allocation's `WorkspaceKey` unchanged into the artifact transaction.
 The `DeleteWorkspaceAllocation` outbox payload removes the whole owned temporary allocation after
 staging; it never derives ownership from a downloaded filename or an absolute path. Replaying

@@ -101,7 +101,11 @@ pub fn setup_usecases(
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
-        open_project_folder: OpenProjectFolderUseCase::new(project_repo.clone(), project_workspace),
+        open_project_folder: OpenProjectFolderUseCase::new(
+            project_repo.clone(),
+            project_workspace,
+            locks.clone(),
+        ),
         rename_project: RenameProjectUseCase::new(project_repo.clone()),
         delete_project: DeleteProjectUseCase::new(
             storage_uow.clone(),

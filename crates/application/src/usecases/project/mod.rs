@@ -6,6 +6,12 @@ pub mod import_source;
 pub mod lifecycle;
 pub mod list;
 pub mod open_folder;
+#[cfg(test)]
+mod open_folder_race_tests;
+#[cfg(test)]
+mod open_folder_support;
+#[cfg(test)]
+mod open_folder_tests;
 pub mod rename;
 mod youtube_cleanup;
 
