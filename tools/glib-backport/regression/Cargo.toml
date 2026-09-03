@@ -1,0 +1,11 @@
+[package]
+name = "glib-backport-regression"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+glib = "=0.18.5"
+
+[lints]
+workspace = true

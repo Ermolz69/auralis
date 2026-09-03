@@ -27,6 +27,8 @@ pub use unit_of_work::SqliteStorageUnitOfWork;
 #[cfg(test)]
 mod connection_tests;
 #[cfg(test)]
+mod driver_compatibility_tests;
+#[cfg(test)]
 mod project_avatar_tests;
 #[cfg(test)]
 mod project_revision_migration_tests;

@@ -1,6 +1,55 @@
 version: '3'
 
 tasks:
+  dependencies:verify:
+    desc: Verify the actual resolved SQLx packages and SQLite-only feature set
+    cmds:
+      - node tools/scripts/check-sqlite-dependencies.mjs --resolved
+
+  test:storage:
+    desc: Run SQLite storage regressions against the locked dependency graph
+    cmds:
+      - cargo test --locked -p adapters-storage {{.CLI_ARGS}}
+
+  exec:wsl:
+    desc: Run explicit Cargo verification arguments in Ubuntu WSL with an isolated Linux target directory
+    platforms: [windows]
+    requires:
+      vars: [CLI_ARGS]
+    cmds:
+      - wsl -d Ubuntu-24.04 -- env RUSTUP_TOOLCHAIN=1.95.0 RUSTFLAGS=-Dwarnings CARGO_TARGET_DIR=/tmp/auralis-glib-backport-target cargo {{.CLI_ARGS}}
+
+  glib:wsl:
+    desc: Run the patched and unpatched optimized GLib controls in Ubuntu WSL
+    platforms: [windows]
+    cmds:
+      - wsl -d Ubuntu-24.04 -- env RUSTUP_TOOLCHAIN=1.95.0 RUSTFLAGS=-Dwarnings CARGO_TERM_COLOR=always CARGO_TARGET_DIR=/tmp/auralis-glib-backport-target node tools/glib-backport/reproduce.mjs
+
+  setup:wsl:
+    desc: Install Linux verification prerequisites in the local Ubuntu WSL distribution
+    platforms: [windows]
+    cmds:
+      - wsl -d Ubuntu-24.04 -u root -- apt-get update
+      - wsl -d Ubuntu-24.04 -u root -- apt-get install -y build-essential pkg-config libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils rustup nodejs
+      - wsl -d Ubuntu-24.04 -- rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+
+  glib:regression:
+    desc: Exercise the actual patched GLib iterator with release optimizations on Linux
+    platforms: [linux]
+    cmds:
+      - cargo test --locked --release -p glib-backport-regression
+
+  glib:reproduce:
+    desc: Confirm the upstream iterator fails the same optimized regression before the patch
+    platforms: [linux]
+    cmds:
+      - node tools/glib-backport/reproduce.mjs
+
+  build:release:
+    desc: Build the native desktop executable with the production profile
+    cmds:
+      - cargo build --locked --release -p auralis-app
+
   tree:
     desc: Inspect the locked Rust dependency graph
     cmds:
@@ -20,10 +69,12 @@ tasks:
 
   all:
     cmds:
+      - task: dependencies:verify
       - task: fmt
       - task: clippy
       - task: check
       - task: test
+      - task: glib:regression
 
   fmt:
     cmds:

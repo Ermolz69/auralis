@@ -93,7 +93,7 @@ async fn artifact_and_each_outbox_failure_roll_back_every_write_and_allow_retry(
                 None
             };
             let id = original.as_ref().map(|project| project.id().clone());
-            sqlx::raw_sql(&format!("CREATE TRIGGER reject_import BEFORE INSERT ON {table} WHEN {condition} BEGIN SELECT RAISE(ABORT, 'injected failure'); END;")).execute(&fixture.pool).await.unwrap();
+            sqlx::raw_sql(sqlx::AssertSqlSafe(format!("CREATE TRIGGER reject_import BEFORE INSERT ON {table} WHEN {condition} BEGIN SELECT RAISE(ABORT, 'injected failure'); END;"))).execute(&fixture.pool).await.unwrap();
             assert!(
                 fixture
                     .usecase()

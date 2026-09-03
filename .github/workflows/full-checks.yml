@@ -26,6 +26,7 @@ jobs:
           node: 'true'
           rust: 'true'
           playwright: 'true'
+          security: 'true'
 
       - name: Run checks
         run: task check

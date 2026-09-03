@@ -125,12 +125,15 @@ impl Fixture {
             self.repo.list().await.unwrap(),
             original.cloned().into_iter().collect::<Vec<_>>()
         );
-        for table in ["artifacts", "outbox_messages"] {
-            let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table}"))
+        for query in [
+            "SELECT COUNT(*) FROM artifacts",
+            "SELECT COUNT(*) FROM outbox_messages",
+        ] {
+            let count: i64 = sqlx::query_scalar(query)
                 .fetch_one(&self.pool)
                 .await
                 .unwrap();
-            assert_eq!(count, 0, "{table} must roll back");
+            assert_eq!(count, 0, "{query} must return no rolled-back writes");
         }
         for path in self.source.paths.lock().unwrap().iter() {
             assert!(

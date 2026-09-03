@@ -14,11 +14,19 @@ const actionPath = './.github/actions/bootstrap';
 const fullPath = './.github/workflows/full-checks.yml';
 const configured = (job) => job.steps.find((step) => step.uses === actionPath);
 
+test('Rust cache tracks the single workspace and excludes obsolete source-containing caches', () => {
+  const cache = bootstrap.runs.steps.find((step) => step.uses === 'Swatinem/rust-cache@v2');
+  assert.equal(cache.with.workspaces.trim(), '. -> target');
+  assert.equal(cache.with['prefix-key'], 'v1-rust');
+});
+
 function enabledSteps(options, os) {
   const enabled = (name) => options[name] === 'true';
   const conditions = {
     "inputs.node == 'true'": enabled('node'),
     "inputs.rust == 'true'": enabled('rust'),
+    "inputs.security == 'true'": enabled('security'),
+    "inputs.rust == 'true' || inputs.security == 'true'": enabled('rust') || enabled('security'),
     "inputs.playwright == 'true'": enabled('playwright'),
     "inputs.rust == 'true' && runner.os == 'Linux'": enabled('rust') && os === 'Linux',
   };
@@ -30,12 +38,13 @@ function enabledSteps(options, os) {
 }
 
 function assertFullEnvironment(action) {
-  for (const option of ['node', 'rust', 'playwright']) assert.equal(action.with[option], 'true');
+  for (const option of ['node', 'rust', 'playwright', 'security'])
+    assert.equal(action.with[option], 'true');
 }
 
 test('full-check configuration requires both native and browser dependencies', () => {
   const action = configured(full.jobs.check);
-  for (const option of ['node', 'rust', 'playwright']) {
+  for (const option of ['node', 'rust', 'playwright', 'security']) {
     const broken = structuredClone(action);
     delete broken.with[option];
     assert.throws(() => assertFullEnvironment(broken));
@@ -72,6 +81,7 @@ test('all toolchain consumers use the same bootstrap after checkout', () => {
     ci.jobs.rust,
     ci.jobs.docs,
     ci.jobs['quality-global'],
+    ci.jobs.security,
     full.jobs.check,
     release.jobs.release,
     tauri.jobs.build,
@@ -180,4 +190,30 @@ test('bootstrap and tooling changes trigger the release gate and cannot bypass C
   assert.equal(ci.jobs['ci-summary'].if, 'always()');
   assert.ok(ci.jobs['ci-summary'].steps[0].run.includes("contains(needs.*.result, 'failure')"));
   assert.ok(ci.jobs['ci-summary'].steps[0].run.includes("contains(needs.*.result, 'cancelled')"));
+});
+
+test('vendored GLib changes require source integrity and optimized Linux regression gates', () => {
+  const filters = load(ci.jobs.changes.steps.find((step) => step.id === 'filter').with.filters);
+  for (const group of ['rust', 'quality']) {
+    assert.ok(filters[group].includes('vendor/glib-0.18.5/**'));
+    assert.ok(filters[group].includes('tools/glib-backport/**'));
+  }
+  assert.ok(ci.jobs.rust.steps.some((step) => step.run === 'task rs:glib:reproduce'));
+});
+
+test('SQLite dependency guards run in both the lightweight and resolved Rust gates', () => {
+  assert.ok(
+    read('taskfiles/quality.yml').tasks.global.cmds.some(
+      (command) => command.task === ':sec:sqlite:verify',
+    ),
+  );
+  assert.ok(
+    read('taskfiles/rust.yml').tasks.all.cmds.some(
+      (command) => command.task === 'dependencies:verify',
+    ),
+  );
+  assert.equal(
+    read('taskfiles/rust.yml').tasks['dependencies:verify'].cmds[0],
+    'node tools/scripts/check-sqlite-dependencies.mjs --resolved',
+  );
 });

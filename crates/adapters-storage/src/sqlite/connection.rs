@@ -165,13 +165,14 @@ async fn validate_columns(
     table: &'static str,
     expected: &[&str],
 ) -> Result<(), PortError> {
-    let query = format!("SELECT name FROM pragma_table_info('{table}') ORDER BY cid");
-    let columns: Vec<String> = sqlx::query_scalar(&query)
-        .fetch_all(pool)
-        .await
-        .map_err(|e| {
-            crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite table", e)
-        })?;
+    let columns: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM pragma_table_info(?) ORDER BY cid")
+            .bind(table)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite table", e)
+            })?;
 
     if columns
         .iter()

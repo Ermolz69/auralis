@@ -12,8 +12,16 @@ members = [
   "crates/adapters-ffmpeg",
   "crates/adapters-model",
   "crates/jobs",
-  "crates/common"
+  "crates/common",
+  "tools/glib-backport/regression"
 ]
+exclude = ["vendor/glib-0.18.5"]
+
+[workspace.dependencies]
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "sqlite-bundled"] }
+
+[patch.crates-io]
+glib = { path = "vendor/glib-0.18.5" }
 
 [profile.dev]
 incremental = true

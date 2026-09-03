@@ -5,6 +5,7 @@
 ```bash
 task install:all
 task fe:setup:playwright
+task sec:setup:rust
 task dev
 task check
 task check:all
@@ -78,3 +79,26 @@ task q:runtime-println
 task q:ci-bootstrap
 task q:global
 ```
+
+## Dependency security
+
+```bash
+task sec:setup:rust
+task sec:audit:npm
+task sec:audit:rust
+task sec:deny:rust
+task check:quality:security
+```
+
+`task sec:setup:rust` installs pinned `cargo-audit` and `cargo-deny` versions using
+locked tool dependencies. CI installs the same versions as prebuilt binaries through
+the shared bootstrap. Install these tools before running `task check` or `task ci`.
+Component-only frontend/docs checks do not need Rust or these tools.
+
+`task check:quality:security` (also `task sec:audit`) runs all three security checks,
+including development dependencies. `task sec:deny:rust` checks advisories and sources;
+license and duplicate-version policy are outside this gate's scope.
+
+Inspect dependency paths with `task rs:tree -- --invert <crate> --target all`.
+For reviewed, targeted lockfile updates, use
+`task rs:update -- --package <crate> --precise <version>` and rerun checks.
