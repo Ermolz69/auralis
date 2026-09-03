@@ -25,9 +25,25 @@ tasks:
       - task: media:setup-tools
 
   install:
+    desc: Alias for install:all
     cmds:
-      - pnpm install --frozen-lockfile
-      - cargo fetch
+      - task: install:all
+
+  install:frontend:
+    desc: Install frontend and documentation dependencies without Rust
+    cmds:
+      - task: fe:install
+
+  install:rust:
+    desc: Fetch locked Rust dependencies without frontend tooling
+    cmds:
+      - task: rs:fetch
+
+  install:all:
+    desc: Install frontend and Rust dependencies without browser setup
+    cmds:
+      - task: install:frontend
+      - task: install:rust
 
   dev:
     cmds:
@@ -88,5 +104,5 @@ tasks:
   ci:
     desc: CI entrypoint
     cmds:
-      - task: install
+      - task: install:all
       - task: check

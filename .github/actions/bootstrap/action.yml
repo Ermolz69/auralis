@@ -82,12 +82,12 @@ runs:
     - name: Install frontend dependencies
       if: inputs.node == 'true'
       shell: bash
-      run: task frontend:install
+      run: task install:frontend
 
     - name: Fetch Rust dependencies
       if: inputs.rust == 'true'
       shell: bash
-      run: task rust:fetch
+      run: task install:rust
 
     - name: Install Playwright Chromium
       if: inputs.playwright == 'true'

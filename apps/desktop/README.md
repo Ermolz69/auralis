@@ -35,11 +35,17 @@ pnpm --filter desktop run storybook
 ### Browser Test Setup
 
 Storybook interaction and accessibility checks use Playwright through the existing Vitest browser
-project. Install the browser runtime once on a new machine:
+project. From the repository root, install frontend dependencies and the browser runtime
+on a new machine (and repeat browser setup after upgrading Playwright):
 
 ```bash
+task install:frontend
 task frontend:setup:playwright
 ```
+
+Rust is not required for frontend-only checks. On Linux, use
+`task frontend:setup:playwright:ci` to also install system libraries with elevated
+permissions. Docs-only work needs `task install:frontend`, but no browser runtime.
 
 This setup task is intentionally separate from the regression gates. Run gates through Taskfile:
 

@@ -14,14 +14,16 @@ Release validation runs `task check` through `.github/workflows/full-checks.yml`
 
 The local and CI entrypoints are:
 
-- **install**: Verifies dependency resolution with frozen package resolution (`task install`).
+- **frontend install**: Installs frozen pnpm dependencies without Rust (`task install:frontend`).
+- **Rust install**: Fetches locked Cargo dependencies without frontend tooling (`task install:rust`).
+- **full install**: Runs both installers (`task install:all`, also available as `task install`); browser setup is a separate prerequisite for checks.
 - **frontend**: Runs typecheck, lint, tests, and build (`task check:frontend`).
 - **frontend quality**: Runs FSD boundary checks, color-token checks, and file-size checks (`task check:quality:frontend`).
 - **Rust**: Runs `cargo fmt`, `cargo clippy`, `cargo check`, and workspace tests (`task check:rust`).
 - **docs**: Runs markdown checks (`task check:docs`).
 - **docs quality**: Runs markdown formatting checks (`task check:quality:docs`).
 - **global quality**: Runs repository formatting, runtime println, storage fallback, and CI bootstrap checks (`task check:quality:global`).
-- **CI bootstrap**: Tests shared workflow wiring, dependency ordering, platform guards, and release-check parity (`task q:ci-bootstrap`).
+- **CI bootstrap**: Tests shared workflow wiring, dependency ordering, platform guards, release-check parity, and scoped installer execution plans (`task q:ci-bootstrap`).
 - **runtime println**: Runs the runtime println fixture suite and production scan (`task check:quality:runtime-println`).
 - **full suite**: Runs all required gates (`task check:all`).
 

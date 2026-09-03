@@ -3,12 +3,24 @@
 ## Main commands
 
 ```bash
-task install
+task install:all
+task fe:setup:playwright
 task dev
 task check
 task check:all
 task ci
 ```
+
+## Installation scope
+
+- `task install:frontend` delegates to `task fe:install` and installs only the frozen pnpm dependencies needed by frontend and documentation jobs.
+- `task install:rust` delegates to `task rs:fetch` and fetches only locked Rust dependencies; it does not require Node or pnpm.
+- `task install:all` runs both component installers. `task install` is a backward-compatible alias for this task.
+
+`task ci` starts with `task install:all`. Browser setup remains an explicit prerequisite
+for `task ci`, `task check`, and `task check:frontend`, not part of dependency installation.
+Frontend/docs CI jobs select `task install:frontend` through the shared bootstrap and
+do not fetch Rust dependencies. Docs-only jobs also skip browser setup.
 
 ## Frontend
 
@@ -18,7 +30,7 @@ The shared CI bootstrap (`.github/actions/bootstrap/action.yml`) uses `pnpm/setu
 Node version. This avoids the pnpm setup action's deprecated cache-pruning hook.
 
 ```bash
-task fe:install
+task install:frontend
 task fe:install-update
 task fe:lint
 task fe:typecheck
@@ -28,7 +40,7 @@ task fe:setup:playwright
 task fe:setup:playwright:ci
 ```
 
-`task fe:install` uses the frozen lockfile. After changing dependency manifests,
+`task install:frontend` (also available as `task fe:install`) uses the frozen lockfile. After changing dependency manifests,
 run `task fe:install-update` and commit the updated `pnpm-lock.yaml`.
 Dependency overrides and explicitly approved build scripts live in
 `pnpm-workspace.yaml`; unreviewed dependency build scripts fail installation.
@@ -40,14 +52,14 @@ On Linux, system package installation requires elevated permissions.
 ## Rust
 
 ```bash
-task rs:fetch
+task install:rust
 task rs:fmt
 task rs:clippy
 task rs:test
 task rs:check
 ```
 
-`task rs:fetch` fetches dependencies with `--locked`, without changing `Cargo.lock`.
+`task install:rust` (also available as `task rs:fetch`) fetches dependencies with `--locked`, without changing `Cargo.lock`.
 
 ## Quality
 
