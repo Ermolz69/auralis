@@ -42,6 +42,43 @@ describe('usePasteYoutubeLink', () => {
     vi.mocked(useProjectContext).mockReturnValue(mockContextValue);
   });
 
+  it('exposes download states and retries the same source after failure', async () => {
+    const { result } = renderHook(() => usePasteYoutubeLink());
+    expect(result.current.status).toBe('Idle');
+    act(() => result.current.setUrl('https://youtube.com/watch?v=retry'));
+    let rejectDownload!: (error: Error) => void;
+    vi.mocked(createProjectFromYoutube).mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectDownload = reject;
+        }),
+    );
+    let pending!: ReturnType<typeof result.current.startProject>;
+    act(() => {
+      pending = result.current.startProject();
+    });
+    expect(result.current.status).toBe('Downloading');
+    await act(async () => {
+      rejectDownload(new Error('Network unavailable'));
+      await pending;
+    });
+    expect(result.current.status).toBe('DownloadFailed');
+    expect(result.current.isStarting).toBe(false);
+    expect(result.current.url).toBe('https://youtube.com/watch?v=retry');
+    expect(mockContextValue.setProject).not.toHaveBeenCalled();
+    vi.mocked(createProjectFromYoutube).mockResolvedValueOnce({ id: 'p-1', title: 'Retry' } as any);
+    await act(async () => {
+      await result.current.startProject();
+    });
+    expect(result.current.status).toBe('Ready');
+    expect(result.current.error).toBeNull();
+    expect(createProjectFromYoutube).toHaveBeenNthCalledWith(
+      2,
+      'https://youtube.com/watch?v=retry',
+      'p-1',
+    );
+  });
+
   it('blocks startProject when deletingProjectId is active', async () => {
     mockContextValue.deletingProjectId = 'p-2';
     const { result } = renderHook(() => usePasteYoutubeLink());

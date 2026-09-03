@@ -266,6 +266,12 @@ impl ports::artifact_index::ArtifactIndex for MockIndex {
 struct MockUow;
 #[async_trait]
 impl ports::transaction::StorageUnitOfWork for MockUow {
+    async fn commit_youtube_import(
+        &self,
+        _command: ports::transaction::CommitYoutubeImport,
+    ) -> Result<(), PortError> {
+        unreachable!()
+    }
     async fn commit_artifact_finalize(
         &self,
         _command: ports::transaction::CommitArtifactFinalize,

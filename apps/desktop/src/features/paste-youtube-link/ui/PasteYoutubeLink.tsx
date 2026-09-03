@@ -4,7 +4,7 @@ import { Button } from '../../../shared/ui/button';
 import { usePasteYoutubeLink } from '../model/usePasteYoutubeLink';
 
 export const PasteYoutubeLink = () => {
-  const { url, setUrl, startProject, isStarting, isBlockedByDeletion, error } =
+  const { url, setUrl, startProject, isStarting, status, isBlockedByDeletion, error } =
     usePasteYoutubeLink();
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +55,7 @@ export const PasteYoutubeLink = () => {
           disabled={isStarting || !trimmedUrl || isBlockedByDeletion}
           loading={isStarting}
         >
-          Add from YouTube
+          {status === 'DownloadFailed' ? 'Retry download' : 'Add from YouTube'}
         </Button>
       </div>
       {isStarting && (

@@ -26,6 +26,12 @@ impl SqliteStorageUnitOfWork {
 
 #[async_trait]
 impl StorageUnitOfWork for SqliteStorageUnitOfWork {
+    async fn commit_youtube_import(
+        &self,
+        command: ports::transaction::CommitYoutubeImport,
+    ) -> Result<(), PortError> {
+        super::youtube_import::commit(&self.pool, command).await
+    }
     async fn commit_transcript_import(
         &self,
         command: CommitTranscriptImport,

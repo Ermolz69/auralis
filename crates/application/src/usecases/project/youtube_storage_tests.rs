@@ -40,6 +40,7 @@ async fn assert_download_cleanup(extension: &'static str) {
         artifact_store.clone(),
         uow.clone(),
         workspace.clone(),
+        Arc::new(super::lifecycle::ProjectLifecycleLocks::new()),
     )
     .execute(CreateProjectFromYoutubeRequest {
         url: "https://www.youtube.com/watch?v=cleanup-test".into(),
@@ -97,6 +98,11 @@ async fn assert_download_cleanup(extension: &'static str) {
             .is_empty()
     );
 
+    pool.close().await;
+    let pool = connect_sqlite(root.path().join("test.db")).await.unwrap();
+    let outbox_repo = SqliteOutboxRepository::new(pool.clone());
+    let artifact_index = Arc::new(SqliteArtifactIndex::new(pool.clone()));
+    let uow = Arc::new(SqliteStorageUnitOfWork::new(pool.clone()));
     let worker = OutboxWorker::new(
         outbox_repo.clone(),
         artifact_store.clone(),

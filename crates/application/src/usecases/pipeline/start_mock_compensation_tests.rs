@@ -147,6 +147,12 @@ async fn test_enqueue_and_compensation_failure_returns_both_errors() {
     }
     #[async_trait]
     impl StorageUnitOfWork for FailCompUow {
+        async fn commit_youtube_import(
+            &self,
+            _command: ports::transaction::CommitYoutubeImport,
+        ) -> Result<(), PortError> {
+            unreachable!()
+        }
         async fn commit_artifact_finalize(
             &self,
             cmd: ports::transaction::CommitArtifactFinalize,

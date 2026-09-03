@@ -97,6 +97,7 @@ pub fn setup_usecases(
             artifact_store.clone(),
             storage_uow.clone(),
             workspace_port.clone(),
+            locks.clone(),
         ),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
