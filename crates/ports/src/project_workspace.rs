@@ -6,6 +6,7 @@ use crate::error::PortError;
 
 #[async_trait]
 pub trait ProjectWorkspacePort: Send + Sync {
+    /// The caller must hold the project lifecycle lock and verify that the project still exists.
     async fn ensure_and_open(&self, project_id: &ProjectId) -> Result<(), PortError>;
 }
 
