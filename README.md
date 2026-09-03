@@ -13,7 +13,7 @@
 ## Development
 
 Run commands from the repository root. Install Node.js 24, the pnpm version pinned in
-`package.json`, and Task first. Full desktop development also requires Rust and the
+`package.json`, and Task first. Full desktop development also requires Rust 1.94 or newer and the
 platform's Tauri build dependencies.
 
 Set up dependencies and the Playwright Chromium runtime before running checks:

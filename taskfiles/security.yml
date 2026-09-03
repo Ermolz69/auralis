@@ -1,10 +1,21 @@
 version: '3'
 
 tasks:
-  glib:audit:
-    desc: Scan the patched lockfile without advisory exceptions (unrelated rsa remains reportable)
+  sqlite:verify:
+    desc: Reject RSA and unused SQLx database packages anywhere in the lockfile
+    cmds:
+      - node --test tools/scripts/check-sqlite-dependencies.test.mjs
+      - node tools/scripts/check-sqlite-dependencies.mjs
+
+  rust:audit:
+    desc: Scan the Rust lockfile without advisory exceptions
     cmds:
       - cargo audit --file Cargo.lock --deny unsound
+
+  glib:audit:
+    desc: Compatibility alias for the complete Rust vulnerability audit
+    cmds:
+      - task: rust:audit
 
   glib:vendor:
     desc: Import the checksum-pinned upstream glib package without overwriting an existing copy

@@ -48,8 +48,11 @@ async fn prepare(fixture: &Fixture, mut project: Project, existing: bool) -> Com
 }
 
 async fn assert_no_artifact_writes(fixture: &Fixture) {
-    for table in ["artifacts", "outbox_messages"] {
-        let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table}"))
+    for query in [
+        "SELECT COUNT(*) FROM artifacts",
+        "SELECT COUNT(*) FROM outbox_messages",
+    ] {
+        let count: i64 = sqlx::query_scalar(query)
             .fetch_one(&fixture.pool)
             .await
             .unwrap();

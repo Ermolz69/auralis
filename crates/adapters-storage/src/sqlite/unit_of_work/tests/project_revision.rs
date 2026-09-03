@@ -229,11 +229,11 @@ async fn stale_transcript_commit_rolls_back_artifacts_and_outbox_after_rename() 
         Err(PortError::Conflict { .. })
     ));
     assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), renamed);
-    for table in ["artifacts", "outbox_messages"] {
-        let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table}"))
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    for query in [
+        "SELECT COUNT(*) FROM artifacts",
+        "SELECT COUNT(*) FROM outbox_messages",
+    ] {
+        let count: i64 = sqlx::query_scalar(query).fetch_one(&pool).await.unwrap();
         assert_eq!(count, 0);
     }
 }

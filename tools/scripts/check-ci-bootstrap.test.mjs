@@ -190,3 +190,20 @@ test('vendored GLib changes require source integrity and optimized Linux regress
   }
   assert.ok(ci.jobs.rust.steps.some((step) => step.run === 'task rs:glib:reproduce'));
 });
+
+test('SQLite dependency guards run in both the lightweight and resolved Rust gates', () => {
+  assert.ok(
+    read('taskfiles/quality.yml').tasks.global.cmds.some(
+      (command) => command.task === ':sec:sqlite:verify',
+    ),
+  );
+  assert.ok(
+    read('taskfiles/rust.yml').tasks.all.cmds.some(
+      (command) => command.task === 'dependencies:verify',
+    ),
+  );
+  assert.equal(
+    read('taskfiles/rust.yml').tasks['dependencies:verify'].cmds[0],
+    'node tools/scripts/check-sqlite-dependencies.mjs --resolved',
+  );
+});

@@ -1,6 +1,16 @@
 version: '3'
 
 tasks:
+  dependencies:verify:
+    desc: Verify the actual resolved SQLx packages and SQLite-only feature set
+    cmds:
+      - node tools/scripts/check-sqlite-dependencies.mjs --resolved
+
+  test:storage:
+    desc: Run SQLite storage regressions against the locked dependency graph
+    cmds:
+      - cargo test --locked -p adapters-storage {{.CLI_ARGS}}
+
   exec:wsl:
     desc: Run explicit Cargo verification arguments in Ubuntu WSL with an isolated Linux target directory
     platforms: [windows]
@@ -59,6 +69,7 @@ tasks:
 
   all:
     cmds:
+      - task: dependencies:verify
       - task: fmt
       - task: clippy
       - task: check

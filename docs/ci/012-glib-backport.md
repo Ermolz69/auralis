@@ -66,8 +66,9 @@ Native GUI interaction and a signed/distributed installer were not tested.
 
 ## Security scanning and maintenance
 
-`task sec:glib:audit` runs cargo-audit without exceptions. The unrelated `rsa`
-finding remains in scope and may fail that command. A scanner's treatment of local
+`task sec:glib:audit` aliases `task sec:rust:audit`, which runs cargo-audit without
+exceptions. The separate [SQLite-only SQLx update](013-sqlite-only-dependencies.md)
+removes the unrelated `rsa` dependency. A scanner's treatment of local
 packages is not proof that this source is fixed: the mandatory source-integrity
 gate and executable before/after regression provide that evidence separately.
 This backport does not address GTK3 maintenance notices or claim general memory
