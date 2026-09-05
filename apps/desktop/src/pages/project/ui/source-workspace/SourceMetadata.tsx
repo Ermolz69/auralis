@@ -11,7 +11,7 @@ export function SourceMetadata({
 }) {
   return (
     <section
-      className="overflow-hidden rounded-md border border-border bg-surface-raised"
+      className="overflow-hidden rounded-md border border-border bg-surface-raised animate-surface-in"
       aria-label="Source metadata"
     >
       <dl className="grid grid-cols-[96px_minmax(0,1fr)] text-xs">
@@ -46,15 +46,11 @@ export function SourceMetadata({
         )}
       </div>
       <details className="group border-t border-border">
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[11px] text-subtle">
-          <Icon
-            name="ChevronRight"
-            size={12}
-            className="transition-transform group-open:rotate-90"
-          />
+        <summary className="motion-control flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[11px] text-subtle hover:bg-surface-hover hover:text-muted">
+          <Icon name="ChevronRight" size={12} className="motion-icon group-open:rotate-90" />
           More details
         </summary>
-        <div className="space-y-1.5 px-3 pb-3">
+        <div className="space-y-1.5 animate-content-in px-3 pb-3">
           {metadata.streams.map((stream) => (
             <p
               key={stream.index}

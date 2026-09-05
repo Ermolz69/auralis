@@ -32,6 +32,11 @@ export function installFixture() {
   window.__smokeCommands = [];
   window.__smokeUnknownCommands = [];
   window.__smokeCallbacks = new Map();
+  window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+    unregisterListener(_event, id) {
+      window.__smokeCallbacks.delete(id);
+    },
+  };
   window.addEventListener('securitypolicyviolation', (event) =>
     window.__smokeViolations.push(event.effectiveDirective),
   );

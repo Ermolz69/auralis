@@ -1,7 +1,10 @@
+export * from './artifact';
 export * from './media';
 export * from './job';
+export * from './jobValidation';
 export * from './transcript';
 export * from './project';
+export * from './runtimeValidation';
 export * from './commandMap';
 export * from './error';
 export type { PendingYoutubeImport } from './youtubeImport';

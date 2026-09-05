@@ -2,81 +2,82 @@
 
 ## Goal
 
-The primary goal of Smart CI Path Filtering is to drastically reduce CI execution time and save runner minutes by executing only the jobs that are strictly necessary for the changed files. By doing so, we provide developers with much faster feedback loops while maintaining a bulletproof quality gate.
+Pull requests run the smallest locally reproducible gate set that can validate the
+changed area. Expensive native installers, installed-app smoke tests, optimized
+platform regressions, and the complete release gate are reserved for manual runs
+or production tags.
 
 ## Required Check
 
-**Only `CI Summary` should be configured as a required check in GitHub Branch Protection rules.**
+**Only `CI Summary` should be configured as a required branch-protection check.**
 
-Do not require individual conditional jobs, including `Frontend`, `Rust`, `Docs`, `Global Quality`, `Dependency Security`, or `Release Check Parity`. GitHub can otherwise wait for jobs that were intentionally skipped. The `ci-summary` job evaluates all these jobs, accepts `skipped`, and fails if any job returns `failure` or `cancelled`.
+Do not require individual conditional jobs. `CI Summary` accepts intentionally
+skipped jobs and fails when any selected job fails or is cancelled.
 
 ## Path Groups
 
-The repository is split into distinct logical zones tracked by the `changes` CI job:
+- **frontend**: React code, styles, frontend configuration, and pnpm workspace files.
+- **rust**: Rust crates, the Tauri backend, vendored GLib, and Cargo configuration.
+- **docs**: Markdown documentation.
+- **quality/global**: Taskfiles, repository policies, and validation scripts.
+- **release**: Tauri packaging, release workflows, media tools, and signing tooling.
+- **ci**: GitHub Actions workflows and the shared bootstrap action.
+- **dependencies**: npm/Cargo manifests, lockfiles, source policy, and auditor setup.
 
-- **frontend**: React code, styling, frontend configuration (e.g., `apps/desktop/**`, `package.json`, `tailwind.config.*`).
-- **rust**: Rust workspace, Tauri backend (e.g., `crates/**`, `src-tauri/**`, `Cargo.toml`).
-- **docs**: All markdown documentation files (`docs/**`, `README.md`, etc.).
-- **quality/global**: Repository-wide tooling and security configuration (`Taskfile.yml`, `taskfiles/**`, `tools/scripts/**`, `deny.toml`, `.cargo/**`, `.agents/AGENTS.md`, `.editorconfig`, `.prettier*`).
-- **release/tauri**: Production release configuration (`src-tauri/tauri.conf.json`, `src-tauri/capabilities/**`, `release.yml`).
-- **ci**: GitHub Actions workflows and shared actions (`.github/workflows/**`, `.github/actions/**`).
+Dependency security runs only for `dependencies` or `ci` changes. Application source
+changes cannot alter the resolved dependency graph, so they do not spend runner time
+re-auditing an unchanged lockfile.
 
-`release-checks` runs the same reusable full-check workflow as release validation when the `release`, `ci`, `quality`, or `global` group changes. It does not publish or create tags. Ordinary docs, frontend, or Rust-only edits keep their selective jobs without an additional full-check run.
+## Pull-request jobs
 
-`security` runs for frontend, Rust, quality, release, CI, or global changes. This includes
-both dependency lockfiles and auditor configuration. It does not install GTK or browsers;
-frontend/docs/global quality jobs do not install or invoke Rust auditors.
+- `Frontend`: typecheck, lint, unit and Storybook browser tests with coverage,
+  production build budgets, 20 E2E journeys, CSP smoke, and frontend policies.
+- `Rust`: dependency graph policy, formatting, Clippy, and workspace tests. Clippy
+  already compiles all targets, so the job does not immediately repeat `cargo check`.
+- `Docs`: documentation validation and formatting, only for documentation changes.
+- `Global Quality`: repository-wide policy scripts for Rust, quality, global, or CI changes.
+- `Dependency Security`: npm/Rust audits only when dependency inputs or CI change.
+- `CI Summary`: the single stable required check.
 
-## Behavior Examples
+The PR workflow never calls the reusable full release check and never builds the
+three-platform installer matrix. Those operations previously duplicated validated
+work and consumed most Actions minutes.
 
-### Docs-only commit
+## Behavior examples
 
-- **Changed**: `docs/ci/009-path-filtering.md`
-- **Run**: `changes` -> `docs` -> `ci-summary`
-- **Skip**: `frontend`, `rust`, `quality-global`, `security`, `release-checks`
+### Docs-only change
 
-### Frontend-only commit
+Runs `changes`, `Docs`, and `CI Summary`.
 
-- **Changed**: `apps/desktop/src/widgets/export-panel/ui/ExportPanel.tsx`
-- **Run**: `changes` -> `frontend`, `security` -> `ci-summary`
-- **Skip**: `rust`, `docs`, `quality-global`, `release-checks`
+### Frontend source change
 
-### Rust-only commit
+Runs `changes`, `Frontend`, and `CI Summary`. Dependency Security runs only when
+the same change also modifies a dependency input.
 
-- **Changed**: `crates/application/src/run_dubbing/service.rs`
-- **Run**: `changes` -> `rust`, `quality-global`, `security` -> `ci-summary`
-- **Skip**: `frontend`, `docs`, `release-checks`
+### Rust source change
 
-### Taskfile / Tooling changes
+Runs `changes`, `Rust`, `Global Quality`, and `CI Summary`.
 
-- **Changed**: `Taskfile.yml`
-- **Run**: `changes` -> `frontend`, `rust`, `docs`, `quality-global`, `security`, `release-checks` -> `ci-summary` (all checks run to validate global tooling changes).
+### Dependency update
 
-### Quality script changes
+Runs the affected frontend/Rust gate, `Dependency Security`, and `CI Summary`.
 
-- **Changed**: `tools/scripts/check-file-size.mjs`
-- **Run**: `changes` -> `quality-global`, `security`, `release-checks` -> `ci-summary`
-- **Also Run When Needed**: any affected frontend, Rust, or docs jobs selected by the same change set.
+### CI or shared bootstrap change
 
-### Release / Tauri config commit
+Runs the lean frontend, Rust, global-quality, and security gates plus `CI Summary`.
+It does not trigger native packages or the duplicated full release workflow.
 
-- **Changed**: `src-tauri/tauri.conf.json`
-- **Run**: `changes` -> `rust`, `frontend`, `quality-global`, `security`, `release-checks` -> `ci-summary`.
+## Extended verification
 
-### Shared bootstrap changes
-
-- **Changed**: `.github/actions/bootstrap/action.yml`
-- **Run**: `changes` -> `frontend`, `rust`, `docs`, `quality-global`, `security`, `release-checks` -> `ci-summary`.
-
-## How to force full CI
-
-If you ever need to forcefully trigger the entire CI suite to validate the whole repository, you can:
-
-1. Make a trivial update or comment in `Taskfile.yml` or `.github/workflows/ci.yml`.
-2. Manually trigger the CI via the GitHub Actions UI (`workflow_dispatch`).
+- Run `task check:pr` to reproduce every required PR gate locally.
+- Run `task check` for the extended local/release suite.
+- Run the `Tauri Build` workflow manually when installer validation is needed.
+- Production `app-v*` tags run the complete release gate, platform recovery tests,
+  native packaging, signing, updater manifest generation, and install/launch smoke.
 
 ## Rules
 
-- **Do not use workflow-level `paths-ignore` for required checks.** Doing so skips the entire workflow, causing Branch Protection to hang indefinitely. We only use job-level conditional filtering (`if: needs.changes.outputs...`).
-- **Keep `ci-summary` always running.** Its condition is `if: always()`.
-- **Treat skipped jobs as valid.** The CI Summary explicitly checks for failures or cancellations, considering skipped jobs as part of a successful, optimized run.
+- Do not use workflow-level `paths-ignore` for required checks.
+- Keep `CI Summary` on `if: always()`.
+- Treat `skipped` as valid and `failure`/`cancelled` as blocking.
+- Do not restore native bundle or complete release duplication to ordinary PRs.

@@ -1,12 +1,12 @@
 use crate::{
     bootstrap::usecases::AppUseCases,
     dto::{
-        error::{parse_project_id, CommandError},
+        error::{CommandError, parse_project_id},
         project_avatar::ProjectAvatarDto,
     },
 };
 use std::sync::Arc;
-use tauri::{command, State};
+use tauri::{State, command};
 
 #[command]
 pub async fn get_project_avatar_cmd(

@@ -1,5 +1,5 @@
 import { mutatePreferences, readPreferencesStorage } from './preferencesStorage';
-export { projectPreferencesEvent } from './preferencesStorage';
+export { projectPreferencesEvent, subscribeProjectPreferences } from './preferencesStorage';
 
 export type ProjectPreferences = { pinned: boolean };
 export type PreferencesWriteResult = { preferences: ProjectPreferences; persisted: boolean };

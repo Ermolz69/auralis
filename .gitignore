@@ -2,17 +2,28 @@
 
 # Dependency directories
 node_modules/
+/.pnpm-store/
 target/
 
 # Build outputs
 dist/
 /.pages/
 storybook-static/
+coverage/
+/release-assets/
+/release-publish/
+
+# Verified media tools are generated from tools/media-tools/manifest.json
+/src-tauri/binaries/*
 
 # Env files
 .env
 .env.*
 !.env.example
+
+# Updater signing keys must stay outside the repository
+*.key
+*.key.pub
 
 # OS generated files
 .DS_Store

@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { FieldMessages, getFieldMessageState } from '../form-field';
 
 export interface SelectOption {
   value: string | number;
@@ -40,18 +41,15 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ) => {
     const generatedId = useId();
     const selectId = id || generatedId;
-    const resolvedErrorText = errorText || (error ? helperText : undefined);
-    const resolvedHelperText = errorText ? helperText : error ? undefined : helperText;
-    const helperId = resolvedHelperText ? `${selectId}-helper` : undefined;
-    const errorId = resolvedErrorText ? `${selectId}-error` : undefined;
-    const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
+    const { helperId, errorId, describedBy, resolvedHelperText, resolvedErrorText } =
+      getFieldMessageState(selectId, { helperText, errorText, error });
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
     // appearance-none hides the default browser dropdown arrow
     // We add a custom SVG arrow in the wrapper below
     const selectBase =
-      'flex w-full items-center bg-surface border rounded-md text-text text-sm transition-all outline-none appearance-none px-3 py-2 pr-10 cursor-pointer';
+      'motion-field flex w-full cursor-pointer appearance-none items-center rounded-md border bg-surface px-3 py-2 pr-10 text-sm text-text outline-none';
 
     const selectBorder = error
       ? 'border-danger focus:ring-2 focus:ring-danger focus:ring-offset-2 focus:ring-offset-bg focus:border-danger'
@@ -127,16 +125,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             </svg>
           </div>
         </div>
-        {resolvedHelperText && (
-          <span id={helperId} className="text-xs text-muted">
-            {resolvedHelperText}
-          </span>
-        )}
-        {resolvedErrorText && (
-          <span id={errorId} className="text-xs text-danger" role="alert">
-            {resolvedErrorText}
-          </span>
-        )}
+        <FieldMessages
+          helperId={helperId}
+          errorId={errorId}
+          helperText={resolvedHelperText}
+          errorText={resolvedErrorText}
+        />
       </div>
     );
   },

@@ -30,13 +30,16 @@ export function TrackList(props: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-surface" role="radiogroup">
+    <div
+      className="overflow-hidden rounded-md border border-border bg-surface animate-surface-in"
+      role="radiogroup"
+    >
       {tracks.map((track, index) => {
         const selected = track.id === selectedTrackId;
         return (
           <label
             key={track.id}
-            className={`flex min-h-[34px] cursor-pointer items-center gap-2 border-border px-3 py-2 text-xs transition-colors hover:bg-surface-hover ${
+            className={`motion-surface flex min-h-[34px] cursor-pointer items-center gap-2 border-border px-3 py-2 text-xs hover:bg-surface-hover ${
               index > 0 ? 'border-t' : ''
             } ${selected ? 'bg-surface-active text-text' : 'text-muted'}`}
           >
@@ -49,7 +52,7 @@ export function TrackList(props: Props) {
               className="sr-only"
             />
             <span
-              className={`h-2.5 w-2.5 rounded-full border ${
+              className={`motion-surface h-2.5 w-2.5 rounded-full border ${
                 selected ? 'border-primary bg-primary' : 'border-border-strong'
               }`}
               aria-hidden="true"

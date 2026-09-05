@@ -2,20 +2,35 @@ version: '3'
 
 tasks:
   setup-tools:
-    desc: Show how to install ffprobe for local development
+    desc: Prepare pinned media tools for the current desktop target
     cmds:
-      - 'echo "Install FFmpeg/ffprobe and yt-dlp using your system package manager:"'
-      - 'echo "Windows: winget install Gyan.FFmpeg yt-dlp"'
-      - 'echo "macOS: brew install ffmpeg yt-dlp"'
-      - 'echo "Linux: sudo apt install ffmpeg yt-dlp"'
-      - 'echo "Then run: task media:doctor"'
+      - task: prepare
+
+  check:
+    desc: Validate pinned versions, integrity metadata and build/release wiring without downloads
+    cmds:
+      - node --test tools/media-tools/media-tools.test.mjs
+      - node tools/media-tools/cli.mjs check
+
+  prepare:
+    desc: Download, verify and stage pinned ffmpeg, ffprobe and yt-dlp binaries
+    cmds:
+      - node tools/media-tools/cli.mjs prepare
+
+  verify:
+    desc: Verify hashes, licenses, provenance and executable versions of staged media tools
+    cmds:
+      - node tools/media-tools/cli.mjs verify
+
+  bundle:verify:
+    desc: Extract the native installer and verify its bundled media tools
+    cmds:
+      - node tools/media-tools/cli.mjs verify-bundle
 
   doctor:
-    desc: Check required media tools (ffprobe, ffmpeg, yt-dlp)
+    desc: Verify the bundled media tools for the current desktop target
     cmds:
-      - ffprobe -version
-      - ffmpeg -version
-      - yt-dlp --version
+      - task: verify
 
   probe:
     desc: Probe a media file natively
@@ -25,6 +40,7 @@ tasks:
   test:
     desc: Run tests for media adapters and usecases
     cmds:
+      - task: check
       - cargo test -p adapters-ffmpeg
       - cargo test -p adapters-ytdlp
       - cargo test -p application -- usecases::project

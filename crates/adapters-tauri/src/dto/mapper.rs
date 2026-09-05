@@ -93,6 +93,15 @@ mod tests {
     use domain::job::{JobId, JobProgress, JobStatus};
     use domain::project::ProjectId;
     use ports::job_scheduler::ScheduledJob;
+    use std::collections::BTreeSet;
+
+    fn contract_fixture() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../../../tests/fixtures/job_contract.json")).unwrap()
+    }
+
+    fn object_keys(value: &serde_json::Value) -> BTreeSet<String> {
+        value.as_object().unwrap().keys().cloned().collect()
+    }
 
     #[test]
     fn test_job_dto_preserves_kind_and_sanitizes_errors() {
@@ -135,9 +144,49 @@ mod tests {
         let payload = serde_json::to_value(&event_dto).unwrap();
         assert_eq!(payload["kind"], "failed");
         assert_eq!(payload["job"]["kind"], "dubbing");
+        let fixture = contract_fixture();
+        assert_eq!(
+            object_keys(&payload),
+            object_keys(&fixture["examplePayload"])
+        );
+        assert_eq!(
+            object_keys(&payload["job"]),
+            object_keys(&fixture["examplePayload"]["job"])
+        );
         assert_eq!(
             event_dto.job.error,
             Some("An error occurred during job execution.".to_string())
         );
+    }
+
+    #[test]
+    fn job_contract_fixture_matches_backend_status_and_stage_mappings() {
+        let fixture = contract_fixture();
+        let statuses = [
+            JobStatus::Pending,
+            JobStatus::Running,
+            JobStatus::Completed,
+            JobStatus::Failed,
+            JobStatus::Cancelled,
+        ]
+        .map(|status| map_status(&status));
+        let stages = [
+            DubbingPipelineStage::ValidateSource,
+            DubbingPipelineStage::InspectSubtitles,
+            DubbingPipelineStage::FetchMetadata,
+            DubbingPipelineStage::DownloadMedia,
+            DubbingPipelineStage::ExtractOrGenerateTranscript,
+            DubbingPipelineStage::SegmentTranscript,
+            DubbingPipelineStage::TranslateTranscript,
+            DubbingPipelineStage::PrepareDubbingScript,
+            DubbingPipelineStage::SynthesizeSegments,
+            DubbingPipelineStage::PostprocessAudio,
+            DubbingPipelineStage::MuxAudioTrack,
+            DubbingPipelineStage::ExportResult,
+        ]
+        .map(|stage| map_stage(&stage));
+
+        assert_eq!(fixture["statuses"], serde_json::json!(statuses));
+        assert_eq!(fixture["stages"], serde_json::json!(stages));
     }
 }

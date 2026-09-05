@@ -31,7 +31,7 @@ export function SubtitleWorkspace() {
 
   return (
     <section
-      className="h-full min-h-0 overflow-y-auto px-4 py-5 sm:px-6"
+      className="h-full min-h-0 animate-content-in overflow-y-auto px-4 py-5 sm:px-6"
       aria-label="Subtitle source configuration"
       data-testid="subtitle-workspace"
     >

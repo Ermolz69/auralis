@@ -44,11 +44,5 @@ export type JobEventKind =
 
 export type JobEvent = {
   kind: JobEventKind;
-  jobId: string;
-  revision: number;
-  projectId: string | null;
-  status: JobStatus;
-  stage: JobStage | null;
-  progress: JobProgress;
-  error: string | null;
+  job: Job;
 };

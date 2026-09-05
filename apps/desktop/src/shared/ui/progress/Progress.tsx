@@ -49,7 +49,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {...props}
       >
         <div
-          className={`h-full flex-1 transition-all duration-300 ease-in-out ${variants[variant]} ${
+          className={`motion-progress h-full flex-1 ${variants[variant]} ${
             indeterminate ? 'w-full animate-progress-indeterminate' : 'w-full'
           }`}
           style={indeterminate ? undefined : { transform: `translateX(-${100 - percent}%)` }}

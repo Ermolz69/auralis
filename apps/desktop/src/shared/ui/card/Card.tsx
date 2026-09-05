@@ -11,7 +11,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       default: 'border border-border bg-surface-raised',
       elevated: 'border border-border-strong bg-surface-raised shadow-md',
       interactive:
-        'cursor-pointer border border-border bg-surface-raised transition-colors hover:border-border-strong hover:bg-surface-hover',
+        'motion-surface cursor-pointer border border-border bg-surface-raised hover:-translate-y-px hover:border-border-strong hover:bg-surface-hover hover:shadow-md active:translate-y-0',
       muted: 'border border-border bg-surface',
     };
     return <div ref={ref} className={`${base} ${variants[variant]} ${className}`} {...props} />;

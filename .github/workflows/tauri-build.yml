@@ -1,6 +1,7 @@
 name: Tauri Build
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -34,5 +35,15 @@ jobs:
           node: 'true'
           rust: 'true'
 
+      - name: Prepare verified media tools
+        run: task media:prepare
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
+
+      - name: Verify bundled media tools
+        run: task media:bundle:verify
+
+      - name: Install and launch packaged application
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        run: task release:smoke:install-launch

@@ -67,6 +67,7 @@ runs:
       if: inputs.rust == 'true' || inputs.security == 'true'
       uses: dtolnay/rust-toolchain@stable
       with:
+        toolchain: '1.95.0'
         components: rustfmt, clippy
 
     - name: Rust cache

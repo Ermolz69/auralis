@@ -1,28 +1,88 @@
-# OS & Updater Signing
+# Production Code Signing
 
-## Why is it needed
+Production tags are intentionally blocked until platform signing credentials are
+configured. Pull-request CI does not create installers; native package-content,
+signature, and launch checks run in the production release matrix or the manually
+started Tauri Build workflow where applicable.
 
-To absolutely confirm the authenticity of the application.
+Never commit certificates, passwords, client secrets, or Apple credentials. Store them as
+GitHub repository or environment secrets.
 
-1. **OS Code Signing** removes scary operating system warnings ("Unknown Publisher" in Windows SmartScreen, "Unidentified Developer" in macOS Gatekeeper).
-2. **Tauri Updater Signing** guarantees that updates come exactly from us and have not been tampered with by hackers (protection against Man-in-the-Middle attacks).
+## Tauri updater
 
-## What does it forbid
+Every Windows, macOS, and Linux update must carry a Tauri updater signature.
+Windows and macOS packages additionally require their platform signing. Generate
+the updater key pair once on a trusted maintainer machine from the repository root:
 
-It forbids releasing and distributing stable versions of the application without a cryptographic signature. A missing signature breaks user trust and disables the automatic update system.
+```bash
+pnpm tauri signer generate -w ~/.tauri/auralis.key
+```
 
-## Where does it run
+Use a strong, non-empty password. Then configure GitHub:
 
-During the `release.yml` workflow execution, right before the generation of final installers and release artifacts.
+- secret `TAURI_SIGNING_PRIVATE_KEY`: contents of the generated private key file;
+- secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: the key password;
+- repository variable `AURALIS_UPDATER_PUBLIC_KEY`: contents printed for the public key.
 
-## How to fix the error
+Keep an encrypted offline backup of the private key and its password. The public key is
+embedded into production builds and is safe to distribute, but the private key must never be
+committed or shared. Losing it means existing installations cannot trust any future update;
+replacing it requires distributing a new installer through another trusted channel.
 
-Ensure that all certificates (Apple Developer ID / Windows EV) and Tauri private keys are correctly added to the GitHub Secrets of the repository, their validity has not expired, and passwords are up to date.
+Release CI refuses empty or placeholder updater credentials. Local development builds do not
+embed the production public key and therefore cannot contact or install production updates.
 
-## When can an exception be made
+## Windows
 
-Only during the earliest alpha/beta testing stages when certificates have not yet been physically purchased by the organization (which is why the CI steps are currently commented out as placeholders). For production releases, signing is mandatory.
+Set the repository variable `WINDOWS_SIGNING_MODE` to one of the supported modes.
 
-## Who approves the exception
+### PFX mode
 
-CTO or Tech Lead.
+Configure these secrets:
+
+- `WINDOWS_CERTIFICATE`: base64-encoded code-signing PFX;
+- `WINDOWS_CERTIFICATE_PASSWORD`: PFX export password.
+
+The optional repository variable `WINDOWS_TIMESTAMP_URL` overrides the default DigiCert
+RFC 3161 timestamp service.
+
+### Azure Artifact Signing mode
+
+Set `WINDOWS_SIGNING_MODE=azure` and configure:
+
+- secrets: `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`;
+- repository variables: `AZURE_ARTIFACT_SIGNING_ENDPOINT`,
+  `AZURE_ARTIFACT_SIGNING_ACCOUNT`, `AZURE_ARTIFACT_SIGNING_PROFILE`, and
+  `AZURE_ARTIFACT_SIGNING_CLI_VERSION`.
+
+The CLI version is mandatory so a release never installs an unpinned signing tool.
+
+## macOS
+
+Configure these secrets for Developer ID signing and notarization:
+
+- `APPLE_CERTIFICATE`: base64-encoded Developer ID Application `.p12`;
+- `APPLE_CERTIFICATE_PASSWORD`: `.p12` export password;
+- `APPLE_ID`: Apple account email;
+- `APPLE_PASSWORD`: app-specific Apple account password;
+- `APPLE_TEAM_ID`: Apple Developer team identifier.
+
+Tauri imports the certificate, infers the signing identity, submits the bundle for
+notarization, and staples the result. The release gate verifies `codesign`, Gatekeeper
+assessment, and the stapled DMG ticket.
+
+## Release enforcement
+
+For every production tag, the workflow performs these gates in order:
+
+1. validate that the target platform has complete signing configuration;
+2. run focused crash-recovery tests on Windows and macOS;
+3. build and sign the native packages;
+4. verify bundled media tools and compliance files;
+5. verify Authenticode or Apple signing and notarization;
+6. install and launch the Windows or macOS package.
+
+Any failed platform gate prevents the publish job from running, so no GitHub Release is
+created from unverified packages. After every platform succeeds, the only write-enabled job
+downloads the verified workflow artifacts, validates the complete package set, adds
+the signed updater assets, `latest.json`, and `SHA256SUMS.txt`, and creates one draft release.

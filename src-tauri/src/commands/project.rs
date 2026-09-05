@@ -1,5 +1,5 @@
 use crate::bootstrap::usecases::AppUseCases;
-use crate::dto::error::{map_job_dto_result, parse_project_id, CommandError};
+use crate::dto::error::{CommandError, map_job_dto_result, parse_project_id};
 use crate::dto::project::{CreateProjectResponse, ProjectDto, SubtitleTrackDto, TranscriptDto};
 use application::usecases::pipeline::start_mock::StartMockPipelineRequest;
 use application::usecases::project::create::CreateProjectRequest;
@@ -13,7 +13,7 @@ use application::usecases::transcript::get::GetTranscriptRequest;
 use application::usecases::transcript::list_youtube_tracks::ListYoutubeSubtitleTracksRequest;
 
 use std::sync::Arc;
-use tauri::{command, State};
+use tauri::{State, command};
 
 #[command]
 pub async fn create_project_cmd(

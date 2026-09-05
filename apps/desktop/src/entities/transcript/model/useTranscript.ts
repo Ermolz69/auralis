@@ -23,7 +23,7 @@ export function useTranscript(projectId: string | null) {
       if (activeProjectId.current === id) {
         setTranscript(data);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (activeProjectId.current === id) {
         setError(toCommandError(err).message);
       }
@@ -50,15 +50,11 @@ export function useTranscript(projectId: string | null) {
 
     const setupListener = async () => {
       try {
-        const fn = await listen<{ projectId: string; jobId: string }>(
-          'transcript-ready',
-          (event) => {
-            if (projectId && event.payload.projectId === projectId) {
-              // Re-fetch the transcript because it is ready
-              fetchTranscript(projectId);
-            }
-          },
-        );
+        const fn = await listen('transcript-ready', (event) => {
+          if (projectId && event.payload.projectId === projectId) {
+            fetchTranscript(projectId);
+          }
+        });
 
         if (cancelled) {
           fn();

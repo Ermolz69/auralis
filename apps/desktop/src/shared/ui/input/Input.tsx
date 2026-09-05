@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { FieldMessages, getFieldMessageState } from '../form-field';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -27,11 +28,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
-    const resolvedErrorText = errorText || (error ? helperText : undefined);
-    const resolvedHelperText = errorText ? helperText : error ? undefined : helperText;
-    const helperId = resolvedHelperText ? `${inputId}-helper` : undefined;
-    const errorId = resolvedErrorText ? `${inputId}-error` : undefined;
-    const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
+    const { helperId, errorId, describedBy, resolvedHelperText, resolvedErrorText } =
+      getFieldMessageState(inputId, { helperText, errorText, error });
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -39,7 +37,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     // If error -> border-danger
     // If focused -> ring-primary or border-primary
     const inputBase =
-      'flex w-full items-center rounded-md border bg-surface-raised text-sm text-text transition-colors outline-none';
+      'motion-field flex w-full items-center rounded-md border bg-surface-raised text-sm text-text outline-none';
 
     const inputBorder = error
       ? 'border-danger focus-within:ring-2 focus-within:ring-danger focus-within:ring-offset-2 focus-within:ring-offset-bg focus-within:border-danger'
@@ -78,16 +76,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {resolvedHelperText && (
-          <span id={helperId} className="text-xs text-muted">
-            {resolvedHelperText}
-          </span>
-        )}
-        {resolvedErrorText && (
-          <span id={errorId} className="text-xs text-danger" role="alert">
-            {resolvedErrorText}
-          </span>
-        )}
+        <FieldMessages
+          helperId={helperId}
+          errorId={errorId}
+          helperText={resolvedHelperText}
+          errorText={resolvedErrorText}
+        />
       </div>
     );
   },

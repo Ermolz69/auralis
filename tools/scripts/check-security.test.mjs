@@ -58,18 +58,21 @@ test('local and CI installations pin identical Rust security tool versions', () 
   ]);
 });
 
-test('security has a required independent job without GTK or browser bootstrap', () => {
+test('security has a dependency-scoped job without GTK or browser bootstrap', () => {
   const job = ci.jobs.security;
   const setup = job.steps.find((step) => step.uses === './.github/actions/bootstrap');
   assert.deepEqual(setup.with, { node: 'true', security: 'true' });
   assert.ok(job.steps.some((step) => step.run === 'task check:quality:security'));
   assert.ok(ci.jobs['ci-summary'].needs.includes('security'));
-  for (const group of ['frontend', 'rust', 'quality', 'release', 'ci', 'global']) {
-    assert.ok(job.if.includes(`needs.changes.outputs.${group} == 'true'`));
-  }
+  assert.ok(job.if.includes("needs.changes.outputs.dependencies == 'true'"));
+  assert.ok(job.if.includes("needs.changes.outputs.ci == 'true'"));
+  for (const group of ['frontend', 'rust', 'quality', 'release', 'global'])
+    assert.equal(job.if.includes(`needs.changes.outputs.${group} == 'true'`), false);
   const filters = load(ci.jobs.changes.steps.find((step) => step.id === 'filter').with.filters);
-  assert.ok(filters.quality.includes('deny.toml'));
-  assert.ok(filters.quality.includes('.cargo/**'));
+  assert.ok(filters.dependencies.includes('deny.toml'));
+  assert.ok(filters.dependencies.includes('.cargo/**'));
+  assert.ok(filters.dependencies.includes('pnpm-lock.yaml'));
+  assert.ok(filters.dependencies.includes('Cargo.lock'));
   for (const name of ['frontend', 'docs', 'quality-global']) {
     const steps = ci.jobs[name].steps;
     assert.equal(

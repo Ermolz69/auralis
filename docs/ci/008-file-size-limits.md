@@ -6,7 +6,20 @@ Prevents the creation of huge, unreadable files and "god objects". Strict limits
 
 ## What does it forbid
 
-It forbids committing files whose line count exceeds the fixed limits for their layer (e.g., more than 120 lines for `pages`, 250 for `widgets`, 400 for Rust adapters).
+It rejects production files above the configured limit:
+
+| Source area                   | Maximum lines |
+| ----------------------------- | ------------: |
+| Frontend pages                |           120 |
+| Frontend widgets and features |           250 |
+| Frontend entities             |           300 |
+| Shared UI                     |           200 |
+| Shared libraries              |           250 |
+| Rust application crate        |           300 |
+| Rust adapter crates           |           400 |
+
+A small explicit ratchet list preserves existing oversized files at their current
+size while they are split; those files may not grow.
 
 ## Where does it run
 
@@ -24,7 +37,10 @@ Split the file using the following strategies:
 
 ## When can an exception be made
 
-Limits do not apply to generated code, API types (`api-types`), lock files, SVG icons, test snapshots, and explicit static-data file suffixes such as `data.ts` and `constants.ts`.
+Limits do not apply to generated code, API types (`api-types`), lock files, SVG
+icons, declarations, tests, snapshots, and explicit static-data file suffixes such
+as `data.ts` and `constants.ts`. Rust `#[cfg(test)] mod tests` blocks are excluded
+from production line counts.
 
 Production filenames are still checked even when their basename contains words such as `mock`.
 

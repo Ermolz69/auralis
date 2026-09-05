@@ -21,7 +21,7 @@ export function ShellDestination(props: Props) {
       }
       title={props.disabled ? 'Open a project first' : undefined}
       onClick={props.onClick}
-      className={`flex min-w-0 items-center justify-center gap-2 border-primary px-3 py-2 text-xs font-medium transition-colors lg:justify-start lg:border-l-2 lg:px-3 ${
+      className={`motion-control flex min-w-0 items-center justify-center gap-2 border-primary px-3 py-2 text-xs font-medium lg:justify-start lg:border-l-2 lg:px-3 ${
         props.desktopHidden ? 'lg:hidden' : ''
       } ${
         props.active

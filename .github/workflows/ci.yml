@@ -35,6 +35,7 @@ jobs:
       release: ${{ steps.filter.outputs.release }}
       ci: ${{ steps.filter.outputs.ci }}
       global: ${{ steps.filter.outputs.global }}
+      dependencies: ${{ steps.filter.outputs.dependencies }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -64,6 +65,7 @@ jobs:
               - 'src-tauri/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rust-toolchain.toml'
               - 'rustfmt.toml'
               - '.clippy.toml'
             docs:
@@ -85,9 +87,14 @@ jobs:
               - '.github/workflows/release.yml'
               - '.github/workflows/tauri-build.yml'
               - 'src-tauri/tauri.conf.json'
+              - 'src-tauri/tauri.*.conf.json'
               - 'src-tauri/capabilities/**'
               - 'src-tauri/permissions/**'
               - 'src-tauri/icons/**'
+              - 'tools/media-tools/**'
+              - 'tools/release/**'
+              - 'taskfiles/media.yml'
+              - 'taskfiles/release.yml'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
@@ -96,6 +103,20 @@ jobs:
               - '.editorconfig'
               - '.prettier*'
               - '.eslint*'
+            dependencies:
+              - 'package.json'
+              - 'apps/desktop/package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/**/Cargo.toml'
+              - 'src-tauri/Cargo.toml'
+              - 'tools/glib-backport/regression/Cargo.toml'
+              - 'deny.toml'
+              - '.cargo/**'
+              - 'taskfiles/security.yml'
+              - '.github/actions/bootstrap/action.yml'
 
   frontend:
     name: Frontend
@@ -120,15 +141,14 @@ jobs:
       - name: Run frontend quality checks
         run: task check:quality:frontend
 
-      - name: Run Storybook build check
-        run: task frontend:storybook
-
   rust:
     name: Rust
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' || needs.changes.outputs.release == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      TAURI_CONFIG: '{"bundle":{"resources":[]}}'
 
     steps:
       - name: Checkout
@@ -140,37 +160,12 @@ jobs:
           rust: 'true'
 
       - name: Run rust checks
-        run: task check:rust
-
-      - name: Reproduce and verify the GLib safety backport
-        run: task rs:glib:reproduce
-
-  crash-recovery:
-    name: Crash Recovery (${{ matrix.os }})
-    needs: changes
-    if: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.quality == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Bootstrap native recovery tests
-        uses: ./.github/actions/bootstrap
-        with:
-          rust: 'true'
-      - name: Verify SQLite crash recovery
-        run: task rs:test:storage
-      - name: Verify YouTube resume and downloader process ownership
-        run: task rs:test:youtube
+        run: task check:rust:pr
 
   docs:
     name: Docs
     needs: changes
-    if: ${{ needs.changes.outputs.docs == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
+    if: ${{ needs.changes.outputs.docs == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -211,7 +206,7 @@ jobs:
   security:
     name: Dependency Security
     needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.rust == 'true' || needs.changes.outputs.quality == 'true' || needs.changes.outputs.release == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
+    if: ${{ needs.changes.outputs.dependencies == 'true' || needs.changes.outputs.ci == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -227,12 +222,6 @@ jobs:
       - name: Run security checks
         run: task check:quality:security
 
-  release-checks:
-    name: Release Check Parity
-    needs: changes
-    if: ${{ needs.changes.outputs.release == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.quality == 'true' || needs.changes.outputs.global == 'true' }}
-    uses: ./.github/workflows/full-checks.yml
-
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
@@ -240,11 +229,9 @@ jobs:
       - changes
       - frontend
       - rust
-      - crash-recovery
       - docs
       - quality-global
       - security
-      - release-checks
     if: always()
 
     steps:

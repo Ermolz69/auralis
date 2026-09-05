@@ -87,7 +87,7 @@ export const ProjectList = () => {
     let unlistenProject: (() => void) | undefined;
     const setupListeners = async () => {
       try {
-        unlistenProject = await listen<{ projectId: string }>('project-updated', (event) => {
+        unlistenProject = await listen('project-updated', (event) => {
           if (event.payload.projectId === deletingProjectIdRef.current) {
             return;
           }

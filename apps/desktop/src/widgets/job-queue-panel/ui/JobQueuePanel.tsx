@@ -1,4 +1,5 @@
-import { Icon } from '../../../shared/ui/icon';
+import { Notice } from '../../../shared/ui/notice';
+import { StateView } from '../../../shared/ui/state-view';
 import { isActiveJobStatus, useJobContext } from '@/entities/job';
 import type { JobDto, JobStoreState } from '@/entities/job';
 import { JobCard } from './JobCard';
@@ -10,7 +11,7 @@ const getSyncNotice = (phase: JobStoreState['phase'], pendingRefetch: boolean) =
     return {
       role: 'status' as const,
       icon: 'LoaderCircle' as const,
-      tone: 'text-muted border-muted/40 bg-bg',
+      tone: 'neutral' as const,
       title: 'Opening job sync',
       body: 'Jobs across all projects are being connected.',
     };
@@ -20,7 +21,7 @@ const getSyncNotice = (phase: JobStoreState['phase'], pendingRefetch: boolean) =
     return {
       role: 'status' as const,
       icon: 'RefreshCw' as const,
-      tone: 'text-muted border-muted/40 bg-bg',
+      tone: 'neutral' as const,
       title: 'Refreshing jobs',
       body: 'The queue is loading the latest operation state.',
     };
@@ -30,7 +31,7 @@ const getSyncNotice = (phase: JobStoreState['phase'], pendingRefetch: boolean) =
     return {
       role: 'alert' as const,
       icon: 'CircleAlert' as const,
-      tone: 'text-warning border-warning/40 bg-warning/10',
+      tone: 'warning' as const,
       title: 'Job state may be outdated',
       body: 'A refresh is in progress. Avoid repeating actions until the queue updates.',
     };
@@ -55,43 +56,37 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
     >
       <h2 className="shrink-0 text-sm font-semibold text-text">Job Queue</h2>
       {syncNotice && (
-        <div
-          className={`flex gap-3 rounded-md border p-3 ${syncNotice.tone}`}
+        <Notice
+          icon={syncNotice.icon}
+          title={syncNotice.title}
+          tone={syncNotice.tone}
           role={syncNotice.role}
-          aria-live={syncNotice.role === 'alert' ? 'assertive' : 'polite'}
+          live={syncNotice.role === 'alert' ? 'assertive' : 'polite'}
         >
-          <Icon name={syncNotice.icon} size="sm" className="mt-0.5" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-text">{syncNotice.title}</p>
-            <p className="text-xs">{syncNotice.body}</p>
-          </div>
-        </div>
+          {syncNotice.body}
+        </Notice>
       )}
       {hasActiveJobs && (
-        <div
-          className="flex gap-3 rounded-md border border-accent/40 bg-accent/10 p-3 text-accent-foreground"
+        <Notice
+          icon="Info"
+          title="Operation keeps running while you browse"
+          tone="accent"
           role="status"
-          aria-live="polite"
+          live="polite"
         >
-          <Icon name="Info" size="sm" className="mt-0.5" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-text">
-              Operation keeps running while you browse
-            </p>
-            <p className="text-xs">
-              You can switch pages safely. Closing the app can interrupt the operation; on next
-              launch the queue will show the recovered final state.
-            </p>
-          </div>
-        </div>
+          You can switch pages safely. Closing the app can interrupt the operation; on next launch
+          the queue will show the recovered final state.
+        </Notice>
       )}
       <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-0">
         {activeJobs.length === 0 && completedJobs.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-            <Icon name="Inbox" size="lg" className="text-muted/50 mb-3" />
-            <p className="text-sm font-medium text-subtle">Queue is empty</p>
-            <p className="mt-1 text-xs text-subtle">Jobs will appear here</p>
-          </div>
+          <StateView
+            icon="Inbox"
+            title="Queue is empty"
+            description="Jobs will appear here"
+            density="compact"
+            className="flex-1 p-4"
+          />
         ) : (
           <>
             {activeJobs.length > 0 && (

@@ -1,7 +1,7 @@
 import { Card, CardContent } from '../../../shared/ui/card';
 import { Badge } from '../../../shared/ui/badge';
-import { Icon } from '../../../shared/ui/icon';
 import { Button } from '../../../shared/ui/button';
+import { StateView } from '../../../shared/ui/state-view';
 import type { MediaSourceKind } from '@/entities/media';
 import type { Transcript } from '@/entities/transcript';
 
@@ -92,72 +92,71 @@ function TranscriptBody({
 
 function NoProjectState() {
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center">
-      <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-      <p className="text-lg font-medium text-text">No project selected</p>
-      <p className="text-sm text-muted mt-2 max-w-sm">
-        Open a project to view transcript availability.
-      </p>
-    </div>
+    <StateView
+      icon="FileText"
+      title="No project selected"
+      description="Open a project to view transcript availability."
+      className="h-full"
+    />
   );
 }
 
 function LoadingState() {
   return (
-    <div
-      className="h-full flex flex-col items-center justify-center text-center"
+    <StateView
+      title="Loading transcript..."
+      description="Checking whether subtitle text is available for this project."
+      loading
       role="status"
-      aria-live="polite"
-    >
-      <p className="text-lg font-medium text-text animate-pulse">Loading transcript...</p>
-      <p className="text-sm text-muted mt-2 max-w-sm">
-        Checking whether subtitle text is available for this project.
-      </p>
-    </div>
+      live="polite"
+      className="h-full"
+    />
   );
 }
 
 function ErrorState({ error, onRefetch }: { error: string; onRefetch: () => void }) {
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center" role="alert">
-      <Icon name="CircleAlert" size="lg" className="text-danger mb-4" />
-      <p className="text-lg font-medium text-text">Error loading transcript</p>
-      <p className="text-sm text-danger mt-2 max-w-sm">{error}</p>
-      <Button variant="secondary" size="sm" className="mt-4" onClick={onRefetch}>
-        Retry loading
-      </Button>
-    </div>
+    <StateView
+      icon="CircleAlert"
+      title="Error loading transcript"
+      description={error}
+      tone="danger"
+      role="alert"
+      className="h-full"
+      action={
+        <Button variant="secondary" size="sm" onClick={onRefetch}>
+          Retry loading
+        </Button>
+      }
+    />
   );
 }
 
 function LocalUnavailableState() {
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center">
-      <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-      <p className="text-lg font-medium text-text">Transcript unavailable</p>
-      <p className="text-sm text-muted mt-2 max-w-sm">
-        Local media import is complete, but automatic transcription for local files is not supported
-        in this version.
-      </p>
-    </div>
+    <StateView
+      icon="FileText"
+      title="Transcript unavailable"
+      description="Local media import is complete, but automatic transcription for local files is not supported in this version."
+      className="h-full"
+    />
   );
 }
 
 function WaitingState({ activeJobStatus }: { activeJobStatus: string | null }) {
   return (
-    <div
-      className="h-full flex flex-col items-center justify-center text-center"
-      role="status"
-      aria-live="polite"
-    >
-      <Icon name="FileText" size="lg" className="text-muted/50 mb-4" />
-      <p className="text-lg font-medium text-text">Waiting for subtitles</p>
-      <p className="text-sm text-muted mt-2 max-w-sm">
-        {activeJobStatus
+    <StateView
+      icon="FileText"
+      title="Waiting for subtitles"
+      description={
+        activeJobStatus
           ? `Linked operation: ${activeJobStatus}. The transcript will appear here when ready.`
-          : 'Start subtitle import for a supported source. The transcript will appear here when ready.'}
-      </p>
-    </div>
+          : 'Start subtitle import for a supported source. The transcript will appear here when ready.'
+      }
+      role="status"
+      live="polite"
+      className="h-full"
+    />
   );
 }
 

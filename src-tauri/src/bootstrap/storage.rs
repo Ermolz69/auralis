@@ -242,9 +242,11 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(staged
-            .final_key
-            .starts_with(&format!("{project_id}/source-video/")));
+        assert!(
+            staged
+                .final_key
+                .starts_with(&format!("{project_id}/source-video/"))
+        );
         assert!(paths.projects().join(&staged.final_key).is_file());
         assert!(!paths.root().join(&staged.final_key).exists());
     }

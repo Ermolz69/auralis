@@ -22,14 +22,6 @@ export function languageName(language: string): string {
   return `${name.charAt(0).toLocaleUpperCase('ru-RU')}${name.slice(1)} (${language})`;
 }
 
-export function formatTime(value: string): string {
-  return new Date(value).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
-
 export function formatRange(startMs: number, endMs: number): string {
   return `${formatTimestamp(startMs)} → ${formatTimestamp(endMs)}`;
 }

@@ -1,0 +1,50 @@
+version: '3'
+
+tasks:
+  smoke:check:
+    desc: Validate release smoke-test tooling
+    cmds:
+      - node --test tools/release/install-launch-smoke.test.mjs tools/release/release-assets.test.mjs tools/release/signing-config.test.mjs tools/release/validate-release-tag.test.mjs
+
+  tag:verify:
+    desc: Require the production tag to match the synchronized application version
+    requires:
+      vars: [TAG]
+    cmds:
+      - node tools/release/validate-release-tag.mjs {{.TAG}}
+
+  signing:preflight:
+    desc: Reject a production release without complete platform signing credentials
+    requires:
+      vars: [PLATFORM]
+    cmds:
+      - node tools/release/validate-signing.mjs --platform={{.PLATFORM}}
+
+  signing:install-azure-client:
+    desc: Install the pinned Azure Artifact Signing client for Windows releases
+    requires:
+      vars: [VERSION]
+    cmds:
+      - cargo install artifact-signing-cli --locked --version {{.VERSION}}
+
+  signature:verify:
+    desc: Verify Authenticode or Apple code signing and notarization on release bundles
+    cmds:
+      - node tools/release/verify-signature.mjs
+
+  smoke:install-launch:
+    desc: Install the built package and verify the desktop process remains healthy at startup
+    cmds:
+      - node tools/release/install-launch-smoke.mjs
+
+  assets:validate:
+    desc: Require the complete package set for one release platform
+    requires:
+      vars: [PLATFORM]
+    cmds:
+      - node tools/release/release-assets.mjs --platform={{.PLATFORM}} --root=target/release/bundle
+
+  assets:prepare-publish:
+    desc: Require and flatten all verified platform packages before publishing
+    cmds:
+      - node tools/release/release-assets.mjs --platform=all --root=release-assets --output=release-publish

@@ -89,7 +89,7 @@ export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
             : currentToast.phase === 'exiting'
               ? 'animate-toast-exit'
               : snappingBack
-                ? 'cursor-grab transition-[transform,opacity] duration-200 ease-out'
+                ? 'cursor-grab transition-[transform,opacity] duration-150 ease-out'
                 : 'cursor-grab animate-toast-enter'
       } ${typeStyles[currentToast.type]}`}
       role={currentToast.type === 'danger' || currentToast.type === 'warning' ? 'alert' : 'status'}
@@ -153,7 +153,7 @@ export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
           {currentToast.action && (
             <button
               type="button"
-              className="mt-1 w-fit rounded-sm border border-current/30 bg-current/10 px-2 py-1 text-[11px] font-semibold text-current transition-colors hover:bg-current/15 focus:outline-none focus:ring-2 focus:ring-current/40"
+              className="motion-control mt-1 w-fit rounded-sm border border-current/30 bg-current/10 px-2 py-1 text-[11px] font-semibold text-current hover:bg-current/15 focus:outline-none focus:ring-2 focus:ring-current/40"
               onClick={() => {
                 toast.dismiss(currentToast.id);
                 currentToast.action?.onClick();
@@ -168,7 +168,7 @@ export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
             type="button"
             aria-label="Close toast"
             onClick={() => toast.dismiss(currentToast.id)}
-            className="shrink-0 rounded-md p-1 text-muted opacity-65 transition-all hover:bg-surface-hover hover:text-text hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="motion-control shrink-0 rounded-md p-1 text-muted opacity-65 hover:bg-surface-hover hover:text-text hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <Icon name="X" size={14} />
           </button>

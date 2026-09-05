@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { FieldMessages, getFieldMessageState } from '../form-field';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -25,11 +26,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ) => {
     const generatedId = useId();
     const textareaId = id || generatedId;
-    const resolvedErrorText = errorText || (error ? helperText : undefined);
-    const resolvedHelperText = errorText ? helperText : error ? undefined : helperText;
-    const helperId = resolvedHelperText ? `${textareaId}-helper` : undefined;
-    const errorId = resolvedErrorText ? `${textareaId}-error` : undefined;
-    const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
+    const { helperId, errorId, describedBy, resolvedHelperText, resolvedErrorText } =
+      getFieldMessageState(textareaId, { helperText, errorText, error });
 
     const baseWrapper = 'flex flex-col gap-1.5 w-full';
 
@@ -37,7 +35,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     // If error -> border-danger
     // If focused -> ring-primary or border-primary
     const textareaBase =
-      'flex w-full bg-surface border rounded-md text-text text-sm transition-all outline-none p-3 placeholder:text-muted';
+      'motion-field flex w-full rounded-md border bg-surface p-3 text-sm text-text outline-none placeholder:text-muted';
 
     const textareaBorder = error
       ? 'border-danger focus:ring-2 focus:ring-danger focus:ring-offset-2 focus:ring-offset-bg focus:border-danger'
@@ -63,16 +61,12 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           className={`${textareaBase} ${textareaBorder} ${textareaDisabled} ${resizeClass}`}
           {...props}
         />
-        {resolvedHelperText && (
-          <span id={helperId} className="text-xs text-muted">
-            {resolvedHelperText}
-          </span>
-        )}
-        {resolvedErrorText && (
-          <span id={errorId} className="text-xs text-danger" role="alert">
-            {resolvedErrorText}
-          </span>
-        )}
+        <FieldMessages
+          helperId={helperId}
+          errorId={errorId}
+          helperText={resolvedHelperText}
+          errorText={resolvedErrorText}
+        />
       </div>
     );
   },

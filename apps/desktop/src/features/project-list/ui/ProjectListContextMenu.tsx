@@ -57,7 +57,7 @@ export function ProjectListContextMenu({
         left: Math.min(position.x, window.innerWidth - 190),
         top: Math.min(position.y, window.innerHeight - 230),
       }}
-      className="fixed z-50 w-48 rounded-md border border-border bg-surface p-1 shadow-lg"
+      className="fixed z-50 w-48 origin-top-left animate-popover-in rounded-md border border-border bg-surface p-1 shadow-lg"
     >
       <MenuItem icon="Pencil" label="Переименовать" onClick={() => run(onRename)} />
       <MenuItem icon="ImagePlus" label="Выбрать аватарку" onClick={() => run(onChooseAvatar)} />
@@ -114,7 +114,7 @@ function MenuItem({
       role="menuitem"
       tabIndex={-1}
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-surface-hover ${danger ? 'text-danger' : 'text-muted'}`}
+      className={`motion-control flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-surface-hover ${danger ? 'text-danger' : 'text-muted'}`}
     >
       <Icon name={icon} size={13} />
       {label}

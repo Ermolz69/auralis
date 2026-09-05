@@ -1,3 +1,5 @@
+import { createWindowEventChannel } from '@/shared/lib';
+
 export const preferencesStorageKey = 'auralis.project-preferences.v1';
 export const projectPreferencesEvent = 'auralis:project-preferences-changed';
 
@@ -5,6 +7,11 @@ export type StoredPreferences = { pinned: boolean; avatar?: string | null };
 type Entries = Record<string, StoredPreferences>;
 const pending = new Map<string, StoredPreferences | null>();
 let lastReadable: Entries = Object.create(null);
+const preferenceChanges = createWindowEventChannel<{ projectId: string }>(projectPreferencesEvent);
+
+export function subscribeProjectPreferences(listener: (change: { projectId: string }) => void) {
+  return preferenceChanges.subscribe(listener);
+}
 
 export function readPreferencesStorage() {
   let entries: Entries = Object.create(null);
@@ -72,6 +79,6 @@ export function mutatePreferences(
       persisted = false;
     }
   }
-  window.dispatchEvent(new CustomEvent(projectPreferencesEvent, { detail: { projectId } }));
+  preferenceChanges.emit({ projectId });
   return { persisted };
 }

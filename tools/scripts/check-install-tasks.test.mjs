@@ -40,9 +40,9 @@ test('legacy install remains a compatible alias for the full installation', () =
   assert.deepEqual(commands('install'), [frontend, rust]);
 });
 
-test('the CI entrypoint explicitly installs both components before checks', () => {
+test('the CI entrypoint installs both components before the pull-request checks', () => {
   const taskfile = load(readFileSync(new URL('Taskfile.yml', root), 'utf8'));
-  assert.deepEqual(taskfile.tasks.ci.cmds, [{ task: 'install:all' }, { task: 'check' }]);
+  assert.deepEqual(taskfile.tasks.ci.cmds, [{ task: 'install:all' }, { task: 'check:pr' }]);
   assert.deepEqual(commands('ci').slice(0, 2), [frontend, rust]);
 });
 

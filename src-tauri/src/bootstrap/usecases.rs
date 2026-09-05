@@ -69,7 +69,9 @@ pub fn setup_usecases(
     youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
 ) {
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
-    let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates);
+    let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates).with_ffmpeg_candidates(
+        crate::bootstrap::media_tools::resolve_ffmpeg_candidates(app),
+    );
 
     let probe = FfprobeAdapter::new(crate::bootstrap::media_tools::resolve_ffprobe_candidates(
         app,

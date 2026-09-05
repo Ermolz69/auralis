@@ -6,12 +6,16 @@ tasks:
       - task: fsd-boundaries
       - task: color-tokens
       - task: file-size
+      - task: duplicate-code
       - task: desktop-policies
 
   desktop-policies:
     desc: Validate bundle budgets and desktop content security policy
     cmds:
       - node --test tools/scripts/check-bundle.test.mjs tools/scripts/check-csp.test.mjs
+      - task: ipc-contract
+      - task: release-metadata
+      - task: :release:smoke:check
 
   docs:
     cmds:
@@ -19,6 +23,10 @@ tasks:
 
   global:
     cmds:
+      - task: :media:check
+      - task: ipc-contract
+      - task: release-metadata
+      - task: workspace-dependencies
       - task: :sec:sqlite:verify
       - task: :sec:glib:verify
       - task: format-check
@@ -51,6 +59,30 @@ tasks:
     cmds:
       - node tools/scripts/check-file-size.test.mjs
       - node tools/scripts/check-file-size.mjs
+
+  duplicate-code:
+    desc: Reject large exact copy-paste blocks in frontend production code
+    cmds:
+      - node --test tools/scripts/check-duplicate-code.test.mjs
+      - node tools/scripts/check-duplicate-code.mjs
+
+  ipc-contract:
+    desc: Keep registered Rust commands and events in parity with TypeScript IPC maps
+    cmds:
+      - node --test tools/scripts/check-ipc-contract.test.mjs
+      - node tools/scripts/check-ipc-contract.mjs
+
+  release-metadata:
+    desc: Keep Rust, frontend and Tauri release identity synchronized
+    cmds:
+      - node --test tools/scripts/check-release-metadata.test.mjs
+      - node tools/scripts/check-release-metadata.mjs
+
+  workspace-dependencies:
+    desc: Keep shared Cargo dependency versions centralized at the workspace root
+    cmds:
+      - node --test tools/scripts/check-workspace-dependencies.test.mjs
+      - node tools/scripts/check-workspace-dependencies.mjs
 
   color-tokens:
     cmds:

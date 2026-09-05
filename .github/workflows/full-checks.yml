@@ -10,6 +10,7 @@ env:
   CI: true
   CARGO_TERM_COLOR: always
   RUSTFLAGS: '-D warnings'
+  TAURI_CONFIG: '{"bundle":{"resources":[]}}'
 
 jobs:
   check:

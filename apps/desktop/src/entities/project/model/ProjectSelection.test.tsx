@@ -1,14 +1,12 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@/shared/api/tauri';
+import { invoke, listen } from '@/shared/api/tauri';
 import { ProjectProvider } from './ProjectProvider';
 import { useProjectContext } from './useProjectContext';
 import type { Project } from './types';
 
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn() }));
-vi.mock('@/shared/api/tauri', () => ({ invoke: vi.fn() }));
+vi.mock('@/shared/api/tauri', () => ({ invoke: vi.fn(), listen: vi.fn() }));
 
 const project: Project = {
   id: 'p1',

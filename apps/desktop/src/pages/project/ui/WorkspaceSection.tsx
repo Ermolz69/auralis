@@ -9,7 +9,7 @@ export function WorkspaceSection({
   action?: ReactNode;
   children: ReactNode;
 }) {
-  const id = `subtitle-${title.toLocaleLowerCase('ru-RU').replaceAll(' ', '-')}`;
+  const id = `workspace-${title.toLocaleLowerCase('ru-RU').replaceAll(' ', '-')}`;
   return (
     <section aria-labelledby={id}>
       <div className="mb-2 flex min-h-7 items-center justify-between gap-3">

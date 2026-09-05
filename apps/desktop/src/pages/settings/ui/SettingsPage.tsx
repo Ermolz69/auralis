@@ -1,8 +1,15 @@
 import { Badge } from '../../../shared/ui/badge';
 import { Icon } from '../../../shared/ui/icon';
-import { Page } from '../../../shared/ui/page-layout';
+import {
+  Page,
+  PageDescription,
+  PageHeaderGroup,
+  PageTitle,
+  PageTopBar,
+} from '../../../shared/ui/page-layout';
 import { Select } from '../../../shared/ui/select';
 import { COLOR_THEMES, isColorTheme, useColorTheme } from '../../../shared/theme';
+import { AppUpdatePanel } from '../../../features/app-update';
 import { colorThemeOptionGroups, unavailableSections } from './settings.data';
 
 export const SettingsPage = () => {
@@ -10,11 +17,13 @@ export const SettingsPage = () => {
   const activeTheme = COLOR_THEMES.find((theme) => theme.id === colorTheme);
 
   return (
-    <Page className="flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="shrink-0 border-b border-border px-5 py-5 sm:px-8">
-        <h1 className="text-xl font-semibold text-text">Settings</h1>
-        <p className="mt-0.5 text-xs text-muted">Workspace preferences</p>
-      </header>
+    <Page className="flex h-full min-h-0 animate-content-in flex-col overflow-hidden">
+      <PageTopBar>
+        <PageHeaderGroup className="!gap-0">
+          <PageTitle className="!text-xl">Settings</PageTitle>
+          <PageDescription className="mt-0.5 !text-xs">Workspace preferences</PageDescription>
+        </PageHeaderGroup>
+      </PageTopBar>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8">
         <div className="w-full max-w-2xl space-y-3">
@@ -46,6 +55,8 @@ export const SettingsPage = () => {
               />
             </div>
           </section>
+
+          <AppUpdatePanel />
 
           {unavailableSections.map((section) => (
             <section

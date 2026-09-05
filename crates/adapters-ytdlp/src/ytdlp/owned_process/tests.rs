@@ -76,12 +76,13 @@ async fn a_successful_owned_process_returns_without_waiting_on_the_lifetime_moni
     assert!(output.status.success());
 }
 
-#[cfg(unix)]
 #[tokio::test]
 async fn missing_download_candidates_still_return_missing_ytdlp() {
     let root = tempfile::tempdir().unwrap();
+    let ytdlp_candidates = [root.path().join("missing")];
+    let ffmpeg_candidates = [];
     let result = crate::ytdlp::command::run_ytdlp_download(
-        &[root.path().join("missing")],
+        crate::ytdlp::command::YtDlpCommandPaths::new(&ytdlp_candidates, &ffmpeg_candidates),
         "https://youtube.com/watch?v=test",
         root.path(),
         "original.%(ext)s",

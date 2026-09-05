@@ -1,8 +1,9 @@
-import { lazy, Suspense, useLayoutEffect, useRef } from 'react';
+import { lazy, Suspense, useCallback, useLayoutEffect, useRef } from 'react';
 import { HomePage } from './pages/home';
 import { AppShell } from './widgets/app-shell';
 import { useNavigation } from './shared/router';
 import { useProjectContext } from './entities/project';
+import { AppUpdateNotifier, AppUpdateProvider } from './features/app-update';
 
 const ProjectPage = lazy(() =>
   import('./pages/project').then((module) => ({ default: module.ProjectPage })),
@@ -15,10 +16,19 @@ const JobQueuePanel = lazy(() =>
 );
 
 function App() {
+  return (
+    <AppUpdateProvider>
+      <AppContent />
+    </AppUpdateProvider>
+  );
+}
+
+function AppContent() {
   const { currentView, setCurrentView } = useNavigation();
   const { selection } = useProjectContext();
   const previousSelectionStatus = useRef(selection.status);
   const view = currentView === 'project' && selection.status === 'closed' ? 'home' : currentView;
+  const openUpdateSettings = useCallback(() => setCurrentView('settings'), [setCurrentView]);
 
   useLayoutEffect(() => {
     const selectionClosed =
@@ -30,25 +40,28 @@ function App() {
   }, [currentView, selection.status, setCurrentView]);
 
   return (
-    <AppShell
-      jobQueue={
-        <Suspense fallback={<WorkspaceRouteLoading />}>
-          <JobQueuePanel className="h-[calc(100%-2.5rem)]" />
-        </Suspense>
-      }
-    >
-      {view === 'home' && <HomePage />}
-      {view === 'project' && selection.status === 'open' && (
-        <Suspense fallback={<WorkspaceRouteLoading />}>
-          <ProjectPage />
-        </Suspense>
-      )}
-      {view === 'settings' && (
-        <Suspense fallback={<WorkspaceRouteLoading />}>
-          <SettingsPage />
-        </Suspense>
-      )}
-    </AppShell>
+    <>
+      <AppUpdateNotifier onOpen={openUpdateSettings} />
+      <AppShell
+        jobQueue={
+          <Suspense fallback={<WorkspaceRouteLoading />}>
+            <JobQueuePanel className="h-[calc(100%-2.5rem)]" />
+          </Suspense>
+        }
+      >
+        {view === 'home' && <HomePage />}
+        {view === 'project' && selection.status === 'open' && (
+          <Suspense fallback={<WorkspaceRouteLoading />}>
+            <ProjectPage />
+          </Suspense>
+        )}
+        {view === 'settings' && (
+          <Suspense fallback={<WorkspaceRouteLoading />}>
+            <SettingsPage />
+          </Suspense>
+        )}
+      </AppShell>
+    </>
   );
 }
 

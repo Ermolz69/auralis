@@ -8,6 +8,17 @@ export const Page = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
 );
 Page.displayName = 'Page';
 
+export const PageTopBar = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement>>(
+  ({ className = '', ...props }, ref) => (
+    <header
+      ref={ref}
+      className={`flex shrink-0 items-start border-b border-border px-5 py-5 sm:px-8 ${className}`}
+      {...props}
+    />
+  ),
+);
+PageTopBar.displayName = 'PageTopBar';
+
 // Container that sets the max-width and padding.
 export interface PageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'sm' | 'md' | 'full';

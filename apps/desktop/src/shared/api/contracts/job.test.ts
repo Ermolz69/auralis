@@ -24,23 +24,23 @@ test('Job and JobEvent types match backend DTO shapes', () => {
 
   const mockJobEvent = {
     kind: 'progressed',
-    jobId: 'job-1',
-    revision: 1,
-    projectId: 'proj-1',
-    status: 'failed',
-    stage: 'muxAudioTrack',
-    progress: {
-      percent: 90,
-      message: 'Muxing failed',
-      currentStep: 'mux',
-      processedItems: null,
-      totalItems: null,
+    job: {
+      ...mockJob,
+      status: 'failed',
+      stage: 'muxAudioTrack',
+      progress: {
+        percent: 90,
+        message: 'Muxing failed',
+        currentStep: 'mux',
+        processedItems: null,
+        totalItems: null,
+      },
+      error: 'FFmpeg error code 1',
     },
-    error: 'FFmpeg error code 1',
   } satisfies JobEvent;
 
   expect(mockJob.status).toBe('running');
-  expect(mockJobEvent.status).toBe('failed');
+  expect(mockJobEvent.job.status).toBe('failed');
 });
 
 import contract from '../../../../../../tests/fixtures/job_contract.json';
@@ -80,5 +80,5 @@ test('Job Contracts match the cross-language statuses and stages', () => {
 
   // Verify example payload can be typed as JobEvent
   const example: JobEvent = contract.examplePayload as JobEvent;
-  expect(example.status).toBe('running');
+  expect(example.job.status).toBe('running');
 });

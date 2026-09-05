@@ -11,7 +11,7 @@ const runningJob: JobDto = {
   projectId: 'project-1',
   title: 'Subtitle import',
   status: 'running',
-  stage: 'importYoutubeSubtitles',
+  stage: 'extractOrGenerateTranscript',
   progress: {
     percent: 42,
     message: 'Importing subtitles',

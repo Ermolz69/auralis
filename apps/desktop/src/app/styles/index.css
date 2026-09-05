@@ -71,6 +71,38 @@
 }
 
 @layer utilities {
+  .motion-control {
+    transition-property:
+      color, background-color, border-color, opacity, box-shadow, transform, translate, scale;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease-standard);
+  }
+
+  .motion-field {
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease-standard);
+  }
+
+  .motion-surface {
+    transition-property:
+      color, background-color, border-color, opacity, box-shadow, transform, translate, scale;
+    transition-duration: var(--motion-duration-base);
+    transition-timing-function: var(--motion-ease-standard);
+  }
+
+  .motion-icon {
+    transition-property: color, opacity, transform, translate, rotate;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease-standard);
+  }
+
+  .motion-progress {
+    transition-property: transform;
+    transition-duration: var(--motion-duration-reveal);
+    transition-timing-function: var(--motion-ease-standard);
+  }
+
   .signal-glow {
     box-shadow:
       0 0 0 1px var(--signal-ring-color),

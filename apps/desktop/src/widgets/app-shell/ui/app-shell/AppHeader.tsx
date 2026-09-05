@@ -31,7 +31,7 @@ export function AppHeader(props: Props) {
               type="button"
               onClick={props.onHome}
               aria-label="Back to projects"
-              className="rounded-xs p-1 text-subtle transition-colors hover:bg-surface-raised hover:text-muted"
+              className="motion-control rounded-xs p-1 text-subtle hover:bg-surface-raised hover:text-muted"
             >
               <Icon name="ChevronLeft" size={14} />
             </button>
@@ -63,7 +63,7 @@ export function AppHeader(props: Props) {
           type="button"
           onClick={props.onHome}
           aria-label="Project list breadcrumb"
-          className="rounded-xs px-1 py-0.5 text-xs text-subtle transition-colors hover:bg-surface-raised hover:text-muted"
+          className="motion-control rounded-xs px-1 py-0.5 text-xs text-subtle hover:bg-surface-raised hover:text-muted"
         >
           Проекты
         </button>
@@ -95,12 +95,12 @@ export function AppHeader(props: Props) {
           aria-expanded={props.queueOpen}
           aria-controls="global-job-queue"
           onClick={props.onToggleQueue}
-          className="relative flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs text-subtle transition-colors hover:bg-surface-raised hover:text-muted"
+          className="motion-control relative flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs text-subtle hover:bg-surface-raised hover:text-muted"
         >
           <Icon name="ListFilter" size={14} />
           <span className="hidden sm:inline">Очередь</span>
           {props.activeJobs > 0 && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+            <span className="flex h-4 min-w-4 animate-surface-in items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
               {props.activeJobs}
             </span>
           )}

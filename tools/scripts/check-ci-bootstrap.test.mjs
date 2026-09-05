@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { load } from 'js-yaml';
 
 const read = (path) => load(readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8'));
+const readText = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const bootstrap = read('.github/actions/bootstrap/action.yml');
 const ci = read('.github/workflows/ci.yml');
 const release = read('.github/workflows/release.yml');
@@ -18,6 +19,17 @@ test('Rust cache tracks the single workspace and excludes obsolete source-contai
   const cache = bootstrap.runs.steps.find((step) => step.uses === 'Swatinem/rust-cache@v2');
   assert.equal(cache.with.workspaces.trim(), '. -> target');
   assert.equal(cache.with['prefix-key'], 'v1-rust');
+});
+
+test('CI installs the exact Rust toolchain pinned for local development', () => {
+  const setup = bootstrap.runs.steps.find((step) =>
+    step.uses?.startsWith('dtolnay/rust-toolchain@'),
+  );
+  const channel = readText('rust-toolchain.toml').match(/^channel\s*=\s*['"]([^'"]+)['"]/m)?.[1];
+  assert.ok(channel, 'rust-toolchain.toml must declare an exact channel');
+  assert.equal(setup.uses, 'dtolnay/rust-toolchain@stable');
+  assert.equal(setup.with.toolchain, channel);
+  assert.match(channel, /^\d+\.\d+\.\d+$/);
 });
 
 function enabledSteps(options, os) {
@@ -53,11 +65,14 @@ test('full-check configuration requires both native and browser dependencies', (
   const steps = enabledSteps(action.with, 'Linux');
   assert.ok(steps.some((step) => step.run?.includes('libwebkit2gtk-4.1-dev')));
   assert.ok(steps.some((step) => step.run === 'task frontend:setup:playwright:ci'));
+  assert.equal(full.env.TAURI_CONFIG, '{"bundle":{"resources":[]}}');
 });
 
-test('release and PR parity execute the identical reusable gate without publishing', () => {
+test('release keeps the full reusable gate while PR checks avoid duplicate release work', () => {
   assert.equal(release.jobs.check.uses, fullPath);
-  assert.equal(ci.jobs['release-checks'].uses, fullPath);
+  assert.equal(ci.jobs['release-checks'], undefined);
+  assert.equal(ci.jobs['native-bundle'], undefined);
+  assert.equal(ci.jobs['crash-recovery'], undefined);
   assert.deepEqual(Object.keys(full.on), ['workflow_call']);
   assert.deepEqual(full.permissions, { contents: 'read' });
   assert.equal(full.jobs.check['runs-on'], 'ubuntu-latest');
@@ -68,23 +83,32 @@ test('release and PR parity execute the identical reusable gate without publishi
     full.jobs.check.steps.some((step) => step.uses?.includes('tauri-action')),
     false,
   );
-  assert.equal(release.jobs.release.needs, 'check');
+  assert.equal(release.jobs.build.needs, 'check');
   assert.equal(release.permissions.contents, 'read');
-  assert.equal(release.jobs.release.permissions.contents, 'write');
+  assert.equal(release.jobs.build.permissions, undefined);
+  assert.equal(release.jobs.publish.needs, 'build');
+  assert.equal(release.jobs.publish.permissions.contents, 'write');
   assert.deepEqual(release.on.push.tags, ['app-v*']);
-  assert.ok(ci.jobs['ci-summary'].needs.includes('release-checks'));
+  assert.deepEqual(ci.jobs['ci-summary'].needs, [
+    'changes',
+    'frontend',
+    'rust',
+    'docs',
+    'quality-global',
+    'security',
+  ]);
 });
 
 test('all toolchain consumers use the same bootstrap after checkout', () => {
   const jobs = [
     ci.jobs.frontend,
     ci.jobs.rust,
-    ci.jobs['crash-recovery'],
     ci.jobs.docs,
     ci.jobs['quality-global'],
     ci.jobs.security,
     full.jobs.check,
-    release.jobs.release,
+    release.jobs.build,
+    release.jobs.publish,
     tauri.jobs.build,
     pages.jobs.build,
   ];
@@ -138,14 +162,14 @@ test('dependency installation is ordered and frozen before browser installation'
   );
 });
 
-test('native crash recovery is required on Windows and macOS as well as the Linux Rust gate', () => {
-  const job = ci.jobs['crash-recovery'];
-  assert.deepEqual(job.strategy.matrix.os, ['windows-latest', 'macos-latest']);
-  assert.deepEqual(configured(job).with, { rust: 'true' });
-  assert.ok(job.steps.some((step) => step.run === 'task rs:test:storage'));
-  assert.ok(job.steps.some((step) => step.run === 'task rs:test:youtube'));
-  assert.ok(ci.jobs['ci-summary'].needs.includes('crash-recovery'));
-  assert.ok(job.steps.every((step) => !step['continue-on-error']));
+test('cross-platform crash recovery moves from every PR to production releases', () => {
+  const step = release.jobs.build.steps.find((candidate) =>
+    candidate.name?.includes('platform-specific crash recovery'),
+  );
+  assert.equal(step.if, "runner.os == 'Windows' || runner.os == 'macOS'");
+  assert.ok(step.run.includes('task rs:test:storage'));
+  assert.ok(step.run.includes('task rs:test:youtube'));
+  assert.equal(ci.jobs['crash-recovery'], undefined);
 });
 
 test('Node version and Tauri dependency list have one shared definition', () => {
@@ -178,7 +202,7 @@ test('lightweight jobs skip unneeded browsers, native libraries and Rust fetchin
       false,
     );
   }
-  for (const job of [release.jobs.release, tauri.jobs.build]) {
+  for (const job of [release.jobs.build, tauri.jobs.build]) {
     assert.deepEqual(configured(job).with, { node: 'true', rust: 'true' });
     for (const os of ['Windows', 'macOS']) {
       const steps = enabledSteps(configured(job).with, os);
@@ -190,14 +214,21 @@ test('lightweight jobs skip unneeded browsers, native libraries and Rust fetchin
   }
 });
 
-test('bootstrap and tooling changes trigger the release gate and cannot bypass CI Summary', () => {
+test('bootstrap and tooling changes trigger lean required gates and cannot bypass CI Summary', () => {
   const filters = load(ci.jobs.changes.steps.find((step) => step.id === 'filter').with.filters);
   assert.ok(filters.ci.includes('.github/actions/**'));
   assert.ok(filters.ci.includes('.github/workflows/**'));
   assert.ok(filters.quality.includes('taskfiles/**'));
-  for (const group of ['ci', 'quality', 'global', 'release']) {
-    assert.ok(ci.jobs['release-checks'].if.includes(`needs.changes.outputs.${group} == 'true'`));
-  }
+  assert.ok(filters.rust.includes('rust-toolchain.toml'));
+  assert.ok(filters.release.includes('src-tauri/tauri.*.conf.json'));
+  assert.ok(filters.release.includes('tools/release/**'));
+  assert.ok(filters.release.includes('taskfiles/release.yml'));
+  assert.ok(filters.dependencies.includes('pnpm-lock.yaml'));
+  assert.ok(filters.dependencies.includes('Cargo.lock'));
+  assert.ok(ci.jobs.frontend.if.includes("needs.changes.outputs.ci == 'true'"));
+  assert.ok(ci.jobs.rust.if.includes("needs.changes.outputs.ci == 'true'"));
+  assert.ok(ci.jobs.security.if.includes("needs.changes.outputs.dependencies == 'true'"));
+  assert.equal(ci.jobs.docs.if, "${{ needs.changes.outputs.docs == 'true' }}");
   assert.equal(ci.jobs['ci-summary'].if, 'always()');
   assert.ok(ci.jobs['ci-summary'].steps[0].run.includes("contains(needs.*.result, 'failure')"));
   assert.ok(ci.jobs['ci-summary'].steps[0].run.includes("contains(needs.*.result, 'cancelled')"));
@@ -209,7 +240,12 @@ test('vendored GLib changes require source integrity and optimized Linux regress
     assert.ok(filters[group].includes('vendor/glib-0.18.5/**'));
     assert.ok(filters[group].includes('tools/glib-backport/**'));
   }
-  assert.ok(ci.jobs.rust.steps.some((step) => step.run === 'task rs:glib:reproduce'));
+  assert.equal(ci.jobs.rust.steps.some((step) => step.run === 'task rs:glib:reproduce'), false);
+  assert.ok(
+    read('taskfiles/rust.yml').tasks.all.cmds.some(
+      (command) => command.task === 'glib:regression',
+    ),
+  );
 });
 
 test('SQLite dependency guards run in both the lightweight and resolved Rust gates', () => {
@@ -219,7 +255,7 @@ test('SQLite dependency guards run in both the lightweight and resolved Rust gat
     ),
   );
   assert.ok(
-    read('taskfiles/rust.yml').tasks.all.cmds.some(
+    read('taskfiles/rust.yml').tasks.pr.cmds.some(
       (command) => command.task === 'dependencies:verify',
     ),
   );

@@ -1,7 +1,7 @@
 # Runtime Data Layout
 
 Auralis stores all runtime data under the operating system application data directory resolved by
-Tauri for the `com.auralis.app` bundle identifier.
+Tauri for the `com.auralis.desktop` bundle identifier.
 
 ```text
 <app-data>/

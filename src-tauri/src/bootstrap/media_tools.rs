@@ -1,57 +1,21 @@
 use std::path::PathBuf;
-use tauri::AppHandle;
-use tauri::Manager;
+
+use tauri::{AppHandle, Manager};
+
+pub fn resolve_ffmpeg_candidates_internal(resource_dir: Option<PathBuf>) -> Vec<PathBuf> {
+    resolve_candidates_internal(resource_dir, "ffmpeg")
+}
 
 pub fn resolve_ffprobe_candidates_internal(resource_dir: Option<PathBuf>) -> Vec<PathBuf> {
-    let mut candidates = Vec::new();
-
-    // 1. Packaged resource path
-    if let Some(dir) = resource_dir {
-        candidates.push(
-            dir.join("binaries")
-                .join("ffprobe-x86_64-pc-windows-msvc.exe"),
-        );
-        candidates.push(dir.join("binaries").join("ffprobe-aarch64-apple-darwin"));
-        candidates.push(dir.join("binaries").join("ffprobe"));
-        candidates.push(dir.join("binaries").join("ffprobe.exe"));
-    }
-
-    // 2. Fallbacks for dev environment
-    candidates.push(PathBuf::from(
-        "src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe",
-    ));
-    candidates.push(PathBuf::from(
-        "src-tauri/binaries/ffprobe-aarch64-apple-darwin",
-    ));
-    candidates.push(PathBuf::from("ffprobe"));
-    candidates.push(PathBuf::from("ffprobe.exe"));
-
-    candidates
+    resolve_candidates_internal(resource_dir, "ffprobe")
 }
 
 pub fn resolve_ytdlp_candidates_internal(resource_dir: Option<PathBuf>) -> Vec<PathBuf> {
-    let mut candidates = Vec::new();
+    resolve_candidates_internal(resource_dir, "yt-dlp")
+}
 
-    // 1. Packaged resource path
-    if let Some(dir) = resource_dir {
-        candidates.push(
-            dir.join("binaries")
-                .join("yt-dlp-x86_64-pc-windows-msvc.exe"),
-        );
-        candidates.push(dir.join("binaries").join("yt-dlp_macos"));
-        candidates.push(dir.join("binaries").join("yt-dlp"));
-        candidates.push(dir.join("binaries").join("yt-dlp.exe"));
-    }
-
-    // 2. Fallbacks for dev environment
-    candidates.push(PathBuf::from(
-        "src-tauri/binaries/yt-dlp-x86_64-pc-windows-msvc.exe",
-    ));
-    candidates.push(PathBuf::from("src-tauri/binaries/yt-dlp_macos"));
-    candidates.push(PathBuf::from("yt-dlp"));
-    candidates.push(PathBuf::from("yt-dlp.exe"));
-
-    candidates
+pub fn resolve_ffmpeg_candidates(app: &AppHandle) -> Vec<PathBuf> {
+    resolve_ffmpeg_candidates_internal(app.path().resource_dir().ok())
 }
 
 pub fn resolve_ffprobe_candidates(app: &AppHandle) -> Vec<PathBuf> {
@@ -62,34 +26,74 @@ pub fn resolve_ytdlp_candidates(app: &AppHandle) -> Vec<PathBuf> {
     resolve_ytdlp_candidates_internal(app.path().resource_dir().ok())
 }
 
+fn resolve_candidates_internal(resource_dir: Option<PathBuf>, tool: &str) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Some(filename) = bundled_filename(tool) {
+        if let Some(dir) = resource_dir {
+            candidates.push(dir.join("binaries").join(&filename));
+        }
+
+        candidates.push(PathBuf::from("src-tauri/binaries").join(filename));
+    }
+
+    candidates.push(PathBuf::from(tool));
+    if cfg!(windows) {
+        candidates.push(PathBuf::from(format!("{tool}.exe")));
+    }
+
+    candidates
+}
+
+fn bundled_filename(tool: &str) -> Option<String> {
+    let target = bundled_target()?;
+    let extension = if cfg!(windows) { ".exe" } else { "" };
+    Some(format!("{tool}-{target}{extension}"))
+}
+
+fn bundled_target() -> Option<&'static str> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", "x86_64") => Some("x86_64-pc-windows-msvc"),
+        ("linux", "x86_64") => Some("x86_64-unknown-linux-gnu"),
+        ("linux", "aarch64") => Some("aarch64-unknown-linux-gnu"),
+        ("macos", "x86_64") => Some("x86_64-apple-darwin"),
+        ("macos", "aarch64") => Some("aarch64-apple-darwin"),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_resolve_ffprobe_with_resource_dir() {
-        let dir = PathBuf::from("/mock/resource/dir");
-        let candidates = resolve_ffprobe_candidates_internal(Some(dir));
+    fn packaged_candidate_precedes_development_and_path_fallbacks() {
+        let Some(filename) = bundled_filename("ffprobe") else {
+            panic!("the test runner target must have a bundled media-tools mapping");
+        };
+        let resource_dir = PathBuf::from("mock-resource-dir");
 
-        assert_eq!(candidates.len(), 8);
+        let candidates = resolve_ffprobe_candidates_internal(Some(resource_dir.clone()));
+
+        assert_eq!(candidates[0], resource_dir.join("binaries").join(&filename));
         assert_eq!(
-            candidates[0],
-            PathBuf::from("/mock/resource/dir/binaries/ffprobe-x86_64-pc-windows-msvc.exe")
+            candidates[1],
+            PathBuf::from("src-tauri/binaries").join(filename)
         );
-        assert_eq!(
-            candidates[4],
-            PathBuf::from("src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe")
-        );
+        assert!(candidates.contains(&PathBuf::from("ffprobe")));
     }
 
     #[test]
-    fn test_resolve_ytdlp_without_resource_dir() {
-        let candidates = resolve_ytdlp_candidates_internal(None);
+    fn all_media_tools_share_the_same_resolution_policy() {
+        for tool in ["ffmpeg", "ffprobe", "yt-dlp"] {
+            let candidates = resolve_candidates_internal(None, tool);
 
-        assert_eq!(candidates.len(), 4);
-        assert_eq!(
-            candidates[0],
-            PathBuf::from("src-tauri/binaries/yt-dlp-x86_64-pc-windows-msvc.exe")
-        );
+            assert!(
+                candidates
+                    .first()
+                    .is_some_and(|path| path.starts_with("src-tauri/binaries"))
+            );
+            assert!(candidates.contains(&PathBuf::from(tool)));
+        }
     }
 }

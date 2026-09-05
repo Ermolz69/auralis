@@ -113,8 +113,8 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
       <AppStatusBar
         projectTitle={projectId ? projectTitle : null}
         durationMs={project?.metadata?.durationMs}
-        width={project?.metadata?.width}
-        height={project?.metadata?.height}
+        width={project?.metadata?.width ?? undefined}
+        height={project?.metadata?.height ?? undefined}
         activeJobTitle={activeJobs[0]?.title}
         activeJobPercent={activeJobs[0]?.progress.percent}
       />

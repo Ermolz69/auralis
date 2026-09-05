@@ -4,16 +4,12 @@ import type { Mock } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { ProjectProvider } from './ProjectProvider';
 import { useProjectContext } from './useProjectContext';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@/shared/api/tauri';
+import { invoke, listen } from '@/shared/api/tauri';
 import { projectRemoved, projectUpdated } from './projectChanges';
-
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(),
-}));
 
 vi.mock('@/shared/api/tauri', () => ({
   invoke: vi.fn(),
+  listen: vi.fn(),
 }));
 
 const TestComponent = ({ onContext }: { onContext: (ctx: any) => void }) => {

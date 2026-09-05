@@ -17,6 +17,8 @@ includes:
     aliases: [security]
   media:
     taskfile: ./taskfiles/media.yml
+  release:
+    taskfile: ./taskfiles/release.yml
 
 tasks:
   setup:media-tools:
@@ -46,8 +48,32 @@ tasks:
       - task: install:rust
 
   dev:
+    desc: Start the frontend development server only
     cmds:
       - pnpm --filter desktop dev
+
+  desktop:dev:
+    desc: Start the complete Tauri desktop application locally
+    cmds:
+      - pnpm tauri dev
+
+  desktop:before-dev:
+    desc: Prepare native media tools, then run the desktop development server
+    cmds:
+      - task: media:prepare
+      - task: fe:dev
+
+  desktop:before-build:
+    desc: Prepare native media tools, then build the desktop frontend
+    cmds:
+      - task: media:prepare
+      - task: fe:build
+
+  desktop:bundle:
+    desc: Build native installers with verified bundled media tools
+    cmds:
+      - pnpm tauri build {{.CLI_ARGS}}
+      - task: media:bundle:verify
 
   check:frontend:
     cmds:
@@ -56,6 +82,11 @@ tasks:
   check:rust:
     cmds:
       - task: rs:all
+
+  check:rust:pr:
+    desc: Run the Rust gates required for pull requests without release-only regressions
+    cmds:
+      - task: rs:pr
 
   check:docs:
     cmds:
@@ -85,16 +116,21 @@ tasks:
     cmds:
       - task: q:global
 
-  check:all:
+  check:pr:
+    desc: Run every pull-request gate locally before pushing
     cmds:
       - task: check:frontend
-      - task: check:rust
+      - task: check:rust:pr
       - task: check:docs
       - task: check:quality:frontend
       - task: check:quality:docs
       - task: check:quality:security
       - task: check:quality:global
-      - task: check:quality:runtime-println
+
+  check:all:
+    cmds:
+      - task: check:pr
+      - task: rs:glib:regression
 
   check:
     desc: Run all checks
@@ -102,7 +138,7 @@ tasks:
       - task: check:all
 
   ci:
-    desc: CI entrypoint
+    desc: Install dependencies and reproduce all pull-request checks locally
     cmds:
       - task: install:all
-      - task: check
+      - task: check:pr

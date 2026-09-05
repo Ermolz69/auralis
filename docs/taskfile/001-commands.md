@@ -6,11 +6,21 @@
 task install:all
 task fe:setup:playwright
 task sec:setup:rust
+task setup:media-tools
+task media:doctor
 task dev
+task desktop:dev
+task check:pr
 task check
 task check:all
 task ci
 ```
+
+`task dev` starts the Vite frontend server. `task desktop:dev` starts the native
+Tauri application; its configured development hook
+uses `task desktop:before-dev` to prepare media tools before starting the same
+server. `task desktop:bundle` builds native installers and verifies their bundled
+media resources.
 
 ## Installation scope
 
@@ -18,8 +28,9 @@ task ci
 - `task install:rust` delegates to `task rs:fetch` and fetches only locked Rust dependencies; it does not require Node or pnpm.
 - `task install:all` runs both component installers. `task install` is a backward-compatible alias for this task.
 
-`task ci` starts with `task install:all`. Browser setup remains an explicit prerequisite
-for `task ci`, `task check`, and `task check:frontend`, not part of dependency installation.
+`task ci` starts with `task install:all` and then runs `task check:pr`, the local
+equivalent of all required pull-request gates. Browser setup remains an explicit prerequisite
+for `task ci`, `task check:pr`, `task check`, and `task check:frontend`, not part of dependency installation.
 Frontend/docs CI jobs select `task install:frontend` through the shared bootstrap and
 do not fetch Rust dependencies. Docs-only jobs also skip browser setup.
 
@@ -39,6 +50,8 @@ task fe:test
 task fe:build
 task fe:bundle:check
 task fe:smoke
+task fe:e2e
+task fe:storybook
 task fe:setup:playwright
 task fe:setup:playwright:ci
 ```
@@ -65,20 +78,34 @@ task rs:fmt
 task rs:clippy
 task rs:test
 task rs:check
+task rs:pr
 ```
 
 `task install:rust` (also available as `task rs:fetch`) fetches dependencies with `--locked`, without changing `Cargo.lock`.
+`task rs:pr` runs dependency-policy verification, formatting, Clippy, and workspace
+tests. The standalone `task rs:check` remains available for diagnosis; it is not
+repeated after Clippy in the default PR path.
 
 ## Quality
 
 ```bash
 task q:file-size
 task q:color-tokens
+task q:duplicate-code
+task q:desktop-policies
+task q:ipc-contract
+task q:release-metadata
+task q:workspace-dependencies
 task q:storage-fallbacks
 task q:runtime-println
 task q:ci-bootstrap
 task q:global
 ```
+
+`task q:desktop-policies` covers bundle/CSP regressions, IPC contract parity,
+release metadata, and release smoke-tool validation. `task q:global` adds media
+manifest checks, SQLite-only dependency verification, GLib provenance checks,
+formatting, runtime output policy, storage fallbacks, and CI bootstrap validation.
 
 ## Dependency security
 
@@ -102,3 +129,32 @@ license and duplicate-version policy are outside this gate's scope.
 Inspect dependency paths with `task rs:tree -- --invert <crate> --target all`.
 For reviewed, targeted lockfile updates, use
 `task rs:update -- --package <crate> --precise <version>` and rerun checks.
+
+## Media tools
+
+```bash
+task media:check
+task media:prepare
+task media:verify
+task media:bundle:verify
+task media:probe -- /path/to/video.mp4
+```
+
+`task media:check` validates metadata and repository wiring without downloads.
+`task media:prepare` downloads and stages the pinned tools when necessary, and
+`task media:verify` checks the staged executables. `task media:doctor` aliases the
+staged verification flow.
+
+## Release validation
+
+```bash
+task release:smoke:check
+task release:tag:verify TAG=app-v0.1.0
+task release:signing:preflight PLATFORM=windows
+task release:signature:verify
+task release:assets:validate PLATFORM=windows
+```
+
+Release tasks are normally orchestrated by GitHub Actions. Signing, package
+installation, and publication tasks require the platform artifacts and credentials
+described in the release documentation.
