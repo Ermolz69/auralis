@@ -1,10 +1,11 @@
 use crate::{
     bootstrap::usecases::AppUseCases,
     dto::{
-        error::{parse_project_id, CommandError},
+        error::{CommandError, parse_project_id},
         project::ProjectDto,
     },
 };
+use adapters_tauri::event_publisher::EVENT_PROJECT_UPDATED;
 use std::sync::Arc;
 use tauri::{Emitter, State};
 
@@ -47,7 +48,7 @@ pub async fn resume_youtube_import_cmd(
         .await
         .map_err(CommandError::from)?;
     let _ = app.emit(
-        "project-updated",
+        EVENT_PROJECT_UPDATED,
         serde_json::json!({"projectId": project_id}),
     );
     Ok(ProjectDto::from(&response.project))

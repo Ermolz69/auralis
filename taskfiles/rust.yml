@@ -92,12 +92,12 @@ tasks:
 
   clippy:
     cmds:
-      - cargo clippy --workspace --all-targets -- -D warnings
+      - cargo clippy --locked --workspace --all-targets -- -D warnings
 
   test:
     cmds:
-      - cargo test --workspace
+      - cargo test --locked --workspace
 
   check:
     cmds:
-      - cargo check --workspace
+      - cargo check --locked --workspace

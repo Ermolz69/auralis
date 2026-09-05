@@ -1,12 +1,12 @@
 use crate::bootstrap::usecases::AppUseCases;
-use crate::dto::error::{map_job_dto_result, parse_job_id, parse_project_id, CommandError};
+use crate::dto::error::{CommandError, map_job_dto_result, parse_job_id, parse_project_id};
 use adapters_tauri::dto::job::JobDto;
 use adapters_tauri::dto::mapper::map_job_dto;
 use application::usecases::job::cancel::CancelJobRequest;
 use application::usecases::job::list::ListJobsRequest;
 
 use std::sync::Arc;
-use tauri::{command, State};
+use tauri::{State, command};
 
 #[command]
 pub async fn health_check() -> Result<String, CommandError> {

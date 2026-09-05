@@ -6,22 +6,40 @@ use tokio::time::timeout;
 
 use super::error::YtDlpError;
 
+#[derive(Clone, Copy)]
+pub struct YtDlpCommandPaths<'a> {
+    ytdlp_candidates: &'a [PathBuf],
+    ffmpeg_candidates: &'a [PathBuf],
+}
+
+impl<'a> YtDlpCommandPaths<'a> {
+    pub fn new(ytdlp_candidates: &'a [PathBuf], ffmpeg_candidates: &'a [PathBuf]) -> Self {
+        Self {
+            ytdlp_candidates,
+            ffmpeg_candidates,
+        }
+    }
+}
+
 pub async fn run_ytdlp_dump_json(
-    candidates: &[PathBuf],
+    paths: YtDlpCommandPaths<'_>,
     url: &str,
     timeout_ms: u64,
 ) -> Result<String, YtDlpError> {
-    for candidate in candidates {
-        let child = match Command::new(candidate)
+    for candidate in paths.ytdlp_candidates {
+        let mut command = Command::new(candidate);
+        command
             .arg("--ignore-config")
             .arg("--dump-json")
-            .arg("--no-playlist")
+            .arg("--no-playlist");
+        apply_ffmpeg_location(&mut command, paths.ffmpeg_candidates);
+        command
             .arg(url)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .kill_on_drop(true)
-            .spawn()
-        {
+            .kill_on_drop(true);
+
+        let child = match command.spawn() {
             Ok(c) => c,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
             Err(e) => {
@@ -61,13 +79,13 @@ pub async fn run_ytdlp_dump_json(
 }
 
 pub async fn run_ytdlp_download(
-    candidates: &[PathBuf],
+    paths: YtDlpCommandPaths<'_>,
     url: &str,
     target_dir: &std::path::Path,
     filename_template: &str,
     timeout_ms: u64,
 ) -> Result<PathBuf, YtDlpError> {
-    for candidate in candidates {
+    for candidate in paths.ytdlp_candidates {
         let mut command = Command::new(candidate);
         command
             .arg("--ignore-config")
@@ -81,7 +99,9 @@ pub async fn run_ytdlp_download(
             .arg("-P")
             .arg(target_dir)
             .arg("-o")
-            .arg(filename_template)
+            .arg(filename_template);
+        apply_ffmpeg_location(&mut command, paths.ffmpeg_candidates);
+        command
             .arg(url)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -147,7 +167,7 @@ pub fn extract_final_filepath_from_stdout(stdout: &str) -> Option<String> {
 }
 
 pub async fn run_ytdlp_download_subtitle(
-    candidates: &[PathBuf],
+    paths: YtDlpCommandPaths<'_>,
     url: &str,
     target_dir: &std::path::Path,
     language: &str,
@@ -162,7 +182,7 @@ pub async fn run_ytdlp_download_subtitle(
         }
     })?;
 
-    for candidate in candidates {
+    for candidate in paths.ytdlp_candidates {
         let run_id = uuid::Uuid::new_v4().to_string();
         let mut command = Command::new(candidate);
 
@@ -187,6 +207,7 @@ pub async fn run_ytdlp_download_subtitle(
             command.arg("--write-sub");
         }
 
+        apply_ffmpeg_location(&mut command, paths.ffmpeg_candidates);
         command
             .arg(url)
             .stdout(Stdio::piped())
@@ -233,6 +254,12 @@ pub async fn run_ytdlp_download_subtitle(
     Err(YtDlpError::MissingYtDlp)
 }
 
+fn apply_ffmpeg_location(command: &mut Command, candidates: &[PathBuf]) {
+    if let Some(candidate) = candidates.iter().find(|path| path.is_file()) {
+        command.arg("--ffmpeg-location").arg(candidate);
+    }
+}
+
 #[allow(clippy::collapsible_if)]
 async fn find_downloaded_subtitle(
     dir: &std::path::Path,
@@ -259,6 +286,7 @@ async fn find_downloaded_subtitle(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::OsString;
 
     #[test]
     fn test_extract_final_filepath_from_stdout() {
@@ -276,5 +304,36 @@ mod tests {
         );
         assert_eq!(extract_final_filepath_from_stdout("   \n   \n"), None);
         assert_eq!(extract_final_filepath_from_stdout(""), None);
+    }
+
+    #[test]
+    fn packaged_ffmpeg_is_passed_to_ytdlp() {
+        let temp_dir = tempfile::tempdir().unwrap_or_else(|error| {
+            panic!("failed to create temporary directory: {error}");
+        });
+        let packaged_ffmpeg = temp_dir.path().join("ffmpeg");
+        std::fs::write(&packaged_ffmpeg, []).unwrap_or_else(|error| {
+            panic!("failed to create packaged ffmpeg fixture: {error}");
+        });
+        let mut command = Command::new("yt-dlp");
+
+        apply_ffmpeg_location(&mut command, std::slice::from_ref(&packaged_ffmpeg));
+
+        assert_eq!(
+            command.as_std().get_args().collect::<Vec<_>>(),
+            vec![
+                OsString::from("--ffmpeg-location"),
+                packaged_ffmpeg.into_os_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn missing_ffmpeg_candidate_preserves_ytdlp_path_discovery() {
+        let mut command = Command::new("yt-dlp");
+
+        apply_ffmpeg_location(&mut command, &[PathBuf::from("ffmpeg")]);
+
+        assert_eq!(command.as_std().get_args().count(), 0);
     }
 }

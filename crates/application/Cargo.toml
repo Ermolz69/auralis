@@ -1,20 +1,21 @@
 [package]
 name = "application"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 [dependencies]
 common = { path = "../common" }
 domain = { path = "../domain" }
 ports = { path = "../ports" }
-thiserror = "2.0.11"
-async-trait = "0.1.89"
-tokio = { version = "1.36.0", features = ["sync", "time", "rt", "macros", "fs"] }
-uuid = { version = "1.8.0", features = ["v4"] }
-tempfile = "3.10"
+thiserror.workspace = true
+async-trait.workspace = true
+tokio = { workspace = true, features = ["sync", "time", "rt", "macros", "fs"] }
+uuid = { workspace = true, features = ["v4"] }
+tempfile.workspace = true
 bytes = "1.12.1"
-tracing = "0.1.44"
-futures = "0.3.32"
+tracing.workspace = true
+futures.workspace = true
 tokio-util = "0.7"
 
 [dev-dependencies]
@@ -23,9 +24,9 @@ adapters-storage = { path = "../adapters-storage" }
 adapters-ytdlp = { path = "../adapters-ytdlp" }
 adapters-model = { path = "../adapters-model" }
 adapters-ffmpeg = { path = "../adapters-ffmpeg" }
-tempfile = "3.10"
-chrono = "0.4.45"
-tokio = { version = "1.36.0", features = ["test-util"] }
+tempfile.workspace = true
+chrono.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 
 [lints]
 workspace = true

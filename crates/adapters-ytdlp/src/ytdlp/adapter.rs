@@ -5,12 +5,13 @@ use domain::media::{MediaMetadata, MediaSource};
 use ports::error::PortError;
 use ports::source::VideoSourcePort;
 
-use super::command::run_ytdlp_dump_json;
+use super::command::{YtDlpCommandPaths, run_ytdlp_dump_json};
 use super::parser::parse_ytdlp_metadata;
 
 #[derive(Clone)]
 pub struct YtDlpAdapter {
     candidates: Vec<PathBuf>,
+    ffmpeg_candidates: Vec<PathBuf>,
     timeout_ms: u64,
     media_download_timeout_ms: u64,
 }
@@ -25,15 +26,25 @@ impl YtDlpAdapter {
     pub fn new(candidates: Vec<PathBuf>) -> Self {
         Self {
             candidates,
+            ffmpeg_candidates: vec![PathBuf::from("ffmpeg"), PathBuf::from("ffmpeg.exe")],
             timeout_ms: 60_000,
             media_download_timeout_ms: 30 * 60_000,
         }
+    }
+
+    pub fn with_ffmpeg_candidates(mut self, candidates: Vec<PathBuf>) -> Self {
+        self.ffmpeg_candidates = candidates;
+        self
     }
 
     pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = timeout_ms;
         self.media_download_timeout_ms = timeout_ms;
         self
+    }
+
+    fn command_paths(&self) -> YtDlpCommandPaths<'_> {
+        YtDlpCommandPaths::new(&self.candidates, &self.ffmpeg_candidates)
     }
 }
 
@@ -63,7 +74,7 @@ impl VideoSourcePort for YtDlpAdapter {
             _ => unreachable!(),
         };
 
-        let json = run_ytdlp_dump_json(&self.candidates, url, self.timeout_ms).await?;
+        let json = run_ytdlp_dump_json(self.command_paths(), url, self.timeout_ms).await?;
         let metadata = parse_ytdlp_metadata(&json)?;
 
         Ok(metadata)
@@ -93,7 +104,7 @@ impl VideoSourcePort for YtDlpAdapter {
         let template = build_output_template(request.filename_hint.as_deref());
 
         let path = super::command::run_ytdlp_download(
-            &self.candidates,
+            self.command_paths(),
             url,
             &request.target_dir,
             &template,
@@ -144,7 +155,7 @@ impl SubtitleSourcePort for YtDlpAdapter {
             }
         };
 
-        let json = run_ytdlp_dump_json(&self.candidates, url, self.timeout_ms).await?;
+        let json = run_ytdlp_dump_json(self.command_paths(), url, self.timeout_ms).await?;
         let value: serde_json::Value =
             serde_json::from_str(&json).map_err(super::error::YtDlpError::ParseFailed)?;
 
@@ -177,7 +188,7 @@ impl SubtitleSourcePort for YtDlpAdapter {
         }
 
         let result = super::command::run_ytdlp_download_subtitle(
-            &self.candidates,
+            self.command_paths(),
             url,
             &request.target_directory,
             &request.track.language,

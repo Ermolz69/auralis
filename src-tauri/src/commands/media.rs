@@ -1,12 +1,12 @@
 use crate::bootstrap::usecases::AppUseCases;
-use crate::dto::error::{parse_project_id, CommandError};
+use crate::dto::error::{CommandError, parse_project_id};
 use crate::dto::media::MediaMetadataDto;
 use crate::dto::project::ProjectDto;
 use application::usecases::media::import_local_media::ImportLocalMediaRequest;
 use application::usecases::media::probe_local::ProbeLocalMediaRequest;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::{command, State};
+use tauri::{State, command};
 
 #[command]
 pub async fn probe_local_media_cmd(

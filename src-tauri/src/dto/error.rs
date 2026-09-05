@@ -118,11 +118,6 @@ pub fn parse_artifact_id(id_str: &str) -> Result<domain::media::ArtifactId, Comm
         .map_err(|_| CommandError::Validation("Invalid identifier".to_string()))
 }
 
-pub fn parse_artifact_kind(kind_str: &str) -> Result<domain::media::ArtifactKind, CommandError> {
-    serde_json::from_str(&format!("\"{}\"", kind_str))
-        .map_err(|_| CommandError::Validation("Invalid artifact kind".to_string()))
-}
-
 pub fn map_job_dto_result<T, E>(res: Result<T, E>) -> Result<T, CommandError> {
     res.map_err(|_| CommandError::Internal("An unexpected internal error occurred".to_string()))
 }
@@ -150,11 +145,6 @@ mod tests {
         assert_eq!(
             parse_artifact_id("invalid-uuid").unwrap_err(),
             CommandError::Validation("Invalid identifier".to_string())
-        );
-
-        assert_eq!(
-            parse_artifact_kind("invalid-kind").unwrap_err(),
-            CommandError::Validation("Invalid artifact kind".to_string())
         );
 
         let mapping_err = map_job_dto_result::<(), _>(Err("err"));

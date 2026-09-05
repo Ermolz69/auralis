@@ -26,6 +26,8 @@ impl TauriEventPublisher {
 
 pub const EVENT_JOB_EVENT: &str = "job-event";
 pub const EVENT_JOB_EVENTS_INVALIDATED: &str = "job-events-invalidated";
+pub const EVENT_PROJECT_UPDATED: &str = "project-updated";
+pub const EVENT_TRANSCRIPT_READY: &str = "transcript-ready";
 
 impl FrontendJobEventPublisher for TauriEventPublisher {
     fn publish_job_event(
@@ -57,7 +59,7 @@ impl AppEventPublisher for TauriEventPublisher {
     async fn publish_project_updated(&self, project_id: &str) -> Result<(), PortError> {
         self.app
             .emit(
-                "project-updated",
+                EVENT_PROJECT_UPDATED,
                 ProjectUpdatedDto {
                     project_id: project_id.to_string(),
                 },
@@ -74,7 +76,7 @@ impl AppEventPublisher for TauriEventPublisher {
     ) -> Result<(), PortError> {
         self.app
             .emit(
-                "transcript-ready",
+                EVENT_TRANSCRIPT_READY,
                 TranscriptReadyDto {
                     project_id: project_id.to_string(),
                     job_id: job_id.to_string(),

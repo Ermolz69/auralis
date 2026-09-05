@@ -5,7 +5,7 @@ use super::diagnostic::{
 use crate::TracingShutdownOutcome;
 use std::sync::Arc;
 use tracing_appender::non_blocking::{ErrorCounter, WorkerGuard};
-use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer};
+use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TracingMode {
@@ -43,7 +43,7 @@ pub(crate) trait ObservabilityEnvironment: Send + Sync {
         ObservabilityResourceError,
     >;
     fn set_global_default(&self, dispatch: tracing::Dispatch)
-        -> Result<(), SubscriberInstallError>;
+    -> Result<(), SubscriberInstallError>;
 }
 
 pub struct ResolvedEnvFilter {

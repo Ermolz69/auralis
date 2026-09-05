@@ -1,16 +1,16 @@
 [package]
 name = "ports"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 [dependencies]
-async-trait = "0.1.89"
-chrono = "0.4.45"
+async-trait.workspace = true
+chrono.workspace = true
 domain = { version = "0.1.0", path = "../domain" }
-serde = { version = "1.0.228", features = ["derive"] }
-thiserror = "2.0.18"
-tokio = { version = "1.52.4", features = ["sync", "rt"] }
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync", "rt"] }
 
 [lints]
 workspace = true
-
