@@ -17,6 +17,8 @@ includes:
     aliases: [security]
   media:
     taskfile: ./taskfiles/media.yml
+  release:
+    taskfile: ./taskfiles/release.yml
 
 tasks:
   setup:media-tools:
@@ -48,6 +50,24 @@ tasks:
   dev:
     cmds:
       - pnpm --filter desktop dev
+
+  desktop:before-dev:
+    desc: Prepare native media tools, then run the desktop development server
+    cmds:
+      - task: media:prepare
+      - task: fe:dev
+
+  desktop:before-build:
+    desc: Prepare native media tools, then build the desktop frontend
+    cmds:
+      - task: media:prepare
+      - task: fe:build
+
+  desktop:bundle:
+    desc: Build native installers with verified bundled media tools
+    cmds:
+      - pnpm tauri build {{.CLI_ARGS}}
+      - task: media:bundle:verify
 
   check:frontend:
     cmds:

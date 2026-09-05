@@ -22,13 +22,13 @@ The local and CI entrypoints are:
 - **frontend install**: Installs frozen pnpm dependencies without Rust (`task install:frontend`).
 - **Rust install**: Fetches locked Cargo dependencies without frontend tooling (`task install:rust`).
 - **full install**: Runs both installers (`task install:all`, also available as `task install`); browser setup is a separate prerequisite for checks.
-- **frontend**: Runs typecheck, lint, tests, build with bundle budgets, and production CSP browser smoke tests (`task check:frontend`).
-- **frontend quality**: Runs FSD boundary checks, color-token checks, file-size checks, and bundle/CSP policy regression tests (`task check:quality:frontend`).
-- **Rust**: Runs `cargo fmt`, `cargo clippy`, `cargo check`, and workspace tests (`task check:rust`).
+- **frontend**: Runs strict TypeScript checks, lint, tests with enforced V8 coverage thresholds (85% statements, 75% branches, 85% functions, and 88% lines), build with bundle budgets, 20 production-browser E2E journeys, and production CSP browser smoke tests (`task check:frontend`).
+- **frontend quality**: Runs FSD boundary checks, color-token checks, file-size and duplicate-code checks, and bundle/CSP policy regression tests (`task check:quality:frontend`).
+- **Rust**: Uses the toolchain pinned in `rust-toolchain.toml`, then runs `cargo fmt` plus locked `cargo clippy`, `cargo check`, and workspace tests (`task check:rust`).
 - **docs**: Runs markdown checks (`task check:docs`).
 - **docs quality**: Runs markdown formatting checks (`task check:quality:docs`).
 - **dependency security**: Audits all npm dependencies and Cargo.lock, then enforces Rust advisory/source policy (`task check:quality:security`). Local setup requires `task sec:setup:rust`.
-- **global quality**: Runs repository formatting, runtime println, storage fallback, and CI bootstrap checks (`task check:quality:global`).
+- **global quality**: Runs repository formatting, Cargo workspace-dependency policy, runtime println, storage fallback, and CI bootstrap checks (`task check:quality:global`).
 - **CI bootstrap**: Tests shared workflow wiring, dependency ordering, platform guards, release-check parity, and scoped installer execution plans (`task q:ci-bootstrap`).
 - **runtime println**: Runs the runtime println fixture suite and production scan (`task check:quality:runtime-println`).
 - **full suite**: Runs all required gates (`task check:all`).

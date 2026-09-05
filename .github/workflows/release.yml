@@ -12,26 +12,51 @@ env:
   CI: true
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   check:
     name: Full Checks
     uses: ./.github/workflows/full-checks.yml
 
-  release:
-    name: Build & Release ${{ matrix.platform }}
+  build:
+    name: Build & Verify ${{ matrix.platform }}
     needs: check
-    permissions:
-      contents: write
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 60
 
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - ubuntu-22.04
-          - windows-latest
-          - macos-latest
+        include:
+          - platform: ubuntu-22.04
+            signingPlatform: linux
+            bundles: appimage,deb,rpm
+            artifactName: auralis-release-linux
+            artifactPaths: |
+              target/release/bundle/appimage/*.AppImage
+              target/release/bundle/appimage/*.AppImage.sig
+              target/release/bundle/deb/*.deb
+              target/release/bundle/rpm/*.rpm
+          - platform: windows-latest
+            signingPlatform: windows
+            bundles: msi,nsis
+            artifactName: auralis-release-windows
+            artifactPaths: |
+              target/release/bundle/msi/*.msi
+              target/release/bundle/msi/*.msi.sig
+              target/release/bundle/nsis/*-setup.exe
+              target/release/bundle/nsis/*-setup.exe.sig
+          - platform: macos-latest
+            signingPlatform: macos
+            bundles: dmg
+            artifactName: auralis-release-macos
+            artifactPaths: |
+              target/release/bundle/dmg/*.dmg
+              target/release/bundle/macos/*.app.tar.gz
+              target/release/bundle/macos/*.app.tar.gz.sig
 
     steps:
       - name: Checkout
@@ -43,32 +68,119 @@ jobs:
           node: 'true'
           rust: 'true'
 
-      # ==========================================
-      # OS CODE SIGNING PLACEHOLDERS
-      # ==========================================
+      - name: Verify release tag matches application version
+        run: task release:tag:verify TAG=${{ github.ref_name }}
 
-      # - name: Setup Windows Certs
-      #   if: matrix.platform == 'windows-latest'
-      #   run: echo "Import WINDOWS_CERTIFICATE here"
+      - name: Validate production signing configuration
+        env:
+          WINDOWS_SIGNING_MODE: ${{ vars.WINDOWS_SIGNING_MODE }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_ARTIFACT_SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          AZURE_ARTIFACT_SIGNING_ACCOUNT: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          AZURE_ARTIFACT_SIGNING_PROFILE: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
+          AZURE_ARTIFACT_SIGNING_CLI_VERSION: ${{ vars.AZURE_ARTIFACT_SIGNING_CLI_VERSION }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          AURALIS_UPDATER_PUBLIC_KEY: ${{ vars.AURALIS_UPDATER_PUBLIC_KEY }}
+        run: task release:signing:preflight PLATFORM=${{ matrix.signingPlatform }}
 
-      # - name: Setup macOS Certs
-      #   if: matrix.platform == 'macos-latest'
-      #   run: echo "Import APPLE_CERTIFICATE and keychain here"
+      - name: Install Azure Artifact Signing client
+        if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_MODE == 'azure'
+        run: task release:signing:install-azure-client VERSION=${{ vars.AZURE_ARTIFACT_SIGNING_CLI_VERSION }}
 
-      # ==========================================
-      # TAURI BUILD & RELEASE
-      # ==========================================
+      - name: Prepare verified media tools
+        run: task media:prepare
 
-      - name: Build Tauri app & Draft Release
+      - name: Build signed Tauri packages
         uses: tauri-apps/tauri-action@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TAURI UPDATER SIGNING PLACEHOLDERS
-          # TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          # TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          AURALIS_REQUIRE_SIGNING: 'true'
+          WINDOWS_SIGNING_MODE: ${{ vars.WINDOWS_SIGNING_MODE }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_ARTIFACT_SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          AZURE_ARTIFACT_SIGNING_ACCOUNT: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          AZURE_ARTIFACT_SIGNING_PROFILE: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
+          AZURE_ARTIFACT_SIGNING_CLI_VERSION: ${{ vars.AZURE_ARTIFACT_SIGNING_CLI_VERSION }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          AURALIS_UPDATER_PUBLIC_KEY: ${{ vars.AURALIS_UPDATER_PUBLIC_KEY }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Auralis ${{ github.ref_name }}'
-          releaseBody: 'Draft release for Auralis. See assets for installers.'
-          releaseDraft: true
-          prerelease: false
+          args: --bundles ${{ matrix.bundles }} --config src-tauri/tauri.release.conf.json
+
+      - name: Verify bundled media tools
+        run: task media:bundle:verify
+
+      - name: Verify production signature and notarization
+        run: task release:signature:verify
+
+      - name: Install and launch packaged application
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        env:
+          AURALIS_REQUIRE_SIGNING: 'true'
+        run: task release:smoke:install-launch
+
+      - name: Validate platform release assets
+        run: task release:assets:validate PLATFORM=${{ matrix.signingPlatform }}
+
+      - name: Upload verified platform release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifactName }}
+          path: ${{ matrix.artifactPaths }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    name: Publish Verified Draft Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Bootstrap release publication
+        uses: ./.github/actions/bootstrap
+
+      - name: Download verified platform release assets
+        uses: actions/download-artifact@v5
+        with:
+          pattern: auralis-release-*
+          path: release-assets
+
+      - name: Validate and prepare complete release asset set
+        run: task release:assets:prepare-publish
+
+      - name: Create draft release from verified assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-publish/* \
+            --draft \
+            --verify-tag \
+            --title "Auralis $GITHUB_REF_NAME" \
+            --notes "Verified Auralis release artifacts for Windows, macOS, and Linux."

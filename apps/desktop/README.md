@@ -53,7 +53,13 @@ This setup task is intentionally separate from the regression gates. Run gates t
 task check:frontend
 task check:quality:frontend
 task frontend:storybook
+task frontend:e2e
 ```
+
+The Settings page includes the signed application updater. Browser development reports it as
+unavailable; installed production builds read `latest.json` and their platform bundle from the
+latest published GitHub Release. The production signing and publication procedure is documented
+in `docs/release/001-release-workflow.md` and `docs/release/002-signing.md`.
 
 ## Theming & Colors
 

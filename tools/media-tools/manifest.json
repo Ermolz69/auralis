@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "licenses": {
+    "ffmpeg": {
+      "spdx": "GPL-3.0-or-later",
+      "url": "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n8.1.2/COPYING.GPLv3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "output": "FFMPEG-GPL-3.0.txt"
+    },
+    "yt-dlp": {
+      "spdx": "Unlicense",
+      "url": "https://raw.githubusercontent.com/yt-dlp/yt-dlp/2026.08.19/LICENSE",
+      "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c",
+      "output": "YT-DLP-UNLICENSE.txt"
+    }
+  },
+  "tools": {
+    "ffmpeg": {
+      "version": "8.1.2",
+      "versionArgs": ["-version"],
+      "versionPattern": "8\\.1\\.2",
+      "license": "ffmpeg",
+      "sourceUrl": "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
+      "sourceRevision": "1c2c67c0b9f7f66ab32c19dcf7f227bcd290aa4c",
+      "buildUrl": "https://github.com/shaka-project/static-ffmpeg-binaries/tree/n8.1.2-1",
+      "buildRevision": "a2a5bd6b8773c386c846089662330e1188c05587"
+    },
+    "ffprobe": {
+      "version": "8.1.2",
+      "versionArgs": ["-version"],
+      "versionPattern": "8\\.1\\.2",
+      "license": "ffmpeg",
+      "sourceUrl": "https://github.com/FFmpeg/FFmpeg/tree/n8.1.2",
+      "sourceRevision": "1c2c67c0b9f7f66ab32c19dcf7f227bcd290aa4c",
+      "buildUrl": "https://github.com/shaka-project/static-ffmpeg-binaries/tree/n8.1.2-1",
+      "buildRevision": "a2a5bd6b8773c386c846089662330e1188c05587"
+    },
+    "yt-dlp": {
+      "version": "2026.08.19",
+      "versionArgs": ["--version"],
+      "versionPattern": "2026\\.08\\.19",
+      "license": "yt-dlp",
+      "sourceUrl": "https://github.com/yt-dlp/yt-dlp/tree/2026.08.19",
+      "sourceRevision": "3a08beaf031ab68f966401ead017ac81fe8486cf"
+    }
+  },
+  "targets": {
+    "x86_64-pc-windows-msvc": {
+      "ffmpeg": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffmpeg-win-x64.exe",
+        "sha256": "4044b3924c977ad31229d504c5d5b8685f9553124fbaff6e9c99048b42830341",
+        "output": "ffmpeg-x86_64-pc-windows-msvc.exe"
+      },
+      "ffprobe": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffprobe-win-x64.exe",
+        "sha256": "fc37ca23d31ee08bb8f7e108edf3822f6ef3efc1a8d306bbe0b779190230710b",
+        "output": "ffprobe-x86_64-pc-windows-msvc.exe"
+      },
+      "yt-dlp": {
+        "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
+        "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
+        "output": "yt-dlp-x86_64-pc-windows-msvc.exe"
+      }
+    },
+    "x86_64-unknown-linux-gnu": {
+      "ffmpeg": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffmpeg-linux-x64",
+        "sha256": "9eac5b2b5076db5ff853a6fa0dcd6b8de7d0cac8481eadda6c47cd935825f1ee",
+        "output": "ffmpeg-x86_64-unknown-linux-gnu"
+      },
+      "ffprobe": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffprobe-linux-x64",
+        "sha256": "065d3c56926052a76e884c4e4b51b7d95248da9391ab7effdcca6b94ceab98cf",
+        "output": "ffprobe-x86_64-unknown-linux-gnu"
+      },
+      "yt-dlp": {
+        "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_linux",
+        "sha256": "58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a",
+        "output": "yt-dlp-x86_64-unknown-linux-gnu"
+      }
+    },
+    "aarch64-unknown-linux-gnu": {
+      "ffmpeg": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffmpeg-linux-arm64",
+        "sha256": "6e7b1d7d1aa8c35e3fedd78a140aa0968717aeb7386ecfb0ee00773d9f0a4503",
+        "output": "ffmpeg-aarch64-unknown-linux-gnu"
+      },
+      "ffprobe": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffprobe-linux-arm64",
+        "sha256": "fd2aca1456f0261cabef4514b6d97a70fa342003347f51b39c473dd364328089",
+        "output": "ffprobe-aarch64-unknown-linux-gnu"
+      },
+      "yt-dlp": {
+        "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_linux_aarch64",
+        "sha256": "b16e4dab368a816cd05d477d698a605a6ae87ccee1c8ffd38fa21d7254141fcc",
+        "output": "yt-dlp-aarch64-unknown-linux-gnu"
+      }
+    },
+    "x86_64-apple-darwin": {
+      "ffmpeg": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffmpeg-osx-x64",
+        "sha256": "62c87854d851f202fc4a29bdda0fe7b6ebcddd37b863482ce1bdc81151b03fe4",
+        "output": "ffmpeg-x86_64-apple-darwin"
+      },
+      "ffprobe": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffprobe-osx-x64",
+        "sha256": "d530823f480a3c7eb6334f18a00197d1e9f1070e86172b9aa89c4bf4022bd879",
+        "output": "ffprobe-x86_64-apple-darwin"
+      },
+      "yt-dlp": {
+        "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos",
+        "sha256": "0f192b7ec147ab6288885d6351d9ab67367640029b4377576ef46dd79cf7b202",
+        "output": "yt-dlp-x86_64-apple-darwin"
+      }
+    },
+    "aarch64-apple-darwin": {
+      "ffmpeg": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffmpeg-osx-arm64",
+        "sha256": "e7b9fcd97f95f333512d6e8b8ac24d9dbc08f189f36047695499bd7b57214b22",
+        "output": "ffmpeg-aarch64-apple-darwin"
+      },
+      "ffprobe": {
+        "url": "https://github.com/shaka-project/static-ffmpeg-binaries/releases/download/n8.1.2-1/ffprobe-osx-arm64",
+        "sha256": "ded4c698b8ff38d0bc1fd30fcc5e768dc46f58bc15a8dfd61f98615ba49cde5c",
+        "output": "ffprobe-aarch64-apple-darwin"
+      },
+      "yt-dlp": {
+        "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_macos",
+        "sha256": "0f192b7ec147ab6288885d6351d9ab67367640029b4377576ef46dd79cf7b202",
+        "output": "yt-dlp-aarch64-apple-darwin"
+      }
+    }
+  }
+}

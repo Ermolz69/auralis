@@ -2,7 +2,6 @@
 import { useContext } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { listen as listenProject } from '@tauri-apps/api/event';
 import { invoke, listen } from '@/shared/api/tauri';
 import { NavigationProvider, useNavigation } from '@/shared/router';
 import {
@@ -16,7 +15,6 @@ import { AppJobProvider } from './app/providers';
 import { CurrentStepSummary } from './pages/project';
 import App from './App';
 
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn() }));
 vi.mock('@/shared/api/tauri', () => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock('./pages/home', () => ({ HomePage: () => <h1>Home page</h1> }));
 vi.mock('./pages/project', async (importOriginal) => ({
@@ -41,7 +39,7 @@ const job: JobDto = {
   revision: 1,
   title: 'Old job',
   status: 'running',
-  stage: 'importYoutubeSubtitles',
+  stage: 'extractOrGenerateTranscript',
   progress: {
     percent: 10,
     message: 'Working',
@@ -90,11 +88,11 @@ beforeEach(() => {
   creation = null;
   jobSnapshot = [job];
   vi.spyOn(console, 'warn').mockImplementation(() => {});
-  vi.mocked(listenProject).mockImplementation((_name, callback) => {
-    projectEvent = callback as typeof projectEvent;
-    return Promise.resolve(vi.fn());
-  });
   vi.mocked(listen).mockImplementation(async (name, callback) => {
+    if (name === 'project-updated') {
+      projectEvent = callback as typeof projectEvent;
+      return () => {};
+    }
     jobListeners.set(name, callback as (event: { payload: unknown }) => void);
     return () => {
       jobListeners.delete(name);

@@ -1,0 +1,11 @@
+{
+  "bundle": {
+    "windows": {
+      "digestAlgorithm": "sha256",
+      "signCommand": "node ../tools/release/sign-windows.mjs %1",
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

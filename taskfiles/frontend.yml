@@ -1,12 +1,17 @@
 version: '3'
 
 tasks:
+  dev:
+    cmds:
+      - pnpm --filter desktop dev
+
   all:
     cmds:
       - task: typecheck
       - task: lint
       - task: test
       - task: build
+      - task: e2e:run
       - task: smoke
 
   install:
@@ -38,6 +43,17 @@ tasks:
   test:
     cmds:
       - pnpm --filter desktop test {{.CLI_ARGS}}
+
+  e2e:
+    desc: Build and run the production browser end-to-end suite
+    cmds:
+      - task: build
+      - task: e2e:run
+
+  e2e:run:
+    internal: true
+    cmds:
+      - pnpm --filter desktop e2e
 
   build:
     cmds:

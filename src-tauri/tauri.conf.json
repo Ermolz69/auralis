@@ -1,15 +1,31 @@
 {
   "productName": "Auralis",
-  "version": "0.1.0",
-  "identifier": "com.auralis.app",
+  "version": "../package.json",
+  "identifier": "com.auralis.desktop",
   "build": {
-    "beforeDevCommand": "pnpm run frontend:dev",
-    "beforeBuildCommand": "pnpm run build",
+    "beforeDevCommand": "task desktop:before-dev",
+    "beforeBuildCommand": "task desktop:before-build",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../apps/desktop/dist"
   },
   "bundle": {
-    "resources": ["binaries/*"]
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "binaries/ffmpeg-*",
+      "binaries/ffprobe-*",
+      "binaries/yt-dlp-*",
+      "binaries/FFMPEG-GPL-3.0.txt",
+      "binaries/YT-DLP-UNLICENSE.txt",
+      "binaries/THIRD-PARTY-NOTICES.txt",
+      "binaries/media-tools-provenance.json"
+    ]
   },
   "app": {
     "windows": [
@@ -47,6 +63,15 @@
         "frame-src": "'none'",
         "base-uri": "'none'",
         "form-action": "'none'"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://github.com/Ermolz69/auralis/releases/latest/download/latest.json"],
+      "pubkey": "",
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

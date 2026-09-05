@@ -64,6 +64,7 @@ jobs:
               - 'src-tauri/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rust-toolchain.toml'
               - 'rustfmt.toml'
               - '.clippy.toml'
             docs:
@@ -85,9 +86,14 @@ jobs:
               - '.github/workflows/release.yml'
               - '.github/workflows/tauri-build.yml'
               - 'src-tauri/tauri.conf.json'
+              - 'src-tauri/tauri.*.conf.json'
               - 'src-tauri/capabilities/**'
               - 'src-tauri/permissions/**'
               - 'src-tauri/icons/**'
+              - 'tools/media-tools/**'
+              - 'tools/release/**'
+              - 'taskfiles/media.yml'
+              - 'taskfiles/release.yml'
             ci:
               - '.github/workflows/**'
               - '.github/actions/**'
@@ -233,6 +239,12 @@ jobs:
     if: ${{ needs.changes.outputs.release == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.quality == 'true' || needs.changes.outputs.global == 'true' }}
     uses: ./.github/workflows/full-checks.yml
 
+  native-bundle:
+    name: Native Bundle
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.rust == 'true' || needs.changes.outputs.release == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' }}
+    uses: ./.github/workflows/tauri-build.yml
+
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
@@ -245,6 +257,7 @@ jobs:
       - quality-global
       - security
       - release-checks
+      - native-bundle
     if: always()
 
     steps:

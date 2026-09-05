@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { load } from 'js-yaml';
 
 const read = (path) => load(readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8'));
+const readText = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const bootstrap = read('.github/actions/bootstrap/action.yml');
 const ci = read('.github/workflows/ci.yml');
 const release = read('.github/workflows/release.yml');
@@ -18,6 +19,17 @@ test('Rust cache tracks the single workspace and excludes obsolete source-contai
   const cache = bootstrap.runs.steps.find((step) => step.uses === 'Swatinem/rust-cache@v2');
   assert.equal(cache.with.workspaces.trim(), '. -> target');
   assert.equal(cache.with['prefix-key'], 'v1-rust');
+});
+
+test('CI installs the exact Rust toolchain pinned for local development', () => {
+  const setup = bootstrap.runs.steps.find((step) =>
+    step.uses?.startsWith('dtolnay/rust-toolchain@'),
+  );
+  const channel = readText('rust-toolchain.toml').match(/^channel\s*=\s*['"]([^'"]+)['"]/m)?.[1];
+  assert.ok(channel, 'rust-toolchain.toml must declare an exact channel');
+  assert.equal(setup.uses, 'dtolnay/rust-toolchain@stable');
+  assert.equal(setup.with.toolchain, channel);
+  assert.match(channel, /^\d+\.\d+\.\d+$/);
 });
 
 function enabledSteps(options, os) {
@@ -68,9 +80,11 @@ test('release and PR parity execute the identical reusable gate without publishi
     full.jobs.check.steps.some((step) => step.uses?.includes('tauri-action')),
     false,
   );
-  assert.equal(release.jobs.release.needs, 'check');
+  assert.equal(release.jobs.build.needs, 'check');
   assert.equal(release.permissions.contents, 'read');
-  assert.equal(release.jobs.release.permissions.contents, 'write');
+  assert.equal(release.jobs.build.permissions, undefined);
+  assert.equal(release.jobs.publish.needs, 'build');
+  assert.equal(release.jobs.publish.permissions.contents, 'write');
   assert.deepEqual(release.on.push.tags, ['app-v*']);
   assert.ok(ci.jobs['ci-summary'].needs.includes('release-checks'));
 });
@@ -84,7 +98,8 @@ test('all toolchain consumers use the same bootstrap after checkout', () => {
     ci.jobs['quality-global'],
     ci.jobs.security,
     full.jobs.check,
-    release.jobs.release,
+    release.jobs.build,
+    release.jobs.publish,
     tauri.jobs.build,
     pages.jobs.build,
   ];
@@ -178,7 +193,7 @@ test('lightweight jobs skip unneeded browsers, native libraries and Rust fetchin
       false,
     );
   }
-  for (const job of [release.jobs.release, tauri.jobs.build]) {
+  for (const job of [release.jobs.build, tauri.jobs.build]) {
     assert.deepEqual(configured(job).with, { node: 'true', rust: 'true' });
     for (const os of ['Windows', 'macOS']) {
       const steps = enabledSteps(configured(job).with, os);
@@ -195,6 +210,10 @@ test('bootstrap and tooling changes trigger the release gate and cannot bypass C
   assert.ok(filters.ci.includes('.github/actions/**'));
   assert.ok(filters.ci.includes('.github/workflows/**'));
   assert.ok(filters.quality.includes('taskfiles/**'));
+  assert.ok(filters.rust.includes('rust-toolchain.toml'));
+  assert.ok(filters.release.includes('src-tauri/tauri.*.conf.json'));
+  assert.ok(filters.release.includes('tools/release/**'));
+  assert.ok(filters.release.includes('taskfiles/release.yml'));
   for (const group of ['ci', 'quality', 'global', 'release']) {
     assert.ok(ci.jobs['release-checks'].if.includes(`needs.changes.outputs.${group} == 'true'`));
   }
