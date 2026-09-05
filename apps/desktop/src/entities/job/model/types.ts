@@ -1,40 +1,17 @@
-import type { JobKind } from '@/shared/api/contracts/job';
-export type { JobKind } from '@/shared/api/contracts/job';
+import type {
+  Job as ContractJob,
+  JobEvent as ContractJobEvent,
+  JobEventKind,
+  JobProgress,
+} from '@/shared/api/contracts/job';
+export type { JobKind, JobStatus } from '@/shared/api/contracts/job';
 
-export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-export type JobLifecycleEventKindDto =
-  'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
-
-export type JobProgressDto = {
-  percent: number;
-  message: string;
-  currentStep: string | null;
-  processedItems: number | null;
-  totalItems: number | null;
-};
-
-export type JobDto = {
-  id: string;
-  kind: JobKind;
-  revision: number;
-  projectId: string | null;
-  title: string;
-  status: JobStatus;
-  stage: string | null;
-  progress: JobProgressDto;
-  error: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-// Aliases for compatibility with the rest of the codebase
-export type Job = JobDto;
-export type JobEvent = JobEventDto;
-
-export type JobEventDto = {
-  kind: JobLifecycleEventKindDto;
-  job: JobDto;
-};
+export type JobLifecycleEventKindDto = JobEventKind;
+export type JobProgressDto = JobProgress;
+export type JobDto = ContractJob;
+export type Job = ContractJob;
+export type JobEvent = ContractJobEvent;
+export type JobEventDto = ContractJobEvent;
 
 export type JobStoreState = {
   phase: 'idle' | 'initializing' | 'synchronizing' | 'ready' | 'stale';

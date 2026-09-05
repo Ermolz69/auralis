@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   getProjectPreferences,
   listProjects,
-  projectPreferencesEvent,
   subscribeProjectChanges,
+  subscribeProjectPreferences,
   type Project,
 } from '@/entities/project';
 
@@ -33,11 +33,11 @@ export function usePinnedProjects() {
       void refresh();
     });
     void refresh();
-    window.addEventListener(projectPreferencesEvent, refresh);
+    const unsubscribePreferences = subscribeProjectPreferences(() => void refresh());
     return () => {
       cancelled = true;
       unsubscribe();
-      window.removeEventListener(projectPreferencesEvent, refresh);
+      unsubscribePreferences();
     };
   }, []);
   return projects;

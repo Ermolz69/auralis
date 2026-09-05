@@ -27,7 +27,7 @@ export function TranscriptResult({ transcript, isLoading, error, onRefresh }: Pr
 
   return (
     <section
-      className="rounded-md border border-success/60 bg-success/10 p-3"
+      className="animate-surface-in rounded-md border border-success/60 bg-success/10 p-3"
       aria-label="Полученные субтитры"
     >
       <div className="flex items-center justify-between gap-3">
@@ -47,7 +47,7 @@ export function TranscriptResult({ transcript, isLoading, error, onRefresh }: Pr
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Поиск по тексту субтитров…"
           aria-label="Поиск по тексту субтитров"
-          className="mb-2 h-8 w-full rounded-sm border border-success/25 bg-canvas/40 px-3 text-[11px] text-text outline-none placeholder:text-subtle focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="motion-field mb-2 h-8 w-full rounded-sm border border-success/25 bg-canvas/40 px-3 text-[11px] text-text outline-none placeholder:text-subtle focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
         <p className="mb-1.5 text-[10px] text-subtle" aria-live="polite" aria-atomic="true">
           {normalized ? `Найдено реплик: ${matches.length}` : 'Предпросмотр (первые 3 реплики)'}
@@ -60,7 +60,9 @@ export function TranscriptResult({ transcript, isLoading, error, onRefresh }: Pr
           </div>
         ))}
         {normalized && matches.length === 0 && (
-          <p className="py-2 text-[11px] text-subtle">Совпадений в субтитрах нет</p>
+          <p className="animate-content-in py-2 text-[11px] text-subtle">
+            Совпадений в субтитрах нет
+          </p>
         )}
       </div>
     </section>

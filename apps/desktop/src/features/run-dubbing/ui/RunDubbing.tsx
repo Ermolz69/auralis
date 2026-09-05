@@ -61,7 +61,7 @@ export const RunDubbing = ({
       activeAttemptRef.current = null;
 
       setProject(response.project);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!isCurrentAttempt()) return;
       const cmdErr = toCommandError(e);
       console.error('Failed to start mock dubbing job', cmdErr);

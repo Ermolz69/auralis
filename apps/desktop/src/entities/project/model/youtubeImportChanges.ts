@@ -1,10 +1,12 @@
+import { createWindowEventChannel } from '@/shared/lib';
+
 const eventName = 'auralis:youtube-imports-changed';
+const youtubeImportChanges = createWindowEventChannel<void>(eventName);
 
 export function youtubeImportsChanged() {
-  window.dispatchEvent(new Event(eventName));
+  youtubeImportChanges.emit();
 }
 
 export function subscribeYoutubeImports(listener: () => void) {
-  window.addEventListener(eventName, listener);
-  return () => window.removeEventListener(eventName, listener);
+  return youtubeImportChanges.subscribe(listener);
 }

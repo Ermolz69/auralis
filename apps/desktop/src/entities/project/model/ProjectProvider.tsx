@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@/shared/api/tauri';
+import { invoke, listen } from '@/shared/api/tauri';
 import { toCommandError } from '@/shared/api/contracts';
 import { ProjectContext } from './context';
 import type { Project } from './types';
@@ -89,7 +88,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
     const setupListener = async () => {
       try {
-        const fn = await listen<{ projectId: string }>('project-updated', async (event) => {
+        const fn = await listen('project-updated', async (event) => {
           if (event.payload.projectId === projectId) {
             if (deletingProjectIdRef.current !== null) {
               return;

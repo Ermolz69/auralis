@@ -97,7 +97,7 @@ export function useImportLocalMedia() {
       setProject(updatedProject);
       setPipelineStep('source');
       setCurrentView('project');
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!isCurrentAttempt()) return;
       const cmdErr = toCommandError(err);
       setError(cmdErr.message);

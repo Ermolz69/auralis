@@ -68,7 +68,7 @@ export function JobCard({ job }: { job: JobDto }) {
   };
 
   return (
-    <Card className="shrink-0">
+    <Card className="shrink-0 animate-surface-in">
       <CardContent className="flex flex-col gap-2 p-3">
         <div className="flex justify-between items-start gap-3">
           <div className="flex min-w-0 flex-col">
@@ -95,7 +95,7 @@ export function JobCard({ job }: { job: JobDto }) {
         )}
 
         {job.status === 'failed' && (
-          <div className="flex flex-col gap-1" role="alert">
+          <div className="flex animate-content-in flex-col gap-1" role="alert">
             <p className="text-xs font-medium text-danger">{job.error || 'Operation failed'}</p>
             {job.progress.message && (
               <p className="text-xs text-muted">Final state: {job.progress.message}</p>
@@ -154,7 +154,11 @@ function FailureRecoveryMessage({
 
 function CancelledState() {
   return (
-    <div className="flex items-start gap-2 text-xs text-muted" role="status" aria-live="polite">
+    <div
+      className="flex animate-content-in items-start gap-2 text-xs text-muted"
+      role="status"
+      aria-live="polite"
+    >
       <Icon name="CircleStop" size="sm" color="warning" />
       <p>Cancelled before completion. Start a new supported operation when ready.</p>
     </div>
@@ -163,7 +167,7 @@ function CancelledState() {
 
 function CompletedState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col gap-1" role="status" aria-live="polite">
+    <div className="flex animate-content-in flex-col gap-1" role="status" aria-live="polite">
       <div className="flex items-center gap-2 text-xs text-success">
         <Icon name="CircleCheck" size="sm" color="success" />
         <span>Completed successfully</span>

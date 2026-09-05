@@ -52,6 +52,13 @@ export default [
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: 'lucide-react',
+              message:
+                'Use shared/ui/icon so icon sizing, colors, accessibility, and the approved registry stay consistent.',
+            },
+          ],
           patterns: [
             {
               group: [

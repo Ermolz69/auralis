@@ -60,7 +60,7 @@ export function ProjectListPanel({ height }: { height: number }) {
           aria-label="Create project"
           title="Создать проект"
           disabled={isCreating}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-raised text-subtle transition-colors hover:border-border-strong hover:text-primary"
+          className="motion-control flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-surface-raised text-subtle hover:border-border-strong hover:text-primary"
         >
           <Icon name="FolderPlus" size={13} />
         </button>
@@ -92,7 +92,7 @@ export function ProjectListPanel({ height }: { height: number }) {
                 setName('');
                 inputRef.current?.focus();
               }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-xs p-1 text-subtle hover:text-text"
+              className="motion-icon absolute right-1.5 top-1/2 -translate-y-1/2 rounded-xs p-1 text-subtle hover:text-text"
             >
               <Icon name="X" size={11} />
             </button>
@@ -114,7 +114,7 @@ export function ProjectListPanel({ height }: { height: number }) {
               setPipelineStep('source');
               setCurrentView('project');
             }}
-            className={`mx-1 flex w-[calc(100%_-_0.5rem)] items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs transition-colors ${currentView === 'project' && projectId === item.id ? 'bg-primary/7 text-text' : 'text-muted hover:bg-surface hover:text-text'}`}
+            className={`motion-control mx-1 flex w-[calc(100%_-_0.5rem)] items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs ${currentView === 'project' && projectId === item.id ? 'bg-primary/7 text-text' : 'text-muted hover:bg-surface hover:text-text'}`}
           >
             <Icon name="Folder" size={12} color={projectId === item.id ? 'primary' : 'muted'} />
             <span className="min-w-0 flex-1 truncate font-semibold">{item.title}</span>

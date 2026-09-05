@@ -1,5 +1,5 @@
 import type { MediaStream } from '@/entities/media';
-import { Video, Music, Settings2, Subtitles } from 'lucide-react';
+import { Icon, type IconName } from '@/shared/ui/icon';
 
 interface StreamsTableProps {
   streams: MediaStream[];
@@ -10,16 +10,16 @@ export function StreamsTable({ streams }: StreamsTableProps) {
     return <div className="text-sm text-muted p-3 bg-muted/20 rounded-md">No streams found</div>;
   }
 
-  const getStreamIcon = (type: string) => {
+  const getStreamIcon = (type: string): IconName => {
     switch (type.toLowerCase()) {
       case 'video':
-        return <Video className="w-3.5 h-3.5" />;
+        return 'Video';
       case 'audio':
-        return <Music className="w-3.5 h-3.5" />;
+        return 'Music';
       case 'subtitle':
-        return <Subtitles className="w-3.5 h-3.5" />;
+        return 'Subtitles';
       default:
-        return <Settings2 className="w-3.5 h-3.5" />;
+        return 'Settings2';
     }
   };
 
@@ -32,7 +32,9 @@ export function StreamsTable({ streams }: StreamsTableProps) {
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2 text-text">
-              <div className="p-1 bg-muted/50 rounded text-muted">{getStreamIcon(s.codecType)}</div>
+              <div className="p-1 bg-muted/50 rounded text-muted">
+                <Icon name={getStreamIcon(s.codecType)} size={14} />
+              </div>
               <span className="truncate text-sm font-medium capitalize">{s.codecType} Stream</span>
             </div>
             <span className="text-xs font-medium text-text bg-secondary px-1.5 py-0.5 rounded">

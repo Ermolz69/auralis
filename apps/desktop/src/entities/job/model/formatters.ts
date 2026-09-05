@@ -23,7 +23,6 @@ const JOB_STAGE_LABELS: Record<string, string> = {
   postprocessAudio: 'Post-processing audio',
   muxAudioTrack: 'Muxing audio track',
   exportResult: 'Exporting result',
-  importYoutubeSubtitles: 'Importing YouTube subtitles',
 };
 
 export const formatJobStage = (stage: string | null): string => {

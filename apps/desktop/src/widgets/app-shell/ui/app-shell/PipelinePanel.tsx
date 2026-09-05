@@ -70,7 +70,7 @@ function PipelineItem({
         type="button"
         disabled={disabled}
         onClick={onClick}
-        className={`flex w-full items-center gap-3 px-4 py-2 text-left text-xs transition-colors ${active ? 'bg-primary/7 text-text' : disabled ? 'cursor-not-allowed text-subtle opacity-55' : 'text-muted hover:bg-surface hover:text-text'}`}
+        className={`motion-control flex w-full items-center gap-3 px-4 py-2 text-left text-xs ${active ? 'bg-primary/7 text-text' : disabled ? 'cursor-not-allowed text-subtle opacity-55' : 'text-muted hover:bg-surface hover:text-text'}`}
       >
         <span className="w-3 text-right font-mono text-[10px] text-subtle">{index}</span>
         <span className="min-w-0 flex-1 truncate font-medium">{label}</span>

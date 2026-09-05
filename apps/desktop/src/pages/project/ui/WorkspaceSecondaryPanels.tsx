@@ -68,7 +68,7 @@ function WidePanel({
         {expanded ? `Hide ${label}` : `Show ${label}`}
       </Button>
       {expanded && (
-        <div id={id} className="min-h-0 flex-1 overflow-hidden">
+        <div id={id} className="min-h-0 flex-1 animate-drawer-in overflow-hidden">
           {children}
         </div>
       )}

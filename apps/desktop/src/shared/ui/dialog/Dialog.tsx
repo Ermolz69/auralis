@@ -170,7 +170,7 @@ export const DialogClose = ({
       type="button"
       aria-label="Close dialog"
       onClick={ctx?.handleClose}
-      className={`absolute right-4 top-4 rounded-md border border-transparent p-1 opacity-70 transition-all hover:border-border hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface disabled:pointer-events-none disabled:opacity-50 ${className}`}
+      className={`motion-control absolute right-4 top-4 rounded-md border border-transparent p-1 opacity-70 hover:border-border hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface disabled:pointer-events-none disabled:opacity-50 ${className}`}
       {...props}
     >
       <Icon name="X" size="sm" />

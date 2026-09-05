@@ -21,7 +21,7 @@ export function JobQueueDrawer({
   return (
     <div
       id="global-job-queue"
-      className="absolute inset-y-9 right-0 z-30 w-full max-w-80 border-l border-border bg-surface shadow-lg"
+      className="absolute inset-y-9 right-0 z-30 w-full max-w-80 animate-drawer-in border-l border-border bg-surface shadow-lg"
     >
       <div className="flex h-10 items-center justify-between border-b border-border px-4">
         <span className="text-xs font-semibold text-muted">Очередь задач</span>
@@ -29,7 +29,7 @@ export function JobQueueDrawer({
           type="button"
           aria-label="Close job queue"
           onClick={onClose}
-          className="rounded-xs p-1 text-subtle transition-colors hover:bg-surface-hover hover:text-text"
+          className="motion-control rounded-xs p-1 text-subtle hover:bg-surface-hover hover:text-text"
         >
           <Icon name="X" size={14} />
         </button>

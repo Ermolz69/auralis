@@ -64,7 +64,7 @@ export function usePasteYoutubeLink() {
       setPipelineStep('source');
       setCurrentView('project');
       return project;
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!isCurrentAttempt()) return null;
       const cmdErr = toCommandError(err);
       setStatus('DownloadFailed');

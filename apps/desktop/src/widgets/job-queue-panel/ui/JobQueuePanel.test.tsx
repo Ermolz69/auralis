@@ -26,7 +26,7 @@ const makeJob = (overrides: Partial<JobDto>): JobDto => ({
   projectId: 'project-1',
   title: 'Subtitle import',
   status: 'running',
-  stage: 'importYoutubeSubtitles',
+  stage: 'extractOrGenerateTranscript',
   progress: {
     percent: 42,
     message: 'Importing subtitles',
@@ -148,7 +148,7 @@ describe('JobQueuePanel', () => {
 
     expect(screen.getByRole('heading', { name: 'Active operation' })).not.toBeNull();
     expect(screen.getByText('Project: YouTube project')).not.toBeNull();
-    expect(screen.getByText('Running: Importing YouTube subtitles')).not.toBeNull();
+    expect(screen.getByText('Running: Preparing transcript')).not.toBeNull();
     expect(
       screen
         .getByRole('progressbar', { name: 'Subtitle import progress' })

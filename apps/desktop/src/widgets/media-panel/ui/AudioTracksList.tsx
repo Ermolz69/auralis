@@ -1,6 +1,6 @@
 import type { AudioTrackMetadata } from '@/entities/media';
 import { Badge } from '@/shared/ui/badge';
-import { Headphones, Volume2 } from 'lucide-react';
+import { Icon } from '@/shared/ui/icon';
 
 interface AudioTracksListProps {
   tracks: AudioTrackMetadata[];
@@ -22,7 +22,7 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <Headphones className="w-3.5 h-3.5 text-muted" />
+              <Icon name="Headphones" size={14} color="muted" />
               <span className="truncate text-sm font-semibold text-text">
                 Track #{idx} {t.title ? `(${t.title})` : ''}
               </span>
@@ -39,7 +39,7 @@ export function AudioTracksList({ tracks }: AudioTracksListProps) {
             </Badge>
             <span>•</span>
             <span className="flex items-center gap-1">
-              <Volume2 className="w-3 h-3" /> {t.channels} ch
+              <Icon name="Volume2" size={12} /> {t.channels} ch
             </span>
             <span>•</span>
             <span>{t.sampleRate} Hz</span>

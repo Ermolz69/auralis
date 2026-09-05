@@ -26,7 +26,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseStyles =
-      'inline-flex cursor-pointer items-center justify-center gap-2 border font-medium transition-colors duration-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-45';
+      'motion-control inline-flex cursor-pointer items-center justify-center gap-2 border font-medium focus:outline-none disabled:cursor-not-allowed disabled:opacity-45';
 
     // Visual variants
     const variants = {

@@ -43,6 +43,14 @@ test('allows relative imports within a slice', async () => {
   );
 });
 
+test('rejects direct Lucide imports outside the shared icon registry', async () => {
+  assert.ok(
+    (
+      await lint("import { Info } from 'lucide-react';", 'src/widgets/media-panel/ui/check.tsx')
+    ).includes('no-restricted-imports'),
+  );
+});
+
 test('keeps Storybook recommended rules enabled', async () => {
   assert.ok(
     (await lint('export const Primary = {};', 'src/shared/ui/button/check.stories.tsx')).includes(

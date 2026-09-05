@@ -1,4 +1,4 @@
-import { WorkspaceSection } from './WorkspaceSection';
+import { WorkspaceSection } from '../WorkspaceSection';
 
 const methods = [
   {

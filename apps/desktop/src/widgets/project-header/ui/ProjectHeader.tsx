@@ -9,6 +9,7 @@ import {
 import { useProjectContext } from '@/entities/project';
 import { formatDuration, formatSourceLabel, getProjectStatusTone } from '@/entities/media';
 import { useNavigation } from '@/shared/router';
+import { formatClockTime } from '@/shared/lib';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 
@@ -43,7 +44,7 @@ export const ProjectHeader = () => {
 
         {isSourceStep && project && (
           <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-subtle">
-            <span>Запуск: {formatTime(project.createdAt)}</span>
+            <span>Запуск: {formatClockTime(project.createdAt)}</span>
             {project.metadata && (
               <span>Длительность: {formatDuration(project.metadata.durationMs)}</span>
             )}
@@ -94,14 +95,4 @@ function getSourceState(project: ReturnType<typeof useProjectContext>['project']
   if (project.source && project.metadata) return { label: 'Готово', tone: 'success' };
   if (project.status === 'processing') return { label: 'Выполняется', tone: 'primary' };
   return { label: 'Ожидание', tone: 'muted' };
-}
-
-function formatTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '--:--:--';
-  return date.toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
 }

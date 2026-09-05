@@ -69,7 +69,7 @@ const activeJob: JobDto = {
   projectId: 'project-1',
   title: 'Subtitle import',
   status: 'running',
-  stage: 'importYoutubeSubtitles',
+  stage: 'extractOrGenerateTranscript',
   progress: {
     percent: 42,
     message: 'Importing subtitles',
@@ -191,9 +191,7 @@ describe('TranscriptEditor', () => {
     renderTranscript(jobState);
 
     expect(screen.getByText('Waiting for subtitles')).not.toBeNull();
-    expect(
-      screen.getByText(/Linked operation: Running: Importing YouTube subtitles/i),
-    ).not.toBeNull();
+    expect(screen.getByText(/Linked operation: Running: Preparing transcript/i)).not.toBeNull();
   });
 
   it.each(['project-2', null])('ignores an active job attached to %s', (projectId) => {

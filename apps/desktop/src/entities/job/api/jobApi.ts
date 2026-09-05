@@ -18,7 +18,7 @@ export async function getJobsSnapshot(projectId: string): Promise<Job[]> {
 }
 
 export async function subscribeJobEvents(handler: (event: JobEvent) => void): Promise<UnlistenFn> {
-  return listen<JobEvent>(JOB_EVENT_NAME, (event) => {
+  return listen(JOB_EVENT_NAME, (event) => {
     handler(event.payload);
   });
 }

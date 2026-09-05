@@ -6,8 +6,8 @@ describe('job presentation formatters', () => {
     expect(formatJobStatus({ status: 'pending', stage: 'downloadMedia' })).toBe(
       'Waiting to start: Downloading media',
     );
-    expect(formatJobStatus({ status: 'running', stage: 'importYoutubeSubtitles' })).toBe(
-      'Running: Importing YouTube subtitles',
+    expect(formatJobStatus({ status: 'running', stage: 'extractOrGenerateTranscript' })).toBe(
+      'Running: Preparing transcript',
     );
     expect(formatJobStatus({ status: 'completed', stage: 'exportResult' })).toBe('Completed');
   });

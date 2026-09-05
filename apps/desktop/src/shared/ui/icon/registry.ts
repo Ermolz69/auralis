@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- This registry is the single Lucide boundary.
 import {
   ArrowDown,
   ArrowLeft,
@@ -13,6 +14,7 @@ import {
   CircleStop,
   Download,
   FileText,
+  FileVideo,
   Film,
   Folder,
   FolderOpen,
@@ -43,6 +45,7 @@ import {
   Settings,
   Settings2,
   Speech,
+  Subtitles,
   Trash2,
   TriangleAlert,
   User,
@@ -66,6 +69,7 @@ export const icons = {
   CircleStop,
   Download,
   FileText,
+  FileVideo,
   Film,
   Folder,
   FolderOpen,
@@ -96,6 +100,7 @@ export const icons = {
   Settings,
   Settings2,
   Speech,
+  Subtitles,
   Trash2,
   TriangleAlert,
   User,

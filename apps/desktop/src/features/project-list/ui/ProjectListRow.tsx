@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefCallback } from 'react';
 import {
   getProjectPreferences,
-  projectPreferencesEvent,
+  subscribeProjectPreferences,
   updateProjectPreferences,
   type Project,
 } from '@/entities/project';
@@ -46,8 +46,9 @@ export const ProjectListRow = ({
   const { avatar, updateAvatar, isSaving } = useProjectAvatar(project.id, isAnyDeleting);
   useEffect(() => {
     const refresh = () => setPreferences(getProjectPreferences(project.id));
-    window.addEventListener(projectPreferencesEvent, refresh);
-    return () => window.removeEventListener(projectPreferencesEvent, refresh);
+    return subscribeProjectPreferences(({ projectId }) => {
+      if (projectId === project.id) refresh();
+    });
   }, [project.id]);
   const openButtonElementRef = useRef<HTMLButtonElement>(null);
   const menuTriggerRef = useRef<HTMLElement | null>(null);
@@ -81,7 +82,7 @@ export const ProjectListRow = ({
 
   return (
     <div
-      className={`group flex min-w-0 items-center rounded-md transition-colors hover:bg-surface-raised ${isDeleting ? 'opacity-45' : ''}`}
+      className={`motion-surface group flex min-w-0 items-center rounded-md hover:translate-x-px hover:bg-surface-raised ${isDeleting ? 'opacity-45' : ''}`}
       aria-busy={isDeleting}
       onContextMenu={(event) => {
         event.preventDefault();
@@ -122,7 +123,7 @@ export const ProjectListRow = ({
         disabled={isAnyDeleting}
         aria-label={`Open ${displayTitle}. Status: ${statusLabel}. Source: ${sourceLabel}`}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-surface-raised text-muted transition-colors group-hover:bg-surface-hover">
+        <span className="motion-surface flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-surface-raised text-muted group-hover:border-border-strong group-hover:bg-surface-hover">
           {avatar ? (
             <img src={avatar} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -157,7 +158,7 @@ export const ProjectListRow = ({
           ref={deleteButtonRef}
           variant="ghost"
           size="sm"
-          className="!px-2 opacity-0 transition-opacity focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+          className="!px-2 opacity-0 focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
           loading={isDeleting}
           disabled={isAnyDeleting}
           onClick={() => onDelete(project)}

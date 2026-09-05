@@ -2,8 +2,10 @@ import { useProjectContext } from '@/entities/project';
 import { formatDuration, formatSourceLabel } from '@/entities/media';
 import { AudioTracksList } from './AudioTracksList';
 import { StreamsTable } from './StreamsTable';
-import { AlertCircle, FileVideo, Film, Info } from 'lucide-react';
 import { Badge } from '@/shared/ui/badge';
+import { Icon } from '@/shared/ui/icon';
+import { Notice } from '@/shared/ui/notice';
+import { StateView } from '@/shared/ui/state-view';
 
 type MediaPanelProps = {
   className?: string;
@@ -20,16 +22,20 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
     return (
       <aside className={baseClass} aria-label="Media details">
         <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text">
-          <FileVideo className="w-5 h-5 text-muted" />
+          <Icon name="FileVideo" size="md" color="muted" />
           Media Info
         </h3>
-        <div className="flex flex-col items-center justify-center h-40 text-center space-y-2 text-muted bg-muted/10 rounded-xl border border-dashed border-muted">
-          <Info className="w-6 h-6 opacity-50" />
-          <p className="text-sm">No metadata available</p>
-          <p className="max-w-full truncate px-3 text-xs" aria-label={`Source: ${sourceLabel}`}>
-            {sourceLabel}
-          </p>
-        </div>
+        <StateView
+          icon="Info"
+          title="No metadata available"
+          description={
+            <span className="block max-w-full truncate px-3" aria-label={`Source: ${sourceLabel}`}>
+              {sourceLabel}
+            </span>
+          }
+          density="compact"
+          className="h-40 rounded-xl border border-dashed border-muted bg-muted/10"
+        />
       </aside>
     );
   }
@@ -45,7 +51,7 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
   return (
     <aside className={baseClass} aria-label="Media details">
       <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text">
-        <Film className="w-5 h-5 text-primary" />
+        <Icon name="Film" size="md" color="primary" />
         Media Engine
       </h3>
 
@@ -54,13 +60,9 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
         {warnings.length > 0 && (
           <div className="flex flex-col gap-2">
             {warnings.map((warn, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-2 text-warning text-xs p-3 bg-warning/10 border border-warning/30 rounded-lg shadow-sm"
-              >
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span className="leading-snug">{warn}</span>
-              </div>
+              <Notice key={i} icon="CircleAlert" tone="warning" role="alert">
+                {warn}
+              </Notice>
             ))}
           </div>
         )}
@@ -68,7 +70,7 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
         {/* Basic Properties */}
         <div className="space-y-3">
           <h4 className="font-medium text-sm text-text/80 flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-muted" />
+            <Icon name="Info" size="sm" color="muted" />
             Properties
           </h4>
           <div className="space-y-2 rounded-md border border-border bg-surface-raised p-3">
@@ -120,11 +122,11 @@ export function MediaPanel({ className = '' }: MediaPanelProps) {
         </div>
 
         {/* Streams Table */}
-        <details className="space-y-3 rounded-md border border-border bg-surface-raised p-3">
-          <summary className="cursor-pointer text-sm font-medium text-text/80 focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg">
+        <details className="group space-y-3 rounded-md border border-border bg-surface-raised p-3">
+          <summary className="motion-control cursor-pointer rounded-sm text-sm font-medium text-text/80 hover:text-text focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-bg">
             More details
           </summary>
-          <div className="mt-3 max-w-full overflow-x-auto">
+          <div className="mt-3 max-w-full animate-content-in overflow-x-auto">
             <h4 className="sr-only">Raw Streams</h4>
             <StreamsTable streams={metadata.streams || []} />
           </div>

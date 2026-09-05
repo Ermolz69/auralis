@@ -16,7 +16,7 @@ export function SourceWorkspace() {
 
   return (
     <section
-      className="h-full min-h-0 overflow-y-auto px-4 py-5 sm:px-6"
+      className="h-full min-h-0 animate-content-in overflow-y-auto px-4 py-5 sm:px-6"
       aria-label="Video source configuration"
       data-testid="source-workspace"
     >

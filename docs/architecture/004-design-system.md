@@ -40,3 +40,6 @@ Follow these rules for populating `shared/ui`:
 
 - **When to reuse**: Before creating a new button, input, or card, look in `apps/desktop/src/shared/ui`. If an existing component can solve your problem with minor prop additions, extend and use it.
 - **When to create new**: If a UI pattern (e.g., a specific stylized panel, a complex input field, or an alert banner) is duplicated in 2 or more distinct widgets or pages, abstract it into a generic `shared/ui` component. Do not write the raw Tailwind layout twice.
+- **Shared behavior**: Cross-domain utilities, including locale formatting and typed browser event channels, belong in `shared/lib`; entities and features must not keep local copies of the same formatter or subscription plumbing.
+- **Icons**: Production UI imports icons only through `shared/ui/icon`. Direct `lucide-react` imports outside the central registry are rejected by the frontend architecture gate.
+- **Copy-paste gate**: `task q:duplicate-code` rejects exact production blocks of 12 or more meaningful lines. Extract the behavior at the narrowest common FSD layer instead of suppressing the check.

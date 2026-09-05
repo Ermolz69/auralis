@@ -12,7 +12,7 @@ export function SourceSelector({
 }) {
   if (!source)
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 animate-content-in">
         <div className="rounded-md border border-border bg-surface-raised p-4">
           <PasteYoutubeLink />
         </div>
@@ -29,7 +29,7 @@ export function SourceSelector({
   const remote = source.kind === 'youtubeUrl' || source.kind === 'remoteUrl';
   return (
     <section
-      className="rounded-md border border-border bg-surface-raised p-4"
+      className="animate-surface-in rounded-md border border-border bg-surface-raised p-4"
       aria-label="Connected video source"
     >
       <div className="flex items-center gap-3">

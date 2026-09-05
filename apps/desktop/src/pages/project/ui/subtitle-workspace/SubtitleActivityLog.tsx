@@ -1,6 +1,7 @@
 import type { Job } from '@/entities/job';
-import { formatJobStatus, formatTime } from './model';
-import { WorkspaceSection } from './WorkspaceSection';
+import { formatClockTime } from '@/shared/lib';
+import { formatJobStatus } from './model';
+import { WorkspaceSection } from '../WorkspaceSection';
 
 export function SubtitleActivityLog({ jobs }: { jobs: Job[] }) {
   return (
@@ -12,7 +13,7 @@ export function SubtitleActivityLog({ jobs }: { jobs: Job[] }) {
           jobs.map((job) => (
             <div key={job.id} className="flex min-w-0 gap-3">
               <time className="shrink-0 text-subtle" dateTime={job.updatedAt}>
-                {formatTime(job.updatedAt)}
+                {formatClockTime(job.updatedAt)}
               </time>
               <span
                 className={

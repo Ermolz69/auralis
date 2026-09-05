@@ -3,7 +3,7 @@ import { RunDubbing } from '@/features/run-dubbing';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { TrackList } from './TrackList';
-import { WorkspaceSection } from './WorkspaceSection';
+import { WorkspaceSection } from '../WorkspaceSection';
 
 type Props = {
   tracks: SubtitleTrack[];

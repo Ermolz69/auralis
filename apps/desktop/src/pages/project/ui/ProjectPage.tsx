@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { ProjectHeader } from '../../../widgets/project-header';
 import { Page } from '../../../shared/ui/page-layout';
+import { StateView } from '../../../shared/ui/state-view';
 import { useNavigation } from '@/shared/router';
 
 const SourceWorkspace = lazy(() =>
@@ -31,8 +32,13 @@ export const ProjectPage = () => {
 
 function WorkspaceLoading() {
   return (
-    <div className="flex h-full items-center justify-center text-xs text-muted" role="status">
-      Loading workspace…
-    </div>
+    <StateView
+      title="Loading workspace…"
+      density="compact"
+      loading
+      role="status"
+      live="polite"
+      className="h-full"
+    />
   );
 }
