@@ -2,11 +2,14 @@
 
 ## Why is it needed
 
-To ensure the application design is 100% consistent and easily supports theming (Dark Mode / Light Mode), all colors must be managed centrally through the design system tokens.
+To keep all current dark and light themes consistent, component colors must be
+selected through semantic tokens defined in `theme.css`.
 
 ## What does it forbid
 
-It forbids the direct use of hardcoded colors in any form: HEX codes (`#FFF`), functions (`rgb(...)`, `hsl(...)`) in Tailwind classes (`bg-[#fff]`), inline styles, or CSS files.
+The current check scans TypeScript, TSX, CSS, and SCSS under `pages`, `features`,
+`widgets`, `entities`, and `shared/ui`. It rejects raw hexadecimal colors and
+Tailwind color utilities whose token is not declared in `theme.css`.
 
 ## Where does it run
 
@@ -14,11 +17,15 @@ In the CI pipeline via the `task q:color-tokens` command (runs the `check-raw-co
 
 ## How to fix the error
 
-Replace the hardcoded color with the correct semantic token from your design system (e.g., `bg-surface`, `text-primary`, `var(--color-border)`).
+Replace the hardcoded color with the correct semantic token (for example,
+`bg-surface`, `text-primary`, `border-border`, or `var(--color-border)`). Add a
+new semantic token only when no existing role fits.
 
 ## When can an exception be made
 
-Exceptions are allowed only for files where these tokens are actually defined (e.g., `theme.css`, `tokens.css`, `tailwind.config.ts`). The script already contains a whitelist for such files.
+Palette literals are defined in `apps/desktop/src/app/styles/theme.css`. Design
+token stories are also excluded so they can render the palette reference. Other
+exceptions must remain narrow and explicit in the checker.
 
 ## Who approves the exception
 

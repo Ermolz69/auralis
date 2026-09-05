@@ -1,11 +1,12 @@
 # Storybook Conventions
 
-To prevent Storybook from becoming a chaotic dump of random demos, all developers must adhere to the following conventions when adding components to the UI Kit.
+Use these conventions when adding components and state catalogs to Storybook.
 
 ## 1. Mandatory Stories
 
-- **Every shared UI component must have a story**. If a component lives in `shared/ui`, it must have an accompanying `.stories.tsx` file.
-- Stories are the primary documentation for the design system. If it's not in Storybook, it doesn't exist.
+- Every public visual component in `shared/ui` must have an accompanying story.
+- Helper-only modules may be exercised through the stories and tests of the fields or components that render them.
+- Pages, widgets, and user-facing features should add state-focused stories when isolated rendering is useful.
 
 ## 2. File Placement
 
@@ -21,8 +22,9 @@ To prevent Storybook from becoming a chaotic dump of random demos, all developer
 ## 3. Naming Strategy
 
 - Titles in Storybook should follow a strict hierarchy to keep the sidebar organized.
-- Use `UI Kit / [Component Name]` for standard components.
-- Example: `title: 'UI Kit/Button'`
+- Use `Shared UI/[Component Name]` for shared components.
+- Use `Features/...`, `Widgets/...`, and `Pages/...` for higher FSD layers.
+- Example: `title: 'Shared UI/Button'`
 
 ## 4. Variants and States Coverage
 
@@ -38,11 +40,11 @@ Every interactive component must show all its possible visual variations and sta
 ## 5. Story Template Example
 
 ```tsx
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Button } from './Button';
 
 const meta = {
-  title: 'UI Kit/Button',
+  title: 'Shared UI/Button',
   component: Button,
   tags: ['autodocs'],
 } satisfies Meta<typeof Button>;
@@ -52,16 +54,20 @@ type Story = StoryObj<typeof meta>;
 
 // 1. Default/Primary usage
 export const Primary: Story = {
-  args: { variant: 'primary', label: 'Click Me' },
+  args: { variant: 'primary', children: 'Click Me' },
 };
 
 // 2. State: Disabled
 export const Disabled: Story = {
-  args: { variant: 'primary', label: 'Not allowed', disabled: true },
+  args: { variant: 'primary', children: 'Not allowed', disabled: true },
 };
 
 // 3. State: Loading
 export const Loading: Story = {
-  args: { variant: 'primary', label: 'Submitting...', loading: true },
+  args: { variant: 'primary', children: 'Submitting...', loading: true },
 };
 ```
+
+`task check:frontend` executes unit tests and Storybook browser tests in Chromium.
+Use `task frontend:storybook` when a standalone static Storybook build also needs
+verification.

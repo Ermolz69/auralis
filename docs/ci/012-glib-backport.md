@@ -42,9 +42,10 @@ On Linux:
   patched tests to pass, then repeats the same pointer test against the original
   source with identical style-lint compatibility settings. Only a runtime
   SIGSEGV/SIGABRT qualifies as reproduction; compilation/setup failures do not.
-- `task check:rust` includes the positive optimized regression on Linux.
-  CI also runs the negative control. The control runner requires Node 18+ and tar,
-  available on the Ubuntu GitHub runner.
+- `task check:rust` includes the positive optimized regression on Linux. The lean
+  PR Rust gate uses `task check:rust:pr`; optimized positive and negative controls
+  are reserved for the extended local/release suite. The control requires Node 18+
+  and tar.
 - `task rs:build:release` builds the production native executable after frontend
   assets have been built with `task fe:build`.
 

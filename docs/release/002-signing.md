@@ -1,17 +1,18 @@
 # Production Code Signing
 
-Production tags are intentionally blocked until platform signing credentials are configured.
-Pull-request installer builds remain unsigned and still run package-content and launch smoke
-tests.
+Production tags are intentionally blocked until platform signing credentials are
+configured. Pull-request CI does not create installers; native package-content,
+signature, and launch checks run in the production release matrix or the manually
+started Tauri Build workflow where applicable.
 
 Never commit certificates, passwords, client secrets, or Apple credentials. Store them as
 GitHub repository or environment secrets.
 
 ## Tauri updater
 
-Every Windows, macOS, and Linux update must carry a Tauri updater signature in addition to
-the operating-system package signature. Generate the updater key pair once on a trusted
-maintainer machine from the repository root:
+Every Windows, macOS, and Linux update must carry a Tauri updater signature.
+Windows and macOS packages additionally require their platform signing. Generate
+the updater key pair once on a trusted maintainer machine from the repository root:
 
 ```bash
 pnpm tauri signer generate -w ~/.tauri/auralis.key
@@ -75,10 +76,11 @@ assessment, and the stapled DMG ticket.
 For every production tag, the workflow performs these gates in order:
 
 1. validate that the target platform has complete signing configuration;
-2. build and sign the native packages;
-3. verify bundled media tools and compliance files;
-4. verify Authenticode or Apple signing and notarization;
-5. install and launch the Windows or macOS package.
+2. run focused crash-recovery tests on Windows and macOS;
+3. build and sign the native packages;
+4. verify bundled media tools and compliance files;
+5. verify Authenticode or Apple signing and notarization;
+6. install and launch the Windows or macOS package.
 
 Any failed platform gate prevents the publish job from running, so no GitHub Release is
 created from unverified packages. After every platform succeeds, the only write-enabled job

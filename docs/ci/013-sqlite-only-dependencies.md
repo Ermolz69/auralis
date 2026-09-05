@@ -43,7 +43,7 @@ No external input reaches these test-only assertions.
   mixed releases and a return to SQLx 0.8. This runs in global quality without Rust.
 - `task rs:dependencies:verify` also checks Cargo's actual resolved packages and
   features, including dev-dependency feature unification. It is part of
-  `task check:rust` and therefore shared CI/release checks.
+  `task check:rust:pr`, `task check:rust`, and release checks.
 - `task rs:test:storage` exercises storage using the locked graph. Additional
   regressions hold all five pooled connections to check WAL and foreign-key
   enforcement, then check Unicode/text and nanosecond timestamp round trips,

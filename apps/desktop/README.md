@@ -24,12 +24,12 @@ All reusable, generic UI components (Buttons, Inputs, Cards, etc.) are located i
 ### How to Add a Story
 
 We use Storybook to develop and visually test our components in isolation.
-When you add or update a component, create a `.stories.tsx` file next to it. Provide examples of all its variants, sizes, and states (including `disabled` and `error` states).
+When you add or update a public visual component, create a `.stories.tsx` file next to it. Provide examples of its relevant variants, sizes, and states (including `disabled`, `loading`, and `error` when supported). Helper-only modules may be covered by the stories and tests of the components that render them.
 
-**To run Storybook locally:**
+**To verify a static Storybook build:**
 
 ```bash
-pnpm --filter desktop run storybook
+task frontend:storybook
 ```
 
 ### Browser Test Setup
@@ -67,7 +67,7 @@ We use a strict **CSS Variable-based Theme** defined in `apps/desktop/src/app/st
 
 ### Why are Raw Hex Colors Forbidden?
 
-Using arbitrary hex colors (e.g., `text-[#ff0000]`) or raw Tailwind color scales (e.g., `text-red-500`) directly in feature or page code breaks visual consistency and prevents us from supporting dynamic themes (like light/dark mode) in the future.
+Using arbitrary hex colors (e.g., `text-[#ff0000]`) or raw Tailwind color scales (e.g., `text-red-500`) directly in feature or page code breaks visual consistency across the existing dark and light themes.
 
 All colors **must** be routed through our semantic tokens (e.g., `primary`, `surface`, `danger`, `muted`).
 
@@ -76,9 +76,9 @@ All colors **must** be routed through our semantic tokens (e.g., `primary`, `sur
 If you genuinely need a new semantic color:
 
 1. Open `apps/desktop/src/app/styles/theme.css`.
-2. Add the CSS variable under `:root` (e.g., `--color-accent-hover: #...`).
-3. Open `apps/desktop/src/app/styles/index.css` (or wherever your Tailwind `@theme` config resides) and map the CSS variable to a Tailwind token.
-4. Update `DesignTokens.stories.tsx` to document the new token visually.
+2. Add the semantic variable to the Tailwind v4 `@theme` block.
+3. Add an override to each palette when the default value is not suitable for that theme.
+4. Update `DesignTokens.stories.tsx` to document the token visually.
 
 ### How to Check for Raw Colors
 
@@ -88,8 +88,6 @@ We enforce color consistency using an automated script that scans the codebase f
 
 ```bash
 task check:colors
-# or
-pnpm --filter desktop run check:colors
 ```
 
 This check is also integrated into our CI/CD pipeline and the general `task check` suite. If you use a raw color, the build will fail!

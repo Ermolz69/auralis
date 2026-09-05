@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
-    "test": "vitest run --coverage",
+    "test": "vitest run --coverage --reporter=default --reporter=hanging-process",
     "e2e": "node --test --test-concurrency=1 scripts/e2e.test.mjs",
     "lint": "oxlint",
     "fsd-boundaries": "eslint src/ --ext .ts,.tsx",

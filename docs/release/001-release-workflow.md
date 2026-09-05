@@ -15,7 +15,7 @@ The tag must exactly equal `app-v<package.json version>` or the release stops be
 
 ## Shared check environment
 
-Before building release artifacts, `release.yml` calls `.github/workflows/full-checks.yml`. This reusable workflow checks out the source and uses `.github/actions/bootstrap/action.yml` to install Node/pnpm, Rust, Task, frozen frontend dependencies, locked Rust dependencies, pinned Rust security auditors, Linux Tauri/GTK libraries, and Playwright Chromium with its system dependencies. It then runs `task check`, including the npm and Rust security gates.
+Before building release artifacts, `release.yml` calls `.github/workflows/full-checks.yml`. This reusable workflow checks out the source and uses `.github/actions/bootstrap/action.yml` to install Node/pnpm, Rust, Task, frozen frontend dependencies, locked Rust dependencies, pinned Rust security auditors, Linux Tauri/GTK libraries, and Playwright Chromium with its system dependencies. It then runs `task check`, including the npm and Rust security gates. Cargo validation disables bundle-resource expansion during this check; the platform build prepares and verifies the real sidecars immediately afterward.
 
 Each native build then runs `task media:prepare`. This downloads only the target-specific
 FFmpeg, ffprobe, and yt-dlp executables declared in `tools/media-tools/manifest.json`,
@@ -29,7 +29,8 @@ location; MSI remains covered by build, content, and signature verification. On 
 copies the generated app bundle into an isolated location. Both smoke paths launch the
 installed executable, verify that it remains alive through startup, terminate it, and remove
 the test installation.
-Production tags additionally require the signing configuration described in
+Production tags additionally run focused SQLite and YouTube recovery/process-ownership
+tests on Windows and macOS and require the signing configuration described in
 `docs/release/002-signing.md`. Windows Authenticode and Apple signing/notarization are
 verified after bundle creation; missing credentials are a hard release failure.
 
@@ -60,10 +61,11 @@ maintainer reviews the draft and publishes it in GitHub; only that final GitHub 
 the version discoverable by installed clients. Prereleases are not used as the stable update
 channel.
 
-The same three-platform bundle workflow is required by pull-request CI when application,
-Rust, packaging, or CI files change.
-
-CI also calls this full-check workflow for changes to CI, release, or repository tooling configuration. These PR checks have read-only repository permissions and do not create tags or publish releases. Write permission is scoped to the final publish job, which starts only after the full check and every platform build succeed.
+Pull requests use selective frontend, Rust, documentation, repository-policy, and
+dependency-security gates. They do not repeat the full release check or build three
+native installers. The `Tauri Build` workflow remains available for explicit manual
+pre-release package testing. Write permission is scoped to the final production-tag
+publish job, which starts only after the full check and every platform build succeed.
 
 Release and manual desktop build jobs use the same bootstrap with Node and Rust enabled but skip browser installation. Linux native packages are installed only on Linux runners; Windows and macOS retain their platform-specific build behavior.
 

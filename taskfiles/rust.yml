@@ -73,13 +73,17 @@ tasks:
     cmds:
       - cargo fetch --locked
 
-  all:
+  pr:
+    desc: Run the Rust checks required on pull requests
     cmds:
       - task: dependencies:verify
       - task: fmt
       - task: clippy
-      - task: check
       - task: test
+
+  all:
+    cmds:
+      - task: pr
       - task: glib:regression
 
   fmt:

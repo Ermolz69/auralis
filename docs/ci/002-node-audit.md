@@ -12,8 +12,8 @@ or advisory ignore list. Reported vulnerabilities fail the gate.
 
 ## Where does it run
 
-In the independent `Dependency Security` CI job for frontend, Rust, tooling, CI, and
-release changes, and in the reusable full release check. `task check:quality:security`
+In the independent `Dependency Security` CI job when dependency inputs or CI setup
+change, and in the reusable full release check. `task check:quality:security`
 also runs Rust checks; see [Rust dependency security](010-rust-security.md).
 
 ## How to fix the error

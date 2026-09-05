@@ -93,6 +93,10 @@ jobs:
           AURALIS_UPDATER_PUBLIC_KEY: ${{ vars.AURALIS_UPDATER_PUBLIC_KEY }}
         run: task release:signing:preflight PLATFORM=${{ matrix.signingPlatform }}
 
+      - name: Verify platform-specific crash recovery
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        run: task rs:test:storage && task rs:test:youtube
+
       - name: Install Azure Artifact Signing client
         if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_MODE == 'azure'
         run: task release:signing:install-azure-client VERSION=${{ vars.AZURE_ARTIFACT_SIGNING_CLI_VERSION }}
