@@ -5,8 +5,16 @@ import { projects } from './HomePage.storyData';
 import { HomeScenario, ProjectListRowsStory } from './HomePage.storyFixtures';
 
 const meta = {
-  title: 'Pages/Home/States',
-  parameters: { layout: 'fullscreen' },
+  title: 'Product/Pages/Home/States',
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'Complete local-first home experience for starting imports and returning to recent projects.',
+      },
+    },
+  },
   tags: ['autodocs'],
   render: () => <HomeScenario />,
 } satisfies Meta;

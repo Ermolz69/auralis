@@ -3,10 +3,16 @@ import { expect, userEvent, within } from 'storybook/test';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 
 const meta = {
-  title: 'Shared UI/Tabs',
+  title: 'Design System/Components/Tabs',
   component: Tabs,
   parameters: {
     layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'Keyboard-accessible tabs for switching between closely related workspace views.',
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof Tabs>;

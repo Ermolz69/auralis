@@ -2,8 +2,16 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Notice } from './Notice';
 
 const meta = {
-  title: 'Shared UI/Notice',
+  title: 'Design System/Components/Notice',
   component: Notice,
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Persistent inline feedback for informational, warning, error, and successful application states.',
+      },
+    },
+  },
   args: {
     icon: 'Info',
     title: 'Operation continues in the background',

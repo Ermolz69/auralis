@@ -16,10 +16,16 @@ const longProject: Project = {
 };
 
 const meta = {
-  title: 'Widgets/AppShell',
+  title: 'Product/Widgets/App Shell',
   component: AppShell,
   parameters: {
     layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'Application frame that coordinates primary navigation, project context, responsive layout, and content.',
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof AppShell>;

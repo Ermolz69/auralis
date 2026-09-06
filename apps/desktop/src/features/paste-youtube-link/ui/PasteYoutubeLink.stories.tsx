@@ -3,8 +3,16 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 
 const meta = {
-  title: 'Features/PasteYoutubeLink/States',
-  parameters: { layout: 'centered' },
+  title: 'Product/Features/Paste YouTube Link/States',
+  parameters: {
+    layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'YouTube project creation journey with idle, submitting, validation-error, and successful handoff states.',
+      },
+    },
+  },
   tags: ['autodocs'],
 } satisfies Meta;
 

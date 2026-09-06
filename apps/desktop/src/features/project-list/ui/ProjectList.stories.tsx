@@ -43,9 +43,15 @@ const projects: Project[] = [
 ];
 
 const meta = {
-  title: 'Features/ProjectList/States',
+  title: 'Product/Features/Project List/States',
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Recent-project navigation with privacy-safe source labels, keyboard focus, empty, loading, and recovery states.',
+      },
+    },
   },
   tags: ['autodocs'],
   render: () => <ProjectListScenario projects={projects} />,

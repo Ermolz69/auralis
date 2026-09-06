@@ -3,10 +3,15 @@ import React from 'react';
 import { Badge } from './Badge';
 
 const meta = {
-  title: 'Shared UI/Badge',
+  title: 'Design System/Components/Badge',
   component: Badge,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component: 'Compact, non-interactive labels for status, category, and metadata.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {

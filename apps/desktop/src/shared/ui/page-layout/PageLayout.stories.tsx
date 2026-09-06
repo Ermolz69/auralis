@@ -18,10 +18,16 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ca
 import { Icon } from '../icon';
 
 const meta = {
-  title: 'Shared UI/PageLayout',
+  title: 'Design System/Components/PageLayout',
   component: Page,
   parameters: {
     layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'Responsive page scaffold for headers, actions, primary content, and optional sidebars.',
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof Page>;

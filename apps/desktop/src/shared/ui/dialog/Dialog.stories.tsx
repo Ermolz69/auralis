@@ -14,10 +14,16 @@ import { Button } from '../button';
 import { Input } from '../input';
 
 const meta = {
-  title: 'Shared UI/Dialog',
+  title: 'Design System/Components/Dialog',
   component: Dialog,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Accessible modal surface with focus management, keyboard dismissal, structured content, and action slots.',
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof Dialog>;

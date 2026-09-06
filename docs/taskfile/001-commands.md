@@ -60,6 +60,9 @@ task fe:bundle:check
 task fe:smoke
 task fe:e2e
 task fe:storybook
+task fe:storybook:dev
+task fe:storybook:check
+task check:storybook
 task fe:setup:playwright
 task fe:setup:playwright:ci
 ```
@@ -83,6 +86,15 @@ journey prints a stable ID and area. To isolate a failure, pass its ID, for
 example `task fe:e2e -- --test-name-pattern=E2E-027`. The run writes JUnit and
 failure diagnostics to `apps/desktop/e2e-results`; CI uploads this directory even
 when the frontend job fails.
+
+`task fe:storybook:dev` starts the interactive Auralis design-system catalog on
+port 6006. `task fe:storybook` creates its static production build.
+`task check:storybook` is the complete focused gate: it validates the catalog
+metadata, runs every component story and accessibility check in Chromium, and
+builds the static output. The metadata contract requires a unique `Design System`
+or `Product` hierarchy, Autodocs, a component description, and at least one example
+per story file. The faster metadata-only check is available as
+`task q:storybook-contract` and is included in the frontend quality suite.
 
 ## Rust
 

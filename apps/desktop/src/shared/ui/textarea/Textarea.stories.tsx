@@ -2,10 +2,16 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Textarea } from './Textarea';
 
 const meta = {
-  title: 'Shared UI/Textarea',
+  title: 'Design System/Components/Textarea',
   component: Textarea,
   parameters: {
     layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'Multiline field with labels, helper copy, validation feedback, disabled state, and resize control.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {

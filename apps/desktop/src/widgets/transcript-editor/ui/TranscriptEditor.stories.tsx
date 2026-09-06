@@ -35,10 +35,16 @@ let storyTranscriptState: TranscriptStoryState = createTranscriptState({
 });
 
 const meta = {
-  title: 'Widgets/TranscriptEditor/States',
+  title: 'Product/Widgets/Transcript Editor/States',
   component: TranscriptPanelView,
   parameters: {
     layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'Read-only transcript surface with loading, generated content, empty, running-job, and failure states.',
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof TranscriptPanelView>;

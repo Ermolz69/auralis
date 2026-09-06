@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run --coverage --reporter=default --reporter=hanging-process",
+    "test:storybook": "vitest run --project storybook --reporter=default --reporter=hanging-process",
     "e2e": "node scripts/run-e2e.mjs",
     "lint": "oxlint",
     "fsd-boundaries": "eslint src/ --ext .ts,.tsx",

@@ -3,10 +3,16 @@ import { expect, within } from 'storybook/test';
 import { ExportPanel } from './ExportPanel';
 
 const meta = {
-  title: 'Widgets/ExportPanel/States',
+  title: 'Product/Widgets/Export Panel/States',
   component: ExportPanel,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Export capability surface that communicates current product availability without exposing inactive actions.',
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof ExportPanel>;

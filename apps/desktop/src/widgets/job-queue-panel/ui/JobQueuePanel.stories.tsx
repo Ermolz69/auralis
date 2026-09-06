@@ -89,10 +89,16 @@ const restartRecoveredJob: JobDto = {
 };
 
 const meta = {
-  title: 'Widgets/JobQueuePanel/States',
+  title: 'Product/Widgets/Job Queue Panel/States',
   component: JobQueuePanel,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Operation queue covering active progress, completed work, failures, cancellation, and empty history.',
+      },
+    },
   },
   tags: ['autodocs'],
   render: ({ state }: { state: JobStoreState }) => (

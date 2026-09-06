@@ -101,6 +101,11 @@ tasks:
     cmds:
       - task: q:frontend
 
+  check:storybook:
+    desc: Validate the complete Storybook design-system catalog
+    cmds:
+      - task: fe:storybook:check
+
   check:colors:
     cmds:
       - task: q:color-tokens

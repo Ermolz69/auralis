@@ -3,8 +3,16 @@ import { Button } from '../button';
 import { StateView } from './StateView';
 
 const meta = {
-  title: 'Shared UI/StateView',
+  title: 'Design System/Components/StateView',
   component: StateView,
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Standardized empty, error, and explanatory state with an optional recovery action.',
+      },
+    },
+  },
   args: {
     icon: 'Inbox',
     title: 'Nothing here yet',

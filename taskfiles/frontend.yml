@@ -71,8 +71,21 @@ tasks:
       - pnpm --filter desktop exec node --test scripts/production-smoke.test.mjs
 
   storybook:
+    desc: Build the production-static design-system catalog
     cmds:
       - pnpm --filter desktop build-storybook
+
+  storybook:dev:
+    desc: Start the interactive Auralis design-system catalog
+    cmds:
+      - pnpm --filter desktop storybook
+
+  storybook:check:
+    desc: Validate metadata, run browser stories, and build the static catalog
+    cmds:
+      - task: :q:storybook-contract
+      - pnpm --filter desktop test:storybook
+      - task: storybook
 
   storybook-pages:
     cmds:

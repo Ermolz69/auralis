@@ -2,10 +2,17 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
 
 const meta = {
-  title: 'Design System/Tokens',
+  title: 'Design System/Foundations/Tokens',
   parameters: {
     layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'Canonical semantic colors, type scale, spacing, and product composition reference for Auralis.',
+      },
+    },
   },
+  tags: ['autodocs'],
 } satisfies Meta;
 
 export default meta;

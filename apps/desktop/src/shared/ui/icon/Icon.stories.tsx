@@ -5,10 +5,16 @@ import { Icon } from './Icon';
 import { Button } from '../button';
 
 const meta = {
-  title: 'Shared UI/Icon',
+  title: 'Design System/Components/Icon',
   component: Icon,
   parameters: {
     layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'Typed Lucide icon adapter with consistent sizing, semantic colors, and accessible labeling.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {

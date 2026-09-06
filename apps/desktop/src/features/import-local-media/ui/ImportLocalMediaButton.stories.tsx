@@ -4,8 +4,16 @@ import { Card, CardContent } from '@/shared/ui/card';
 import { Icon } from '@/shared/ui/icon';
 
 const meta = {
-  title: 'Features/ImportLocalMedia/States',
-  parameters: { layout: 'centered' },
+  title: 'Product/Features/Import Local Media/States',
+  parameters: {
+    layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Local media import journey, including file selection, validation, transfer, and recoverable draft states.',
+      },
+    },
+  },
   tags: ['autodocs'],
 } satisfies Meta;
 

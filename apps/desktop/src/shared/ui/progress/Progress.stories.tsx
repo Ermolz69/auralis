@@ -3,10 +3,16 @@ import React from 'react';
 import { Progress } from './Progress';
 
 const meta = {
-  title: 'Shared UI/Progress',
+  title: 'Design System/Components/Progress',
   component: Progress,
   parameters: {
     layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'Determinate and indeterminate progress indicator with semantic status variants and accessible value metadata.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {
