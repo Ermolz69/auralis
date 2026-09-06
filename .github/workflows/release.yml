@@ -40,7 +40,7 @@ jobs:
               target/release/bundle/appimage/*.AppImage.sig
               target/release/bundle/deb/*.deb
               target/release/bundle/rpm/*.rpm
-          - platform: windows-latest
+          - platform: windows-2025
             signingPlatform: windows
             bundles: msi,nsis
             artifactName: auralis-release-windows
@@ -49,7 +49,7 @@ jobs:
               target/release/bundle/msi/*.msi.sig
               target/release/bundle/nsis/*-setup.exe
               target/release/bundle/nsis/*-setup.exe.sig
-          - platform: macos-latest
+          - platform: macos-26
             signingPlatform: macos
             bundles: dmg
             artifactName: auralis-release-macos

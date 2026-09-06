@@ -79,6 +79,7 @@ jobs:
               - 'tools/glib-backport/**'
               - 'deny.toml'
               - '.cargo/**'
+              - 'tools/ci/**'
               - 'tools/scripts/**'
               - 'taskfiles/**'
               - 'Taskfile.yml'

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "source": "https://github.com/actions/runner-images#available-images",
+  "reviewedAt": "2026-09-06",
+  "pins": {
+    "windows": ["windows-2025"],
+    "macos": ["macos-26"]
+  }
+}

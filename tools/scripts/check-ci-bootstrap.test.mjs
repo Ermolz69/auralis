@@ -219,6 +219,7 @@ test('bootstrap and tooling changes trigger lean required gates and cannot bypas
   assert.ok(filters.ci.includes('.github/actions/**'));
   assert.ok(filters.ci.includes('.github/workflows/**'));
   assert.ok(filters.quality.includes('taskfiles/**'));
+  assert.ok(filters.quality.includes('tools/ci/**'));
   assert.ok(filters.rust.includes('rust-toolchain.toml'));
   assert.ok(filters.release.includes('src-tauri/tauri.*.conf.json'));
   assert.ok(filters.release.includes('tools/release/**'));

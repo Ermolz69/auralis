@@ -22,8 +22,8 @@ jobs:
       matrix:
         platform:
           - ubuntu-22.04
-          - windows-latest
-          - macos-latest
+          - windows-2025
+          - macos-26
 
     steps:
       - name: Checkout

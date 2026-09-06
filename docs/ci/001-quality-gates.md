@@ -32,8 +32,9 @@ The local and CI entrypoints are:
 - **docs**: Runs markdown checks (`task check:docs`).
 - **docs quality**: Runs markdown formatting checks (`task check:quality:docs`).
 - **dependency security**: Audits all npm dependencies and Cargo.lock, then enforces Rust advisory/source policy (`task check:quality:security`). Local setup requires `task sec:setup:rust`.
-- **global quality**: Runs media manifest, IPC contract, release metadata, Cargo workspace-dependency, SQLite-only dependency, GLib provenance, repository formatting, runtime println, storage fallback, and CI bootstrap checks (`task check:quality:global`).
+- **global quality**: Runs media manifest, IPC contract, release metadata, Cargo workspace-dependency, SQLite-only dependency, GLib provenance, repository formatting, runtime println, storage fallback, CI bootstrap, and runner-image checks (`task check:quality:global`).
 - **CI bootstrap**: Tests shared workflow wiring, dependency ordering, platform guards, PR cost boundaries, release isolation, and scoped installer execution plans (`task q:ci-bootstrap`).
+- **runner images**: Rejects floating or inconsistent Windows/macOS runner labels and validates the reviewed pin policy (`task q:runner-images`).
 - **runtime println**: Runs the runtime println fixture suite and production scan (`task check:quality:runtime-println`).
 - **crash recovery**: Workspace tests cover recovery on PRs; production tags additionally run the focused SQLite and YouTube recovery suites on Windows and macOS.
 - **native acceptance**: The manually triggered `Tauri Build` workflow runs the real React → IPC → Rust → SQLite → filesystem scenario on Windows (`task desktop:e2e:native`). It is not duplicated on every PR.

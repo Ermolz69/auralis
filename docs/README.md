@@ -12,6 +12,7 @@
 - [Production storage contract](./storage/production-storage.md)
 - [Bundled media tools](./media-tools.md)
 - [CI and quality gates](./ci/001-quality-gates.md)
+- [Pinned runner images](./ci/002-runner-images.md)
 - [Taskfile commands](./taskfile/001-commands.md)
 - [Release workflow](./release/001-release-workflow.md)
 - [Production signing](./release/002-signing.md)

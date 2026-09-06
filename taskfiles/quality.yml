@@ -33,11 +33,18 @@ tasks:
       - task: runtime-println
       - task: storage-fallbacks
       - task: ci-bootstrap
+      - task: runner-images
 
   ci-bootstrap:
     desc: Validate shared CI and release environment contracts
     cmds:
       - node --test tools/scripts/check-ci-bootstrap.test.mjs tools/scripts/check-install-tasks.test.mjs tools/scripts/check-security.test.mjs
+
+  runner-images:
+    desc: Reject floating or inconsistent Windows and macOS runner labels
+    cmds:
+      - node --test tools/scripts/check-runner-images.test.mjs
+      - node tools/scripts/check-runner-images.mjs
 
   runtime-println:
     cmds:
