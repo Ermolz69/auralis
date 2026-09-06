@@ -265,3 +265,27 @@ test('SQLite dependency guards run in both the lightweight and resolved Rust gat
     'node tools/scripts/check-sqlite-dependencies.mjs --resolved',
   );
 });
+
+test('browser E2E keeps stable scenario IDs and uploads diagnostics after failures', () => {
+  const source = readText('apps/desktop/scripts/e2e.test.mjs');
+  const scenarioNumbers = [...source.matchAll(/^e2e\('(\d{2}) /gm)].map((match) => match[1]);
+  assert.deepEqual(
+    scenarioNumbers,
+    Array.from({ length: 30 }, (_, index) => String(index + 1).padStart(2, '0')),
+  );
+
+  const runner = readText('apps/desktop/scripts/run-e2e.mjs');
+  for (const reporter of ['--test-reporter=spec', '--test-reporter=junit']) {
+    assert.ok(runner.includes(reporter));
+  }
+  for (const artifact of ['junit.xml', '.png', '.html', '.failure.txt', '.trace.zip']) {
+    assert.ok(source.includes(artifact) || runner.includes(artifact));
+  }
+
+  const upload = ci.jobs.frontend.steps.find(
+    (step) => step.name === 'Upload browser E2E diagnostics',
+  );
+  assert.equal(upload.if, 'always()');
+  assert.equal(upload.with.path, 'apps/desktop/e2e-results');
+  assert.equal(upload.with['if-no-files-found'], 'ignore');
+});

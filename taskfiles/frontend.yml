@@ -53,7 +53,7 @@ tasks:
   e2e:run:
     internal: true
     cmds:
-      - pnpm --filter desktop e2e
+      - pnpm --filter desktop e2e {{.CLI_ARGS}}
 
   build:
     cmds:

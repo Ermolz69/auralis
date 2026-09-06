@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { after, before, test } from 'node:test';
 import { chromium } from 'playwright';
 import { installE2EFixture } from './e2e-fixture.mjs';
 import { serveProduction } from './production-server.mjs';
 
+const resultsDir = fileURLToPath(new URL('../e2e-results/', import.meta.url));
 const timestamp = '2026-09-03T12:00:00Z';
 const youtubeProject = createProject({
   id: 'youtube-project',
@@ -34,6 +38,8 @@ const completedJob = createJob({
 
 let server;
 let browser;
+const registeredScenarioIds = new Set();
+let activeScenario = null;
 
 before(async () => {
   server = await serveProduction();
@@ -381,8 +387,211 @@ e2e('20 recovers the recent project list after a backend error', async () => {
   );
 });
 
+e2e('21 shows an actionable empty state when no projects exist', async () => {
+  await scenario(baseSeed({ projects: [], jobs: [] }), async (page) => {
+    await page.getByText('No projects yet', { exact: true }).waitFor();
+    await page.setViewportSize({ width: 800, height: 800 });
+
+    const workspace = page.getByRole('button', {
+      name: 'Workspace unavailable without an active project',
+    });
+    await workspace.waitFor();
+    assert.equal(await workspace.isDisabled(), true);
+    assert.equal((await callsFor(page, 'list_projects_cmd')).length >= 1, true);
+  });
+});
+
+e2e('22 clears a pending project name without creating a project', async () => {
+  await scenario(baseSeed(), async (page) => {
+    const input = page.getByRole('textbox', { name: 'Project name' });
+    await input.fill('Temporary name');
+    await page.getByRole('button', { name: 'Clear project name' }).click();
+
+    assert.equal(await input.inputValue(), '');
+    assert.equal(await input.evaluate((element) => element === document.activeElement), true);
+    assert.equal((await callsFor(page, 'create_project_cmd')).length, 0);
+  });
+});
+
+e2e('23 retries a failed YouTube source import without losing the URL', async () => {
+  await scenario(
+    baseSeed({
+      failures: {
+        create_project_from_youtube_cmd: {
+          times: 1,
+          error: { code: 'IO', message: 'YouTube is temporarily unavailable' },
+        },
+      },
+    }),
+    async (page) => {
+      await openProject(page, 'Draft Project');
+      const input = page.getByRole('textbox', { name: 'YouTube URL' });
+      const url = 'https://youtube.com/watch?v=retry-source';
+      await input.fill(url);
+      await page.getByRole('button', { name: 'Add from YouTube' }).click();
+
+      await page.getByText('YouTube is temporarily unavailable', { exact: true }).waitFor();
+      assert.equal(await input.inputValue(), url);
+      await page.getByRole('button', { name: 'Retry download' }).click();
+
+      await page.getByLabel('Connected video source').waitFor();
+      assert.equal((await callsFor(page, 'create_project_from_youtube_cmd')).length, 2);
+    },
+  );
+});
+
+e2e('24 handles a cancelled local file picker without starting an import', async () => {
+  await scenario(baseSeed({ selectedFile: null }), async (page) => {
+    await openProject(page, 'Draft Project');
+    const importButton = page.getByRole('button', { name: 'Import local video' });
+    await importButton.click();
+    await waitForCall(page, 'plugin:dialog|open');
+
+    assert.equal((await callsFor(page, 'probe_local_media_cmd')).length, 0);
+    assert.equal((await callsFor(page, 'import_local_media_cmd')).length, 0);
+    assert.equal(await importButton.isEnabled(), true);
+    assert.equal(await page.getByLabel('Connected video source').count(), 0);
+  });
+});
+
+e2e('25 retries a failed local import from its recoverable draft', async () => {
+  await scenario(
+    baseSeed({
+      selectedFile: 'C:\\Videos\\retry-clip.mp4',
+      failures: {
+        import_local_media_cmd: {
+          times: 1,
+          error: { code: 'IO', message: 'Media copy was interrupted' },
+        },
+      },
+    }),
+    async (page) => {
+      await openProject(page, 'Draft Project');
+      await page.getByRole('button', { name: 'Import local video' }).click();
+
+      await page.getByText('Local import did not finish', { exact: true }).waitFor();
+      await page.getByText('Media copy was interrupted', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Choose file again' }).click();
+
+      await page.getByLabel('Connected video source').waitFor();
+      assert.equal((await callsFor(page, 'import_local_media_cmd')).length, 2);
+      assert.equal((await callsFor(page, 'plugin:dialog|open')).length, 2);
+    },
+  );
+});
+
+e2e('26 explains when YouTube exposes no subtitle tracks', async () => {
+  await scenario(baseSeed({ tracks: { [youtubeProject.id]: [] } }), async (page) => {
+    await openSubtitleWorkspace(page);
+
+    await page.getByText('YouTube не вернул доступных VTT-дорожек', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Получить субтитры' }).isDisabled(), true);
+  });
+});
+
+e2e('27 refreshes subtitle tracks after a temporary backend failure', async () => {
+  await scenario(
+    baseSeed({
+      failures: {
+        list_youtube_subtitle_tracks_cmd: {
+          times: 1,
+          error: { code: 'IO', message: 'Subtitle catalog is temporarily unavailable' },
+        },
+      },
+    }),
+    async (page) => {
+      await openSubtitleWorkspace(page);
+      await page
+        .getByText('Subtitle catalog is temporarily unavailable', { exact: true })
+        .waitFor();
+      await page.getByRole('button', { name: 'Обновить' }).click();
+
+      await page.getByText('Русский (ru)', { exact: true }).waitFor();
+      assert.equal((await callsFor(page, 'list_youtube_subtitle_tracks_cmd')).length, 2);
+    },
+  );
+});
+
+e2e('28 previews and searches the persisted transcript', async () => {
+  const transcript = {
+    language: 'ru',
+    segments: [
+      { id: 'line-1', index: 0, startMs: 0, endMs: 900, sourceText: 'Первая реплика' },
+      { id: 'line-2', index: 1, startMs: 900, endMs: 1800, sourceText: 'Вторая реплика' },
+      { id: 'line-3', index: 2, startMs: 1800, endMs: 2700, sourceText: 'Третья реплика' },
+      { id: 'line-4', index: 3, startMs: 2700, endMs: 3600, sourceText: 'Искомый фрагмент' },
+    ],
+  };
+  await scenario(baseSeed({ transcripts: { [youtubeProject.id]: transcript } }), async (page) => {
+    await openSubtitleWorkspace(page);
+    await page.getByLabel('Полученные субтитры').waitFor();
+    assert.equal(await page.getByText('Искомый фрагмент', { exact: true }).count(), 0);
+
+    await page.getByRole('searchbox', { name: 'Поиск по тексту субтитров' }).fill('искомый');
+    await page.getByText('Искомый фрагмент', { exact: true }).waitFor();
+    assert.equal(await page.getByText('Найдено реплик: 1', { exact: true }).isVisible(), true);
+    assert.equal(await page.getByText('Первая реплика', { exact: true }).count(), 0);
+  });
+});
+
+e2e('29 opens the selected project folder through its context action', async () => {
+  await scenario(baseSeed(), async (page) => {
+    await page.getByRole('button', { name: /^Open YouTube Project/ }).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Открыть папку проекта' }).click();
+    await waitForCall(page, 'open_project_folder_cmd');
+
+    assert.deepEqual(await lastCallArgs(page, 'open_project_folder_cmd'), {
+      projectId: youtubeProject.id,
+    });
+    assert.deepEqual(await page.evaluate(() => window.__e2e.openedFolders), [youtubeProject.id]);
+  });
+});
+
+e2e('30 retries an update check after a temporary network error', async () => {
+  await scenario(
+    baseSeed({
+      updater: { currentVersion: '0.1.0', available: null },
+      failures: {
+        'plugin:updater|check': {
+          times: 1,
+          error: { code: 'IO', message: 'GitHub Releases is unavailable' },
+        },
+      },
+    }),
+    async (page) => {
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await page
+        .getByText('Could not check for updates. Check your connection and try again.', {
+          exact: true,
+        })
+        .waitFor();
+      await page.getByRole('button', { name: 'Check for updates' }).click();
+
+      await page
+        .getByText('You are using the latest published version.', { exact: true })
+        .waitFor();
+      assert.equal((await callsFor(page, 'plugin:updater|check')).length, 2);
+    },
+  );
+});
+
 function e2e(name, run) {
-  test(name, { timeout: 30_000 }, run);
+  const match = /^(\d+)\s+(.+)$/.exec(name);
+  assert.ok(match, `E2E scenario must start with a numeric ID: ${name}`);
+  const number = Number(match[1]);
+  const id = `E2E-${String(number).padStart(3, '0')}`;
+  assert.equal(registeredScenarioIds.has(id), false, `Duplicate E2E scenario ID: ${id}`);
+  registeredScenarioIds.add(id);
+  const metadata = { id, area: scenarioArea(number), title: match[2] };
+
+  test(`${metadata.id} | ${metadata.area} | ${metadata.title}`, { timeout: 30_000 }, async () => {
+    activeScenario = metadata;
+    try {
+      await run();
+    } finally {
+      activeScenario = null;
+    }
+  });
 }
 
 async function scenario(seed, run) {
@@ -390,17 +599,68 @@ async function scenario(seed, run) {
   const page = await context.newPage();
   page.setDefaultTimeout(7_500);
   const pageErrors = [];
+  let traceStarted = false;
+  let failed = false;
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.addInitScript(installE2EFixture, seed);
 
   try {
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+    traceStarted = true;
     await page.goto(server.url);
     await page.getByRole('heading', { name: 'Projects', exact: true }).waitFor();
     await run(page);
     assert.deepEqual(pageErrors, []);
     assert.deepEqual(await page.evaluate(() => window.__e2e.unknownCommands), []);
+  } catch (error) {
+    failed = true;
+    await captureFailure(page, context, error, traceStarted);
+    throw error;
   } finally {
+    if (traceStarted && !failed) await context.tracing.stop();
     await context.close();
+  }
+}
+
+function scenarioArea(number) {
+  if ([1, 2, 3, 4, 21, 22].includes(number)) return 'projects';
+  if ([5, 6, 30].includes(number)) return 'settings-and-updates';
+  if ([7, 8].includes(number)) return 'jobs';
+  if ([9, 10, 11, 26, 27, 28].includes(number)) return 'subtitles';
+  if ([12, 13, 14, 15, 23, 24, 25].includes(number)) return 'imports';
+  if ([16, 17, 18, 19, 20, 29].includes(number)) return 'project-management';
+  throw new Error(`E2E scenario ${number} has no reporting area`);
+}
+
+async function captureFailure(page, context, error, traceStarted) {
+  const id = activeScenario?.id ?? 'E2E-unknown';
+  await mkdir(resultsDir, { recursive: true });
+  await preserveArtifact('screenshot', () =>
+    page.screenshot({ path: path.join(resultsDir, `${id}.png`), fullPage: true }),
+  );
+  await preserveArtifact('page snapshot', async () => {
+    const content = await page.content();
+    await writeFile(path.join(resultsDir, `${id}.html`), content, 'utf8');
+  });
+  await preserveArtifact('failure details', () =>
+    writeFile(
+      path.join(resultsDir, `${id}.failure.txt`),
+      error instanceof Error ? (error.stack ?? error.message) : String(error),
+      'utf8',
+    ),
+  );
+  if (traceStarted) {
+    await preserveArtifact('Playwright trace', () =>
+      context.tracing.stop({ path: path.join(resultsDir, `${id}.trace.zip`) }),
+    );
+  }
+}
+
+async function preserveArtifact(label, save) {
+  try {
+    await save();
+  } catch (error) {
+    process.stderr.write(`Could not save E2E ${label}: ${String(error)}\n`);
   }
 }
 

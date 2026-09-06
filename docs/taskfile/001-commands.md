@@ -78,6 +78,12 @@ are included in `task check:frontend`. See [bundle and CSP policy](../ci/011-des
 `task fe:setup:playwright:ci` to also install Chromium's system dependencies.
 On Linux, system package installation requires elevated permissions.
 
+`task fe:e2e` builds the production frontend and runs 30 browser journeys. Each
+journey prints a stable ID and area. To isolate a failure, pass its ID, for
+example `task fe:e2e -- --test-name-pattern=E2E-027`. The run writes JUnit and
+failure diagnostics to `apps/desktop/e2e-results`; CI uploads this directory even
+when the frontend job fails.
+
 ## Rust
 
 ```bash
