@@ -1,73 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
-use crate::test_utils::{MockArtifactStore, MockJobScheduler, MockStorageUnitOfWork};
-use adapters_storage::{local::LocalTempWorkspace, memory::InMemoryProjectRepository};
+use crate::test_utils::{MockJobScheduler, MockStorageUnitOfWork};
+use crate::usecases::pipeline::start_mock_test_support::start_use_case;
+use adapters_storage::memory::InMemoryProjectRepository;
 use async_trait::async_trait;
 use domain::job::JobStatus;
 use ports::error::PortError;
 use std::sync::Arc;
-
-#[derive(Clone)]
-struct MockSubtitleSource;
-
-#[async_trait]
-impl SubtitleSourcePort for MockSubtitleSource {
-    async fn list_subtitles(
-        &self,
-        _source: &domain::media::MediaSource,
-    ) -> Result<Vec<domain::media::SubtitleTrack>, PortError> {
-        Ok(vec![])
-    }
-
-    async fn download_subtitle(
-        &self,
-        _request: ports::source::DownloadSubtitleRequest,
-    ) -> Result<domain::media::Artifact, PortError> {
-        Err(PortError::Unsupported {
-            message: "Not implemented".into(),
-        })
-    }
-}
-
-struct MockJobRuntimeControl;
-
-#[async_trait::async_trait]
-impl ports::job_runtime_control::JobRuntimeControlPort for MockJobRuntimeControl {
-    async fn cancel_and_evict_jobs(
-        &self,
-        _job_ids: &[domain::job::JobId],
-    ) -> Result<ports::job_runtime_control::RuntimeCleanupReport, ports::error::PortError> {
-        Ok(ports::job_runtime_control::RuntimeCleanupReport {
-            jobs: std::collections::HashMap::new(),
-        })
-    }
-
-    async fn reserve(
-        &self,
-        _job_id: domain::job::JobId,
-        _project_id: domain::project::ProjectId,
-    ) -> Result<(), ports::error::PortError> {
-        Ok(())
-    }
-
-    async fn attach_task(
-        &self,
-        _job_id: domain::job::JobId,
-        _task: ports::job_runtime_control::RuntimeTask,
-    ) -> Result<(), ports::job_runtime_control::AttachTaskError> {
-        Ok(())
-    }
-
-    fn finish_now(&self, _job_id: &domain::job::JobId) {}
-
-    async fn rollback_runtime_start(
-        &self,
-        _job_id: &domain::job::JobId,
-    ) -> Result<ports::job_runtime_control::RuntimeCleanupOutcome, ports::error::PortError> {
-        Ok(ports::job_runtime_control::RuntimeCleanupOutcome::ReservationRemoved)
-    }
-}
 
 #[tokio::test]
 async fn test_enqueue_failure_compensates_and_marks_failed() {
@@ -91,15 +31,10 @@ async fn test_enqueue_failure_compensates_and_marks_failed() {
     project.mark_ready_for_processing().unwrap();
     project_repo.create(project.clone()).await.unwrap();
 
-    let use_case = StartMockPipelineUseCase::new(
+    let use_case = start_use_case(
         project_repo.clone(),
         job_scheduler.clone(),
         tx_gateway.clone(),
-        MockSubtitleSource,
-        MockArtifactStore,
-        Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
-        Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
-        Arc::new(MockJobRuntimeControl),
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),
@@ -240,15 +175,10 @@ async fn test_enqueue_and_compensation_failure_returns_both_errors() {
     project.mark_ready_for_processing().unwrap();
     project_repo.create(project.clone()).await.unwrap();
 
-    let use_case = StartMockPipelineUseCase::new(
+    let use_case = start_use_case(
         project_repo.clone(),
         job_scheduler.clone(),
         tx_gateway.clone(),
-        MockSubtitleSource,
-        MockArtifactStore,
-        Arc::new(LocalTempWorkspace::new(std::path::PathBuf::from("/tmp"))),
-        Arc::new(crate::usecases::project::lifecycle::ProjectLifecycleLocks::new()),
-        Arc::new(MockJobRuntimeControl),
     );
     let request = StartMockPipelineRequest {
         project_id: project.id().clone(),

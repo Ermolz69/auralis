@@ -13,7 +13,9 @@ use application::usecases::job::cancel::CancelJobUseCase;
 use application::usecases::job::list::ListJobsUseCase;
 use application::usecases::media::import_local_media::ImportLocalMediaUseCase;
 use application::usecases::media::probe_local::ProbeLocalMediaUseCase;
-use application::usecases::pipeline::start_mock::StartMockPipelineUseCase;
+use application::usecases::pipeline::start_mock::{
+    StartMockPipelineDependencies, StartMockPipelineUseCase,
+};
 use application::usecases::project::create::CreateProjectUseCase;
 use application::usecases::project::create_from_youtube::CreateProjectFromYoutubeUseCase;
 use application::usecases::project::delete::DeleteProjectUseCase;
@@ -54,20 +56,32 @@ pub struct AppUseCases {
     pub cancel_job: CancelJobUseCase,
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn setup_usecases(
-    app: &AppHandle,
-    projects_root: std::path::PathBuf,
-    project_repo: RuntimeProjectRepository,
-    project_avatar_repo: Arc<dyn ports::project_avatar::ProjectAvatarRepository>,
-    artifact_index: RuntimeArtifactIndex,
-    artifact_store: RuntimeArtifactStore,
-    storage_uow: RuntimeStorageUnitOfWork,
-    job_scheduler: Arc<dyn JobSchedulerPort>,
-    workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
-    job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
-    youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
-) {
+pub(super) struct AppUseCaseDependencies {
+    pub(super) projects_root: std::path::PathBuf,
+    pub(super) project_repo: RuntimeProjectRepository,
+    pub(super) project_avatar_repo: Arc<dyn ports::project_avatar::ProjectAvatarRepository>,
+    pub(super) artifact_index: RuntimeArtifactIndex,
+    pub(super) artifact_store: RuntimeArtifactStore,
+    pub(super) storage_uow: RuntimeStorageUnitOfWork,
+    pub(super) job_scheduler: Arc<dyn JobSchedulerPort>,
+    pub(super) workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
+    pub(super) job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+    pub(super) youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
+}
+
+pub(super) fn setup_usecases(app: &AppHandle, dependencies: AppUseCaseDependencies) {
+    let AppUseCaseDependencies {
+        projects_root,
+        project_repo,
+        project_avatar_repo,
+        artifact_index,
+        artifact_store,
+        storage_uow,
+        job_scheduler,
+        workspace_port,
+        job_runtime,
+        youtube_imports,
+    } = dependencies;
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
     let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates).with_ffmpeg_candidates(
         crate::bootstrap::media_tools::resolve_ffmpeg_candidates(app),
@@ -119,16 +133,16 @@ pub fn setup_usecases(
             job_runtime.clone(),
             locks.clone(),
         ),
-        start_mock_pipeline: StartMockPipelineUseCase::new(
-            project_repo.clone(),
-            job_scheduler.clone(),
-            storage_uow.clone(),
-            ytdlp_adapter.clone(),
-            artifact_store.clone(),
-            workspace_port.clone(),
-            locks.clone(),
-            job_runtime.clone(),
-        ),
+        start_mock_pipeline: StartMockPipelineUseCase::new(StartMockPipelineDependencies {
+            project_repo: project_repo.clone(),
+            job_scheduler: job_scheduler.clone(),
+            storage_uow: storage_uow.clone(),
+            subtitle_source: ytdlp_adapter.clone(),
+            artifact_store: artifact_store.clone(),
+            workspace_port: workspace_port.clone(),
+            locks: locks.clone(),
+            job_runtime: job_runtime.clone(),
+        }),
         get_transcript: GetTranscriptUseCase::new(project_repo.clone()),
         list_youtube_subtitle_tracks: ListYoutubeSubtitleTracksUseCase::new(
             project_repo.clone(),

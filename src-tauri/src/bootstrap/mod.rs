@@ -66,16 +66,19 @@ pub fn setup(
 
     usecases::setup_usecases(
         app.handle(),
-        app_paths.projects(),
-        services.project_repo.clone(),
-        services.project_avatar_repo.clone(),
-        services.artifact_index.clone(),
-        services.artifact_store.clone(),
-        services.storage_uow.clone(),
-        job_manager.clone() as Arc<dyn ports::job_scheduler::JobSchedulerPort>,
-        temp_workspace.clone(),
-        job_manager.clone() as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
-        services.youtube_imports.clone(),
+        usecases::AppUseCaseDependencies {
+            projects_root: app_paths.projects(),
+            project_repo: services.project_repo.clone(),
+            project_avatar_repo: services.project_avatar_repo.clone(),
+            artifact_index: services.artifact_index.clone(),
+            artifact_store: services.artifact_store.clone(),
+            storage_uow: services.storage_uow.clone(),
+            job_scheduler: job_manager.clone() as Arc<dyn ports::job_scheduler::JobSchedulerPort>,
+            workspace_port: temp_workspace.clone(),
+            job_runtime: job_manager.clone()
+                as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
+            youtube_imports: services.youtube_imports.clone(),
+        },
     );
     app.manage(services.job_query.clone());
 

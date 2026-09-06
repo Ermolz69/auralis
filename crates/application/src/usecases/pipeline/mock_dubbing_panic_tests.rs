@@ -93,27 +93,25 @@ async fn spawned_runner_panic_is_durably_terminalized() {
     .with_panic_on_run();
     let (cancel_handle, token) = ports::cancellation::CancelHandle::new();
     let completion = Arc::new(ports::job_runtime_control::RuntimeCompletion::new());
-    let (activate_tx, activate_rx) = tokio::sync::oneshot::channel();
-    let (ack_tx, ack_rx) = tokio::sync::oneshot::channel();
-    let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+    let (control, gates) = super::super::start_mock_runtime::runtime_start_handshake();
     let task = super::super::start_mock_runtime::spawn_mock_pipeline_task(
-        runner,
-        scheduler.clone(),
-        Arc::new(NoopRuntime),
-        JobId::new(),
-        ProjectId::new(),
-        cancel_handle,
-        token,
-        completion,
-        activate_rx,
-        ack_tx,
-        release_rx,
-        tracing::info_span!("panic_test"),
+        super::super::start_mock_runtime::MockPipelineTaskSpec {
+            runner,
+            job_scheduler: scheduler.clone(),
+            job_runtime: Arc::new(NoopRuntime),
+            job_id: JobId::new(),
+            project_id: ProjectId::new(),
+            cancel_handle,
+            token,
+            completion,
+            gates,
+            span: tracing::info_span!("panic_test"),
+        },
     );
 
-    activate_tx.send(()).unwrap();
-    ack_rx.await.unwrap();
-    release_tx.send(()).unwrap();
+    control.activate.send(()).unwrap();
+    control.acknowledged.await.unwrap();
+    control.release.send(()).unwrap();
 
     let outcome = task.join_handle.await.unwrap();
     assert_eq!(outcome, RuntimeTaskOutcome::ApplicationFailed);
