@@ -75,6 +75,11 @@ tasks:
       - pnpm tauri build {{.CLI_ARGS}}
       - task: media:bundle:verify
 
+  desktop:e2e:native:
+    desc: Run the real React-to-IPC-to-Rust-to-SQLite-to-filesystem acceptance test
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   check:frontend:
     cmds:
       - task: fe:all

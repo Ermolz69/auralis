@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import './app/styles/index.css';
 import App from './App.tsx';
@@ -12,6 +12,14 @@ import { initializeColorTheme, ThemeProvider } from './shared/theme';
 
 initializeColorTheme();
 
+const NativeE2ERunner = __NATIVE_E2E__
+  ? lazy(() =>
+      import('./app/native-e2e').then(({ NativeE2ERunner }) => ({
+        default: NativeE2ERunner,
+      })),
+    )
+  : null;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
@@ -20,6 +28,11 @@ createRoot(document.getElementById('root')!).render(
           <AppJobProvider>
             <App />
             <Toaster />
+            {NativeE2ERunner ? (
+              <Suspense fallback={null}>
+                <NativeE2ERunner />
+              </Suspense>
+            ) : null}
           </AppJobProvider>
         </ProjectProvider>
       </NavigationProvider>

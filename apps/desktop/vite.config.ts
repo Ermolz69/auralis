@@ -15,16 +15,31 @@ const desktopPackage = JSON.parse(
 ) as {
   version: string;
 };
+const nativeE2e = process.env.AURALIS_NATIVE_E2E === '1';
+const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH : '';
+const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
+
+if (nativeE2e && (!nativeE2eMediaPath || !nativeE2eRunId)) {
+  throw new Error(
+    'AURALIS_NATIVE_E2E_MEDIA_PATH and AURALIS_NATIVE_E2E_RUN_ID are required for native E2E builds',
+  );
+}
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 const __vite_dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
-  define: { __APP_VERSION__: JSON.stringify(desktopPackage.version) },
+  define: {
+    __APP_VERSION__: JSON.stringify(desktopPackage.version),
+    __NATIVE_E2E__: JSON.stringify(nativeE2e),
+    __NATIVE_E2E_MEDIA_PATH__: JSON.stringify(nativeE2eMediaPath ?? ''),
+    __NATIVE_E2E_RUN_ID__: JSON.stringify(nativeE2eRunId ?? ''),
+  },
   plugins: [react(), tailwindcss(), bundleReport()],
   server: { port: 5173, strictPort: true },
   build: {
+    outDir: nativeE2e ? 'dist-native-e2e' : 'dist',
     manifest: true,
     rolldownOptions: {
       output: {
@@ -51,6 +66,7 @@ export default defineConfig({
         'src/**/*.stories.{ts,tsx}',
         'src/**/*.storyData.ts',
         'src/**/*.storyFixtures.tsx',
+        'src/app/native-e2e/**',
         'src/**/*.d.ts',
         'src/**/index.ts',
         'src/main.tsx',

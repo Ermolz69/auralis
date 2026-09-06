@@ -10,6 +10,7 @@ task setup:media-tools
 task media:doctor
 task dev
 task desktop:dev
+task desktop:e2e:native
 task check:pr
 task check
 task check:all
@@ -21,6 +22,13 @@ Tauri application; its configured development hook
 uses `task desktop:before-dev` to prepare media tools before starting the same
 server. `task desktop:bundle` builds native installers and verifies their bundled
 media resources.
+
+`task desktop:e2e:native` is the Windows-only real desktop acceptance test. It
+generates a small video with the pinned FFmpeg binary, compiles a hidden Tauri test
+application, drives the production IPC commands from React, and validates the
+resulting SQLite and managed-file state. Its data lives under a unique temporary
+directory and is removed after the run. Set `AURALIS_NATIVE_E2E_KEEP_TEMP=1` only
+when the isolated state must be retained for diagnosis.
 
 ## Installation scope
 

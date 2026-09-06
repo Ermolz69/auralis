@@ -36,6 +36,7 @@ The local and CI entrypoints are:
 - **CI bootstrap**: Tests shared workflow wiring, dependency ordering, platform guards, PR cost boundaries, release isolation, and scoped installer execution plans (`task q:ci-bootstrap`).
 - **runtime println**: Runs the runtime println fixture suite and production scan (`task check:quality:runtime-println`).
 - **crash recovery**: Workspace tests cover recovery on PRs; production tags additionally run the focused SQLite and YouTube recovery suites on Windows and macOS.
+- **native acceptance**: The manually triggered `Tauri Build` workflow runs the real React → IPC → Rust → SQLite → filesystem scenario on Windows (`task desktop:e2e:native`). It is not duplicated on every PR.
 - **native bundle**: Three-platform packaging, bundled-media verification, and installed-app smoke checks run manually or for production tags, not on every PR.
 - **Storybook**: The frontend job executes Storybook browser tests through `task check:frontend`; the static catalog is built by its dedicated Pages workflow instead of being duplicated in PR CI.
 - **PR suite**: Reproduces all required pull-request gates locally (`task check:pr`).
