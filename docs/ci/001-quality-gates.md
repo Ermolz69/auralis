@@ -28,10 +28,10 @@ The local and CI entrypoints are:
 - **frontend**: Runs strict TypeScript checks, lint, tests with enforced V8 coverage thresholds (85% statements, 75% branches, 85% functions, and 88% lines), build with bundle budgets, 30 production-browser E2E journeys, and production CSP browser smoke tests (`task check:frontend`).
 - **browser E2E diagnostics**: Prints stable scenario IDs and areas in the job log, writes a JUnit report, and retains a screenshot, page snapshot, and Playwright trace for each failed journey under `apps/desktop/e2e-results` (`task fe:e2e`). CI uploads the directory even when the frontend gate fails.
 - **targeted browser E2E**: Re-runs one scenario locally by its stable ID, for example `task fe:e2e -- --test-name-pattern=E2E-027`.
-- **frontend quality**: Runs FSD boundary checks, color-token checks, file-size and duplicate-code checks, bundle/CSP policy regressions, IPC contract parity, release metadata parity, and release smoke-tool tests (`task check:quality:frontend`).
+- **frontend quality**: Runs FSD boundary checks, color-token checks, the Storybook metadata and hierarchy contract, file-size and duplicate-code checks, bundle/CSP policy regressions, IPC contract parity, release metadata parity, and release smoke-tool tests (`task check:quality:frontend`).
 - **Rust PR**: Uses the toolchain pinned in `rust-toolchain.toml`, then runs dependency policy, `cargo fmt`, locked `cargo clippy`, and workspace tests (`task check:rust:pr`). Clippy already performs compilation, so CI does not immediately repeat `cargo check`.
 - **Rust extended**: Adds the optimized GLib regression for local/release validation (`task check:rust`).
-- **docs**: Runs markdown checks (`task check:docs`).
+- **docs**: Tests the documentation validator, requires the project and design-system references, rejects broken relative links, and runs Markdown linting (`task check:docs`).
 - **docs quality**: Runs markdown formatting checks (`task check:quality:docs`).
 - **dependency security**: Audits all npm dependencies and Cargo.lock, then enforces Rust advisory/source policy (`task check:quality:security`). Local setup requires `task sec:setup:rust`.
 - **global quality**: Runs media manifest, IPC contract, release metadata, Cargo workspace-dependency, SQLite-only dependency, GLib provenance, repository formatting, runtime println, storage fallback, CI bootstrap, and runner-image checks (`task check:quality:global`).
@@ -41,7 +41,7 @@ The local and CI entrypoints are:
 - **crash recovery**: Workspace tests cover recovery on PRs; production tags additionally run the focused SQLite and YouTube recovery suites on Windows and macOS.
 - **native acceptance**: The manually triggered `Tauri Build` workflow runs the real React → IPC → Rust → SQLite → filesystem scenario on Windows (`task desktop:e2e:native`). It is not duplicated on every PR.
 - **native bundle**: Three-platform packaging, bundled-media verification, and installed-app smoke checks run manually or for production tags, not on every PR.
-- **Storybook**: The frontend job executes Storybook browser tests through `task check:frontend`; the static catalog is built by its dedicated Pages workflow instead of being duplicated in PR CI.
+- **Storybook**: `task check:storybook` runs the catalog contract, all browser stories and accessibility checks, and a static build. Pull-request CI splits this work efficiently: `task check:frontend` executes the browser stories, `task check:quality:frontend` validates catalog metadata, and the dedicated Pages workflow owns the static build.
 - **PR suite**: Reproduces all required pull-request gates locally (`task check:pr`).
 - **full suite**: Adds the optimized Linux GLib regression to the PR suite (`task check:all`, also `task check`).
 

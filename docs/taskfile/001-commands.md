@@ -117,6 +117,7 @@ repeated after Clippy in the default PR path.
 ```bash
 task q:file-size
 task q:color-tokens
+task q:storybook-contract
 task q:duplicate-code
 task q:desktop-policies
 task q:ipc-contract
@@ -132,6 +133,17 @@ task q:global
 release metadata, and release smoke-tool validation. `task q:global` adds media
 manifest checks, SQLite-only dependency verification, GLib provenance checks,
 formatting, runtime output policy, storage fallbacks, and CI bootstrap validation.
+
+## Documentation
+
+```bash
+task check:docs
+task check:quality:docs
+```
+
+`task check:docs` runs fixture tests, verifies that mandatory project and design
+documents exist, validates relative Markdown links, and applies Markdown linting.
+`task check:quality:docs` verifies Markdown formatting without rewriting files.
 
 ## Dependency security
 
