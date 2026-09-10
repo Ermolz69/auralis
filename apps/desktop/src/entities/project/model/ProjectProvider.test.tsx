@@ -5,6 +5,7 @@ import { render, act } from '@testing-library/react';
 import { ProjectProvider } from './ProjectProvider';
 import { useProjectContext } from './useProjectContext';
 import { invoke, listen } from '@/shared/api/tauri';
+import { IpcContractError } from '@/shared/api/contracts';
 import { projectRemoved, projectUpdated } from './projectChanges';
 
 vi.mock('@/shared/api/tauri', () => ({
@@ -309,6 +310,36 @@ describe('ProjectProvider', () => {
     });
 
     expect(contextValue.validateToken(token)).toBe(true);
+  });
+
+  it('refreshes the selected project when a malformed native event is rejected', async () => {
+    let contextValue: any;
+    let invalidPayload: ((error: IpcContractError) => void) | undefined;
+    vi.mocked(listen).mockImplementation((_event, _callback, options) => {
+      invalidPayload = options?.onInvalidPayload;
+      return Promise.resolve(() => undefined);
+    });
+    vi.mocked(invoke).mockResolvedValue({ id: 'p1', title: 'Recovered title' } as any);
+
+    render(
+      <ProjectProvider>
+        <TestComponent
+          onContext={(ctx) => {
+            contextValue = ctx;
+          }}
+        />
+      </ProjectProvider>,
+    );
+    act(() => contextValue.setProject({ id: 'p1', title: 'Old title' } as any));
+    await act(async () => await Promise.resolve());
+
+    await act(async () => {
+      invalidPayload?.(new IpcContractError('event', 'project-updated'));
+      await Promise.resolve();
+    });
+
+    expect(invoke).toHaveBeenCalledWith('get_project_cmd', { projectId: 'p1' });
+    expect(contextValue.project.title).toBe('Recovered title');
   });
 
   it('verifies that two project-updated event fetches completing in reverse order apply only the latest one', async () => {

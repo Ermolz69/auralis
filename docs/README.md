@@ -9,9 +9,11 @@
 - [Design system](./architecture/004-design-system.md)
 - [Storybook conventions](./architecture/005-storybook-conventions.md)
 - [Runtime data layout](./architecture/006-runtime-data.md)
+- [Job runtime and cancellation](./architecture/007-job-runtime.md)
 - [Production storage contract](./storage/production-storage.md)
 - [Bundled media tools](./media-tools.md)
 - [CI and quality gates](./ci/001-quality-gates.md)
+- [Pinned runner images](./ci/002-runner-images.md)
 - [Taskfile commands](./taskfile/001-commands.md)
 - [Release workflow](./release/001-release-workflow.md)
 - [Production signing](./release/002-signing.md)
@@ -23,10 +25,22 @@ maintained as current-reference documentation.
 
 ## Storybook
 
-We use Storybook to develop and document our shared UI components.
+Storybook is the interactive reference for foundations, reusable components, and
+complete product states. Start with the [design-system contract](./architecture/004-design-system.md)
+and [Storybook conventions](./architecture/005-storybook-conventions.md).
 
-- **Static verification**: Run `task frontend:storybook` to build the current Storybook catalog.
-- **Published build**: Run `task frontend:storybook-pages` to create the GitHub Pages layout.
-- **Published URL**: Our Storybook is automatically deployed to [https://ermolz69.github.io/auralis/docs/storybook/](https://ermolz69.github.io/auralis/docs/storybook/).
-- **Deployment flow**: `.github/workflows/storybook-pages.yml` deploys after changes are merged into `main` or when started manually.
-- **Generated files**: Static Storybook output is not committed. GitHub Actions builds and uploads it as a Pages artifact.
+- **Interactive development**: `task fe:storybook:dev`
+- **Complete focused verification**: `task check:storybook`
+- **Metadata-only verification**: `task q:storybook-contract`
+- **Static verification**: `task fe:storybook`
+- **Published Pages build**: `task fe:storybook-pages`
+- **Published catalog**: [Auralis Storybook](https://ermolz69.github.io/auralis/docs/storybook/)
+- **Deployment flow**: `.github/workflows/storybook-pages.yml` deploys after
+  changes reach `main` or when started manually.
+- **Generated files**: Static output is not committed. GitHub Actions builds and
+  uploads it as a Pages artifact.
+
+The focused check validates the catalog contract, runs every story and
+accessibility check in Chromium, and builds the production-static site. The full
+frontend and frontend-quality suites already include the browser and metadata
+portions respectively, so pull-request CI does not duplicate the Pages build.

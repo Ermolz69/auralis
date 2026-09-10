@@ -26,7 +26,10 @@ impl Planner {
         // 1. Find conflicting active jobs for the same project
         let mut active_jobs_by_project: HashMap<ProjectId, Vec<JobId>> = HashMap::new();
         for job in active_jobs_map.values().chain(linked_jobs_map.values()) {
-            if matches!(*job.status(), JobStatus::Pending | JobStatus::Running) {
+            if matches!(
+                *job.status(),
+                JobStatus::Pending | JobStatus::Running | JobStatus::Cancelling
+            ) {
                 active_jobs_by_project
                     .entry(job.project_id().clone())
                     .or_default()
@@ -105,7 +108,10 @@ impl Planner {
                                 });
                             }
 
-                            if matches!(*job.status(), JobStatus::Pending | JobStatus::Running) {
+                            if matches!(
+                                *job.status(),
+                                JobStatus::Pending | JobStatus::Running | JobStatus::Cancelling
+                            ) {
                                 plan.actions.push(PlannedAction {
                                     action: RecoveryAction::FailInterruptedPair {
                                         project,
@@ -166,7 +172,10 @@ impl Planner {
                 continue;
             }
 
-            if matches!(*job.status(), JobStatus::Pending | JobStatus::Running) {
+            if matches!(
+                *job.status(),
+                JobStatus::Pending | JobStatus::Running | JobStatus::Cancelling
+            ) {
                 plan.actions.push(PlannedAction {
                     action: RecoveryAction::FailOrphanJob { job: job.clone() },
                     resolved_violation: Some(RecoveryViolation {

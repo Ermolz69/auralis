@@ -7,8 +7,12 @@ target/
 
 # Build outputs
 dist/
+/apps/desktop/dist-native-e2e/
+/apps/desktop/e2e-results/
 /.pages/
 storybook-static/
+storybook-visual-static/
+storybook-visual-results/
 coverage/
 /release-assets/
 /release-publish/

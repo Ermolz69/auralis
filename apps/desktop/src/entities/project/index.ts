@@ -4,6 +4,7 @@ export * from './model/context';
 export * from './model/ProjectProvider';
 export type { ProjectSelection } from './model/selection';
 export * from './model/useProjectContext';
+export { useProjectOperation } from './model/useProjectOperation';
 export * from './model/preferences';
 export * from './model/projectChanges';
 export * from './model/youtubeImportChanges';

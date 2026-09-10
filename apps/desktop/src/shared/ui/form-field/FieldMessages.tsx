@@ -12,12 +12,12 @@ export function FieldMessages({
   return (
     <>
       {helperText && (
-        <span id={helperId} className="text-xs text-muted">
+        <span id={helperId} className="min-w-0 break-words text-xs text-muted">
           {helperText}
         </span>
       )}
       {errorText && (
-        <span id={errorId} className="text-xs text-danger" role="alert">
+        <span id={errorId} className="min-w-0 break-words text-xs text-danger" role="alert">
           {errorText}
         </span>
       )}

@@ -27,9 +27,11 @@ export function Notice({
   live,
   className = '',
 }: NoticeProps) {
+  const toneClass = toneClasses[tone] ?? toneClasses.neutral;
+
   return (
     <div
-      className={`flex animate-surface-in gap-3 rounded-md border p-3 ${toneClasses[tone]} ${className}`}
+      className={`flex animate-surface-in gap-3 rounded-md border p-3 ${toneClass} ${className}`}
       role={role}
       aria-live={live}
     >

@@ -1,0 +1,133 @@
+import { Canvas, Meta } from '@storybook/addon-docs/blocks';
+import * as BadgeStories from '../badge/Badge.stories';
+import * as ButtonStories from '../button/Button.stories';
+import * as NoticeStories from '../notice/Notice.stories';
+import * as StateViewStories from '../state-view/StateView.stories';
+
+<Meta title="Design System/Introduction" />
+
+# Auralis Design System
+
+Auralis is a desktop workspace for long-running media operations. Its interface stays calm,
+legible, and trustworthy while the underlying work moves through loading, progress, recovery,
+and terminal states. This catalog is the source of truth for reusable UI and product states.
+
+## Design principles
+
+1. **Status before decoration.** Every long-running operation explains what is happening, whether
+   the user can leave, and how to recover.
+2. **Semantic tokens only.** Components consume roles such as `surface`, `text`, `primary`, and
+   `danger`; they never bind behavior to a palette-specific color.
+3. **Short, quiet motion.** Motion clarifies entry, focus, and state change. It does not delay an
+   action or loop unless progress is genuinely indeterminate.
+4. **Local-first confidence.** Empty, offline, retry, and draft states are designed as normal
+   product states rather than exceptions.
+5. **Accessibility is behavior.** Keyboard order, focus visibility, labels, live regions, and
+   reduced motion are part of the component contract.
+
+## Catalog architecture
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Owns</th>
+      <th>Use it for</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Foundations</td>
+      <td>Color themes, typography, spacing, radius, shadows, motion</td>
+      <td>Decisions shared by every screen</td>
+    </tr>
+    <tr>
+      <td>Components</td>
+      <td>Reusable primitives with stable props and accessibility</td>
+      <td>New features and widget composition</td>
+    </tr>
+    <tr>
+      <td>Product / Features</td>
+      <td>A complete user action and its states</td>
+      <td>Import, project selection, and future dubbing actions</td>
+    </tr>
+    <tr>
+      <td>Product / Widgets</td>
+      <td>Larger contextual sections</td>
+      <td>Workspace panels and application shell</td>
+    </tr>
+    <tr>
+      <td>Product / Pages</td>
+      <td>Integrated experiences at real desktop sizes</td>
+      <td>Review, regression checks, and handoff</td>
+    </tr>
+  </tbody>
+</table>
+
+## Theme review
+
+Use the **Auralis theme** toolbar control to review the current story against every supported
+palette. It changes only the rendered product preview. Storybook's own chrome intentionally keeps
+its branded dark theme, matching the application's separation between app chrome and page content.
+
+All eight palettes are also visible together under **Foundations / Theme Gallery**. A component is
+ready only when text, borders, focus, statuses, and disabled states remain clear in both dark and
+light appearances.
+
+## Core examples
+
+### Action hierarchy
+
+Use one primary action per decision surface. Secondary and ghost actions should preserve the visual
+priority of that choice; danger is reserved for destructive or irreversible operations.
+
+<Canvas of={ButtonStories.AllVariants} />
+
+### Compact status
+
+Badges label durable state or metadata. They are not buttons and must not be the only place where a
+critical state is explained.
+
+<Canvas of={BadgeStories.AllVariants} />
+
+### Feedback and recovery
+
+Use a notice when feedback must remain visible in context. Use `role="alert"` only when an immediate
+announcement is required. Every recoverable failure should expose a clear next action.
+
+<Canvas of={NoticeStories.Warning} />
+
+<Canvas of={StateViewStories.Error} />
+
+## Required state coverage
+
+Before a reusable component or product surface is complete, document the states that apply:
+
+- default, hover, focus-visible, active, and disabled;
+- empty, loading, progress, success, warning, and error;
+- long labels, long filenames, narrow desktop width, and dense data;
+- keyboard navigation, focus restoration, accessible name, and live feedback;
+- all Auralis color themes and reduced-motion behavior.
+
+Not every primitive needs every state. The story title and description should make intentional
+omissions obvious to reviewers.
+
+## Story quality contract
+
+Each story file has a stable `Design System` or `Product` path, Autodocs enabled, and a component
+description. Interactive behavior belongs in a `play` function so it runs in the same browser suite
+as unit tests. Accessibility violations fail the story test rather than being advisory.
+
+Run the catalog locally with `task fe:storybook:dev`. Before review, run
+`task check:storybook`; it validates metadata, executes every story in Chromium, and creates the
+production-static catalog.
+
+## Definition of done
+
+- The example uses semantic tokens and an existing primitive wherever possible.
+- Controls expose meaningful public props without inventing production-only behavior.
+- The Docs page explains purpose, correct usage, and the important states.
+- Interaction assertions cover keyboard or pointer behavior when the example is interactive.
+- The accessibility panel is clean and the full Storybook check passes.
+- Product functionality is represented faithfully; Storybook adapters do not hide unsupported
+  production behavior.

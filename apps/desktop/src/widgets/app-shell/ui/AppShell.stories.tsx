@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React, { useEffect, useRef, useState } from 'react';
+import { expect, within } from 'storybook/test';
 import { AppShell } from './AppShell';
 import { ProjectContext, type Project } from '@/entities/project';
 import { NavigationProvider, useNavigation, type View } from '@/shared/router';
@@ -16,10 +17,16 @@ const longProject: Project = {
 };
 
 const meta = {
-  title: 'Widgets/AppShell',
+  title: 'Product/Widgets/App Shell',
   component: AppShell,
   parameters: {
     layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'Application frame that coordinates primary navigation, project context, responsive layout, and content.',
+      },
+    },
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof AppShell>;
@@ -45,6 +52,11 @@ export const WithLongProjectTitle: Story = {
       </div>
     </ShellStory>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTitle(longProject.title)).toBeInTheDocument();
+  },
 };
 
 export const SettingsWithProjectReturn: Story = {

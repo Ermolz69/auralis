@@ -5,10 +5,16 @@ import { Toaster } from './Toaster';
 import { Button } from '../button';
 
 const meta = {
-  title: 'Shared UI/Toast',
+  title: 'Design System/Components/Toast',
   component: Toaster,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Transient, non-blocking feedback for completed operations, failures, warnings, and progress updates.',
+      },
+    },
   },
   tags: ['autodocs'],
   decorators: [

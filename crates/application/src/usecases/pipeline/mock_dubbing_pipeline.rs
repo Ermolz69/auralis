@@ -132,25 +132,13 @@ impl<
             self.workspace_port.clone(),
         );
 
-        let tokio_token = tokio_util::sync::CancellationToken::new();
-        let tokio_token_clone = tokio_token.clone();
-        let token_clone = token.clone();
-        tokio::spawn(async move {
-            tokio::select! {
-                _ = token_clone.cancelled() => {
-                    tokio_token_clone.cancel();
-                }
-                _ = tokio_token_clone.cancelled() => {}
-            }
-        });
-
         match await_or_cancel(
             &token,
             import_use_case.execute(ImportYoutubeSubtitlesRequest {
                 project_id: project_id.clone(),
                 preferred_languages: vec!["ru".to_string(), "en".to_string(), "uk".to_string()],
                 allow_auto_generated: true,
-                cancellation_token: tokio_token,
+                cancellation_token: token.clone(),
                 job_id: job_id.clone(),
                 selected_track: self.selected_subtitle_track.clone(),
             }),

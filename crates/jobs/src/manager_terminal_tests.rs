@@ -3,6 +3,9 @@
 use async_trait::async_trait;
 use domain::job::{Job, JobId, JobKind, JobStatus};
 use ports::error::PortError;
+use ports::job_runtime_control::{
+    JobRuntimeControlPort, RuntimeCompletion, RuntimeTask, RuntimeTaskOutcome,
+};
 use ports::job_scheduler::{JobLifecycleEvent, JobSchedulerPort};
 use ports::repository::JobRepository;
 use ports::transaction::*;
@@ -157,4 +160,56 @@ async fn terminal_uow_failure_does_not_update_cache_or_emit_event() {
     assert!(events.lock().unwrap().is_empty());
     let persisted = repo.get(&job_id).await.unwrap().unwrap();
     assert_eq!(persisted.status(), &JobStatus::Running);
+}
+
+#[tokio::test]
+async fn terminal_cancellation_failure_leaves_a_stopped_job_cancelling() {
+    let repo = Arc::new(Repo {
+        jobs: Arc::new(AsyncMutex::new(HashMap::new())),
+    });
+    let mut job = Job::new(
+        domain::project::ProjectId::new(),
+        "Running".into(),
+        JobKind::Dubbing,
+    );
+    job.start().unwrap();
+    let job_id = job.id().clone();
+    let project_id = job.project_id().clone();
+    repo.create(job).await.unwrap();
+    let manager = JobManager::new(repo.clone(), Arc::new(FailingTerminalUow), None);
+    manager.reserve(job_id.clone(), project_id).await.unwrap();
+    let (cancel, token) = ports::cancellation::CancelHandle::new();
+    let observer = token.clone();
+    let completion = Arc::new(RuntimeCompletion::new());
+    let task_completion = completion.clone();
+    let task_manager = manager.clone();
+    let task_job_id = job_id.clone();
+    let join_handle = tokio::spawn(async move {
+        token.cancelled().await;
+        task_manager.finish_now(&task_job_id);
+        let outcome = task_completion.record_outcome(RuntimeTaskOutcome::Cancelled);
+        task_completion.finish(RuntimeTaskOutcome::RecoveryRequired);
+        outcome
+    });
+    manager
+        .attach_task(
+            job_id.clone(),
+            RuntimeTask {
+                cancel,
+                join_handle,
+                completion,
+            },
+        )
+        .await
+        .unwrap();
+
+    let result = manager.cancel_job(&job_id).await;
+
+    assert!(matches!(result, Err(PortError::Storage { .. })));
+    assert!(observer.is_cancelled());
+    assert_eq!(
+        repo.get(&job_id).await.unwrap().unwrap().status(),
+        &JobStatus::Cancelling
+    );
+    assert!(manager.runtime_registry.lock_entries().entries.is_empty());
 }

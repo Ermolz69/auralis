@@ -2,10 +2,20 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Select } from './Select';
 
 const meta = {
-  title: 'Shared UI/Select',
+  title: 'Design System/Components/Select',
   component: Select,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['label', 'helperText', 'error', 'disabled'],
+    },
+    docs: {
+      description: {
+        component:
+          'Labeled native selection control with placeholder, grouped options, validation, and disabled behavior.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {

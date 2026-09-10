@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import { assertAtomicReleaseWorkflow, collectMetadataErrors } from './check-release-metadata.mjs';
+import {
+  assertAtomicReleaseWorkflow,
+  collectMetadataErrors,
+  collectTauriVersionErrors,
+} from './check-release-metadata.mjs';
 
 const valid = {
   workspaceCargo:
@@ -54,4 +58,33 @@ test('requires verified matrix artifacts before the only release write step', ()
       ),
     /Matrix build must not create a GitHub Release/,
   );
+});
+
+test('requires exact cross-language Tauri plugin versions and aligned core minors', () => {
+  const versions = {
+    workspaceCargo:
+      '[workspace.dependencies]\ntauri = "2.11.5"\ntauri-plugin-dialog = "=2.7.3"\ntauri-plugin-process = "=2.3.1"\ntauri-plugin-updater = "=2.11.0"\n',
+    tauriCargo:
+      '[dependencies]\ntauri-plugin-dialog.workspace = true\ntauri-plugin-process = { workspace = true }\ntauri-plugin-updater.workspace = true\n',
+    rootPackage: { devDependencies: { '@tauri-apps/cli': '2.11.4' } },
+    desktopPackage: {
+      dependencies: {
+        '@tauri-apps/api': '2.11.1',
+        '@tauri-apps/plugin-dialog': '2.7.3',
+        '@tauri-apps/plugin-process': '2.3.1',
+        '@tauri-apps/plugin-updater': '2.11.0',
+      },
+    },
+  };
+
+  assert.deepEqual(collectTauriVersionErrors(versions), []);
+
+  const drifted = structuredClone(versions);
+  drifted.desktopPackage.dependencies['@tauri-apps/plugin-dialog'] = '^2.7.3';
+  drifted.desktopPackage.dependencies['@tauri-apps/api'] = '2.10.1';
+  assert.deepEqual(collectTauriVersionErrors(drifted), [
+    '@tauri-apps/api must use the same major/minor line as the tauri crate',
+    '@tauri-apps/plugin-dialog must use an exact semantic version',
+    'tauri-plugin-dialog must exactly match @tauri-apps/plugin-dialog',
+  ]);
 });

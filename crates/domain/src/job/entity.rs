@@ -172,6 +172,26 @@ impl Job {
         Ok(())
     }
 
+    pub fn request_cancellation(&mut self) -> Result<(), DomainError> {
+        if matches!(self.status, JobStatus::Cancelling | JobStatus::Cancelled) {
+            return Ok(());
+        }
+
+        if matches!(self.status, JobStatus::Completed | JobStatus::Failed) {
+            return Err(DomainError::InvalidStateTransition {
+                from: format!("{:?}", self.status),
+                to: "Cancelling".to_string(),
+            });
+        }
+        self.bump_revision()?;
+
+        self.status = JobStatus::Cancelling;
+        self.progress.message = "Waiting for runtime to stop".to_string();
+        self.updated_at = Utc::now();
+
+        Ok(())
+    }
+
     pub fn cancel(&mut self) -> Result<(), DomainError> {
         if self.status == JobStatus::Cancelled {
             return Ok(());
@@ -187,6 +207,7 @@ impl Job {
 
         let now = Utc::now();
         self.status = JobStatus::Cancelled;
+        self.progress.message = "Runtime stopped; job cancelled".to_string();
         self.finished_at = Some(now);
         self.updated_at = now;
 

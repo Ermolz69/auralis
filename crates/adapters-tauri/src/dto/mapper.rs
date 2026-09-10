@@ -14,6 +14,7 @@ pub fn map_status(status: &JobStatus) -> String {
     match status {
         JobStatus::Pending => "pending".to_string(),
         JobStatus::Running => "running".to_string(),
+        JobStatus::Cancelling => "cancelling".to_string(),
         JobStatus::Completed => "completed".to_string(),
         JobStatus::Failed => "failed".to_string(),
         JobStatus::Cancelled => "cancelled".to_string(),
@@ -44,6 +45,7 @@ pub fn map_kind(kind: &JobLifecycleEventKind) -> JobLifecycleEventKindDto {
         JobLifecycleEventKind::Created => JobLifecycleEventKindDto::Created,
         JobLifecycleEventKind::Started => JobLifecycleEventKindDto::Started,
         JobLifecycleEventKind::Progressed => JobLifecycleEventKindDto::Progressed,
+        JobLifecycleEventKind::Cancelling => JobLifecycleEventKindDto::Cancelling,
         JobLifecycleEventKind::Completed => JobLifecycleEventKindDto::Completed,
         JobLifecycleEventKind::Failed => JobLifecycleEventKindDto::Failed,
         JobLifecycleEventKind::Cancelled => JobLifecycleEventKindDto::Cancelled,
@@ -165,6 +167,7 @@ mod tests {
         let statuses = [
             JobStatus::Pending,
             JobStatus::Running,
+            JobStatus::Cancelling,
             JobStatus::Completed,
             JobStatus::Failed,
             JobStatus::Cancelled,

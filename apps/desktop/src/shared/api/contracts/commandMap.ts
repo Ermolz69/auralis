@@ -1,6 +1,6 @@
 import type { Project, CreateProjectResponse } from './project';
 import type { Transcript } from './transcript';
-import type { Job } from './job';
+import type { Job, JobHistoryCursor, JobHistoryPage } from './job';
 import type { MediaMetadata } from './media';
 import type { SubtitleTrack } from './subtitle';
 import type { ProjectAvatar } from './projectAvatar';
@@ -20,6 +20,14 @@ export interface CommandMap {
   health_check: {
     args: undefined;
     result: string;
+  };
+  native_e2e_checkpoint_cmd: {
+    args: { checkpoint: string };
+    result: null;
+  };
+  native_e2e_pipeline_pause_reached_cmd: {
+    args: undefined;
+    result: boolean;
   };
   create_project_cmd: {
     args: { title: string };
@@ -78,6 +86,10 @@ export interface CommandMap {
   list_jobs_cmd: {
     args: undefined;
     result: Job[];
+  };
+  list_job_history_page_cmd: {
+    args: { cursor?: JobHistoryCursor | null; limit?: number | null };
+    result: JobHistoryPage;
   };
   list_jobs_snapshot_cmd: {
     args: { projectId: string };

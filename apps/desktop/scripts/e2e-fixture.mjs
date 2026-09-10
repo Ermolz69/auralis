@@ -11,6 +11,9 @@ export function installE2EFixture(seed) {
   const state = {
     projects: input.projects ?? [],
     jobs: input.jobs ?? [],
+    historyJobs:
+      input.historyJobs ??
+      (input.jobs ?? []).filter((job) => ['completed', 'failed', 'cancelled'].includes(job.status)),
     pendingImports: input.pendingImports ?? [],
     tracks: input.tracks ?? {},
     transcripts: input.transcripts ?? {},
@@ -22,6 +25,8 @@ export function installE2EFixture(seed) {
     updater: input.updater ?? null,
     restarted: false,
     failures,
+    cancelMode: input.cancelMode ?? 'immediate',
+    pendingCancellationJobIds: [],
     nextProject: 1,
     nextJob: 1,
   };
@@ -102,6 +107,64 @@ export function installE2EFixture(seed) {
     throw copy(configured.error);
   };
 
+  const eventListeners = new Map();
+  const pendingCancellations = new Map();
+  const emitEvent = (event, payload) => {
+    for (const listener of eventListeners.values()) {
+      if (listener.event !== event) continue;
+      window.__e2eCallbacks.get(listener.handler)?.({
+        event,
+        id: listener.eventId,
+        payload: copy(payload),
+      });
+    }
+  };
+  const upsertJob = (job) => {
+    const index = state.jobs.findIndex((item) => item.id === job.id);
+    if (index < 0) state.jobs.unshift(job);
+    else if (job.revision >= state.jobs[index].revision) state.jobs[index] = job;
+
+    if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+      const historyIndex = state.historyJobs.findIndex((item) => item.id === job.id);
+      if (historyIndex < 0) state.historyJobs.unshift(job);
+      else if (job.revision >= state.historyJobs[historyIndex].revision) {
+        state.historyJobs[historyIndex] = job;
+      }
+    }
+  };
+  const publishJobEvent = (kind, job) => {
+    upsertJob(job);
+    emitEvent('job-event', { kind, job });
+  };
+  const updateJob = (jobId, changes) => {
+    const current = state.jobs.find((job) => job.id === jobId);
+    if (!current) throw { code: 'NOT_FOUND', message: 'Job not found' };
+    return {
+      ...current,
+      ...changes,
+      progress: { ...current.progress, ...(changes.progress ?? {}) },
+      revision: current.revision + 1,
+      updatedAt: timestamp,
+    };
+  };
+
+  state.emitJobEvent = (kind, job) => publishJobEvent(kind, copy(job));
+  state.completeCancellation = (jobId) => {
+    const pending = pendingCancellations.get(jobId);
+    if (!pending) throw new Error(`Job ${jobId} has no pending cancellation`);
+    const job = updateJob(jobId, {
+      status: 'cancelled',
+      progress: { message: 'Runtime stopped and cancellation confirmed' },
+    });
+    publishJobEvent('cancelled', job);
+    pendingCancellations.delete(jobId);
+    state.pendingCancellationJobIds = state.pendingCancellationJobIds.filter(
+      (pendingJobId) => pendingJobId !== jobId,
+    );
+    pending.resolve(copy(job));
+    return copy(job);
+  };
+
   window.__e2e = state;
   window.__e2eCallbacks = new Map();
   window.isTauri = true;
@@ -109,8 +172,13 @@ export function installE2EFixture(seed) {
   let eventId = 0;
 
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
-    unregisterListener(_event, id) {
-      window.__e2eCallbacks.delete(id);
+    unregisterListener(event, eventIdToRemove) {
+      for (const [registrationId, listener] of eventListeners) {
+        if (listener.event === event && listener.eventId === eventIdToRemove) {
+          eventListeners.delete(registrationId);
+          window.__e2eCallbacks.delete(listener.handler);
+        }
+      }
     },
   };
 
@@ -127,7 +195,15 @@ export function installE2EFixture(seed) {
       state.calls.push({ command, args: copy(args) });
       failIfConfigured(command);
 
-      if (command === 'plugin:event|listen') return ++eventId;
+      if (command === 'plugin:event|listen') {
+        const registeredEventId = ++eventId;
+        eventListeners.set(registeredEventId, {
+          event: args.event,
+          eventId: registeredEventId,
+          handler: args.handler,
+        });
+        return registeredEventId;
+      }
       if (command === 'plugin:event|unlisten') return null;
       if (command === 'plugin:app|version') {
         return state.updater?.currentVersion ?? '0.1.0';
@@ -163,6 +239,29 @@ export function installE2EFixture(seed) {
       if (command === 'list_projects_cmd') return copy(state.projects);
       if (command === 'list_pending_youtube_imports_cmd') return copy(state.pendingImports);
       if (command === 'list_jobs_cmd') return copy(state.jobs);
+      if (command === 'list_job_history_page_cmd') {
+        const limit = args.limit ?? 100;
+        const jobs = [...state.historyJobs]
+          .filter(
+            (job) =>
+              !args.cursor ||
+              job.createdAt < args.cursor.createdAt ||
+              (job.createdAt === args.cursor.createdAt && job.id < args.cursor.jobId),
+          )
+          .sort(
+            (left, right) =>
+              right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
+          );
+        const pageJobs = jobs.slice(0, limit);
+        const lastJob = pageJobs.at(-1);
+        return copy({
+          jobs: pageJobs,
+          nextCursor:
+            jobs.length > limit && lastJob
+              ? { createdAt: lastJob.createdAt, jobId: lastJob.id }
+              : null,
+        });
+      }
       if (command === 'list_jobs_snapshot_cmd') {
         return copy(state.jobs.filter((job) => job.projectId === args.projectId));
       }
@@ -262,16 +361,33 @@ export function installE2EFixture(seed) {
         return copy({ project, job });
       }
       if (command === 'cancel_job_cmd') {
-        const index = state.jobs.findIndex((job) => job.id === args.jobId);
-        if (index < 0) throw { code: 'NOT_FOUND', message: 'Job not found' };
-        const job = {
-          ...state.jobs[index],
-          revision: state.jobs[index].revision + 1,
+        const current = state.jobs.find((job) => job.id === args.jobId);
+        if (!current) throw { code: 'NOT_FOUND', message: 'Job not found' };
+
+        const existingCancellation = pendingCancellations.get(args.jobId);
+        if (existingCancellation) return existingCancellation.promise;
+
+        if (state.cancelMode === 'deferred') {
+          const cancellingJob = updateJob(args.jobId, {
+            status: 'cancelling',
+            progress: { message: 'Waiting for runtime shutdown' },
+          });
+          publishJobEvent('cancelling', cancellingJob);
+          let resolve;
+          const promise = new Promise((settle) => {
+            resolve = settle;
+          });
+          pendingCancellations.set(args.jobId, { promise, resolve });
+          state.pendingCancellationJobIds.push(args.jobId);
+          return promise;
+        }
+
+        const cancelledJob = updateJob(args.jobId, {
           status: 'cancelled',
-          updatedAt: timestamp,
-        };
-        state.jobs[index] = job;
-        return copy(job);
+          progress: { message: 'Runtime stopped and cancellation confirmed' },
+        });
+        publishJobEvent('cancelled', cancelledJob);
+        return copy(cancelledJob);
       }
 
       state.unknownCommands.push(command);

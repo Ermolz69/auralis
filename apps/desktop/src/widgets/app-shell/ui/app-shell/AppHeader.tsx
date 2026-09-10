@@ -70,7 +70,10 @@ export function AppHeader(props: Props) {
         {props.currentView === 'project' && (
           <>
             <span className="text-border-strong">/</span>
-            <span className="max-w-48 truncate px-1 text-xs font-medium text-muted">
+            <span
+              className="max-w-48 truncate px-1 text-xs font-medium text-muted"
+              title={props.projectTitle}
+            >
               {props.projectTitle}
             </span>
             <span className="text-border-strong">/</span>

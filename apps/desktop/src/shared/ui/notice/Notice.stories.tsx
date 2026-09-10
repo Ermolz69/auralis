@@ -1,9 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Notice } from './Notice';
+import { icons } from '../icon/registry';
 
 const meta = {
-  title: 'Shared UI/Notice',
+  title: 'Design System/Components/Notice',
   component: Notice,
+  parameters: {
+    controls: {
+      disable: false,
+      include: ['icon', 'tone'],
+    },
+    docs: {
+      description: {
+        component:
+          'Persistent inline feedback for informational, warning, error, and successful application states.',
+      },
+    },
+  },
   args: {
     icon: 'Info',
     title: 'Operation continues in the background',
@@ -12,6 +25,10 @@ const meta = {
     role: 'status',
   },
   tags: ['autodocs'],
+  argTypes: {
+    icon: { control: 'select', options: Object.keys(icons) },
+    tone: { control: 'select', options: ['neutral', 'accent', 'warning', 'danger'] },
+  },
 } satisfies Meta<typeof Notice>;
 
 export default meta;

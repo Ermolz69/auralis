@@ -31,7 +31,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const { helperId, errorId, describedBy, resolvedHelperText, resolvedErrorText } =
       getFieldMessageState(inputId, { helperText, errorText, error });
 
-    const baseWrapper = 'flex flex-col gap-1.5 w-full';
+    const baseWrapper = 'flex min-w-0 w-full flex-col gap-1.5';
 
     // The input base wrapper styles.
     // If error -> border-danger
@@ -48,7 +48,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={`${baseWrapper} ${className}`}>
         {label && (
-          <label htmlFor={inputId} className="text-xs font-medium text-muted">
+          <label htmlFor={inputId} className="min-w-0 break-words text-xs font-medium text-muted">
             {label}
           </label>
         )}

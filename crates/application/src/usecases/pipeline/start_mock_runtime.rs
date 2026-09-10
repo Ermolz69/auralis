@@ -35,31 +35,14 @@ impl CompletionGuard {
     }
 
     pub(super) fn record_outcome(&self, outcome: RuntimeTaskOutcome) -> RuntimeTaskOutcome {
-        let mut outcome_guard = self
-            .completion
-            .outcome
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
-        *outcome_guard = Some(outcome);
-        outcome
+        self.completion.record_outcome(outcome)
     }
 }
 
 impl Drop for CompletionGuard {
     fn drop(&mut self) {
-        let mut outcome_guard = self
-            .completion
-            .outcome
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
-        if outcome_guard.is_none() {
-            *outcome_guard = Some(RuntimeTaskOutcome::RecoveryRequired);
-        }
-        self.completion
-            .state
-            .store(1, std::sync::atomic::Ordering::Release);
-        self.completion.notify.notify_waiters();
         self.job_runtime.finish_now(&self.job_id);
+        self.completion.finish(RuntimeTaskOutcome::RecoveryRequired);
     }
 }
 
@@ -91,26 +74,74 @@ pub(super) async fn await_release_gate(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+pub(super) struct RuntimeStartControl {
+    pub(super) activate: tokio::sync::oneshot::Sender<()>,
+    pub(super) acknowledged: tokio::sync::oneshot::Receiver<()>,
+    pub(super) release: tokio::sync::oneshot::Sender<()>,
+}
+
+pub(super) struct RuntimeStartGates {
+    activate: tokio::sync::oneshot::Receiver<()>,
+    acknowledge: tokio::sync::oneshot::Sender<()>,
+    release: tokio::sync::oneshot::Receiver<()>,
+}
+
+pub(super) fn runtime_start_handshake() -> (RuntimeStartControl, RuntimeStartGates) {
+    let (activate, activate_rx) = tokio::sync::oneshot::channel();
+    let (acknowledge, acknowledged) = tokio::sync::oneshot::channel();
+    let (release, release_rx) = tokio::sync::oneshot::channel();
+    (
+        RuntimeStartControl {
+            activate,
+            acknowledged,
+            release,
+        },
+        RuntimeStartGates {
+            activate: activate_rx,
+            acknowledge,
+            release: release_rx,
+        },
+    )
+}
+
+pub(super) struct MockPipelineTaskSpec<
+    R: ProjectRepository + Clone + 'static,
+    V: SubtitleSourcePort + Clone + 'static,
+    T: StorageUnitOfWork + Clone + 'static,
+    S: ArtifactStore + Clone + 'static,
+> {
+    pub(super) runner: MockDubbingPipelineRunner<R, V, T, S>,
+    pub(super) job_scheduler: Arc<dyn JobSchedulerPort>,
+    pub(super) job_runtime: Arc<dyn JobRuntimeControlPort>,
+    pub(super) job_id: JobId,
+    pub(super) project_id: ProjectId,
+    pub(super) cancel_handle: CancelHandle,
+    pub(super) token: CancellationToken,
+    pub(super) completion: Arc<RuntimeCompletion>,
+    pub(super) gates: RuntimeStartGates,
+    pub(super) span: tracing::Span,
+}
+
 pub(super) fn spawn_mock_pipeline_task<
     R: ProjectRepository + Clone + 'static,
     V: SubtitleSourcePort + Clone + 'static,
     T: StorageUnitOfWork + Clone + 'static,
     S: ArtifactStore + Clone + 'static,
 >(
-    runner: MockDubbingPipelineRunner<R, V, T, S>,
-    job_scheduler: Arc<dyn JobSchedulerPort>,
-    job_runtime: Arc<dyn JobRuntimeControlPort>,
-    job_id: JobId,
-    project_id: ProjectId,
-    cancel_handle: CancelHandle,
-    token: CancellationToken,
-    completion: Arc<RuntimeCompletion>,
-    activate_rx: tokio::sync::oneshot::Receiver<()>,
-    ack_tx: tokio::sync::oneshot::Sender<()>,
-    release_rx: tokio::sync::oneshot::Receiver<()>,
-    span: tracing::Span,
+    spec: MockPipelineTaskSpec<R, V, T, S>,
 ) -> RuntimeTask {
+    let MockPipelineTaskSpec {
+        runner,
+        job_scheduler,
+        job_runtime,
+        job_id,
+        project_id,
+        cancel_handle,
+        token,
+        completion,
+        gates,
+        span,
+    } = spec;
     let span_clone_for_spawn = span.clone();
     let completion_for_task = completion.clone();
     let wrapper = async move {
@@ -127,15 +158,15 @@ pub(super) fn spawn_mock_pipeline_task<
         let completion_guard =
             CompletionGuard::new(job_id.clone(), completion_for_task, job_runtime);
 
-        if activate_rx.await.is_err() {
+        if gates.activate.await.is_err() {
             guard.summary.update_status("cancelled_at_activate");
             return completion_guard.record_outcome(RuntimeTaskOutcome::Cancelled);
         }
-        if ack_tx.send(()).is_err() {
+        if gates.acknowledge.send(()).is_err() {
             guard.summary.update_status("cancelled_at_ack");
             return completion_guard.record_outcome(RuntimeTaskOutcome::Cancelled);
         }
-        if let Err(outcome) = await_release_gate(release_rx, &token, &mut guard).await {
+        if let Err(outcome) = await_release_gate(gates.release, &token, &mut guard).await {
             return completion_guard.record_outcome(outcome);
         }
 

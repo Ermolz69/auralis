@@ -75,10 +75,16 @@ const audioOnlyProject: Project = {
 };
 
 const meta = {
-  title: 'Widgets/MediaPanel/States',
+  title: 'Product/Widgets/Media Panel/States',
   component: MediaPanel,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component:
+          'Source-media summary for video, audio-only, sparse metadata, and unsupported stream combinations.',
+      },
+    },
   },
   tags: ['autodocs'],
   render: ({ project }: { project: Project }) => (

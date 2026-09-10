@@ -56,6 +56,7 @@ export function installFixture() {
       if (command === 'list_projects_cmd') return [project];
       if (command === 'list_pending_youtube_imports_cmd') return [];
       if (command === 'list_jobs_cmd') return [job];
+      if (command === 'list_job_history_page_cmd') return { jobs: [], nextCursor: null };
       if (command === 'get_project_cmd') return project;
       if (command === 'get_project_avatar_cmd') return { dataUrl: null, initialized: true };
       if (command === 'get_transcript_cmd') return null;

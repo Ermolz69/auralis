@@ -15,16 +15,33 @@ const desktopPackage = JSON.parse(
 ) as {
   version: string;
 };
+const nativeE2e = process.env.AURALIS_NATIVE_E2E === '1';
+const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH : '';
+const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
+const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL : '';
+
+if (nativeE2e && (!nativeE2eMediaPath || !nativeE2eRunId || !nativeE2eYtdlpUrl)) {
+  throw new Error(
+    'AURALIS_NATIVE_E2E_MEDIA_PATH, AURALIS_NATIVE_E2E_RUN_ID and AURALIS_NATIVE_E2E_YTDLP_URL are required for native E2E builds',
+  );
+}
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 const __vite_dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
-  define: { __APP_VERSION__: JSON.stringify(desktopPackage.version) },
+  define: {
+    __APP_VERSION__: JSON.stringify(desktopPackage.version),
+    __NATIVE_E2E__: JSON.stringify(nativeE2e),
+    __NATIVE_E2E_MEDIA_PATH__: JSON.stringify(nativeE2eMediaPath ?? ''),
+    __NATIVE_E2E_RUN_ID__: JSON.stringify(nativeE2eRunId ?? ''),
+    __NATIVE_E2E_YTDLP_URL__: JSON.stringify(nativeE2eYtdlpUrl ?? ''),
+  },
   plugins: [react(), tailwindcss(), bundleReport()],
   server: { port: 5173, strictPort: true },
   build: {
+    outDir: nativeE2e ? 'dist-native-e2e' : 'dist',
     manifest: true,
     rolldownOptions: {
       output: {
@@ -42,7 +59,7 @@ export default defineConfig({
   test: {
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary'],
+      reporter: ['text', 'json-summary', 'lcov'],
       reportsDirectory: './coverage',
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
@@ -51,15 +68,16 @@ export default defineConfig({
         'src/**/*.stories.{ts,tsx}',
         'src/**/*.storyData.ts',
         'src/**/*.storyFixtures.tsx',
+        'src/app/native-e2e/**',
         'src/**/*.d.ts',
         'src/**/index.ts',
         'src/main.tsx',
       ],
       thresholds: {
-        statements: 85,
-        branches: 75,
-        functions: 85,
-        lines: 88,
+        statements: 90,
+        branches: 80,
+        functions: 90,
+        lines: 92,
       },
     },
     projects: [
@@ -67,7 +85,24 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.test.{ts,tsx}'],
+          include: ['src/**/*.test.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'component',
+          environment: 'jsdom',
+          include: ['src/**/*.test.tsx'],
+          exclude: ['src/**/*.integration.test.tsx', 'src/App.selection.test.tsx'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'integration',
+          environment: 'jsdom',
+          include: ['src/**/*.integration.test.tsx', 'src/App.selection.test.tsx'],
         },
       },
       {

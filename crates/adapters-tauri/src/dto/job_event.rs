@@ -7,6 +7,7 @@ pub enum JobLifecycleEventKindDto {
     Created,
     Started,
     Progressed,
+    Cancelling,
     Completed,
     Failed,
     Cancelled,

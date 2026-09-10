@@ -41,8 +41,29 @@ tasks:
       - pnpm --filter desktop typecheck
 
   test:
+    desc: Run unit, component, integration, and Storybook browser tests with coverage thresholds
     cmds:
       - pnpm --filter desktop test {{.CLI_ARGS}}
+
+  test:unit:
+    desc: Run fast logic and API contract tests
+    cmds:
+      - pnpm --filter desktop test:unit {{.CLI_ARGS}}
+
+  test:components:
+    desc: Run React component and hook tests in jsdom
+    cmds:
+      - pnpm --filter desktop test:components {{.CLI_ARGS}}
+
+  test:integration:
+    desc: Run cross-provider frontend integration tests
+    cmds:
+      - pnpm --filter desktop test:integration {{.CLI_ARGS}}
+
+  test:jobs:
+    desc: Run job status synchronization, cancellation, and queue regressions
+    cmds:
+      - pnpm --filter desktop exec vitest run --project unit --project component --project integration src/entities/job src/features/cancel-job src/widgets/job-queue-panel/ui/JobQueuePanel.test.tsx src/widgets/app-shell/model/pipelineStatus.test.ts --reporter=default --reporter=hanging-process
 
   e2e:
     desc: Build and run the production browser end-to-end suite
@@ -53,7 +74,7 @@ tasks:
   e2e:run:
     internal: true
     cmds:
-      - pnpm --filter desktop e2e
+      - pnpm --filter desktop e2e {{.CLI_ARGS}}
 
   build:
     cmds:
@@ -71,8 +92,36 @@ tasks:
       - pnpm --filter desktop exec node --test scripts/production-smoke.test.mjs
 
   storybook:
+    desc: Build the production-static design-system catalog
     cmds:
       - pnpm --filter desktop build-storybook
+
+  storybook:test:
+    desc: Run Storybook interactions and accessibility checks in Chromium
+    cmds:
+      - pnpm --filter desktop test:storybook
+
+  storybook:visual:
+    desc: Compare Storybook states with the committed Windows visual baselines
+    cmds:
+      - pnpm --filter desktop storybook:visual {{.CLI_ARGS}}
+
+  storybook:visual:update:
+    desc: Review and update Storybook visual baselines on Windows
+    cmds:
+      - pnpm --filter desktop storybook:visual:update {{.CLI_ARGS}}
+
+  storybook:dev:
+    desc: Start the interactive Auralis design-system catalog
+    cmds:
+      - pnpm --filter desktop storybook
+
+  storybook:check:
+    desc: Validate metadata, interactions, accessibility, visuals, and the static catalog
+    cmds:
+      - task: :q:storybook-contract
+      - pnpm --filter desktop test:storybook
+      - task: storybook:visual
 
   storybook-pages:
     cmds:

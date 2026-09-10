@@ -5,25 +5,26 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
-common = { path = "../common" }
-domain = { path = "../domain" }
-ports = { path = "../ports" }
+common.workspace = true
+domain.workspace = true
+ports.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "rt", "macros", "fs"] }
 uuid = { workspace = true, features = ["v4"] }
 tempfile.workspace = true
-bytes = "1.12.1"
+bytes.workspace = true
 tracing.workspace = true
 futures.workspace = true
-tokio-util = "0.7"
+tokio-util.workspace = true
 
 [dev-dependencies]
 sqlx = { workspace = true }
-adapters-storage = { path = "../adapters-storage" }
-adapters-ytdlp = { path = "../adapters-ytdlp" }
-adapters-model = { path = "../adapters-model" }
-adapters-ffmpeg = { path = "../adapters-ffmpeg" }
+adapters-storage.workspace = true
+adapters-ytdlp.workspace = true
+adapters-model.workspace = true
+adapters-ffmpeg.workspace = true
+jobs.workspace = true
 tempfile.workspace = true
 chrono.workspace = true
 tokio = { workspace = true, features = ["test-util"] }

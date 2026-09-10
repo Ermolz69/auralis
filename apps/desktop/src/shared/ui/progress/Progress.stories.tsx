@@ -3,14 +3,24 @@ import React from 'react';
 import { Progress } from './Progress';
 
 const meta = {
-  title: 'Shared UI/Progress',
+  title: 'Design System/Components/Progress',
   component: Progress,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['value', 'variant', 'indeterminate'],
+    },
+    docs: {
+      description: {
+        component:
+          'Determinate and indeterminate progress indicator with semantic status variants and accessible value metadata.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {
-    value: { control: { type: 'range', min: 0, max: 100 } },
+    value: { control: { type: 'range', min: 0, max: 100, step: 1 } },
     variant: { control: 'select', options: ['default', 'success', 'warning', 'danger'] },
     indeterminate: { control: 'boolean' },
   },

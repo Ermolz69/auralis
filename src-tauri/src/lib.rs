@@ -85,6 +85,15 @@ pub fn run() -> Result<(), AppRunError> {
 
     let builder = configure_updater(builder);
 
+    #[cfg(feature = "native-e2e")]
+    let builder = builder.on_page_load(|_webview, payload| {
+        let checkpoint = match payload.event() {
+            tauri::webview::PageLoadEvent::Started => "page-load-started",
+            tauri::webview::PageLoadEvent::Finished => "page-load-finished",
+        };
+        bootstrap::record_native_e2e_checkpoint(checkpoint);
+    });
+
     let app = builder
         .setup(move |app| {
             bootstrap::setup(app, outbox_config, validated_settings)?;
@@ -110,8 +119,11 @@ pub fn run() -> Result<(), AppRunError> {
             commands::artifact::resolve_artifact_path_cmd,
             commands::job::health_check,
             commands::job::list_jobs_cmd,
+            commands::job::list_job_history_page_cmd,
             commands::job::list_jobs_snapshot_cmd,
             commands::job::cancel_job_cmd,
+            commands::native_e2e::native_e2e_checkpoint_cmd,
+            commands::native_e2e::native_e2e_pipeline_pause_reached_cmd,
             commands::media::probe_local_media_cmd,
             commands::media::import_local_media_cmd
         ])

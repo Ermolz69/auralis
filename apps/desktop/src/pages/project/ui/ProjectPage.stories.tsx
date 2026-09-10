@@ -64,9 +64,9 @@ const runningJob: JobDto = {
 };
 
 const meta = {
-  title: 'Pages/Project/Workspace',
+  title: 'Product/Pages/Project/Workspace',
   component: ProjectPage,
-  parameters: { layout: 'fullscreen' },
+  parameters: { layout: 'fullscreen', docs: { description: { component: 'Project workspace.' } } },
   tags: ['autodocs'],
   render: () => <ProjectWorkspaceStory />,
 } satisfies Meta<typeof ProjectPage>;

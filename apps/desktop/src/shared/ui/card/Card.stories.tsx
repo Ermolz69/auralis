@@ -4,10 +4,20 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '../button';
 
 const meta = {
-  title: 'Shared UI/Card',
+  title: 'Design System/Components/Card',
   component: Card,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['variant'],
+    },
+    docs: {
+      description: {
+        component:
+          'Composable surface for grouping related content, descriptions, controls, and footer actions.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {

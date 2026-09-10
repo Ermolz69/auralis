@@ -60,6 +60,7 @@ function PipelineItem({
     unavailable: 'bg-surface-active',
     pending: 'animate-pulse bg-muted',
     running: 'animate-pulse bg-primary signal-glow-sm',
+    cancelling: 'animate-pulse bg-warning',
     completed: 'bg-success',
     failed: 'bg-danger',
     cancelled: 'bg-subtle',

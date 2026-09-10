@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { JobContext } from '@/entities/job';
+import { JobContext, listJobHistoryPage } from '@/entities/job';
 import type { JobDto, JobStoreState } from '@/entities/job';
 import { ProjectContext, startProjectMockPipeline } from '@/entities/project';
 import type { Project } from '@/entities/project';
@@ -18,6 +18,11 @@ vi.mock('@/entities/project', () => {
     useProjectContext: () => React.useContext(mockProjectContext),
   };
 });
+
+vi.mock('@/entities/job', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/job')>()),
+  listJobHistoryPage: vi.fn(),
+}));
 
 const makeJob = (overrides: Partial<JobDto>): JobDto => ({
   kind: 'dubbing',
@@ -91,6 +96,10 @@ function renderPanel(state: Partial<JobStoreState> = {}, project: Project | null
 afterEach(() => cleanup());
 afterEach(() => vi.clearAllMocks());
 
+beforeEach(() => {
+  vi.mocked(listJobHistoryPage).mockImplementation(() => new Promise(() => undefined));
+});
+
 describe('JobQueuePanel', () => {
   it('shows all projects and unattached jobs when no project is selected', () => {
     renderPanel(
@@ -155,6 +164,33 @@ describe('JobQueuePanel', () => {
         .getAttribute('aria-valuenow'),
     ).toBe('42');
     expect(screen.getByRole('button', { name: 'Cancel' })).not.toBeNull();
+  });
+
+  it('shows cancelling as active until runtime confirms exit', () => {
+    renderPanel({
+      jobs: {
+        'job-1': makeJob({
+          status: 'cancelling',
+          progress: {
+            percent: 42,
+            message: 'Waiting for runtime to stop',
+            currentStep: 'Import',
+            processedItems: null,
+            totalItems: null,
+          },
+        }),
+      },
+    });
+
+    expect(screen.getByRole('heading', { name: 'Active operation' })).not.toBeNull();
+    expect(screen.getByText('Stopping')).not.toBeNull();
+    expect(screen.getByText('Waiting for runtime to stop')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+    expect(
+      screen
+        .getByRole('progressbar', { name: 'Subtitle import progress' })
+        .getAttribute('aria-valuenow'),
+    ).toBeNull();
   });
 
   it('renders failed jobs with a safe next action instead of generic progress', () => {
@@ -267,5 +303,49 @@ describe('JobQueuePanel', () => {
     ).not.toBeNull();
     expect(screen.getByText('Completed successfully')).not.toBeNull();
     expect(screen.getByText('Transcript ready')).not.toBeNull();
+  });
+
+  it('loads global terminal history beyond the initial snapshot', async () => {
+    const cursor = {
+      createdAt: '2026-07-01T00:00:00.000Z',
+      jobId: '00000000-0000-0000-0000-000000000100',
+    };
+    vi.mocked(listJobHistoryPage)
+      .mockResolvedValueOnce({
+        jobs: [
+          makeJob({
+            id: 'history-page-1',
+            title: 'Page one job',
+            status: 'completed',
+            createdAt: '2026-07-02T00:00:00.000Z',
+          }),
+        ],
+        nextCursor: cursor,
+      })
+      .mockResolvedValueOnce({
+        jobs: [
+          makeJob({
+            id: 'history-page-2',
+            title: 'Older than one hundred',
+            status: 'failed',
+            createdAt: '2026-06-01T00:00:00.000Z',
+          }),
+        ],
+        nextCursor: null,
+      });
+
+    renderPanel({
+      jobs: {
+        current: makeJob({ id: 'current', title: 'Current job', status: 'completed' }),
+      },
+    });
+
+    const loadMore = await screen.findByRole('button', { name: 'Load older jobs' });
+    fireEvent.click(loadMore);
+
+    expect(await screen.findByText('Older than one hundred')).not.toBeNull();
+    expect(listJobHistoryPage).toHaveBeenNthCalledWith(1, null, 100);
+    expect(listJobHistoryPage).toHaveBeenNthCalledWith(2, cursor, 100);
+    expect(screen.queryByRole('button', { name: 'Load older jobs' })).toBeNull();
   });
 });

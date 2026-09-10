@@ -35,6 +35,14 @@ pub fn row_to_job(row: JobRow) -> Result<Job, PortError> {
         .transpose()?;
 
     let progress = parse_json_field(&row.progress_json, &row.id, "progress_json")?;
+    domain::job::JobProgress::validate(&progress).map_err(|error| {
+        PortError::InvalidStoredData {
+            entity_type: "job".to_string(),
+            entity_id: row.id.clone(),
+            field: "progress_json".to_string(),
+            message: format!("Job progress violates domain constraints: {error}"),
+        }
+    })?;
     let error = row
         .error_json
         .map(|s| parse_json_field(&s, &row.id, "error_json"))
@@ -248,6 +256,14 @@ mod tests {
 
         let mut row = valid_job_row();
         row.progress_json = "{invalid_json}".to_string();
+        let result = row_to_job(row);
+        assert!(matches!(
+            result,
+            Err(PortError::InvalidStoredData { field, .. }) if field == "progress_json"
+        ));
+
+        let mut row = valid_job_row();
+        row.progress_json = "{\"percent\":150,\"message\":\"invalid\"}".to_string();
         let result = row_to_job(row);
         assert!(matches!(
             result,

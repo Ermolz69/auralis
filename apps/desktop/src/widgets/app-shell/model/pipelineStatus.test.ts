@@ -18,7 +18,14 @@ const job = (overrides: Partial<JobDto> = {}): JobDto => ({
 });
 
 describe('pipeline status by job kind', () => {
-  it.each(['pending', 'running', 'completed', 'failed', 'cancelled'] satisfies JobStatus[])(
+  it.each([
+    'pending',
+    'running',
+    'cancelling',
+    'completed',
+    'failed',
+    'cancelled',
+  ] satisfies JobStatus[])(
     'ignores unrelated %s jobs even when their title and stage resemble subtitles',
     (status) => {
       const unrelated = job({ kind: 'export', status, stage: 'extractOrGenerateTranscript' });
@@ -30,18 +37,22 @@ describe('pipeline status by job kind', () => {
     },
   );
 
-  it.each(['pending', 'running', 'completed', 'failed', 'cancelled'] satisfies JobStatus[])(
-    'uses the %s status of the mapped kind only',
-    (status) => {
-      expect(
-        getPipelineStatus(true, [
-          job({ id: 'other-running', kind: 'export', status: 'running' }),
-          job({ id: 'other-failed', kind: 'transcription', status: 'failed' }),
-          job({ status }),
-        ]),
-      ).toEqual({ source: 'completed', subtitles: status });
-    },
-  );
+  it.each([
+    'pending',
+    'running',
+    'cancelling',
+    'completed',
+    'failed',
+    'cancelled',
+  ] satisfies JobStatus[])('uses the %s status of the mapped kind only', (status) => {
+    expect(
+      getPipelineStatus(true, [
+        job({ id: 'other-running', kind: 'export', status: 'running' }),
+        job({ id: 'other-failed', kind: 'transcription', status: 'failed' }),
+        job({ status }),
+      ]),
+    ).toEqual({ source: 'completed', subtitles: status });
+  });
 
   it('shows a successful retry instead of a previous error regardless of array order', () => {
     const failed = job({ id: 'failed', status: 'failed', updatedAt: '2026-09-03T12:00:00Z' });

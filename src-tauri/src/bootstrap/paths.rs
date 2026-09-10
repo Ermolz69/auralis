@@ -6,6 +6,17 @@ const PROJECTS_DIRECTORY_NAME: &str = "projects";
 const LOGS_DIRECTORY_NAME: &str = "logs";
 const CACHE_DIRECTORY_NAME: &str = "cache";
 const WORKSPACES_DIRECTORY_NAME: &str = "workspaces";
+const NATIVE_E2E_DATA_DIR_ENV: &str = "AURALIS_NATIVE_E2E_DATA_DIR";
+
+#[derive(Debug, thiserror::Error)]
+pub enum AppPathsError {
+    #[error(transparent)]
+    Tauri(#[from] tauri::Error),
+    #[error("{NATIVE_E2E_DATA_DIR_ENV} is required for a native E2E build")]
+    MissingNativeE2eRoot,
+    #[error("{NATIVE_E2E_DATA_DIR_ENV} must be an absolute path: {0}")]
+    RelativeNativeE2eRoot(PathBuf),
+}
 
 /// Centralized layout for runtime files owned by the application.
 ///
@@ -17,7 +28,11 @@ pub struct AppPaths {
 }
 
 impl AppPaths {
-    pub fn resolve<R: tauri::Runtime, M: Manager<R>>(manager: &M) -> Result<Self, tauri::Error> {
+    pub fn resolve<R: tauri::Runtime, M: Manager<R>>(manager: &M) -> Result<Self, AppPathsError> {
+        if native_e2e_build() {
+            return native_e2e_root(std::env::var_os(NATIVE_E2E_DATA_DIR_ENV)).map(Self::new);
+        }
+
         Ok(Self::new(manager.path().app_data_dir()?))
     }
 
@@ -50,6 +65,21 @@ impl AppPaths {
             .join(CACHE_DIRECTORY_NAME)
             .join(WORKSPACES_DIRECTORY_NAME)
     }
+}
+
+fn native_e2e_build() -> bool {
+    cfg!(feature = "native-e2e")
+}
+
+fn native_e2e_root(value: Option<std::ffi::OsString>) -> Result<PathBuf, AppPathsError> {
+    let root = value
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .ok_or(AppPathsError::MissingNativeE2eRoot)?;
+    if !root.is_absolute() {
+        return Err(AppPathsError::RelativeNativeE2eRoot(root));
+    }
+    Ok(root)
 }
 
 #[cfg(test)]
@@ -105,5 +135,23 @@ mod tests {
             .expect("valid second project ID");
 
         assert_ne!(paths.project(&first), paths.project(&second));
+    }
+
+    #[test]
+    fn native_e2e_root_must_be_present_and_absolute() {
+        assert!(matches!(
+            native_e2e_root(None),
+            Err(AppPathsError::MissingNativeE2eRoot)
+        ));
+        assert!(matches!(
+            native_e2e_root(Some("relative/data".into())),
+            Err(AppPathsError::RelativeNativeE2eRoot(_))
+        ));
+
+        let absolute = std::env::temp_dir().join("auralis-native-e2e");
+        assert_eq!(
+            native_e2e_root(Some(absolute.clone().into_os_string())).expect("absolute E2E root"),
+            absolute
+        );
     }
 }

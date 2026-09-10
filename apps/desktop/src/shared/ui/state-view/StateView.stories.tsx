@@ -1,10 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Button } from '../button';
+import { icons } from '../icon/registry';
 import { StateView } from './StateView';
 
 const meta = {
-  title: 'Shared UI/StateView',
+  title: 'Design System/Components/StateView',
   component: StateView,
+  parameters: {
+    controls: {
+      disable: false,
+      include: ['icon', 'tone', 'density', 'loading'],
+    },
+    docs: {
+      description: {
+        component:
+          'Standardized empty, error, and explanatory state with an optional recovery action.',
+      },
+    },
+  },
   args: {
     icon: 'Inbox',
     title: 'Nothing here yet',
@@ -12,6 +25,12 @@ const meta = {
     className: 'min-h-64',
   },
   tags: ['autodocs'],
+  argTypes: {
+    icon: { control: 'select', options: Object.keys(icons) },
+    tone: { control: 'select', options: ['neutral', 'danger'] },
+    density: { control: 'select', options: ['default', 'compact'] },
+    loading: { control: 'boolean' },
+  },
 } satisfies Meta<typeof StateView>;
 
 export default meta;

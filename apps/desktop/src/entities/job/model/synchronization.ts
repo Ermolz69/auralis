@@ -90,17 +90,23 @@ export class JobStoreSynchronizer {
     let unlistenInv: UnlistenFn | null = null;
 
     try {
-      unlistenJ = await subscribeJobEvents((event) => {
-        this.handleEvent(event, expectedGen);
-      });
+      unlistenJ = await subscribeJobEvents(
+        (event) => {
+          this.handleEvent(event, expectedGen);
+        },
+        () => this.handleInvalidation(expectedGen),
+      );
       if (this.activeGeneration !== expectedGen) {
         if (unlistenJ) unlistenJ();
         return;
       }
 
-      unlistenInv = await subscribeJobsInvalidated(() => {
-        this.handleInvalidation(expectedGen);
-      });
+      unlistenInv = await subscribeJobsInvalidated(
+        () => {
+          this.handleInvalidation(expectedGen);
+        },
+        () => this.handleInvalidation(expectedGen),
+      );
       if (this.activeGeneration !== expectedGen) {
         if (unlistenJ) unlistenJ();
         if (unlistenInv) unlistenInv();

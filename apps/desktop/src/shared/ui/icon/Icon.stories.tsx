@@ -2,17 +2,28 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import React from 'react';
 import { Icon } from './Icon';
+import { icons } from './registry';
 import { Button } from '../button';
 
 const meta = {
-  title: 'Shared UI/Icon',
+  title: 'Design System/Components/Icon',
   component: Icon,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['name', 'size', 'color'],
+    },
+    docs: {
+      description: {
+        component:
+          'Typed Lucide icon adapter with consistent sizing, semantic colors, and accessible labeling.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {
-    name: { control: 'text' },
+    name: { control: 'select', options: Object.keys(icons) },
     size: { control: 'select', options: ['sm', 'md', 'lg'] },
     color: {
       control: 'select',

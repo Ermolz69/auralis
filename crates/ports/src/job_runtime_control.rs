@@ -17,9 +17,8 @@ pub enum RuntimeTaskOutcome {
 }
 
 pub struct RuntimeCompletion {
-    pub state: std::sync::atomic::AtomicU8,
-    pub outcome: std::sync::Mutex<Option<RuntimeTaskOutcome>>,
-    pub notify: tokio::sync::Notify,
+    outcome: std::sync::Mutex<Option<RuntimeTaskOutcome>>,
+    completed: tokio_util::sync::CancellationToken,
 }
 
 impl Default for RuntimeCompletion {
@@ -31,10 +30,38 @@ impl Default for RuntimeCompletion {
 impl RuntimeCompletion {
     pub fn new() -> Self {
         Self {
-            state: std::sync::atomic::AtomicU8::new(0),
             outcome: std::sync::Mutex::new(None),
-            notify: tokio::sync::Notify::new(),
+            completed: tokio_util::sync::CancellationToken::new(),
         }
+    }
+
+    pub fn record_outcome(&self, outcome: RuntimeTaskOutcome) -> RuntimeTaskOutcome {
+        let mut current = self
+            .outcome
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        *current = Some(outcome);
+        outcome
+    }
+
+    pub fn finish(&self, fallback: RuntimeTaskOutcome) {
+        let mut current = self
+            .outcome
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if current.is_none() {
+            *current = Some(fallback);
+        }
+        drop(current);
+        self.completed.cancel();
+    }
+
+    pub async fn wait(&self) -> RuntimeTaskOutcome {
+        self.completed.cancelled().await;
+        self.outcome
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .unwrap_or(RuntimeTaskOutcome::RecoveryRequired)
     }
 }
 
@@ -108,5 +135,41 @@ pub trait JobRuntimeControlPort: Send + Sync {
         _deadline: std::time::Duration,
     ) -> Result<RuntimeShutdownReport, PortError> {
         Ok(RuntimeShutdownReport::default())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RuntimeCompletion, RuntimeTaskOutcome};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn cancellation_completion_is_sticky_for_late_and_concurrent_waiters() {
+        let completion = Arc::new(RuntimeCompletion::new());
+        completion.record_outcome(RuntimeTaskOutcome::Cancelled);
+        completion.finish(RuntimeTaskOutcome::RecoveryRequired);
+
+        let late = tokio::time::timeout(Duration::from_millis(100), completion.wait()).await;
+        assert_eq!(late, Ok(RuntimeTaskOutcome::Cancelled));
+
+        let waiters = (0..256).map(|_| {
+            let completion = completion.clone();
+            tokio::spawn(async move { completion.wait().await })
+        });
+        for waiter in waiters {
+            assert!(matches!(waiter.await, Ok(RuntimeTaskOutcome::Cancelled)));
+        }
+    }
+
+    #[tokio::test]
+    async fn cancellation_completion_uses_fallback_when_task_has_no_outcome() {
+        let completion = RuntimeCompletion::new();
+        completion.finish(RuntimeTaskOutcome::RecoveryRequired);
+
+        assert_eq!(
+            completion.wait().await,
+            RuntimeTaskOutcome::RecoveryRequired
+        );
     }
 }

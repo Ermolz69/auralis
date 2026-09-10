@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PipelineStep, View } from '@/shared/router';
 import { PipelinePanel } from './PipelinePanel';
 import { PrimaryNavigation } from './PrimaryNavigation';
@@ -18,7 +18,36 @@ type Props = {
 
 export function AppSidebar(props: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  const stopDraggingRef = useRef<(() => void) | null>(null);
   const [projectsHeight, setProjectsHeight] = useState(190);
+
+  useEffect(
+    () => () => {
+      stopDraggingRef.current?.();
+    },
+    [],
+  );
+
+  const startDragging = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    stopDraggingRef.current?.();
+    const startY = event.clientY;
+    const startHeight = projectsHeight;
+    const maxHeight = Math.max(150, (bodyRef.current?.clientHeight ?? 0) - 120);
+    const move = (moveEvent: PointerEvent) =>
+      setProjectsHeight(
+        Math.min(maxHeight, Math.max(120, startHeight + moveEvent.clientY - startY)),
+      );
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      if (stopDraggingRef.current === stop) stopDraggingRef.current = null;
+    };
+    stopDraggingRef.current = stop;
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+  };
+
   return (
     <aside className="fixed inset-x-0 bottom-0 z-40 flex h-14 border-t border-border bg-bg lg:static lg:h-full lg:w-[234px] lg:shrink-0 lg:flex-col lg:border-r lg:border-t-0">
       <div className="hidden h-12 shrink-0 items-center gap-2.5 border-b border-border px-3 lg:flex">
@@ -37,22 +66,7 @@ export function AppSidebar(props: Props) {
           aria-valuenow={Math.round(projectsHeight)}
           tabIndex={0}
           title="Перетащите, чтобы изменить высоту панелей"
-          onPointerDown={(event) => {
-            event.preventDefault();
-            const startY = event.clientY;
-            const startHeight = projectsHeight;
-            const maxHeight = Math.max(150, (bodyRef.current?.clientHeight ?? 0) - 120);
-            const move = (moveEvent: PointerEvent) =>
-              setProjectsHeight(
-                Math.min(maxHeight, Math.max(120, startHeight + moveEvent.clientY - startY)),
-              );
-            const end = () => {
-              window.removeEventListener('pointermove', move);
-              window.removeEventListener('pointerup', end);
-            };
-            window.addEventListener('pointermove', move);
-            window.addEventListener('pointerup', end);
-          }}
+          onPointerDown={startDragging}
           onKeyDown={(event) => {
             if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
             event.preventDefault();

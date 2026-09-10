@@ -1,7 +1,8 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use domain::job::{Job, JobId as DomainJobId, JobKind};
+use domain::job::{Job, JobId as DomainJobId, JobKind, JobStatus};
 use domain::project::ProjectId as DomainProjectId;
 use ports::error::PortError;
 use ports::job_scheduler::JobLifecycleEvent;
@@ -11,6 +12,13 @@ use super::cache::JobCache;
 use super::mapper::map_job_to_scheduled;
 use super::runtime_registry::RuntimeRegistry;
 pub type JobEventEmitter = Arc<dyn Fn(JobLifecycleEvent) + Send + Sync + 'static>;
+
+fn is_active_job(job: &Job) -> bool {
+    matches!(
+        job.status(),
+        JobStatus::Pending | JobStatus::Running | JobStatus::Cancelling
+    )
+}
 
 #[derive(Clone)]
 pub struct JobManager {
@@ -41,14 +49,24 @@ impl JobManager {
     pub async fn load_recent_jobs(&self, limit: usize) -> Result<(), PortError> {
         let recent = self.repo.list_recent(limit).await?;
         for job in recent {
-            self.cache.insert(job).await;
+            self.cache.track_persisted(&job).await;
         }
         Ok(())
     }
 
     #[cfg(test)]
-    pub(crate) async fn cached_job_for_test(&self, job_id: &DomainJobId) -> Option<Job> {
-        self.cache.get(job_id).await
+    pub(crate) async fn is_job_cached_for_test(&self, job_id: &DomainJobId) -> bool {
+        self.cache.contains(job_id).await
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn active_cache_len_for_test(&self) -> usize {
+        self.cache.active_count().await
+    }
+
+    #[cfg(test)]
+    pub(crate) fn mutation_lock_count_for_test(&self) -> Result<usize, PortError> {
+        self.mutation_locks.entry_count()
     }
 
     pub async fn start_mock_dubbing_job_internal(
@@ -70,7 +88,7 @@ impl JobManager {
         })?;
 
         let job = self.repo.create(job).await?;
-        self.cache.insert(job.clone()).await;
+        self.cache.track_persisted(&job).await;
         self.emit_job_event(&job, ports::job_scheduler::JobLifecycleEventKind::Created);
 
         Ok(job)
@@ -79,7 +97,9 @@ impl JobManager {
     pub async fn get_job_internal(&self, job_id: &DomainJobId) -> Result<Option<Job>, PortError> {
         match self.repo.get(job_id).await? {
             Some(job) => {
-                self.cache.insert(job.clone()).await;
+                if !is_active_job(&job) {
+                    self.cache.remove(job_id).await;
+                }
                 Ok(Some(job))
             }
             None => {
@@ -91,22 +111,25 @@ impl JobManager {
 
     pub async fn list_jobs_internal(&self) -> Result<Vec<Job>, PortError> {
         let mut jobs = self.repo.list_recent(100).await?;
+        let mut listed_ids: HashSet<_> = jobs.iter().map(|job| job.id().clone()).collect();
 
-        // Merge active jobs from cache if any aren't returned by list_recent
-        let cache_jobs = self.cache.list_all().await;
-        for active_job in cache_jobs {
-            if matches!(
-                active_job.status(),
-                domain::job::JobStatus::Pending | domain::job::JobStatus::Running
-            ) {
-                if !jobs.iter().any(|j| j.id() == active_job.id()) {
-                    jobs.push(active_job.clone());
-                } else {
-                    // Update the repo version with the more up-to-date cache version (e.g. progress updates)
-                    if let Some(existing) = jobs.iter_mut().find(|j| j.id() == active_job.id()) {
-                        *existing = active_job;
-                    }
+        for job in &jobs {
+            if !is_active_job(job) {
+                self.cache.remove(job.id()).await;
+            }
+        }
+
+        for job_id in self.cache.list_active_ids().await {
+            if listed_ids.contains(&job_id) {
+                continue;
+            }
+
+            match self.repo.get(&job_id).await? {
+                Some(job) if is_active_job(&job) => {
+                    listed_ids.insert(job_id);
+                    jobs.push(job);
                 }
+                Some(_) | None => self.cache.remove(&job_id).await,
             }
         }
 
@@ -124,27 +147,33 @@ impl JobManager {
         F: FnOnce(&mut Job) -> Result<(), domain::error::DomainError>,
     {
         let lock = self.mutation_locks.get_lock(job_id)?;
-        let _guard = lock.lock().await;
+        let result = async {
+            let _guard = lock.lock().await;
 
-        let mut job = self
-            .repo
-            .get(job_id)
-            .await?
-            .ok_or_else(|| PortError::NotFound {
-                resource: format!("Job {}", job_id),
+            let mut job = self
+                .repo
+                .get(job_id)
+                .await?
+                .ok_or_else(|| PortError::NotFound {
+                    resource: format!("Job {}", job_id),
+                })?;
+
+            let expected_revision = job.revision();
+            action(&mut job).map_err(|e| PortError::Unexpected {
+                message: e.to_string(),
             })?;
 
-        let expected_revision = job.revision();
+            if job.revision() != expected_revision {
+                self.repo.save(&job, expected_revision).await?;
+                self.cache.track_persisted(&job).await;
+                self.emit_job_event(&job, kind);
+            }
 
-        action(&mut job).map_err(|e| PortError::Unexpected {
-            message: e.to_string(),
-        })?;
+            Ok(job)
+        }
+        .await;
 
-        self.repo.save(&job, expected_revision).await?;
-        self.cache.insert(job.clone()).await;
-        self.emit_job_event(&job, kind);
-
-        Ok(job)
+        self.finish_mutation(job_id, &lock, result)
     }
 
     pub(super) async fn mutate_job_terminal<F>(
@@ -158,42 +187,83 @@ impl JobManager {
         F: FnOnce(&mut Job) -> Result<(), domain::error::DomainError>,
     {
         let lock = self.mutation_locks.get_lock(job_id)?;
-        let _guard = lock.lock().await;
+        let result = async {
+            let _guard = lock.lock().await;
 
-        let mut job = self
-            .repo
-            .get(job_id)
-            .await?
-            .ok_or_else(|| PortError::NotFound {
-                resource: format!("Job {}", job_id),
+            let mut job = self
+                .repo
+                .get(job_id)
+                .await?
+                .ok_or_else(|| PortError::NotFound {
+                    resource: format!("Job {}", job_id),
+                })?;
+
+            let expected_revision = job.revision();
+            action(&mut job).map_err(|e| PortError::Unexpected {
+                message: e.to_string(),
             })?;
 
-        let expected_revision = job.revision();
+            if job.revision() != expected_revision {
+                let command = ports::transaction::CommitTerminalJobUpdate {
+                    deduplication_key: format!("terminal-{}-{:?}", job.id(), outcome),
+                    project_id: job.project_id().clone(),
+                    job: job.clone(),
+                    expected_revision,
+                    outcome,
+                };
 
-        action(&mut job).map_err(|e| PortError::Unexpected {
-            message: e.to_string(),
-        })?;
+                self.storage_uow.commit_terminal_job_update(command).await?;
+                self.cache.track_persisted(&job).await;
+                self.emit_job_event(&job, kind);
+            }
 
-        let deduplication_key = format!("terminal-{}-{:?}", job.id(), outcome);
+            Ok(job)
+        }
+        .await;
 
-        let command = ports::transaction::CommitTerminalJobUpdate {
-            job: job.clone(),
-            expected_revision,
-            deduplication_key,
-            project_id: job.project_id().clone(),
-            outcome,
-        };
+        self.finish_mutation(job_id, &lock, result)
+    }
 
-        self.storage_uow.commit_terminal_job_update(command).await?;
-
-        self.cache.insert(job.clone()).await;
-        self.emit_job_event(&job, kind);
-
-        Ok(job)
+    fn finish_mutation<T>(
+        &self,
+        job_id: &DomainJobId,
+        lock: &Arc<tokio::sync::Mutex<()>>,
+        result: Result<T, PortError>,
+    ) -> Result<T, PortError> {
+        match (result, self.mutation_locks.release_if_unused(job_id, lock)) {
+            (Ok(value), Ok(())) => Ok(value),
+            (Ok(_), Err(cleanup_error)) => Err(cleanup_error),
+            (Err(error), _) => Err(error),
+        }
     }
 
     pub async fn remove_cancel_handle(&self, id: &DomainJobId) {
         self.runtime_registry.lock_entries().entries.remove(id);
+    }
+
+    pub(super) async fn cancel_runtime_and_wait(
+        &self,
+        job_id: &DomainJobId,
+    ) -> Option<ports::job_runtime_control::RuntimeTaskOutcome> {
+        let completion = {
+            let mut registry = self.runtime_registry.lock_entries();
+            match registry.entries.get(job_id) {
+                Some(super::runtime_registry::JobRuntimeEntry::Attached { task, .. }) => {
+                    task.cancel.cancel();
+                    Some(task.completion.clone())
+                }
+                Some(super::runtime_registry::JobRuntimeEntry::Reserved { .. }) => {
+                    registry.entries.remove(job_id);
+                    None
+                }
+                None => None,
+            }
+        };
+
+        match completion {
+            Some(completion) => Some(completion.wait().await),
+            None => None,
+        }
     }
 
     pub(super) fn emit_job_event(
@@ -322,13 +392,8 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
             jobs: std::collections::HashMap::new(),
         };
 
-        struct ReaperEntry {
-            job_id: domain::job::JobId,
-            join_handle: tokio::task::JoinHandle<ports::job_runtime_control::RuntimeTaskOutcome>,
-            abort_handle: tokio::task::AbortHandle,
-        }
-
-        let mut reaper_entries = Vec::new();
+        let mut abort_handles = std::collections::HashMap::new();
+        let mut reaper = futures::stream::FuturesUnordered::new();
 
         {
             let mut registry = self.runtime_registry.lock_entries();
@@ -336,11 +401,11 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                 match registry.entries.remove(job_id) {
                     Some(super::runtime_registry::JobRuntimeEntry::Attached { task, .. }) => {
                         task.cancel.cancel();
-                        let abort_handle = task.join_handle.abort_handle();
-                        reaper_entries.push(ReaperEntry {
-                            job_id: job_id.clone(),
-                            join_handle: task.join_handle,
-                            abort_handle,
+                        let job_id = job_id.clone();
+                        abort_handles.insert(job_id.clone(), task.join_handle.abort_handle());
+                        reaper.push(async move {
+                            let join_result = task.join_handle.await;
+                            (job_id, join_result)
                         });
                     }
                     Some(super::runtime_registry::JobRuntimeEntry::Reserved { .. }) => {
@@ -359,126 +424,67 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
             }
         }
 
-        // 1. Cooperative Wait Phase
-        let cooperative_timeout = std::time::Duration::from_secs(5);
-        let _ = tokio::time::timeout(cooperative_timeout, async {
-            let mut futs = Vec::new();
-            for entry in &mut reaper_entries {
-                futs.push(async {
-                    let _ = (&mut entry.join_handle).await;
-                });
-            }
-            futures::future::join_all(futs).await;
-        })
-        .await;
+        if !abort_handles.is_empty() {
+            let cooperative_timeout = tokio::time::sleep(std::time::Duration::from_secs(5));
+            tokio::pin!(cooperative_timeout);
 
-        // Extract finished entries after cooperative timeout
-        let mut remaining = Vec::new();
-        for mut entry in reaper_entries.into_iter() {
-            if entry.join_handle.is_finished() {
-                let outcome = match (&mut entry.join_handle).await {
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::Completed) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Completed
+            while !abort_handles.is_empty() {
+                tokio::select! {
+                    _ = &mut cooperative_timeout => break,
+                    result = futures::StreamExt::next(&mut reaper) => {
+                        let Some((job_id, join_result)) = result else {
+                            break;
+                        };
+                        abort_handles.remove(&job_id);
+                        report.jobs.insert(
+                            job_id,
+                            classify_cleanup_outcome(join_result, false),
+                        );
                     }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::Cancelled) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::CooperativeCancelled
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::DeletedNoOp) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Completed
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::RecoveryRequired) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::Panicked) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Panicked
-                    }
-                    Err(e) if e.is_panic() => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Panicked
-                    }
-                    Err(e) if e.is_cancelled() => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::ForcedAborted
-                    }
-                    Err(_) => ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed,
-                };
-                report.jobs.insert(entry.job_id, outcome);
-            } else {
-                remaining.push(entry);
+                }
             }
         }
 
-        // 2. Forced Abort Phase
-        for entry in &remaining {
-            entry.abort_handle.abort();
+        for abort_handle in abort_handles.values() {
+            abort_handle.abort();
         }
 
-        let abort_timeout = std::time::Duration::from_secs(2);
-        let _ = tokio::time::timeout(abort_timeout, async {
-            let mut futs = Vec::new();
-            for entry in &mut remaining {
-                futs.push(async {
-                    let _ = (&mut entry.join_handle).await;
-                });
-            }
-            futures::future::join_all(futs).await;
-        })
-        .await;
+        if !abort_handles.is_empty() {
+            let abort_timeout = tokio::time::sleep(std::time::Duration::from_secs(2));
+            tokio::pin!(abort_timeout);
 
-        // Extract finished entries after abort timeout
-        let mut unconfirmed = Vec::new();
-        for mut entry in remaining.into_iter() {
-            if entry.join_handle.is_finished() {
-                let outcome = match (&mut entry.join_handle).await {
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::Cancelled) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::ForcedAborted
+            while !abort_handles.is_empty() {
+                tokio::select! {
+                    _ = &mut abort_timeout => break,
+                    result = futures::StreamExt::next(&mut reaper) => {
+                        let Some((job_id, join_result)) = result else {
+                            break;
+                        };
+                        abort_handles.remove(&job_id);
+                        report.jobs.insert(
+                            job_id,
+                            classify_cleanup_outcome(join_result, true),
+                        );
                     }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::Completed) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Completed
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::DeletedNoOp) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Completed
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::RecoveryRequired) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed
-                    }
-                    Ok(ports::job_runtime_control::RuntimeTaskOutcome::Panicked) => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Panicked
-                    }
-                    Err(e) if e.is_panic() => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::Panicked
-                    }
-                    Err(e) if e.is_cancelled() => {
-                        ports::job_runtime_control::RuntimeCleanupOutcome::ForcedAborted
-                    }
-                    Err(_) => ports::job_runtime_control::RuntimeCleanupOutcome::JoinFailed,
-                };
-                report.jobs.insert(entry.job_id, outcome);
-            } else {
-                report.jobs.insert(
-                    entry.job_id.clone(),
-                    ports::job_runtime_control::RuntimeCleanupOutcome::Unconfirmed,
-                );
-                unconfirmed.push(entry);
+                }
             }
         }
 
-        // Send unconfirmed handles to background quarantine (fire and forget for now, but avoids detaching them locally by leaking or moving to a static registry)
-        if !unconfirmed.is_empty() {
-            // Note: Quarantine registry should take ownership.
-            // In a full implementation we'd pass them to a dedicated QuarantineRegistry.
-            // For now, we spawn a detached background task that awaits them to ensure they eventually clean up.
+        for job_id in abort_handles.keys() {
+            report.jobs.insert(
+                job_id.clone(),
+                ports::job_runtime_control::RuntimeCleanupOutcome::Unconfirmed,
+            );
+        }
+
+        if !abort_handles.is_empty() {
             let cache = self.cache.clone();
             let locks = self.mutation_locks.clone();
             tokio::spawn(async move {
-                for mut entry in unconfirmed {
-                    let _ = (&mut entry.join_handle).await;
-                    cache.remove(&entry.job_id).await;
-                    if let Err(_err) = locks.remove_if_unused(&entry.job_id) {
+                while let Some((job_id, _join_result)) = futures::StreamExt::next(&mut reaper).await
+                {
+                    cache.remove(&job_id).await;
+                    if let Err(_err) = locks.remove_if_unused(&job_id) {
                         tracing::error!(
                             error = %common::observability::redaction::DiagnosticError {
                                 kind: "JobMutationLockCleanupFailed",
@@ -597,9 +603,19 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                 abort_handle.abort();
             }
 
-            while !abort_handles.is_empty() {
-                match futures::StreamExt::next(&mut stream).await {
-                    Some((job_id, join_res)) => {
+            let abort_budget = deadline
+                .checked_sub(start_time.elapsed())
+                .unwrap_or(std::time::Duration::ZERO);
+            let timeout_fut = tokio::time::sleep(abort_budget);
+            tokio::pin!(timeout_fut);
+
+            while !abort_handles.is_empty() && abort_budget > std::time::Duration::ZERO {
+                tokio::select! {
+                    _ = &mut timeout_fut => break,
+                    result = futures::StreamExt::next(&mut stream) => {
+                        let Some((job_id, join_res)) = result else {
+                            break;
+                        };
                         abort_handles.remove(&job_id);
                         classify_outcome(join_res, &mut report, true);
 
@@ -609,23 +625,65 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                         drop(_guard);
                         self.mutation_locks.release_if_unused(&job_id, &lock)?;
                     }
-                    None => {
-                        for job_id in abort_handles.keys() {
-                            report.unconfirmed_count += 1;
+                }
+            }
 
-                            let lock = self.mutation_locks.get_lock(job_id)?;
-                            let _guard = lock.lock().await;
-                            self.cache.remove(job_id).await;
-                            drop(_guard);
-                            self.mutation_locks.release_if_unused(job_id, &lock)?;
-                        }
-                        break;
-                    }
-                };
+            report.unconfirmed_count += abort_handles.len();
+            for job_id in abort_handles.keys() {
+                let lock = self.mutation_locks.get_lock(job_id)?;
+                let _guard = lock.lock().await;
+                self.cache.remove(job_id).await;
+                drop(_guard);
+                self.mutation_locks.release_if_unused(job_id, &lock)?;
             }
         }
 
         Ok(report)
+    }
+}
+
+fn classify_cleanup_outcome(
+    join_result: Result<ports::job_runtime_control::RuntimeTaskOutcome, tokio::task::JoinError>,
+    was_aborted: bool,
+) -> ports::job_runtime_control::RuntimeCleanupOutcome {
+    use ports::job_runtime_control::RuntimeCleanupOutcome;
+
+    match classify_join_result(join_result, was_aborted) {
+        ClassifiedJoinResult::Completed => RuntimeCleanupOutcome::Completed,
+        ClassifiedJoinResult::CooperativeCancelled => RuntimeCleanupOutcome::CooperativeCancelled,
+        ClassifiedJoinResult::ForcedAborted => RuntimeCleanupOutcome::ForcedAborted,
+        ClassifiedJoinResult::Panicked => RuntimeCleanupOutcome::Panicked,
+        ClassifiedJoinResult::JoinFailed => RuntimeCleanupOutcome::JoinFailed,
+    }
+}
+
+enum ClassifiedJoinResult {
+    Completed,
+    CooperativeCancelled,
+    ForcedAborted,
+    Panicked,
+    JoinFailed,
+}
+
+fn classify_join_result(
+    join_result: Result<ports::job_runtime_control::RuntimeTaskOutcome, tokio::task::JoinError>,
+    was_aborted: bool,
+) -> ClassifiedJoinResult {
+    use ports::job_runtime_control::RuntimeTaskOutcome;
+
+    match join_result {
+        Ok(RuntimeTaskOutcome::Completed | RuntimeTaskOutcome::DeletedNoOp) => {
+            ClassifiedJoinResult::Completed
+        }
+        Ok(RuntimeTaskOutcome::Cancelled) if was_aborted => ClassifiedJoinResult::ForcedAborted,
+        Ok(RuntimeTaskOutcome::Cancelled) => ClassifiedJoinResult::CooperativeCancelled,
+        Ok(RuntimeTaskOutcome::ApplicationFailed | RuntimeTaskOutcome::RecoveryRequired) => {
+            ClassifiedJoinResult::JoinFailed
+        }
+        Ok(RuntimeTaskOutcome::Panicked) => ClassifiedJoinResult::Panicked,
+        Err(error) if error.is_panic() => ClassifiedJoinResult::Panicked,
+        Err(error) if error.is_cancelled() => ClassifiedJoinResult::ForcedAborted,
+        Err(_) => ClassifiedJoinResult::JoinFailed,
     }
 }
 
@@ -634,36 +692,20 @@ fn classify_outcome(
     report: &mut ports::job_runtime_control::RuntimeShutdownReport,
     was_aborted: bool,
 ) {
-    match join_res {
-        Ok(ports::job_runtime_control::RuntimeTaskOutcome::Completed) => {
+    match classify_join_result(join_res, was_aborted) {
+        ClassifiedJoinResult::Completed => {
             report.completed_count += 1;
         }
-        Ok(ports::job_runtime_control::RuntimeTaskOutcome::Cancelled) => {
-            if was_aborted {
-                report.forced_aborted_count += 1;
-            } else {
-                report.cooperative_cancelled_count += 1;
-            }
+        ClassifiedJoinResult::CooperativeCancelled => {
+            report.cooperative_cancelled_count += 1;
         }
-        Ok(ports::job_runtime_control::RuntimeTaskOutcome::DeletedNoOp) => {
-            report.completed_count += 1;
-        }
-        Ok(ports::job_runtime_control::RuntimeTaskOutcome::ApplicationFailed) => {
-            report.join_failed_count += 1;
-        }
-        Ok(ports::job_runtime_control::RuntimeTaskOutcome::RecoveryRequired) => {
-            report.join_failed_count += 1;
-        }
-        Ok(ports::job_runtime_control::RuntimeTaskOutcome::Panicked) => {
-            report.panicked_count += 1;
-        }
-        Err(e) if e.is_panic() => {
-            report.panicked_count += 1;
-        }
-        Err(e) if e.is_cancelled() => {
+        ClassifiedJoinResult::ForcedAborted => {
             report.forced_aborted_count += 1;
         }
-        Err(_) => {
+        ClassifiedJoinResult::Panicked => {
+            report.panicked_count += 1;
+        }
+        ClassifiedJoinResult::JoinFailed => {
             report.join_failed_count += 1;
         }
     }

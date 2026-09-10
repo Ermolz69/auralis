@@ -50,7 +50,7 @@ export function CancelJobButton({ jobId, onCancelled, className }: CancelJobButt
       </Button>
       {success && !error && (
         <p id={successId} className="max-w-48 text-right text-xs text-muted" role="status">
-          Cancellation requested.
+          Runtime stopped and cancellation confirmed.
         </p>
       )}
       {error && (

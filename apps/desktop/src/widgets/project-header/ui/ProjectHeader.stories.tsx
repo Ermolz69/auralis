@@ -28,10 +28,16 @@ const localProject: Project = {
 };
 
 const meta = {
-  title: 'Widgets/ProjectHeader/States',
+  title: 'Product/Widgets/Project Header/States',
   component: ProjectHeader,
   parameters: {
     layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'Workspace header with privacy-safe source presentation, status, navigation, and constrained long titles.',
+      },
+    },
   },
   tags: ['autodocs'],
   render: ({ project }: { project: Project }) => <ProjectHeaderStory project={project} />,

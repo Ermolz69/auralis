@@ -1,10 +1,10 @@
 pub mod cleanup;
+mod types;
 pub mod usecase;
 pub mod vtt_parser;
 
-pub use usecase::{
-    ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesResponse, ImportYoutubeSubtitlesUseCase,
-};
+pub use types::{ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesResponse};
+pub use usecase::ImportYoutubeSubtitlesUseCase;
 
 #[cfg(test)]
 pub mod mocks;

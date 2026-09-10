@@ -46,6 +46,9 @@ export function collectMetadataErrors({
 
 export function verifyReleaseMetadata(rootDir) {
   const workspaceCargo = fs.readFileSync(path.join(rootDir, 'Cargo.toml'), 'utf8');
+  const tauriCargo = fs.readFileSync(path.join(rootDir, 'src-tauri/Cargo.toml'), 'utf8');
+  const rootPackage = readJson(path.join(rootDir, 'package.json'));
+  const desktopPackage = readJson(path.join(rootDir, 'apps/desktop/package.json'));
   const members = workspaceMembers(workspaceCargo);
   const memberCargos = members.map((member) => [
     member,
@@ -54,12 +57,56 @@ export function verifyReleaseMetadata(rootDir) {
   const errors = collectMetadataErrors({
     workspaceCargo,
     memberCargos,
-    rootPackage: readJson(path.join(rootDir, 'package.json')),
-    desktopPackage: readJson(path.join(rootDir, 'apps/desktop/package.json')),
+    rootPackage,
+    desktopPackage,
     tauriConfig: readJson(path.join(rootDir, 'src-tauri/tauri.conf.json')),
   });
+  errors.push(
+    ...collectTauriVersionErrors({ workspaceCargo, tauriCargo, rootPackage, desktopPackage }),
+  );
   if (errors.length > 0) throw new Error(`Invalid release metadata:\n- ${errors.join('\n- ')}`);
   verifyReleaseWorkflow(rootDir);
+}
+
+export function collectTauriVersionErrors({
+  workspaceCargo,
+  tauriCargo,
+  rootPackage,
+  desktopPackage,
+}) {
+  const errors = [];
+  const tauri = cargoDependencyVersion(workspaceCargo, 'tauri');
+  const api = desktopPackage.dependencies?.['@tauri-apps/api'];
+  const cli = rootPackage.devDependencies?.['@tauri-apps/cli'];
+
+  for (const [name, version] of [
+    ['@tauri-apps/api', api],
+    ['@tauri-apps/cli', cli],
+  ]) {
+    if (!isExactSemver(version)) {
+      errors.push(`${name} must use an exact semantic version`);
+    } else if (!sameMajorMinor(tauri?.version, version)) {
+      errors.push(`${name} must use the same major/minor line as the tauri crate`);
+    }
+  }
+
+  for (const plugin of ['dialog', 'process', 'updater']) {
+    const npmName = `@tauri-apps/plugin-${plugin}`;
+    const crateName = `tauri-plugin-${plugin}`;
+    const npmVersion = desktopPackage.dependencies?.[npmName];
+    const cargoVersion = cargoDependencyUsesWorkspace(tauriCargo, crateName)
+      ? cargoDependencyVersion(workspaceCargo, crateName)
+      : cargoDependencyVersion(tauriCargo, crateName);
+
+    if (!isExactSemver(npmVersion)) {
+      errors.push(`${npmName} must use an exact semantic version`);
+    }
+    if (!cargoVersion || cargoVersion.raw !== `=${npmVersion}`) {
+      errors.push(`${crateName} must exactly match ${npmName}`);
+    }
+  }
+
+  return errors;
 }
 
 export function verifyReleaseWorkflow(rootDir) {
@@ -182,6 +229,32 @@ function stringValue(tomlSection, key) {
 function arrayValues(tomlSection, key) {
   const values = tomlSection.match(new RegExp(`^${key}\\s*=\\s*\\[([^\\]]*)\\]`, 'm'))?.[1];
   return values ? [...values.matchAll(/"([^"]+)"/g)].map((match) => match[1]) : [];
+}
+
+function cargoDependencyVersion(toml, name) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = toml.match(
+    new RegExp(`^${escapedName}\\s*=\\s*(?:"([^"]+)"|\\{[^}]*version\\s*=\\s*"([^"]+)")`, 'm'),
+  );
+  const raw = match?.[1] ?? match?.[2];
+  return raw ? { raw, version: raw.replace(/^=/, '') } : null;
+}
+
+function cargoDependencyUsesWorkspace(toml, name) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(
+    `^${escapedName}(?:\\.workspace\\s*=\\s*true|\\s*=\\s*\\{[^}]*workspace\\s*=\\s*true)`,
+    'm',
+  ).test(toml);
+}
+
+function isExactSemver(value) {
+  return typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value);
+}
+
+function sameMajorMinor(left, right) {
+  if (!left || !right) return false;
+  return left.split('.').slice(0, 2).join('.') === right.split('.').slice(0, 2).join('.');
 }
 
 function readJson(file) {

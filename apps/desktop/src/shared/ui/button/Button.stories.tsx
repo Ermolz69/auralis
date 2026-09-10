@@ -4,10 +4,20 @@ import { Button } from './Button';
 import { Icon } from '../icon';
 
 const meta = {
-  title: 'Shared UI/Button',
+  title: 'Design System/Components/Button',
   component: Button,
   parameters: {
     layout: 'centered',
+    controls: {
+      disable: false,
+      include: ['variant', 'size', 'disabled', 'loading', 'fullWidth'],
+    },
+    docs: {
+      description: {
+        component:
+          'Primary action primitive with semantic variants, three sizes, loading feedback, and disabled behavior.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {

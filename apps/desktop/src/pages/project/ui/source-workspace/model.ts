@@ -47,6 +47,7 @@ function jobState(status: string) {
       {
         pending: 'ожидает запуска',
         running: 'выполняется',
+        cancelling: 'останавливается',
         completed: 'завершено',
         failed: 'ошибка',
         cancelled: 'отменено',

@@ -7,7 +7,9 @@ tasks:
       - task: lint
 
   check:
+    desc: Validate mandatory documents and local Markdown links
     cmds:
+      - node --test tools/scripts/check-docs.test.mjs
       - node tools/scripts/check-docs.mjs
 
   lint:

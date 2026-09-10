@@ -18,10 +18,12 @@ async fn repository_contract(repo: &dyn ProjectRepository) {
         Some(LanguageCode("en".into())),
         Some(LanguageCode("ru".into())),
     );
-    project.set_transcript(Transcript {
-        language: "en".into(),
-        segments: vec![],
-    });
+    project
+        .set_transcript(Transcript {
+            language: "en".into(),
+            segments: vec![],
+        })
+        .unwrap();
     let mut snapshot = project.to_snapshot();
     snapshot.last_terminal_job_id = Some(JobId::new());
     let project = repo

@@ -9,7 +9,14 @@ export function isSafeRevision(revision: unknown): boolean {
   );
 }
 
-const VALID_STATUSES = new Set(['pending', 'running', 'completed', 'failed', 'cancelled']);
+const VALID_STATUSES = new Set([
+  'pending',
+  'running',
+  'cancelling',
+  'completed',
+  'failed',
+  'cancelled',
+]);
 
 export function validateJobDto(job: unknown): job is Job {
   if (!job || typeof job !== 'object') return false;
@@ -25,11 +32,20 @@ export function validateJobDto(job: unknown): job is Job {
 
   if (!candidate.progress || typeof candidate.progress !== 'object') return false;
   const progress = candidate.progress as Record<string, unknown>;
-  if (typeof progress.percent !== 'number') return false;
+  if (!isBoundedInteger(progress.percent, 0, 100)) return false;
   if (typeof progress.message !== 'string') return false;
   if (progress.currentStep !== null && typeof progress.currentStep !== 'string') return false;
-  if (progress.processedItems !== null && typeof progress.processedItems !== 'number') return false;
-  if (progress.totalItems !== null && typeof progress.totalItems !== 'number') return false;
+  if (progress.processedItems !== null && !isNonNegativeSafeInteger(progress.processedItems)) {
+    return false;
+  }
+  if (progress.totalItems !== null && !isNonNegativeSafeInteger(progress.totalItems)) return false;
+  if (
+    typeof progress.processedItems === 'number' &&
+    typeof progress.totalItems === 'number' &&
+    progress.processedItems > progress.totalItems
+  ) {
+    return false;
+  }
 
   if (candidate.error !== null && typeof candidate.error !== 'string') return false;
   if (typeof candidate.createdAt !== 'string') return false;
@@ -38,10 +54,19 @@ export function validateJobDto(job: unknown): job is Job {
   return true;
 }
 
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isBoundedInteger(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+}
+
 const VALID_EVENT_KINDS = new Set([
   'created',
   'started',
   'progressed',
+  'cancelling',
   'completed',
   'failed',
   'cancelled',

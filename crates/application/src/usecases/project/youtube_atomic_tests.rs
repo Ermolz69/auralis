@@ -5,7 +5,10 @@ use super::{
 };
 use crate::error::ApplicationError;
 use domain::project::{Project, ProjectId, ProjectStatus};
-use ports::{error::PortError, project_update::ProjectUpdate, repository::ProjectRepository};
+use ports::{
+    error::PortError, project_update::ProjectUpdate, repository::ProjectRepository,
+    storage::ArtifactStore, workspace::TempWorkspacePort, youtube_import::YoutubeImportState,
+};
 use std::sync::atomic::Ordering;
 
 fn request(project_id: Option<ProjectId>) -> CreateProjectFromYoutubeRequest {
@@ -102,11 +105,33 @@ async fn artifact_and_each_outbox_failure_roll_back_every_write_and_allow_retry(
                     .is_err()
             );
             fixture.assert_unchanged(original.as_ref()).await;
+            let pending = fixture.usecase().list_pending().await.unwrap();
+            assert_eq!(pending.len(), 1);
+            let session = &pending[0];
+            assert_eq!(session.state, YoutubeImportState::Failed);
+            let write = session.write.as_ref().unwrap();
+            assert!(
+                fixture
+                    .store
+                    .verify_staging(&write.staging_key, write.artifact.size_bytes.unwrap())
+                    .await
+                    .unwrap()
+            );
+            assert!(
+                fixture
+                    .workspace
+                    .resolve_key(&session.workspace_key)
+                    .await
+                    .unwrap()
+                    .exists()
+            );
             sqlx::raw_sql("DROP TRIGGER reject_import")
                 .execute(&fixture.pool)
                 .await
                 .unwrap();
             fixture.usecase().execute(request(id)).await.unwrap();
+            assert!(fixture.usecase().list_pending().await.unwrap().is_empty());
+            assert_eq!(fixture.source.paths.lock().unwrap().len(), 1);
             fixture.pool.close().await;
         }
     }

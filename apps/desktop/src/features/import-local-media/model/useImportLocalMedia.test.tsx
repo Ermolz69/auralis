@@ -3,15 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useImportLocalMedia } from './useImportLocalMedia';
 import { open } from '@tauri-apps/plugin-dialog';
-import { useProjectContext, createProject, deleteProject } from '@/entities/project';
+import { ProjectContext, createProject, deleteProject } from '@/entities/project';
 import { importLocalMedia } from '@/entities/media';
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: vi.fn(),
 }));
 
-vi.mock('@/entities/project', () => ({
-  useProjectContext: vi.fn(),
+vi.mock('@/entities/project', async (original) => ({
+  ...(await original<typeof import('@/entities/project')>()),
   createProject: vi.fn(),
   deleteProject: vi.fn(),
 }));
@@ -31,6 +31,13 @@ const mockSetCurrentView = vi.fn();
 describe('useImportLocalMedia', () => {
   let mockContextValue: any;
 
+  const renderImportHook = () =>
+    renderHook(() => useImportLocalMedia(), {
+      wrapper: ({ children }) => (
+        <ProjectContext.Provider value={mockContextValue}>{children}</ProjectContext.Provider>
+      ),
+    });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockContextValue = {
@@ -49,13 +56,12 @@ describe('useImportLocalMedia', () => {
         token.generation === mockContextValue.operationGeneration &&
         token.projectId === mockContextValue.projectId,
     };
-    vi.mocked(useProjectContext).mockReturnValue(mockContextValue);
   });
 
   it('blocks handleImport and returns isBlockedByDeletion when deletingProjectId is active initially', async () => {
     mockContextValue.deletingProjectId = 'p-2';
 
-    const { result } = renderHook(() => useImportLocalMedia());
+    const { result } = renderImportHook();
 
     expect(result.current.isBlockedByDeletion).toBe(true);
 
@@ -74,7 +80,7 @@ describe('useImportLocalMedia', () => {
     });
     vi.mocked(open).mockReturnValue(filePickerPromise as any);
 
-    const { result, rerender } = renderHook(() => useImportLocalMedia());
+    const { result, rerender } = renderImportHook();
 
     expect(result.current.isBlockedByDeletion).toBe(false);
 
@@ -108,7 +114,7 @@ describe('useImportLocalMedia', () => {
     });
     vi.mocked(open).mockReturnValue(filePickerPromise as any);
 
-    const { result } = renderHook(() => useImportLocalMedia());
+    const { result } = renderImportHook();
 
     let firstPromise: Promise<void> | undefined;
     act(() => {
@@ -134,7 +140,7 @@ describe('useImportLocalMedia', () => {
   it('verifies picker cancel releases activeAttempt lock and clears loading', async () => {
     vi.mocked(open).mockResolvedValue(null);
 
-    const { result } = renderHook(() => useImportLocalMedia());
+    const { result } = renderImportHook();
 
     await act(async () => {
       await result.current.handleImport();
@@ -176,7 +182,7 @@ describe('useImportLocalMedia', () => {
       }) as any,
     );
 
-    const { result } = renderHook(() => useImportLocalMedia());
+    const { result } = renderImportHook();
 
     let importPromise: Promise<void> | undefined;
     act(() => {
@@ -212,7 +218,7 @@ describe('useImportLocalMedia', () => {
       message: 'Import storage failed',
     });
 
-    const { result } = renderHook(() => useImportLocalMedia());
+    const { result } = renderImportHook();
 
     await act(async () => {
       await result.current.handleImport();
@@ -238,7 +244,7 @@ describe('useImportLocalMedia', () => {
     });
     vi.mocked(createProject).mockReturnValue(createPromise as any);
 
-    const { result, rerender } = renderHook(() => useImportLocalMedia());
+    const { result, rerender } = renderImportHook();
 
     let importPromise: Promise<void> | undefined;
     act(() => {
@@ -273,7 +279,7 @@ describe('useImportLocalMedia', () => {
     importPromise.catch(() => {});
     vi.mocked(importLocalMedia).mockReturnValue(importPromise as any);
 
-    const { result, rerender } = renderHook(() => useImportLocalMedia());
+    const { result, rerender } = renderImportHook();
 
     let handlePromise: Promise<void> | undefined;
     act(() => {
@@ -303,7 +309,7 @@ describe('useImportLocalMedia', () => {
       new Error('C:\\Users\\secret\\video.mp4 token=SECRET'),
     );
 
-    const { result } = renderHook(() => useImportLocalMedia());
+    const { result } = renderImportHook();
 
     await act(async () => {
       await result.current.handleImport();

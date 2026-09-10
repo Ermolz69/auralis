@@ -1,4 +1,5 @@
-use crate::error::{ApplicationError, CleanupReport, CleanupTarget};
+use crate::error::ApplicationError;
+use crate::usecases::import_cleanup::cleanup_staging_and_workspace;
 use domain::outbox::WorkspaceKey;
 use ports::storage::ArtifactStore;
 use ports::workspace::TempWorkspacePort;
@@ -10,21 +11,7 @@ pub(super) async fn cleanup_failed_import(
     store: &impl ArtifactStore,
     workspace: &dyn TempWorkspacePort,
 ) -> ApplicationError {
-    let mut report = CleanupReport::new();
-    if let Some(key) = staging_key
-        && let Err(error) = store.delete_storage_key(key).await
-    {
-        report.add_failure(CleanupTarget::staging(key), error);
-    }
-    if let Err(error) = workspace.delete_allocation(workspace_key).await {
-        report.add_failure(CleanupTarget::workspace(workspace_key.as_str()), error);
-    }
-    if report.is_empty() {
-        primary
-    } else {
-        ApplicationError::OperationFailedWithCleanup {
-            primary: Box::new(primary),
-            cleanup_report: report,
-        }
-    }
+    cleanup_staging_and_workspace(store, staging_key, workspace, workspace_key)
+        .await
+        .into_error(primary)
 }

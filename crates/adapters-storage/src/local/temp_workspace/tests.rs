@@ -8,6 +8,43 @@ use tempfile::tempdir;
 use uuid::Uuid;
 
 #[tokio::test]
+async fn import_lease_removes_its_lock_file_after_drop() {
+    let workspace_dir = tempdir().unwrap();
+    let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());
+    let project_id = domain::project::ProjectId::new();
+    let lock_directory = workspace_dir.path().join(".import-locks");
+    let lock_file = lock_directory.join(format!("{project_id}.lock"));
+
+    let lease = workspace.acquire_import_lease(&project_id).await.unwrap();
+    assert!(lock_file.is_file());
+
+    drop(lease);
+
+    assert!(!lock_file.exists());
+    assert!(!lock_directory.exists());
+}
+
+#[tokio::test]
+async fn import_lease_can_be_reacquired_without_leaving_lock_state() {
+    let workspace_dir = tempdir().unwrap();
+    let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());
+    let project_id = domain::project::ProjectId::new();
+
+    let first = workspace.acquire_import_lease(&project_id).await.unwrap();
+    let conflict = workspace.acquire_import_lease(&project_id).await;
+    assert!(matches!(
+        conflict,
+        Err(ports::error::PortError::Conflict { .. })
+    ));
+    drop(first);
+
+    let second = workspace.acquire_import_lease(&project_id).await.unwrap();
+    drop(second);
+
+    assert!(!workspace_dir.path().join(".import-locks").exists());
+}
+
+#[tokio::test]
 async fn resolve_normal_tmp_key() {
     let workspace_dir = tempdir().unwrap();
     let workspace = LocalTempWorkspace::new(workspace_dir.path().to_path_buf());

@@ -120,11 +120,10 @@ pub fn parse_ffprobe_output(output: &FfprobeOutput) -> Result<MediaMetadata, Ffp
 }
 
 fn parse_duration(duration: &Option<String>) -> Option<u64> {
-    duration.as_ref().and_then(|d| {
-        d.parse::<f64>()
-            .ok()
-            .map(|seconds| (seconds * 1000.0) as u64)
-    })
+    duration
+        .as_ref()
+        .and_then(|duration| duration.parse::<f64>().ok())
+        .and_then(seconds_to_millis)
 }
 
 fn parse_fps(r_frame_rate: Option<&str>) -> Option<f32> {
@@ -133,14 +132,24 @@ fn parse_fps(r_frame_rate: Option<&str>) -> Option<f32> {
         let parts: Vec<&str> = rate.split('/').collect();
         if parts.len() == 2
             && let (Ok(num), Ok(den)) = (parts[0].parse::<f32>(), parts[1].parse::<f32>())
+            && num.is_finite()
+            && den.is_finite()
+            && num > 0.0
             && den > 0.0
         {
-            return Some(num / den);
+            let fps = num / den;
+            return fps.is_finite().then_some(fps);
         }
     } else if let Ok(val) = rate.parse::<f32>() {
-        return Some(val);
+        return (val.is_finite() && val > 0.0).then_some(val);
     }
     None
+}
+
+fn seconds_to_millis(seconds: f64) -> Option<u64> {
+    let millis = seconds * 1000.0;
+    (seconds.is_finite() && seconds >= 0.0 && millis.is_finite() && millis <= u64::MAX as f64)
+        .then_some(millis as u64)
 }
 
 fn parse_codec_type(codec_type: Option<&str>) -> CodecType {
@@ -226,5 +235,16 @@ mod tests {
         assert_eq!(metadata.video.unwrap().width, 1920);
         assert_eq!(metadata.audio_tracks.len(), 1);
         assert_eq!(metadata.audio_tracks[0].channels, Some(2));
+    }
+
+    #[test]
+    fn invalid_numeric_metadata_uses_safe_fallbacks() {
+        for duration in ["-1", "NaN", "inf", "1e309"] {
+            assert_eq!(parse_duration(&Some(duration.to_string())), None);
+        }
+
+        for fps in ["-30", "NaN", "inf", "1/0", "-1/1"] {
+            assert_eq!(parse_fps(Some(fps)), None);
+        }
     }
 }

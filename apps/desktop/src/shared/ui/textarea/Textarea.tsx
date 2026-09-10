@@ -29,7 +29,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     const { helperId, errorId, describedBy, resolvedHelperText, resolvedErrorText } =
       getFieldMessageState(textareaId, { helperText, errorText, error });
 
-    const baseWrapper = 'flex flex-col gap-1.5 w-full';
+    const baseWrapper = 'flex min-w-0 w-full flex-col gap-1.5';
 
     // The textarea base styles.
     // If error -> border-danger
@@ -47,7 +47,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className={`${baseWrapper} ${className}`}>
         {label && (
-          <label htmlFor={textareaId} className="text-sm font-medium text-text">
+          <label htmlFor={textareaId} className="min-w-0 break-words text-sm font-medium text-text">
             {label}
           </label>
         )}

@@ -181,6 +181,17 @@ impl CleanupReport {
         Self::default()
     }
 
+    pub(crate) fn into_error(self, primary: ApplicationError) -> ApplicationError {
+        if self.is_empty() {
+            primary
+        } else {
+            ApplicationError::OperationFailedWithCleanup {
+                primary: Box::new(primary),
+                cleanup_report: self,
+            }
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.failures.is_empty()
     }

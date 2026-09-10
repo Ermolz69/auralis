@@ -5,34 +5,37 @@ description = "Auralis Desktop App"
 authors.workspace = true
 edition.workspace = true
 
+[features]
+native-e2e = ["adapters-ytdlp/native-e2e"]
+
 [build-dependencies]
-tauri-build = { version = "2.0.0", features = [] }
+tauri-build = { workspace = true, features = [] }
 
 [dependencies]
 tauri = { workspace = true, features = [] }
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-application = { path = "../crates/application" }
-domain = { path = "../crates/domain" }
-ports = { path = "../crates/ports" }
-jobs = { path = "../crates/jobs" }
-adapters-storage = { path = "../crates/adapters-storage" }
-adapters-ytdlp = { path = "../crates/adapters-ytdlp" }
-adapters-model = { path = "../crates/adapters-model" }
-adapters-ffmpeg = { path = "../crates/adapters-ffmpeg" }
-adapters-tauri = { path = "../crates/adapters-tauri" }
+application.workspace = true
+domain.workspace = true
+ports.workspace = true
+jobs.workspace = true
+adapters-storage.workspace = true
+adapters-ytdlp.workspace = true
+adapters-model.workspace = true
+adapters-ffmpeg.workspace = true
+adapters-tauri.workspace = true
 tokio = { workspace = true, features = ["rt", "time", "macros", "sync"] }
-tauri-plugin-dialog = "2.7.1"
-tauri-plugin-process = "=2.3.1"
-tauri-plugin-updater = "=2.10.1"
+tauri-plugin-dialog.workspace = true
+tauri-plugin-process.workspace = true
+tauri-plugin-updater.workspace = true
 async-trait.workspace = true
 tauri-plugin-shell.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "json"] }
-tracing-appender = "0.2.5"
-common = { path = "../crates/common" }
+tracing-appender.workspace = true
+common.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

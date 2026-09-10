@@ -22,8 +22,8 @@ jobs:
       matrix:
         platform:
           - ubuntu-22.04
-          - windows-latest
-          - macos-latest
+          - windows-2025
+          - macos-26
 
     steps:
       - name: Checkout
@@ -37,6 +37,12 @@ jobs:
 
       - name: Prepare verified media tools
         run: task media:prepare
+
+      - name: Run real native application E2E
+        if: runner.os == 'Windows'
+        run: task desktop:e2e:native
+        env:
+          AURALIS_NATIVE_E2E_MEDIA_READY: '1'
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1

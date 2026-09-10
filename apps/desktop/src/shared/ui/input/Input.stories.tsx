@@ -4,10 +4,20 @@ import { Input } from './Input';
 import { Icon } from '../icon';
 
 const meta = {
-  title: 'Shared UI/Input',
+  title: 'Design System/Components/Input',
   component: Input,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['label', 'helperText', 'error', 'disabled'],
+    },
+    docs: {
+      description: {
+        component:
+          'Text field primitive with labels, helper copy, validation messages, and optional leading or trailing content.',
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {

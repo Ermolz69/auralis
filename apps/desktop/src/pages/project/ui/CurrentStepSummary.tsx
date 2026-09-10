@@ -37,7 +37,9 @@ export function CurrentStepSummary() {
     ? activeJob.progress.percent
     : null;
   const isIndeterminate =
-    backendPercent === null || (activeJob.status === 'pending' && backendPercent === 0);
+    activeJob.status === 'cancelling' ||
+    backendPercent === null ||
+    (activeJob.status === 'pending' && backendPercent === 0);
   const projectLabel =
     project && activeJob.projectId === project.id
       ? formatProjectTitle(project.title, project.source)

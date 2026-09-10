@@ -6,16 +6,47 @@ tasks:
     cmds:
       - node tools/scripts/check-sqlite-dependencies.mjs --resolved
 
+  test:ports:
+    desc: Run port contract and transaction validation regressions
+    cmds:
+      - cargo test --locked -p ports {{.CLI_ARGS}}
+
   test:storage:
     desc: Run SQLite storage regressions against the locked dependency graph
     cmds:
       - cargo test --locked -p adapters-storage {{.CLI_ARGS}}
+
+  test:application:
+    desc: Run application usecase and worker regressions
+    cmds:
+      - cargo test --locked -p application {{.CLI_ARGS}}
 
   test:youtube:
     desc: Run YouTube import and crash recovery regressions
     cmds:
       - cargo test --locked -p application youtube_ {{.CLI_ARGS}}
       - cargo test --locked -p adapters-ytdlp owned_process {{.CLI_ARGS}}
+
+  test:jobs:
+    desc: Run job lifecycle, cancellation, cleanup, and persistence regressions
+    cmds:
+      - cargo test --locked -p domain job {{.CLI_ARGS}}
+      - cargo test --locked -p ports cancellation {{.CLI_ARGS}}
+      - cargo test --locked -p jobs {{.CLI_ARGS}}
+      - cargo test --locked -p application usecases::pipeline {{.CLI_ARGS}}
+      - cargo test --locked -p application test_cancellation_during_download {{.CLI_ARGS}}
+      - cargo test --locked -p adapters-storage sqlite::unit_of_work {{.CLI_ARGS}}
+      - cargo test --locked -p adapters-storage sqlite::recovery {{.CLI_ARGS}}
+      - cargo test --locked -p adapters-tauri job_event_bridge {{.CLI_ARGS}}
+
+  soak:jobs:
+    desc: Run the long job lifecycle heap profiler (10 minutes by default)
+    env:
+      AURALIS_JOB_SOAK_SECONDS: '{{default "600" .DURATION_SECS}}'
+      AURALIS_JOB_SOAK_MIN_ITERATIONS: '{{default "100000" .MIN_ITERATIONS}}'
+      AURALIS_JOB_SOAK_REPORT: '{{default "target/job-soak/heap-profile.json" .REPORT}}'
+    cmds:
+      - cargo test --locked --release -p jobs --test job_heap_soak -- --ignored --nocapture
 
   exec:wsl:
     desc: Run explicit Cargo verification arguments in Ubuntu WSL with an isolated Linux target directory

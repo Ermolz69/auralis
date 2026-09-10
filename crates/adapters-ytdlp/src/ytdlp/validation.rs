@@ -47,3 +47,23 @@ pub(crate) fn validate_url(url_str: &str) -> Result<Url, PortError> {
 
     Ok(parsed)
 }
+
+#[cfg(feature = "native-e2e")]
+pub(crate) fn validate_native_e2e_url(url_str: &str) -> Result<Url, PortError> {
+    let parsed = Url::parse(url_str).map_err(|_| PortError::InvalidSource {
+        message: "Invalid native E2E URL".to_string(),
+    })?;
+
+    if parsed.scheme() != "http"
+        || parsed.host_str() != Some("127.0.0.1")
+        || parsed.port().is_none()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return Err(PortError::InvalidSource {
+            message: "Native E2E media must use an isolated loopback HTTP URL".to_string(),
+        });
+    }
+
+    Ok(parsed)
+}

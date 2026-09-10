@@ -73,6 +73,17 @@ Run the production E2E suite independently with `task fe:e2e`. It builds the des
 frontend and executes the main user journeys in Chromium against a stateful mocked
 Tauri boundary.
 
+The reusable UI and complete product states are documented in the branded Auralis
+Storybook. Start it with `task fe:storybook:dev`, or run the focused metadata,
+browser, accessibility, and static-build gate with `task check:storybook`.
+
+On Windows, run `task desktop:e2e:native` for the real desktop acceptance path. It
+builds and launches an invisible Tauri application against an isolated temporary
+data directory, then verifies React → IPC → Rust → SQLite → managed filesystem.
+The manually triggered `Tauri Build` workflow runs this scenario on its Windows job;
+it is intentionally excluded from routine pull-request checks because it performs a
+full native release build.
+
 Installed builds check signed application updates from GitHub Releases. The Settings page
 shows the current and available versions, release notes, download progress, and performs the
 restart after verification. Release maintainers must configure the updater key pair described

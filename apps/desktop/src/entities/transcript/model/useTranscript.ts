@@ -1,83 +1,156 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { listen } from '@/shared/api/tauri';
 import { toCommandError } from '@/shared/api/contracts';
 import { getTranscript } from '../api/transcriptApi';
 import type { Transcript } from './types';
 
+type TranscriptScope = {
+  projectId: string | null;
+  generation: number;
+  key: symbol;
+};
+
+type TranscriptState = {
+  scopeKey: symbol;
+  transcript: Transcript | null;
+  isLoading: boolean;
+  error: string | null;
+};
+
 export function useTranscript(projectId: string | null) {
-  const [transcript, setTranscript] = useState<Transcript | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const renderedScope = useMemo(
+    () => ({ projectId, key: Symbol('transcript-scope') }),
+    [projectId],
+  );
+  const [state, setState] = useState<TranscriptState>(() => ({
+    scopeKey: renderedScope.key,
+    transcript: null,
+    isLoading: false,
+    error: null,
+  }));
+  const activeScope = useRef<TranscriptScope | null>(null);
+  const scopeSequence = useRef(0);
+  const requestSequence = useRef(0);
 
-  const activeProjectId = useRef(projectId);
+  const fetchTranscript = useCallback(async (requestScope: TranscriptScope) => {
+    const id = requestScope.projectId;
+    if (!id || activeScope.current?.generation !== requestScope.generation) return;
 
-  useEffect(() => {
-    activeProjectId.current = projectId;
-  }, [projectId]);
+    const requestId = ++requestSequence.current;
+    setState((current) => ({
+      scopeKey: requestScope.key,
+      transcript: current.scopeKey === requestScope.key ? current.transcript : null,
+      isLoading: true,
+      error: null,
+    }));
 
-  const fetchTranscript = useCallback(async (id: string) => {
-    setIsLoading(true);
-    setError(null);
+    const isCurrentRequest = () =>
+      activeScope.current?.generation === requestScope.generation &&
+      requestSequence.current === requestId;
+
     try {
-      const data = await getTranscript(id);
-      if (activeProjectId.current === id) {
-        setTranscript(data);
-      }
-    } catch (err: unknown) {
-      if (activeProjectId.current === id) {
-        setError(toCommandError(err).message);
-      }
+      const transcript = await getTranscript(id);
+      if (!isCurrentRequest()) return;
+      setState((current) =>
+        current.scopeKey === requestScope.key ? { ...current, transcript } : current,
+      );
+    } catch (caught: unknown) {
+      if (!isCurrentRequest()) return;
+      const error = toCommandError(caught).message;
+      setState((current) =>
+        current.scopeKey === requestScope.key ? { ...current, error } : current,
+      );
     } finally {
-      if (activeProjectId.current === id) {
-        setIsLoading(false);
+      if (isCurrentRequest()) {
+        setState((current) =>
+          current.scopeKey === requestScope.key ? { ...current, isLoading: false } : current,
+        );
       }
     }
   }, []);
 
-  // Initial fetch when project ID changes
   useEffect(() => {
-    if (projectId) {
-      fetchTranscript(projectId);
-    } else {
-      setTranscript(null);
-    }
-  }, [projectId, fetchTranscript]);
+    const scope: TranscriptScope = {
+      ...renderedScope,
+      generation: ++scopeSequence.current,
+    };
+    activeScope.current = scope;
+    requestSequence.current += 1;
+    setState({
+      scopeKey: scope.key,
+      transcript: null,
+      isLoading: false,
+      error: null,
+    });
+    if (scope.projectId) void fetchTranscript(scope);
 
-  // Listen to transcript-ready event
+    return () => {
+      if (activeScope.current?.generation === scope.generation) {
+        activeScope.current = null;
+      }
+      requestSequence.current += 1;
+    };
+  }, [fetchTranscript, renderedScope]);
+
   useEffect(() => {
     let cancelled = false;
     let unlisten: (() => void) | undefined;
+    const scope = activeScope.current;
+    if (!scope || scope.key !== renderedScope.key) return;
+
+    const isCurrentScope = () => !cancelled && activeScope.current?.generation === scope.generation;
 
     const setupListener = async () => {
       try {
-        const fn = await listen('transcript-ready', (event) => {
-          if (projectId && event.payload.projectId === projectId) {
-            fetchTranscript(projectId);
-          }
-        });
+        const fn = await listen(
+          'transcript-ready',
+          (event) => {
+            if (
+              isCurrentScope() &&
+              scope.projectId &&
+              event.payload.projectId === scope.projectId
+            ) {
+              void fetchTranscript(scope);
+            }
+          },
+          {
+            onInvalidPayload: () => {
+              if (isCurrentScope() && scope.projectId) void fetchTranscript(scope);
+            },
+          },
+        );
 
         if (cancelled) {
           fn();
         } else {
           unlisten = fn;
         }
-      } catch (err) {
-        console.warn(
-          'Failed to listen to transcript-ready event (Tauri might not be available):',
-          err,
-        );
+      } catch (caught: unknown) {
+        if (!cancelled) {
+          console.warn('Failed to listen to transcript-ready event:', toCommandError(caught));
+        }
       }
     };
 
-    setupListener();
+    void setupListener();
 
     return () => {
       cancelled = true;
-      if (unlisten) {
-        unlisten();
-      }
+      unlisten?.();
     };
-  }, [projectId, fetchTranscript]);
+  }, [fetchTranscript, renderedScope]);
 
-  return { transcript, isLoading, error, refetch: () => projectId && fetchTranscript(projectId) };
+  const ownsVisibleState = state.scopeKey === renderedScope.key;
+  const refetch = useCallback(() => {
+    const scope = activeScope.current;
+    if (!scope?.projectId || scope.key !== renderedScope.key) return null;
+    return fetchTranscript(scope);
+  }, [fetchTranscript, renderedScope]);
+
+  return {
+    transcript: ownsVisibleState ? state.transcript : null,
+    isLoading: ownsVisibleState ? state.isLoading : false,
+    error: ownsVisibleState ? state.error : null,
+    refetch,
+  };
 }

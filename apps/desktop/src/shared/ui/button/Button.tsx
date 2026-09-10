@@ -46,6 +46,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       md: 'rounded-md px-4 py-2 text-sm',
       lg: 'rounded-md px-5 py-2.5 text-sm',
     };
+    const variantClass = variants[variant] ?? variants.primary;
+    const sizeClass = sizes[size] ?? sizes.md;
 
     const widthStyle = fullWidth ? 'w-full' : '';
 
@@ -55,7 +57,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         type={props.type || 'button'}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${widthStyle} ${className}`}
+        className={`${baseStyles} ${variantClass} ${sizeClass} ${widthStyle} ${className}`}
         {...props}
       >
         {loading && (

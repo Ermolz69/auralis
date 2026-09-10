@@ -165,4 +165,55 @@ impl ports::job_query::JobQueryPort for MockJobScheduler {
             .collect();
         Ok(filtered)
     }
+
+    async fn list_job_history_page(
+        &self,
+        cursor: Option<&ports::job_query::JobHistoryCursor>,
+        limit: usize,
+    ) -> Result<ports::job_query::JobHistoryPage, PortError> {
+        let jobs = self.jobs.lock().await;
+        let mut filtered = jobs
+            .iter()
+            .filter(|job| {
+                matches!(
+                    job.status,
+                    domain::job::JobStatus::Completed
+                        | domain::job::JobStatus::Failed
+                        | domain::job::JobStatus::Cancelled
+                )
+            })
+            .filter(|job| {
+                cursor.is_none_or(|cursor| {
+                    job.created_at < cursor.created_at
+                        || (job.created_at == cursor.created_at
+                            && job.id.to_string() < cursor.job_id.to_string())
+                })
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        filtered.sort_by(|left, right| {
+            right
+                .created_at
+                .cmp(&left.created_at)
+                .then_with(|| right.id.to_string().cmp(&left.id.to_string()))
+        });
+        let page_size = limit.clamp(1, ports::job_query::MAX_JOB_HISTORY_PAGE_SIZE);
+        let has_more = filtered.len() > page_size;
+        filtered.truncate(page_size);
+        let next_cursor = if has_more {
+            filtered
+                .last()
+                .map(|last| ports::job_query::JobHistoryCursor {
+                    created_at: last.created_at,
+                    job_id: last.id.clone(),
+                })
+        } else {
+            None
+        };
+
+        Ok(ports::job_query::JobHistoryPage {
+            jobs: filtered,
+            next_cursor,
+        })
+    }
 }
