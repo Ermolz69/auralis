@@ -86,52 +86,54 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    const refreshSelectedProject = async () => {
+      if (deletingProjectIdRef.current !== null) return;
+
+      const token = captureToken();
+      const currentFetchSeq = ++listenerFetchSequence.current;
+
+      try {
+        const updatedProject = await invoke('get_project_cmd', { projectId });
+
+        if (
+          cancelled ||
+          currentFetchSeq !== listenerFetchSequence.current ||
+          !validateToken(token) ||
+          currentProjectId() !== projectId
+        ) {
+          return;
+        }
+
+        if (updatedProject.id === projectId) setProject(updatedProject);
+      } catch (e) {
+        if (
+          cancelled ||
+          currentFetchSeq !== listenerFetchSequence.current ||
+          !validateToken(token) ||
+          currentProjectId() !== projectId
+        ) {
+          return;
+        }
+
+        const cmdErr = toCommandError(e);
+        if (cmdErr.code === 'NOT_FOUND') {
+          setProject(null);
+          console.warn('Project no longer exists:', cmdErr.message);
+        } else {
+          console.error('Failed to sync project:', cmdErr);
+        }
+      }
+    };
+
     const setupListener = async () => {
       try {
-        const fn = await listen('project-updated', async (event) => {
-          if (event.payload.projectId === projectId) {
-            if (deletingProjectIdRef.current !== null) {
-              return;
-            }
-
-            const token = captureToken();
-            const currentFetchSeq = ++listenerFetchSequence.current;
-
-            try {
-              const updatedProject = await invoke('get_project_cmd', { projectId });
-
-              if (
-                cancelled ||
-                currentFetchSeq !== listenerFetchSequence.current ||
-                !validateToken(token) ||
-                currentProjectId() !== projectId ||
-                event.payload.projectId !== projectId
-              ) {
-                return;
-              }
-
-              if (updatedProject.id === projectId) setProject(updatedProject);
-            } catch (e) {
-              if (
-                cancelled ||
-                currentFetchSeq !== listenerFetchSequence.current ||
-                !validateToken(token) ||
-                currentProjectId() !== projectId ||
-                event.payload.projectId !== projectId
-              ) {
-                return;
-              }
-
-              const cmdErr = toCommandError(e);
-              if (cmdErr.code === 'NOT_FOUND') {
-                setProject(null);
-                console.warn('Project no longer exists:', cmdErr.message);
-              } else {
-                console.error('Failed to sync project:', cmdErr);
-              }
-            }
-          }
-        });
+        const fn = await listen(
+          'project-updated',
+          (event) => {
+            if (event.payload.projectId === projectId) void refreshSelectedProject();
+          },
+          { onInvalidPayload: () => void refreshSelectedProject() },
+        );
 
         if (cancelled) {
           fn();
@@ -139,11 +141,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           unlisten = fn;
         }
       } catch (err) {
-        console.warn('Failed to listen to project-updated event:', toCommandError(err));
+        if (!cancelled) {
+          console.warn('Failed to listen to project-updated event:', toCommandError(err));
+        }
       }
     };
 
-    setupListener();
+    void setupListener();
 
     return () => {
       cancelled = true;

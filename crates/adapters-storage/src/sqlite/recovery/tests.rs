@@ -115,6 +115,47 @@ async fn test_fresh_final_db_snapshot_is_noop() {
 }
 
 #[tokio::test]
+async fn snapshot_loads_lowercase_active_and_cancelling_jobs() {
+    let pool = setup_db().await;
+    let project = Project::new("Active jobs".into()).unwrap();
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::ReadyForProcessing,
+        None,
+        None,
+    )
+    .await;
+
+    let pending = Job::new(project.id().clone(), "Pending".into(), JobKind::Dubbing);
+    let mut running = Job::new(project.id().clone(), "Running".into(), JobKind::Dubbing);
+    running.start().unwrap();
+    let mut cancelling = Job::new(project.id().clone(), "Cancelling".into(), JobKind::Dubbing);
+    cancelling.start().unwrap();
+    cancelling.request_cancellation().unwrap();
+
+    insert_job(&pool, &pending, JobStatus::Pending).await;
+    insert_job(&pool, &running, JobStatus::Running).await;
+    insert_job(&pool, &cancelling, JobStatus::Cancelling).await;
+
+    let snapshot = load_snapshot(&pool).await.unwrap();
+    let statuses: Vec<JobStatus> = snapshot
+        .active_jobs
+        .into_iter()
+        .map(|job| job.status().clone())
+        .collect();
+
+    assert_eq!(statuses.len(), 3);
+    assert!(statuses.iter().any(|status| status == &JobStatus::Pending));
+    assert!(statuses.iter().any(|status| status == &JobStatus::Running));
+    assert!(
+        statuses
+            .iter()
+            .any(|status| status == &JobStatus::Cancelling)
+    );
+}
+
+#[tokio::test]
 async fn test_already_applied_partial_pair() {
     let pool = setup_db().await;
 

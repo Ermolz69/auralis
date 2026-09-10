@@ -16,6 +16,27 @@ pub struct LocalTempWorkspace {
     workspace_root: PathBuf,
 }
 
+struct LocalImportLease {
+    file: Option<std::fs::File>,
+    path: PathBuf,
+    directory: PathBuf,
+}
+
+impl Drop for LocalImportLease {
+    fn drop(&mut self) {
+        // Remove the directory entry while the OS lock is still held whenever
+        // the platform permits it. This prevents a second process from
+        // acquiring a different lock file during cleanup.
+        if std::fs::remove_file(&self.path).is_err() {
+            self.file.take();
+            let _ = std::fs::remove_file(&self.path);
+        } else {
+            self.file.take();
+        }
+        let _ = std::fs::remove_dir(&self.directory);
+    }
+}
+
 impl LocalTempWorkspace {
     pub fn new(workspace_root: impl Into<PathBuf>) -> Self {
         Self {
@@ -35,7 +56,8 @@ impl TempWorkspacePort for LocalTempWorkspace {
             &format!(".import-locks/{project_id}.lock"),
         )
         .await?;
-        tokio::fs::create_dir_all(self.workspace_root.join(".import-locks"))
+        let lock_directory = self.workspace_root.join(".import-locks");
+        tokio::fs::create_dir_all(&lock_directory)
             .await
             .map_err(|e| PortError::Io {
                 message: e.to_string(),
@@ -45,7 +67,7 @@ impl TempWorkspacePort for LocalTempWorkspace {
             .truncate(false)
             .read(true)
             .write(true)
-            .open(path)
+            .open(&path)
             .map_err(|e| PortError::Io {
                 message: e.to_string(),
             })?;
@@ -53,7 +75,11 @@ impl TempWorkspacePort for LocalTempWorkspace {
             resource: "YouTube import".into(),
             message: "Download is already running".into(),
         })?;
-        Ok(Box::new(file))
+        Ok(Box::new(LocalImportLease {
+            file: Some(file),
+            path,
+            directory: lock_directory,
+        }))
     }
 
     async fn cleanup_stale_allocations_excluding(

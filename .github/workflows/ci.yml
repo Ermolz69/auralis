@@ -58,6 +58,7 @@ jobs:
               - 'tailwind.config.*'
               - 'vite.config.*'
               - '.storybook/**'
+              - 'taskfiles/frontend.yml'
             rust:
               - 'vendor/glib-0.18.5/**'
               - 'tools/glib-backport/**'
@@ -139,8 +140,14 @@ jobs:
       - name: Run frontend checks
         run: task check:frontend
 
-      - name: Run frontend quality checks
-        run: task check:quality:frontend
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: apps/desktop/coverage
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload browser E2E diagnostics
         if: always()
@@ -148,6 +155,35 @@ jobs:
         with:
           name: browser-e2e-results
           path: apps/desktop/e2e-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  visual-regression:
+    name: Storybook Visual Regression
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true' || needs.changes.outputs.global == 'true' || needs.changes.outputs.release == 'true' }}
+    runs-on: windows-2025
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Bootstrap Storybook visual checks
+        uses: ./.github/actions/bootstrap
+        with:
+          node: 'true'
+          playwright: 'true'
+
+      - name: Compare Storybook visual baselines
+        run: task frontend:storybook:visual
+
+      - name: Upload Storybook visual diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-visual-results
+          path: apps/desktop/storybook-visual-results
           if-no-files-found: ignore
           retention-days: 7
 
@@ -238,6 +274,7 @@ jobs:
     needs:
       - changes
       - frontend
+      - visual-regression
       - rust
       - docs
       - quality-global

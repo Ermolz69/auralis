@@ -6,6 +6,10 @@ const meta = {
   component: Textarea,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['label', 'helperText', 'error', 'disabled', 'resizable'],
+    },
     docs: {
       description: {
         component:

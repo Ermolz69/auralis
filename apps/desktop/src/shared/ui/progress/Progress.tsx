@@ -21,8 +21,9 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
     },
     ref,
   ) => {
-    const safeMax = Math.max(max, 1);
-    const safeValue = Math.min(Math.max(value, 0), safeMax);
+    const safeMax = Number.isFinite(max) && max > 0 ? max : 100;
+    const finiteValue = Number.isFinite(value) ? value : 0;
+    const safeValue = Math.min(Math.max(finiteValue, 0), safeMax);
     const percent = Math.round((safeValue / safeMax) * 100);
     const accessibleLabel = props['aria-label'] || label || 'Progress';
 
@@ -34,6 +35,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
       warning: 'bg-warning',
       danger: 'bg-danger',
     };
+    const variantClass = variants[variant] ?? variants.default;
 
     return (
       <div
@@ -49,7 +51,7 @@ export const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {...props}
       >
         <div
-          className={`motion-progress h-full flex-1 ${variants[variant]} ${
+          className={`motion-progress h-full flex-1 ${variantClass} ${
             indeterminate ? 'w-full animate-progress-indeterminate' : 'w-full'
           }`}
           style={indeterminate ? undefined : { transform: `translateX(-${100 - percent}%)` }}

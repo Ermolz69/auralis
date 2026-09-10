@@ -1,9 +1,9 @@
 use super::{
     cleanup::ImportCleanupCoordinator,
+    types::{ImportYoutubeSubtitlesRequest, ImportYoutubeSubtitlesResponse},
     vtt_parser::{parse_vtt, select_best_subtitle_track},
 };
 use crate::error::ApplicationError;
-use domain::{project::ProjectId, transcript::Transcript};
 use ports::{
     repository::ProjectRepository,
     source::{DownloadSubtitleRequest, SubtitleSourcePort},
@@ -12,19 +12,6 @@ use ports::{
     workspace::TempWorkspacePort,
 };
 use std::sync::Arc;
-
-pub struct ImportYoutubeSubtitlesRequest {
-    pub project_id: ProjectId,
-    pub preferred_languages: Vec<String>,
-    pub allow_auto_generated: bool,
-    pub cancellation_token: tokio_util::sync::CancellationToken,
-    pub job_id: domain::job::JobId,
-    pub selected_track: Option<domain::media::SubtitleTrack>,
-}
-
-pub struct ImportYoutubeSubtitlesResponse {
-    pub transcript: Transcript,
-}
 
 pub struct ImportYoutubeSubtitlesUseCase {
     project_repo: Arc<dyn ProjectRepository>,
@@ -194,6 +181,13 @@ impl ImportYoutubeSubtitlesUseCase {
             }
         };
 
+        if let Err(e) = transcript.validate() {
+            return Err(self
+                .cleanup_coordinator
+                .handle_workspace_failure(&alloc.workspace_key, e.into())
+                .await);
+        }
+
         if request.cancellation_token.is_cancelled() {
             return Err(self
                 .cleanup_coordinator
@@ -276,7 +270,12 @@ impl ImportYoutubeSubtitlesUseCase {
         let expected_status = current_project.status().clone();
         let expected_active_job_id = current_project.active_job_id().cloned();
 
-        current_project.set_transcript(transcript.clone());
+        if let Err(e) = current_project.set_transcript(transcript.clone()) {
+            return Err(self
+                .cleanup_coordinator
+                .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
+                .await);
+        }
 
         if let Err(e) = self
             .storage_uow

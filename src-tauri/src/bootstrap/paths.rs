@@ -68,7 +68,7 @@ impl AppPaths {
 }
 
 fn native_e2e_build() -> bool {
-    option_env!("AURALIS_NATIVE_E2E") == Some("1")
+    cfg!(feature = "native-e2e")
 }
 
 fn native_e2e_root(value: Option<std::ffi::OsString>) -> Result<PathBuf, AppPathsError> {

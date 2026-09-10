@@ -96,13 +96,16 @@ export function AppUpdateProvider({
       await candidate.downloadAndInstall((event) => {
         if (!mountedRef.current) return;
         if (event.event === 'Started') {
-          totalBytes = event.data.contentLength;
+          totalBytes = validByteCount(event.data.contentLength);
           setState((current) => ({
             ...current,
             progress: progress(downloadedBytes, totalBytes),
           }));
         } else if (event.event === 'Progress') {
-          downloadedBytes += event.data.chunkLength;
+          const chunkLength = validByteCount(event.data.chunkLength);
+          if (chunkLength !== undefined) {
+            downloadedBytes = Math.min(Number.MAX_SAFE_INTEGER, downloadedBytes + chunkLength);
+          }
           setState((current) => ({
             ...current,
             progress: progress(downloadedBytes, totalBytes),
@@ -156,12 +159,18 @@ export function AppUpdateProvider({
 }
 
 function progress(downloadedBytes: number, totalBytes?: number): AppUpdateProgress {
+  const boundedDownloadedBytes =
+    totalBytes === undefined ? downloadedBytes : Math.min(downloadedBytes, totalBytes);
   return {
-    downloadedBytes,
+    downloadedBytes: boundedDownloadedBytes,
     totalBytes,
     percent:
       totalBytes && totalBytes > 0
-        ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100))
+        ? Math.min(100, Math.round((boundedDownloadedBytes / totalBytes) * 100))
         : undefined,
   };
+}
+
+function validByteCount(value: number | undefined): number | undefined {
+  return Number.isSafeInteger(value) && value !== undefined && value >= 0 ? value : undefined;
 }

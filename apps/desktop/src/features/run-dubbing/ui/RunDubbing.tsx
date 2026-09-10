@@ -1,6 +1,10 @@
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { Button } from '../../../shared/ui/button';
-import { useProjectContext, startProjectMockPipeline } from '@/entities/project';
+import {
+  useProjectContext,
+  useProjectOperation,
+  startProjectMockPipeline,
+} from '@/entities/project';
 import { toast } from '@/shared/ui/toast';
 import { toCommandError } from '@/shared/api/contracts';
 import { supportsSubtitleImport } from '@/entities/media';
@@ -16,62 +20,39 @@ export const RunDubbing = ({
   disabled?: boolean;
 } = {}) => {
   const [isStarting, setIsStarting] = useState(false);
-  const {
-    project,
-    setProject,
-    deletingProjectId,
-    projectId,
-    operationGeneration,
-    captureToken,
-    validateToken,
-  } = useProjectContext();
+  const { project, setProject, deletingProjectId, projectId, operationGeneration } =
+    useProjectContext();
 
-  const latestAttemptRef = useRef(0);
-  const activeAttemptRef = useRef<number | null>(null);
+  const operation = useProjectOperation();
 
   useLayoutEffect(() => {
     setIsStarting(false);
-    activeAttemptRef.current = null;
-    latestAttemptRef.current += 1;
   }, [operationGeneration, projectId]);
 
   const handleStart = async () => {
     if (!project?.id || deletingProjectId !== null || isStarting) return;
-    if (activeAttemptRef.current !== null) return;
-
-    const token = captureToken();
-    if (!validateToken(token)) return;
-
-    const attemptId = ++latestAttemptRef.current;
-    activeAttemptRef.current = attemptId;
-
-    const ownsAttempt = () =>
-      latestAttemptRef.current === attemptId && activeAttemptRef.current === attemptId;
-
-    const isCurrentAttempt = () => ownsAttempt() && validateToken(token);
+    const attempt = operation.begin();
+    if (!attempt) return;
 
     setIsStarting(true);
     try {
       const response = subtitleTrack
         ? await startProjectMockPipeline(project.id, subtitleTrack)
         : await startProjectMockPipeline(project.id);
-      if (!isCurrentAttempt()) return;
+      if (!operation.isCurrent(attempt)) return;
 
       setIsStarting(false);
-      activeAttemptRef.current = null;
+      operation.finish(attempt);
 
       setProject(response.project);
     } catch (e: unknown) {
-      if (!isCurrentAttempt()) return;
+      if (!operation.isCurrent(attempt)) return;
       const cmdErr = toCommandError(e);
       console.error('Failed to start mock dubbing job', cmdErr);
       toast.error(cmdErr.message);
     } finally {
-      if (ownsAttempt()) {
-        activeAttemptRef.current = null;
-        if (validateToken(token)) {
-          setIsStarting(false);
-        }
+      if (operation.finish(attempt)) {
+        setIsStarting(false);
       }
     }
   };

@@ -11,7 +11,7 @@ tasks:
       - task: desktop-policies
 
   storybook-contract:
-    desc: Keep the design-system catalog documented, structured, and uniquely named
+    desc: Keep the catalog documented and enforce default-deny bounded controls
     cmds:
       - node --test tools/scripts/check-storybook.test.mjs
       - node tools/scripts/check-storybook.mjs

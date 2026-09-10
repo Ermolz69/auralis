@@ -10,15 +10,16 @@ serde = { workspace = true, features = ["derive"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
 chrono = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
-domain = { path = "../domain" }
-ports = { path = "../ports" }
-common = { path = "../common" }
+domain.workspace = true
+ports.workspace = true
+common.workspace = true
 async-trait.workspace = true
 tracing.workspace = true
 futures.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }
 tracing-subscriber.workspace = true
 
 [lints]

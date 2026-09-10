@@ -5,7 +5,7 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
-base64 = "0.22.1"
+base64.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 uuid = { workspace = true, features = ["v4", "serde"] }

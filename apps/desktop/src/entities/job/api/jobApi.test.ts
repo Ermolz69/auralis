@@ -3,6 +3,7 @@ import type { Job, JobEvent } from '../model/types';
 import {
   cancelJob,
   getJobsSnapshot,
+  listJobHistoryPage,
   listJobs,
   subscribeJobEvents,
   subscribeJobsInvalidated,
@@ -64,6 +65,21 @@ describe('jobApi', () => {
 
     expect(invoke).toHaveBeenCalledWith('list_jobs_snapshot_cmd', {
       projectId: 'project-1',
+    });
+  });
+
+  it('requests stable cursor-based history pages', async () => {
+    const cursor = {
+      createdAt: '2026-01-01T00:00:00Z',
+      jobId: '00000000-0000-4000-8000-000000000001',
+    };
+    vi.mocked(invoke).mockResolvedValue({ jobs: [], nextCursor: null } as never);
+
+    await listJobHistoryPage(cursor, 50);
+
+    expect(invoke).toHaveBeenCalledWith('list_job_history_page_cmd', {
+      cursor,
+      limit: 50,
     });
   });
 });

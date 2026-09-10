@@ -48,7 +48,14 @@ import contract from '../../../../../../tests/fixtures/job_contract.json';
 // We hardcode the exhaustive list of statuses and stages here
 // to ensure the TS union types match the cross-language contract exactly.
 // If the contract adds a new stage, this test will fail until TS is updated.
-const statuses: JobStatus[] = ['pending', 'running', 'completed', 'failed', 'cancelled'];
+const statuses: JobStatus[] = [
+  'pending',
+  'running',
+  'cancelling',
+  'completed',
+  'failed',
+  'cancelled',
+];
 
 const stages: JobStage[] = [
   'validateSource',

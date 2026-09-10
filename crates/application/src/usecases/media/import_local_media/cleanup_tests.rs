@@ -118,10 +118,13 @@ fn test_cleanup_formatting_sanitizes_application_error() {
         },
     );
 
-    let app_err = ApplicationError::OperationFailedWithCleanup {
-        primary: Box::new(ApplicationError::Unexpected("Primary err".into())),
-        cleanup_report: report,
-    };
+    report.add_failure(
+        CleanupTarget::workspace("tmp/secret-project/allocation"),
+        ports::error::PortError::Io {
+            message: "Failed to delete workspace C:\\secret\\workspace".into(),
+        },
+    );
+    let app_err = report.into_error(ApplicationError::Unexpected("Primary err".into()));
 
     let display_str = format!("{}", app_err);
     let debug_str = format!("{:?}", app_err);
@@ -130,6 +133,10 @@ fn test_cleanup_formatting_sanitizes_application_error() {
     assert!(!display_str.contains(".staging/secret-key"));
     assert!(!debug_str.contains("C:\\secret\\video.mp4"));
     assert!(!debug_str.contains(".staging/secret-key"));
+    assert!(!display_str.contains("C:\\secret\\workspace"));
+    assert!(!display_str.contains("tmp/secret-project/allocation"));
+    assert!(!debug_str.contains("C:\\secret\\workspace"));
+    assert!(!debug_str.contains("tmp/secret-project/allocation"));
 
     assert!(display_str.contains("staging_failures") || display_str.contains("Staging"));
     assert!(debug_str.contains("staging_failures") || debug_str.contains("Staging"));

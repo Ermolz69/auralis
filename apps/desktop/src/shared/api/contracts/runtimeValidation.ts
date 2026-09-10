@@ -59,7 +59,7 @@ export function validateMediaMetadata(value: unknown): value is MediaMetadata {
     isNonNegativeSafeInteger(value.durationMs) &&
     nullableField(value, 'width', isNonNegativeSafeInteger) &&
     nullableField(value, 'height', isNonNegativeSafeInteger) &&
-    nullableField(value, 'fps', isFiniteNumber) &&
+    nullableField(value, 'fps', isPositiveFiniteNumber) &&
     nullableField(value, 'videoCodec', isString) &&
     nullableField(value, 'audioCodec', isString) &&
     nullableField(value, 'sampleRate', isNonNegativeSafeInteger) &&
@@ -107,6 +107,8 @@ const commandResultValidators = {
   get_project_avatar_cmd: validateProjectAvatar,
   set_project_avatar_cmd: validateProjectAvatar,
   health_check: isString,
+  native_e2e_checkpoint_cmd: isNull,
+  native_e2e_pipeline_pause_reached_cmd: isBoolean,
   create_project_cmd: validateProject,
   create_project_from_youtube_cmd: validateProject,
   rename_project_cmd: validateProject,
@@ -121,6 +123,7 @@ const commandResultValidators = {
   list_project_artifacts_cmd: (value) => isArrayOf(value, validateArtifact),
   resolve_artifact_path_cmd: isString,
   list_jobs_cmd: validateJobSnapshot,
+  list_job_history_page_cmd: validateJobHistoryPage,
   list_jobs_snapshot_cmd: validateJobSnapshot,
   cancel_job_cmd: validateJobDto,
   probe_local_media_cmd: validateMediaMetadata,
@@ -134,6 +137,13 @@ const eventPayloadValidators = {
   'transcript-ready': (value) =>
     validateProjectIdPayload(value) && isString((value as Record<string, unknown>).jobId),
 } satisfies EventPayloadValidators;
+
+function validateJobHistoryPage(value: unknown): boolean {
+  if (!isRecord(value) || !validateJobSnapshot(value.jobs)) return false;
+  return isNullable(value.nextCursor, (cursor) => {
+    return isRecord(cursor) && isTimestamp(cursor.createdAt) && isString(cursor.jobId);
+  });
+}
 
 export function parseCommandResult<K extends keyof CommandMap>(
   command: K,
@@ -181,7 +191,7 @@ function validateVideoStream(value: unknown): boolean {
     isNonNegativeSafeInteger(value.streamIndex) &&
     isNonNegativeSafeInteger(value.width) &&
     isNonNegativeSafeInteger(value.height) &&
-    nullableField(value, 'fps', isFiniteNumber) &&
+    nullableField(value, 'fps', isPositiveFiniteNumber) &&
     nullableField(value, 'codec', isString) &&
     nullableField(value, 'pixelFormat', isString)
   );
@@ -219,19 +229,28 @@ function validateSubtitleTrack(value: unknown): boolean {
 }
 
 function validateTranscript(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isString(value.language) &&
-    isArrayOf(value.segments, (segment) =>
-      isRecord(segment)
-        ? isString(segment.id) &&
-          isNonNegativeSafeInteger(segment.index) &&
-          isNonNegativeSafeInteger(segment.startMs) &&
-          isNonNegativeSafeInteger(segment.endMs) &&
-          isString(segment.sourceText)
-        : false,
-    )
-  );
+  if (!isRecord(value) || !isString(value.language) || !Array.isArray(value.segments)) return false;
+
+  const ids = new Set<string>();
+  const indexes = new Set<number>();
+  for (const segment of value.segments) {
+    if (
+      !isRecord(segment) ||
+      !isString(segment.id) ||
+      !isNonNegativeSafeInteger(segment.index) ||
+      !isNonNegativeSafeInteger(segment.startMs) ||
+      !isNonNegativeSafeInteger(segment.endMs) ||
+      segment.endMs < segment.startMs ||
+      !isString(segment.sourceText) ||
+      ids.has(segment.id) ||
+      indexes.has(segment.index)
+    ) {
+      return false;
+    }
+    ids.add(segment.id);
+    indexes.add(segment.index);
+  }
+  return true;
 }
 
 function validateProjectIdPayload(value: unknown): boolean {
@@ -246,12 +265,20 @@ function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === 'boolean';
+}
+
 function isNull(value: unknown): value is null {
   return value === null;
 }
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0;
 }
 
 function isNonNegativeSafeInteger(value: unknown): value is number {

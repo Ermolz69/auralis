@@ -11,7 +11,8 @@ use ports::{
     project_update::ProjectUpdate,
     repository::{JobRepository, ProjectRepository},
     transaction::{
-        ApplyTerminalLifecycle, CommitPipelineStart, CommitTranscriptImport, StorageUnitOfWork,
+        ApplyTerminalLifecycle, CommitPipelineStart, CommitTerminalJobUpdate,
+        CommitTranscriptImport, StorageUnitOfWork,
     },
 };
 
@@ -33,10 +34,12 @@ fn transcript_command(mut project: Project) -> CommitTranscriptImport {
     let expected_project_updated_at = project.updated_at();
     let expected_status = project.status().clone();
     let expected_active_job_id = project.active_job_id().cloned();
-    project.set_transcript(Transcript {
-        language: "en".into(),
-        segments: vec![],
-    });
+    project
+        .set_transcript(Transcript {
+            language: "en".into(),
+            segments: vec![],
+        })
+        .unwrap();
     let artifact_id = ArtifactId::new();
     let final_key = format!("{}/original-subtitle/{artifact_id}.vtt", project.id());
     CommitTranscriptImport {
@@ -236,4 +239,61 @@ async fn stale_transcript_commit_rolls_back_artifacts_and_outbox_after_rename() 
         let count: i64 = sqlx::query_scalar(query).fetch_one(&pool).await.unwrap();
         assert_eq!(count, 0);
     }
+}
+
+#[tokio::test]
+async fn cancelled_job_cannot_commit_transcript_artifact_or_outbox() {
+    let pool = setup_db().await;
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let job_repo = SqliteJobRepository::new(pool.clone());
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
+    let mut project = project_repo.create(ready_project()).await.unwrap();
+    let job = Job::new(
+        project.id().clone(),
+        project.title().into(),
+        JobKind::Dubbing,
+    );
+    project.start_processing(job.id().clone()).unwrap();
+    uow.commit_pipeline_start(CommitPipelineStart {
+        project: project.clone(),
+        job: job.clone(),
+    })
+    .await
+    .unwrap();
+
+    let processing = project_repo.get(project.id()).await.unwrap().unwrap();
+    let mut cancelled = job_repo.get(job.id()).await.unwrap().unwrap();
+    let expected_revision = cancelled.revision();
+    cancelled.cancel().unwrap();
+    uow.commit_terminal_job_update(CommitTerminalJobUpdate {
+        job: cancelled,
+        expected_revision,
+        deduplication_key: format!("terminal-{}-Cancelled", job.id()),
+        project_id: project.id().clone(),
+        outcome: domain::job::TerminalOutcome::Cancelled,
+    })
+    .await
+    .unwrap();
+
+    assert!(matches!(
+        uow.commit_transcript_import(transcript_command(processing.clone()))
+            .await,
+        Err(PortError::Conflict { .. })
+    ));
+    assert_eq!(
+        project_repo.get(project.id()).await.unwrap().unwrap(),
+        processing
+    );
+    let artifact_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM artifacts")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let terminal_outbox_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM outbox_messages WHERE kind = 'handle_terminal_job_state'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(artifact_count, 0);
+    assert_eq!(terminal_outbox_count, 1);
 }

@@ -6,6 +6,10 @@ const meta = {
   component: Select,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['label', 'helperText', 'error', 'disabled'],
+    },
     docs: {
       description: {
         component:

@@ -10,7 +10,8 @@
         "title": "Auralis Native E2E",
         "width": 800,
         "height": 600,
-        "visible": false
+        "visible": false,
+        "skipTaskbar": true
       }
     ]
   }

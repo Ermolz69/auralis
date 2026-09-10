@@ -1,4 +1,4 @@
-export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type JobStatus = 'pending' | 'running' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
 
 // Keep future kinds in the global queue; only explicitly mapped kinds affect pipeline steps.
 export type JobKind = 'dubbing' | (string & {});
@@ -40,9 +40,19 @@ export type Job = {
 };
 
 export type JobEventKind =
-  'created' | 'started' | 'progressed' | 'completed' | 'failed' | 'cancelled';
+  'created' | 'started' | 'progressed' | 'cancelling' | 'completed' | 'failed' | 'cancelled';
 
 export type JobEvent = {
   kind: JobEventKind;
   job: Job;
+};
+
+export type JobHistoryCursor = {
+  createdAt: string;
+  jobId: string;
+};
+
+export type JobHistoryPage = {
+  jobs: Job[];
+  nextCursor: JobHistoryCursor | null;
 };

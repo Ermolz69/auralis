@@ -30,4 +30,24 @@ describe('job kind validation', () => {
     expect(validateJobEventDto({ kind: 'created', job: future })).toBe(true);
     expect(validateJobEventDto({ kind: 'dubbing', job })).toBe(false);
   });
+
+  it('accepts the cancelling status and lifecycle event', () => {
+    const cancelling = { ...job, status: 'cancelling' };
+
+    expect(validateJobDto(cancelling)).toBe(true);
+    expect(validateJobEventDto({ kind: 'cancelling', job: cancelling })).toBe(true);
+  });
+
+  it.each([
+    { percent: Number.NaN },
+    { percent: 101 },
+    { percent: -1 },
+    { percent: 1.5 },
+    { processedItems: -1 },
+    { processedItems: 2, totalItems: 1 },
+    { totalItems: Number.MAX_SAFE_INTEGER + 1 },
+  ])('rejects invalid progress values %j', (progressPatch) => {
+    const invalid = { ...job, progress: { ...job.progress, ...progressPatch } };
+    expect(validateJobDto(invalid)).toBe(false);
+  });
 });

@@ -187,7 +187,12 @@ e2e('08 requests cancellation of an active job', async () => {
     await page.getByRole('button', { name: /Очередь/ }).click();
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
 
-    await page.getByText('Cancellation requested.', { exact: true }).waitFor();
+    await page.getByText('Cancelled', { exact: true }).waitFor();
+    await page
+      .getByText('Cancelled before completion. Start a new supported operation when ready.', {
+        exact: true,
+      })
+      .waitFor();
     assert.deepEqual(await lastCallArgs(page, 'cancel_job_cmd'), { jobId: runningJob.id });
   });
 });
@@ -575,6 +580,155 @@ e2e('30 retries an update check after a temporary network error', async () => {
   );
 });
 
+e2e('31 loads terminal job history beyond the first one hundred records', async () => {
+  const historyJobs = createHistoryJobs(101);
+  const firstPage = historyJobs.slice(0, 100);
+  const oldestJob = historyJobs.at(-1);
+  assert.ok(oldestJob);
+
+  await scenario(
+    baseSeed({
+      jobs: [runningJob, ...firstPage],
+      historyJobs,
+    }),
+    async (page) => {
+      await page.getByRole('button', { name: /Очередь/ }).click();
+      await page.getByText(historyJobs[0].title, { exact: true }).waitFor();
+
+      assert.equal(await page.getByText(oldestJob.title, { exact: true }).count(), 0);
+      await page.getByRole('button', { name: 'Load older jobs' }).click();
+      await page.getByText(oldestJob.title, { exact: true }).waitFor();
+
+      const calls = await callsFor(page, 'list_job_history_page_cmd');
+      assert.equal(calls.length, 2);
+      assert.deepEqual(calls[0].args, { cursor: null, limit: 100 });
+      assert.deepEqual(calls[1].args, {
+        cursor: {
+          createdAt: firstPage.at(-1).createdAt,
+          jobId: firstPage.at(-1).id,
+        },
+        limit: 100,
+      });
+      assert.equal(await page.getByRole('button', { name: 'Load older jobs' }).count(), 0);
+    },
+  );
+});
+
+e2e('32 keeps cancellation pending until the runtime confirms shutdown', async () => {
+  await scenario(baseSeed({ cancelMode: 'deferred' }), async (page) => {
+    await page.getByRole('button', { name: /Очередь/ }).click();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+
+    await page.getByText('Stopping', { exact: true }).waitFor();
+    await page.getByText('Waiting for runtime shutdown', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Cancel', exact: true }).count(), 0);
+    assert.deepEqual(await page.evaluate(() => window.__e2e.pendingCancellationJobIds), [
+      runningJob.id,
+    ]);
+    assert.equal((await callsFor(page, 'cancel_job_cmd')).length, 1);
+
+    await page.evaluate((jobId) => window.__e2e.completeCancellation(jobId), runningJob.id);
+    await page
+      .getByLabel('Operation history')
+      .getByText(runningJob.title, { exact: true })
+      .waitFor();
+    await page.getByText('Cancelled', { exact: true }).waitFor();
+    assert.deepEqual(await page.evaluate(() => window.__e2e.pendingCancellationJobIds), []);
+  });
+});
+
+e2e('33 restores a cancelling job after reload and rejects stale progress', async () => {
+  const cancellingJob = createJob({
+    ...runningJob,
+    revision: 5,
+    status: 'cancelling',
+    percent: runningJob.progress.percent,
+    message: 'Waiting for runtime shutdown',
+  });
+  const staleRunningJob = createJob({
+    ...cancellingJob,
+    revision: 4,
+    status: 'running',
+    percent: cancellingJob.progress.percent,
+    message: 'Stale progress must be ignored',
+  });
+  const cancelledJob = createJob({
+    ...cancellingJob,
+    revision: 6,
+    status: 'cancelled',
+    percent: cancellingJob.progress.percent,
+    message: 'Runtime stopped after reload',
+  });
+
+  await scenario(
+    baseSeed({ jobs: [cancellingJob, completedJob], historyJobs: [completedJob] }),
+    async (page) => {
+      await page.getByRole('button', { name: /Очередь/ }).click();
+      await page.getByText('Stopping', { exact: true }).waitFor();
+
+      await page.reload();
+      await page.getByRole('heading', { name: 'Projects', exact: true }).waitFor();
+      await page.getByRole('button', { name: /Очередь/ }).click();
+      await page.getByText('Stopping', { exact: true }).waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Cancel', exact: true }).count(), 0);
+
+      await page.evaluate(
+        ({ kind, job }) => window.__e2e.emitJobEvent(kind, job),
+        { kind: 'progressed', job: staleRunningJob },
+      );
+      assert.equal(await page.getByText('Stopping', { exact: true }).isVisible(), true);
+      assert.equal(await page.getByText('Stale progress must be ignored', { exact: true }).count(), 0);
+
+      await page.evaluate(
+        ({ kind, job }) => window.__e2e.emitJobEvent(kind, job),
+        { kind: 'cancelled', job: cancelledJob },
+      );
+      await page
+        .getByLabel('Operation history')
+        .getByText(cancellingJob.title, { exact: true })
+        .waitFor();
+      await page.getByText('Cancelled', { exact: true }).waitFor();
+      assert.equal(
+        await page.evaluate(
+          (jobId) => window.__e2e.jobs.find((job) => job.id === jobId)?.progress.message,
+          cancellingJob.id,
+        ),
+        'Runtime stopped after reload',
+      );
+    },
+  );
+});
+
+e2e('34 retries terminal history after a temporary storage failure', async () => {
+  await scenario(
+    baseSeed({
+      jobs: [runningJob],
+      historyJobs: [completedJob],
+      failures: {
+        list_job_history_page_cmd: {
+          times: 1,
+          error: { code: 'IO', message: 'Job history storage is temporarily unavailable' },
+        },
+      },
+    }),
+    async (page) => {
+      await page.getByRole('button', { name: /Очередь/ }).click();
+      await page
+        .getByText('History unavailable: Job history storage is temporarily unavailable', {
+          exact: true,
+        })
+        .waitFor();
+      await page.getByRole('button', { name: 'Retry', exact: true }).click();
+
+      await page
+        .getByLabel('Operation history')
+        .getByText(completedJob.title, { exact: true })
+        .waitFor();
+      assert.equal((await callsFor(page, 'list_job_history_page_cmd')).length, 2);
+    },
+  );
+});
+
 function e2e(name, run) {
   const match = /^(\d+)\s+(.+)$/.exec(name);
   assert.ok(match, `E2E scenario must start with a numeric ID: ${name}`);
@@ -625,7 +779,7 @@ async function scenario(seed, run) {
 function scenarioArea(number) {
   if ([1, 2, 3, 4, 21, 22].includes(number)) return 'projects';
   if ([5, 6, 30].includes(number)) return 'settings-and-updates';
-  if ([7, 8].includes(number)) return 'jobs';
+  if ([7, 8, 31, 32, 33, 34].includes(number)) return 'jobs';
   if ([9, 10, 11, 26, 27, 28].includes(number)) return 'subtitles';
   if ([12, 13, 14, 15, 23, 24, 25].includes(number)) return 'imports';
   if ([16, 17, 18, 19, 20, 29].includes(number)) return 'project-management';
@@ -768,11 +922,23 @@ function createMetadata() {
   };
 }
 
-function createJob({ id, projectId, title, status, stage, percent, message }) {
+function createJob({
+  id,
+  projectId,
+  title,
+  status,
+  stage,
+  percent,
+  message,
+  revision = 1,
+  error = null,
+  createdAt = timestamp,
+  updatedAt = createdAt,
+}) {
   return {
     id,
     kind: 'dubbing',
-    revision: 1,
+    revision,
     projectId,
     title,
     status,
@@ -784,10 +950,28 @@ function createJob({ id, projectId, title, status, stage, percent, message }) {
       processedItems: null,
       totalItems: null,
     },
-    error: null,
-    createdAt: timestamp,
-    updatedAt: timestamp,
+    error,
+    createdAt,
+    updatedAt,
   };
+}
+
+function createHistoryJobs(count) {
+  const newestCreatedAt = Date.parse('2026-09-03T11:59:00.000Z');
+  return Array.from({ length: count }, (_, index) => {
+    const sequence = index + 1;
+    return createJob({
+      id: `history-job-${String(sequence).padStart(3, '0')}`,
+      projectId: youtubeProject.id,
+      title: `History job ${String(sequence).padStart(3, '0')}`,
+      status: sequence % 2 === 0 ? 'failed' : 'completed',
+      stage: 'fetchMetadata',
+      percent: 100,
+      message: `Terminal result ${sequence}`,
+      error: sequence % 2 === 0 ? `Synthetic failure ${sequence}` : null,
+      createdAt: new Date(newestCreatedAt - index * 1_000).toISOString(),
+    });
+  });
 }
 
 function escapeRegExp(value) {

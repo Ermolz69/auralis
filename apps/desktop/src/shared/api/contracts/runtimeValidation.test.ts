@@ -61,4 +61,58 @@ describe('IPC runtime validation', () => {
       ]),
     ).toThrow(IpcContractError);
   });
+
+  it('validates paginated job history cursors', () => {
+    const page = {
+      jobs: [],
+      nextCursor: {
+        createdAt: '2026-01-01T00:00:00Z',
+        jobId: '00000000-0000-4000-8000-000000000002',
+      },
+    };
+    expect(parseCommandResult('list_job_history_page_cmd', page)).toEqual(page);
+    expect(() =>
+      parseCommandResult('list_job_history_page_cmd', {
+        jobs: [],
+        nextCursor: { createdAt: 'not-a-date', jobId: 'job' },
+      }),
+    ).toThrow(IpcContractError);
+  });
+
+  it('rejects impossible media rates and structurally conflicting transcript segments', () => {
+    expect(() =>
+      parseCommandResult('probe_local_media_cmd', {
+        durationMs: 1,
+        fps: -30,
+        hasVideo: true,
+        hasAudio: false,
+        streams: [],
+        audioTracks: [],
+      }),
+    ).toThrow(IpcContractError);
+
+    const segment = {
+      id: 'segment-1',
+      index: 0,
+      startMs: 20,
+      endMs: 10,
+      sourceText: 'Invalid timing',
+    };
+    expect(() =>
+      parseCommandResult('get_transcript_cmd', {
+        language: 'en',
+        segments: [segment],
+      }),
+    ).toThrow(IpcContractError);
+
+    expect(() =>
+      parseCommandResult('get_transcript_cmd', {
+        language: 'en',
+        segments: [
+          { ...segment, startMs: 0, endMs: 10 },
+          { ...segment, startMs: 10, endMs: 20 },
+        ],
+      }),
+    ).toThrow(IpcContractError);
+  });
 });

@@ -1,4 +1,5 @@
-use crate::error::{ApplicationError, CleanupReport, CleanupTarget};
+use crate::error::{ApplicationError, CleanupReport};
+use crate::usecases::import_cleanup::cleanup_staging;
 use ports::storage::ArtifactStore;
 
 pub async fn cleanup_after_stage<S: ArtifactStore>(
@@ -6,15 +7,7 @@ pub async fn cleanup_after_stage<S: ArtifactStore>(
     staging_key: &str,
     artifact_store: &S,
 ) -> ApplicationError {
-    match artifact_store.delete_storage_key(staging_key).await {
-        Ok(_) => primary,
-        Err(e) => {
-            let mut report = CleanupReport::new();
-            report.add_failure(CleanupTarget::staging(staging_key), e);
-            ApplicationError::OperationFailedWithCleanup {
-                primary: Box::new(primary),
-                cleanup_report: report,
-            }
-        }
-    }
+    let mut report = CleanupReport::new();
+    cleanup_staging(artifact_store, staging_key, &mut report).await;
+    report.into_error(primary)
 }

@@ -39,7 +39,7 @@ describe('AppUpdateProvider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Install' }));
 
     await screen.findByText('restarting');
-    expect(screen.getByText('100')).not.toBeNull();
+    expect(screen.getByTestId('percent').textContent).toBe('100');
     expect(candidate.downloadAndInstall).toHaveBeenCalledOnce();
     expect(client.relaunch).toHaveBeenCalledOnce();
   });
@@ -62,6 +62,29 @@ describe('AppUpdateProvider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Install' }));
     await screen.findByText('restarting');
     expect(screen.queryByText('100')).toBeNull();
+  });
+
+  it('ignores invalid native download counters and bounds over-reported progress', async () => {
+    const candidate = createCandidate();
+    vi.mocked(candidate.downloadAndInstall).mockImplementationOnce(async (onEvent) => {
+      onEvent({ event: 'Started', data: { contentLength: 100 } });
+      onEvent({ event: 'Progress', data: { chunkLength: -10 } });
+      onEvent({ event: 'Progress', data: { chunkLength: Number.NaN } });
+      onEvent({ event: 'Progress', data: { chunkLength: 150 } });
+    });
+
+    render(
+      <AppUpdateProvider client={createClient(candidate)}>
+        <UpdateProbe />
+      </AppUpdateProvider>,
+    );
+
+    await screen.findByText('available');
+    fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+    await screen.findByText('restarting');
+    expect(screen.getByTestId('downloaded-bytes').textContent).toBe('100');
+    expect(screen.getByTestId('total-bytes').textContent).toBe('100');
+    expect(screen.getByTestId('percent').textContent).toBe('100');
   });
 
   it('keeps the installed version usable when a check fails', async () => {
@@ -136,7 +159,9 @@ function UpdateProbe() {
     <div>
       <span>{update.phase}</span>
       <span>{update.update?.version}</span>
-      <span>{update.progress?.percent}</span>
+      <span data-testid="downloaded-bytes">{update.progress?.downloadedBytes}</span>
+      <span data-testid="total-bytes">{update.progress?.totalBytes}</span>
+      <span data-testid="percent">{update.progress?.percent}</span>
       <span>{update.error}</span>
       <button type="button" onClick={() => void update.installUpdate()}>
         Install

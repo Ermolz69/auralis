@@ -21,6 +21,45 @@ pub struct CommitManagedSourceImport {
     pub original_updated_at: chrono::DateTime<chrono::Utc>,
 }
 
+fn validate_staged_artifact(
+    project_id: &ProjectId,
+    artifact: &Artifact,
+    staging_key: &str,
+    final_key: &str,
+) -> Result<(), PortError> {
+    if artifact.location != domain::media::ArtifactLocation::StorageKey(final_key.to_string()) {
+        return Err(PortError::Unexpected {
+            message: "Artifact location must match final_key StorageKey".to_string(),
+        });
+    }
+    if !is_clean_key(final_key) {
+        return Err(PortError::Unexpected {
+            message: "final_key must be a clean relative storage key".to_string(),
+        });
+    }
+    if !is_clean_key(staging_key) {
+        return Err(PortError::Unexpected {
+            message: "staging_key must be a clean relative storage key".to_string(),
+        });
+    }
+    if final_key.split('/').next().unwrap_or("") != project_id.to_string() {
+        return Err(PortError::Unexpected {
+            message: "final_key must start with the project ID".to_string(),
+        });
+    }
+    if staging_key.split('/').next().unwrap_or("") != ".staging" {
+        return Err(PortError::Unexpected {
+            message: "staging_key must start with .staging".to_string(),
+        });
+    }
+    if staging_key == final_key {
+        return Err(PortError::Unexpected {
+            message: "staging_key and final_key must be different".to_string(),
+        });
+    }
+    Ok(())
+}
+
 fn is_clean_key(key: &str) -> bool {
     if key.is_empty() {
         return false;
@@ -75,46 +114,12 @@ impl CommitManagedSourceImport {
                 });
             }
         }
-        if self.artifact.location
-            != domain::media::ArtifactLocation::StorageKey(self.final_key.clone())
-        {
-            return Err(PortError::Unexpected {
-                message: "Artifact location must match final_key StorageKey".to_string(),
-            });
-        }
-        if !is_clean_key(&self.final_key) {
-            return Err(PortError::Unexpected {
-                message: "final_key must be a clean relative storage key".to_string(),
-            });
-        }
-        if !is_clean_key(&self.staging_key) {
-            return Err(PortError::Unexpected {
-                message: "staging_key must be a clean relative storage key".to_string(),
-            });
-        }
-
-        let project_id_str = self.project.id().to_string();
-        let final_first_comp = self.final_key.split('/').next().unwrap_or("");
-        if final_first_comp != project_id_str {
-            return Err(PortError::Unexpected {
-                message: "final_key must start with the project ID".to_string(),
-            });
-        }
-
-        let staging_first_comp = self.staging_key.split('/').next().unwrap_or("");
-        if staging_first_comp != ".staging" {
-            return Err(PortError::Unexpected {
-                message: "staging_key must start with .staging".to_string(),
-            });
-        }
-
-        if self.staging_key == self.final_key {
-            return Err(PortError::Unexpected {
-                message: "staging_key and final_key must be different".to_string(),
-            });
-        }
-
-        Ok(())
+        validate_staged_artifact(
+            self.project.id(),
+            &self.artifact,
+            &self.staging_key,
+            &self.final_key,
+        )
     }
 }
 
@@ -129,39 +134,12 @@ pub struct CommitStagedArtifactWrite {
 
 impl CommitStagedArtifactWrite {
     pub fn validate(&self) -> Result<(), PortError> {
-        if self.artifact.location
-            != domain::media::ArtifactLocation::StorageKey(self.final_key.clone())
-        {
-            return Err(PortError::Unexpected {
-                message: "Artifact location must match final_key StorageKey".to_string(),
-            });
-        }
-        if !is_clean_key(&self.final_key) {
-            return Err(PortError::Unexpected {
-                message: "final_key must be a clean relative storage key".to_string(),
-            });
-        }
-        if !is_clean_key(&self.staging_key) {
-            return Err(PortError::Unexpected {
-                message: "staging_key must be a clean relative storage key".to_string(),
-            });
-        }
-        if self.final_key.split('/').next().unwrap_or("") != self.project_id.to_string() {
-            return Err(PortError::Unexpected {
-                message: "final_key must start with the project ID".to_string(),
-            });
-        }
-        if self.staging_key.split('/').next().unwrap_or("") != ".staging" {
-            return Err(PortError::Unexpected {
-                message: "staging_key must start with .staging".to_string(),
-            });
-        }
-        if self.staging_key == self.final_key {
-            return Err(PortError::Unexpected {
-                message: "staging_key and final_key must be different".to_string(),
-            });
-        }
-        Ok(())
+        validate_staged_artifact(
+            &self.project_id,
+            &self.artifact,
+            &self.staging_key,
+            &self.final_key,
+        )
     }
 }
 
@@ -181,6 +159,9 @@ pub enum CommitArtifactFinalizeResult {
 }
 
 #[cfg(test)]
+mod validation_tests;
+
+#[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
@@ -189,7 +170,7 @@ mod tests {
     };
     use domain::project::{Project, ProjectId};
 
-    fn create_valid_command() -> (CommitManagedSourceImport, ProjectId, ArtifactId) {
+    pub(super) fn create_valid_command() -> (CommitManagedSourceImport, ProjectId, ArtifactId) {
         let project_id = ProjectId::new();
         let artifact_id = ArtifactId::new();
         let final_key = format!("{}/source-video/{}.mp4", project_id, artifact_id);

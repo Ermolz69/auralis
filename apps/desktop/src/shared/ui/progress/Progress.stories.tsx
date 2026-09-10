@@ -7,6 +7,10 @@ const meta = {
   component: Progress,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['value', 'variant', 'indeterminate'],
+    },
     docs: {
       description: {
         component:
@@ -16,7 +20,7 @@ const meta = {
   },
   tags: ['autodocs'],
   argTypes: {
-    value: { control: { type: 'range', min: 0, max: 100 } },
+    value: { control: { type: 'range', min: 0, max: 100, step: 1 } },
     variant: { control: 'select', options: ['default', 'success', 'warning', 'danger'] },
     indeterminate: { control: 'boolean' },
   },

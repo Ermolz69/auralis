@@ -79,7 +79,14 @@ impl JobRepository for InMemoryJobRepository {
         Ok(lock
             .jobs
             .values()
-            .filter(|j| j.status() == &domain::job::JobStatus::Running)
+            .filter(|job| {
+                matches!(
+                    job.status(),
+                    domain::job::JobStatus::Pending
+                        | domain::job::JobStatus::Running
+                        | domain::job::JobStatus::Cancelling
+                )
+            })
             .cloned()
             .collect())
     }
@@ -124,5 +131,84 @@ impl ports::job_query::JobQueryPort for InMemoryJobRepository {
             });
         }
         Ok(dtos)
+    }
+
+    async fn list_job_history_page(
+        &self,
+        cursor: Option<&ports::job_query::JobHistoryCursor>,
+        limit: usize,
+    ) -> Result<ports::job_query::JobHistoryPage, PortError> {
+        let lock = self.lock_db()?;
+        let mut jobs: Vec<_> = lock
+            .jobs
+            .values()
+            .filter(|job| {
+                matches!(
+                    job.status(),
+                    domain::job::JobStatus::Completed
+                        | domain::job::JobStatus::Failed
+                        | domain::job::JobStatus::Cancelled
+                )
+            })
+            .filter(|job| {
+                cursor.is_none_or(|cursor| {
+                    job.created_at() < &cursor.created_at
+                        || (job.created_at() == &cursor.created_at
+                            && job.id().to_string() < cursor.job_id.to_string())
+                })
+            })
+            .cloned()
+            .collect();
+        jobs.sort_by(|left, right| {
+            right
+                .created_at()
+                .cmp(left.created_at())
+                .then_with(|| right.id().to_string().cmp(&left.id().to_string()))
+        });
+
+        build_history_page(jobs, limit)
+    }
+}
+
+fn build_history_page(
+    jobs: Vec<Job>,
+    limit: usize,
+) -> Result<ports::job_query::JobHistoryPage, PortError> {
+    let page_size = limit.clamp(1, ports::job_query::MAX_JOB_HISTORY_PAGE_SIZE);
+    let has_more = jobs.len() > page_size;
+    let dtos = jobs
+        .into_iter()
+        .take(page_size)
+        .map(job_to_scheduled)
+        .collect::<Vec<_>>();
+    let next_cursor = if has_more {
+        dtos.last().map(|last| ports::job_query::JobHistoryCursor {
+            created_at: last.created_at,
+            job_id: last.id.clone(),
+        })
+    } else {
+        None
+    };
+
+    Ok(ports::job_query::JobHistoryPage {
+        jobs: dtos,
+        next_cursor,
+    })
+}
+
+fn job_to_scheduled(job: Job) -> ports::job_scheduler::ScheduledJob {
+    let snap = job.to_snapshot();
+    ports::job_scheduler::ScheduledJob {
+        id: snap.id,
+        kind: snap.kind,
+        revision: snap.revision,
+        project_id: Some(snap.project_id),
+        title: snap.title,
+        status: snap.status,
+        stage: snap.stage,
+        progress: snap.progress,
+        error: snap.error.map(|error| error.message),
+        created_at: snap.created_at,
+        updated_at: snap.updated_at,
     }
 }

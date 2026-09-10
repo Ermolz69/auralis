@@ -150,7 +150,10 @@ impl JobRepository for SqliteJobRepository {
             SELECT id, revision, project_id, title, kind, status, stage, progress_json, error_json,
                    created_at, updated_at, started_at, finished_at
             FROM jobs
-            WHERE status IN ('pending', 'running', 'Pending', 'Running')
+            WHERE status IN (
+                'pending', 'running', 'cancelling',
+                'Pending', 'Running', 'Cancelling'
+            )
             ORDER BY created_at ASC
             "#,
         )
@@ -219,5 +222,136 @@ impl ports::job_query::JobQueryPort for SqliteJobRepository {
         }
 
         Ok(jobs)
+    }
+
+    async fn list_job_history_page(
+        &self,
+        cursor: Option<&ports::job_query::JobHistoryCursor>,
+        limit: usize,
+    ) -> Result<ports::job_query::JobHistoryPage, PortError> {
+        let page_size = limit.clamp(1, ports::job_query::MAX_JOB_HISTORY_PAGE_SIZE);
+        let cursor_created_at = cursor.map(|value| value.created_at.to_rfc3339());
+        let cursor_job_id = cursor.map(|value| value.job_id.to_string());
+        let rows = sqlx::query_as::<_, JobRow>(
+            r#"
+            SELECT id, revision, project_id, title, kind, status, stage, progress_json, error_json,
+                   created_at, updated_at, started_at, finished_at
+            FROM jobs
+            WHERE status IN (
+                'completed', 'failed', 'cancelled',
+                'Completed', 'Failed', 'Cancelled'
+            )
+              AND (
+                ? IS NULL
+                OR created_at < ?
+                OR (created_at = ? AND id < ?)
+              )
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(cursor_created_at.clone())
+        .bind(cursor_created_at.clone())
+        .bind(cursor_created_at)
+        .bind(cursor_job_id)
+        .bind((page_size + 1) as i64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|error| {
+            crate::sqlite::helpers::map_sqlite_error("list_job_history_page", error)
+        })?;
+
+        let has_more = rows.len() > page_size;
+        let mut jobs = Vec::with_capacity(page_size.min(rows.len()));
+        for row in rows.into_iter().take(page_size) {
+            jobs.push(job_to_scheduled(row_to_job(row)?));
+        }
+        let next_cursor = if has_more {
+            jobs.last().map(|last| ports::job_query::JobHistoryCursor {
+                created_at: last.created_at,
+                job_id: last.id.clone(),
+            })
+        } else {
+            None
+        };
+
+        Ok(ports::job_query::JobHistoryPage { jobs, next_cursor })
+    }
+}
+
+fn job_to_scheduled(job: Job) -> ports::job_scheduler::ScheduledJob {
+    let snap = job.to_snapshot();
+    ports::job_scheduler::ScheduledJob {
+        id: snap.id,
+        kind: snap.kind,
+        revision: snap.revision,
+        project_id: Some(snap.project_id),
+        title: snap.title,
+        status: snap.status,
+        stage: snap.stage,
+        progress: snap.progress,
+        error: snap.error.map(|error| error.message),
+        created_at: snap.created_at,
+        updated_at: snap.updated_at,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use ports::job_query::JobQueryPort;
+    use ports::repository::{JobRepository, ProjectRepository};
+    use std::collections::HashSet;
+
+    #[tokio::test]
+    async fn history_cursor_reads_more_than_one_hundred_without_duplicates() {
+        let directory = tempfile::tempdir().unwrap();
+        let pool = crate::sqlite::connect_sqlite(directory.path().join("history.sqlite"))
+            .await
+            .unwrap();
+        let project_repo = crate::sqlite::SqliteProjectRepository::new(pool.clone());
+        let project = project_repo
+            .create(domain::project::Project::new("History".into()).unwrap())
+            .await
+            .unwrap();
+        let repository = SqliteJobRepository::new(pool);
+
+        for index in 0..205 {
+            let mut job = Job::new(
+                project.id().clone(),
+                format!("Terminal {index}"),
+                domain::job::JobKind::Dubbing,
+            );
+            job.cancel().unwrap();
+            repository.create(job).await.unwrap();
+        }
+        let mut active = Job::new(
+            project.id().clone(),
+            "Active".into(),
+            domain::job::JobKind::Dubbing,
+        );
+        active.start().unwrap();
+        let active_id = active.id().clone();
+        repository.create(active).await.unwrap();
+
+        let mut cursor = None;
+        let mut ids = Vec::new();
+        loop {
+            let page = repository
+                .list_job_history_page(cursor.as_ref(), 37)
+                .await
+                .unwrap();
+            ids.extend(page.jobs.iter().map(|job| job.id.clone()));
+            match page.next_cursor {
+                Some(next) => cursor = Some(next),
+                None => break,
+            }
+        }
+
+        assert_eq!(ids.len(), 205);
+        assert_eq!(ids.iter().cloned().collect::<HashSet<_>>().len(), 205);
+        assert!(!ids.contains(&active_id));
     }
 }

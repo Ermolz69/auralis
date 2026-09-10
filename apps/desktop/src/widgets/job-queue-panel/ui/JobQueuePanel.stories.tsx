@@ -156,6 +156,32 @@ export const TerminalOperations: Story = {
   },
 };
 
+const largeHistory = Array.from({ length: 100 }, (_, index): JobDto => {
+  const template = terminalJobs[index % terminalJobs.length];
+  const sequence = String(index + 1).padStart(3, '0');
+
+  return {
+    ...template,
+    id: `job-history-${sequence}`,
+    title: `${template.title} ${sequence}`,
+    revision: index + 1,
+    createdAt: `2026-08-02T${String(Math.floor(index / 60)).padStart(2, '0')}:${String(index % 60).padStart(2, '0')}:00.000Z`,
+    updatedAt: `2026-08-02T${String(Math.floor(index / 60)).padStart(2, '0')}:${String(index % 60).padStart(2, '0')}:30.000Z`,
+  };
+});
+
+export const LargeHistory: Story = {
+  args: {
+    state: createJobState(largeHistory),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(100);
+    await expect(canvas.getByRole('heading', { name: 'History' })).toBeInTheDocument();
+  },
+};
+
 function createJobState(
   jobs: JobDto[],
   overrides: Partial<Pick<JobStoreState, 'phase' | 'pendingRefetch'>> = {},

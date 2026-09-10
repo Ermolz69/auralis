@@ -59,7 +59,7 @@ pub fn terminal_outcome_for_status(
         JobStatus::Completed => Ok(TerminalOutcome::Completed),
         JobStatus::Failed => Ok(TerminalOutcome::Failed),
         JobStatus::Cancelled => Ok(TerminalOutcome::Cancelled),
-        JobStatus::Pending | JobStatus::Running => {
+        JobStatus::Pending | JobStatus::Running | JobStatus::Cancelling => {
             Err(ApplyRecoveryActionError::InvalidRecoveryAction(
                 "Recovery action expected a terminal job status",
             ))

@@ -8,6 +8,10 @@ const meta = {
   component: Input,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['label', 'helperText', 'error', 'disabled'],
+    },
     docs: {
       description: {
         component:

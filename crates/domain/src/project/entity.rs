@@ -55,6 +55,10 @@ impl Project {
         }
         let title = ProjectTitle::new(snapshot.title)?;
 
+        if let Some(transcript) = &snapshot.transcript {
+            transcript.validate()?;
+        }
+
         if snapshot
             .source_language
             .as_ref()
@@ -190,9 +194,11 @@ impl Project {
         self.updated_at = Utc::now();
     }
 
-    pub fn set_transcript(&mut self, transcript: Transcript) {
+    pub fn set_transcript(&mut self, transcript: Transcript) -> Result<(), DomainError> {
+        transcript.validate()?;
         self.transcript = Some(transcript);
         self.updated_at = Utc::now();
+        Ok(())
     }
 
     // Transitions

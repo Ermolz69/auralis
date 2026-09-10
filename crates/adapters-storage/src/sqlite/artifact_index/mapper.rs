@@ -22,13 +22,22 @@ pub fn artifact_to_row_values(
     let kind = artifact_kind_to_db(&artifact.kind)?;
     let state = artifact_state_to_db(&artifact.state)?;
 
+    let size_bytes = artifact
+        .size_bytes
+        .map(i64::try_from)
+        .transpose()
+        .map_err(|error| PortError::Storage {
+            operation: "artifact_to_row_values",
+            message: format!("Artifact size cannot be represented by SQLite: {error}"),
+        })?;
+
     Ok(ArtifactRow {
         id: artifact.id.to_string(),
         project_id: project_id.to_string(),
         kind,
         location_kind: "StorageKey".to_string(),
         location_value,
-        size_bytes: artifact.size_bytes.map(|s| s as i64),
+        size_bytes,
         state,
         created_at: artifact.created_at.to_rfc3339(),
         updated_at: artifact.updated_at.to_rfc3339(),
@@ -77,11 +86,22 @@ pub fn row_to_artifact(row: ArtifactRow) -> Result<Artifact, PortError> {
         .map(|s| parse_datetime(&s, &row.id, "ready_at"))
         .transpose()?;
 
+    let size_bytes = row
+        .size_bytes
+        .map(u64::try_from)
+        .transpose()
+        .map_err(|error| PortError::InvalidStoredData {
+            entity_type: "artifact".to_string(),
+            entity_id: row.id.clone(),
+            field: "size_bytes".to_string(),
+            message: format!("Artifact size is out of bounds: {error}"),
+        })?;
+
     Ok(Artifact {
         id,
         kind,
         location,
-        size_bytes: row.size_bytes.map(|s| s as u64),
+        size_bytes,
         state,
         created_at,
         updated_at,
@@ -111,4 +131,57 @@ fn parse_datetime(
             message: format!("Invalid datetime {}: {}", value, e),
         })
         .map(|dt| dt.with_timezone(&chrono::Utc))
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use chrono::Utc;
+    use domain::media::{ArtifactKind, ArtifactState};
+
+    fn artifact_row(size_bytes: Option<i64>) -> ArtifactRow {
+        let now = Utc::now().to_rfc3339();
+        ArtifactRow {
+            id: ArtifactId::new().to_string(),
+            project_id: ProjectId::new().to_string(),
+            kind: "SourceVideo".to_string(),
+            location_kind: "StorageKey".to_string(),
+            location_value: "projects/source.mp4".to_string(),
+            size_bytes,
+            state: "ready".to_string(),
+            created_at: now.clone(),
+            updated_at: now,
+            ready_at: None,
+        }
+    }
+
+    #[test]
+    fn rejects_negative_stored_artifact_size() {
+        let result = row_to_artifact(artifact_row(Some(-1)));
+
+        assert!(matches!(
+            result,
+            Err(PortError::InvalidStoredData { field, .. }) if field == "size_bytes"
+        ));
+    }
+
+    #[test]
+    fn rejects_artifact_size_that_sqlite_cannot_represent() {
+        let now = Utc::now();
+        let artifact = Artifact {
+            id: ArtifactId::new(),
+            kind: ArtifactKind::SourceVideo,
+            location: ArtifactLocation::StorageKey("projects/source.mp4".to_string()),
+            size_bytes: Some(u64::MAX),
+            state: ArtifactState::Ready,
+            created_at: now,
+            updated_at: now,
+            ready_at: Some(now),
+        };
+
+        let result = artifact_to_row_values(&ProjectId::new(), &artifact);
+        assert!(matches!(result, Err(PortError::Storage { .. })));
+    }
 }

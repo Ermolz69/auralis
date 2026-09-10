@@ -76,17 +76,25 @@ tasks:
       - task: media:bundle:verify
 
   desktop:e2e:native:
-    desc: Run the real React-to-IPC-to-Rust-to-SQLite-to-filesystem acceptance test
+    desc: Run real React-to-IPC-to-Rust-to-SQLite-to-ffprobe/yt-dlp/filesystem acceptance
     cmds:
       - node tools/native-e2e/run.mjs
 
   check:frontend:
+    desc: Run the complete frontend test, browser, build, and architecture gate
     cmds:
       - task: fe:all
+      - task: q:frontend
 
   check:rust:
     cmds:
       - task: rs:all
+
+  check:jobs:
+    desc: Run focused job lifecycle and cancellation checks
+    cmds:
+      - task: rs:test:jobs
+      - task: fe:test:jobs
 
   check:rust:pr:
     desc: Run the Rust gates required for pull requests without release-only regressions
@@ -132,7 +140,6 @@ tasks:
       - task: check:frontend
       - task: check:rust:pr
       - task: check:docs
-      - task: check:quality:frontend
       - task: check:quality:docs
       - task: check:quality:security
       - task: check:quality:global

@@ -5,6 +5,7 @@ export type JobStatusTone = 'success' | 'danger' | 'default' | 'warning';
 const JOB_STATUS_LABELS = {
   pending: 'Waiting to start',
   running: 'Running',
+  cancelling: 'Stopping',
   completed: 'Completed',
   failed: 'Failed',
   cancelled: 'Cancelled',
@@ -59,6 +60,7 @@ export const getJobStatusTone = (status: JobStatus): JobStatusTone => {
     case 'failed':
       return 'danger';
     case 'cancelled':
+    case 'cancelling':
       return 'warning';
     case 'pending':
     case 'running':
@@ -67,4 +69,4 @@ export const getJobStatusTone = (status: JobStatus): JobStatusTone => {
 };
 
 export const isActiveJobStatus = (status: JobStatus): boolean =>
-  status === 'pending' || status === 'running';
+  status === 'pending' || status === 'running' || status === 'cancelling';

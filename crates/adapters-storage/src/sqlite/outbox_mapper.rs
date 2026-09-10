@@ -7,6 +7,16 @@ use super::outbox_row::OutboxRow;
 pub fn row_to_outbox_message(row: OutboxRow) -> Result<OutboxMessage, PortError> {
     let id = parse_outbox_message_id(&row.id)?;
 
+    let attempts = i32::try_from(row.attempts)
+        .ok()
+        .filter(|attempts| *attempts >= 0)
+        .ok_or_else(|| PortError::InvalidStoredData {
+            entity_type: "outbox".to_string(),
+            entity_id: row.id.clone(),
+            field: "attempts".to_string(),
+            message: format!("Attempt count {} is out of bounds", row.attempts),
+        })?;
+
     let payload: OutboxPayload =
         serde_json::from_str(&row.payload_json).map_err(|e| PortError::InvalidStoredData {
             entity_type: "outbox".to_string(),
@@ -46,7 +56,7 @@ pub fn row_to_outbox_message(row: OutboxRow) -> Result<OutboxMessage, PortError>
         id,
         payload,
         status,
-        attempts: row.attempts as i32,
+        attempts,
         next_attempt_at,
         locked_at,
         locked_by: row.locked_by,
@@ -81,4 +91,53 @@ fn parse_datetime(
             message: format!("Failed to parse datetime: {}", e),
         })
         .map(|dt| dt.with_timezone(&chrono::Utc))
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use chrono::Utc;
+
+    fn outbox_row(attempts: i64) -> OutboxRow {
+        let now = Utc::now().to_rfc3339();
+        OutboxRow {
+            id: OutboxMessageId::new().to_string(),
+            kind: "delete_project_artifact_dir".to_string(),
+            payload_json: format!(
+                r#"{{"type":"delete_project_artifact_dir","project_id":"{}"}}"#,
+                domain::project::ProjectId::new()
+            ),
+            status: "pending".to_string(),
+            attempts,
+            next_attempt_at: now.clone(),
+            locked_at: None,
+            locked_by: None,
+            last_error: None,
+            deduplication_key: None,
+            created_at: now.clone(),
+            updated_at: now,
+            aggregate_type: None,
+            aggregate_id: None,
+        }
+    }
+
+    #[test]
+    fn rejects_negative_attempt_count() {
+        let result = row_to_outbox_message(outbox_row(-1));
+        assert!(matches!(
+            result,
+            Err(PortError::InvalidStoredData { field, .. }) if field == "attempts"
+        ));
+    }
+
+    #[test]
+    fn rejects_attempt_count_larger_than_domain_type() {
+        let result = row_to_outbox_message(outbox_row(i64::from(i32::MAX) + 1));
+        assert!(matches!(
+            result,
+            Err(PortError::InvalidStoredData { field, .. }) if field == "attempts"
+        ));
+    }
 }

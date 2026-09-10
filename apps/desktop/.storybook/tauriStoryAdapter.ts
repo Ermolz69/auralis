@@ -174,6 +174,11 @@ export function installTauriStoryAdapter() {
         return handleListYoutubeSubtitleTracks();
       case 'list_jobs_cmd':
         return handleListJobs();
+      case 'list_job_history_page_cmd':
+        return {
+          jobs: [],
+          nextCursor: null,
+        } satisfies CommandMap['list_job_history_page_cmd']['result'];
       case 'list_jobs_snapshot_cmd':
         return handleListJobsSnapshot(
           readPayload<CommandMap['list_jobs_snapshot_cmd']['args']>(payload),

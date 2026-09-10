@@ -40,6 +40,16 @@ where
                                     },
                                     "failed to publish job event to frontend"
                                 );
+                                if let Err(_e) = self.publisher.publish_invalidated() {
+                                    tracing::error!(
+                                        error = %common::observability::redaction::DiagnosticError {
+                                            kind: "FrontendPublishError",
+                                            code: None,
+                                            retryable: false,
+                                        },
+                                        "failed to publish job invalidation to frontend"
+                                    );
+                                }
                             }
 
                             if let Err(_e) = self.coordinator.handle(event).await {
@@ -345,6 +355,7 @@ mod tests {
         let emitted = frontend_pub.events.lock().unwrap().clone();
         assert_eq!(emitted.len(), 1);
         assert_eq!(emitted[0].job.status, JobStatus::Completed);
+        assert_eq!(*frontend_pub.invalidated_calls.lock().unwrap(), 1);
 
         let handle = running.take_handle().unwrap();
         let (tx, task) = handle.into_shutdown_parts();

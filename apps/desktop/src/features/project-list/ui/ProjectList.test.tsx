@@ -164,6 +164,32 @@ describe('ProjectList', () => {
     (openProjectFolder as Mock).mockResolvedValue(undefined);
   });
 
+  it('releases a listener that finishes registering after unmount', async () => {
+    const { listen } = await import('@/shared/api/tauri');
+    const unlisten = vi.fn();
+    let resolveListener: (value: () => void) => void = () => undefined;
+    const listenerPromise = new Promise<() => void>((resolve) => {
+      resolveListener = resolve;
+    });
+    vi.mocked(listen).mockReturnValueOnce(listenerPromise);
+
+    const view = render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+    await waitFor(() => expect(listen).toHaveBeenCalledOnce());
+    view.unmount();
+
+    await act(async () => {
+      resolveListener(unlisten);
+      await listenerPromise;
+      await Promise.resolve();
+    });
+
+    expect(unlisten).toHaveBeenCalledOnce();
+  });
+
   it.each(['QuotaExceededError', 'SecurityError'])(
     'clears context after backend delete despite %s',
     async (name) => {

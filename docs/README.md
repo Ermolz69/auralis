@@ -9,6 +9,7 @@
 - [Design system](./architecture/004-design-system.md)
 - [Storybook conventions](./architecture/005-storybook-conventions.md)
 - [Runtime data layout](./architecture/006-runtime-data.md)
+- [Job runtime and cancellation](./architecture/007-job-runtime.md)
 - [Production storage contract](./storage/production-storage.md)
 - [Bundled media tools](./media-tools.md)
 - [CI and quality gates](./ci/001-quality-gates.md)

@@ -14,7 +14,9 @@ pub fn parse_vtt(content: &str, language: &str) -> Result<Transcript, Applicatio
                  text: &mut String,
                  segments: &mut Vec<TranscriptSegment>,
                  index: &mut u32| {
-        if let (Some(s), Some(e)) = (*start, *end) {
+        if let (Some(s), Some(e)) = (*start, *end)
+            && e >= s
+        {
             let t = text.trim();
             if !t.is_empty() {
                 segments.push(TranscriptSegment {
@@ -109,7 +111,10 @@ fn parse_vtt_time(time_str: &str) -> Option<u64> {
         _ => return None,
     };
 
-    Some(h * 3600000 + m * 60000 + s * 1000 + ms)
+    h.checked_mul(3_600_000)?
+        .checked_add(m.checked_mul(60_000)?)?
+        .checked_add(s.checked_mul(1_000)?)?
+        .checked_add(ms)
 }
 
 fn remove_vtt_tags(text: &str) -> String {
@@ -170,4 +175,36 @@ pub fn select_best_subtitle_track(
     best_track.ok_or_else(|| ApplicationError::InvalidOperation {
         message: "No suitable subtitles found".to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::expect_used)]
+
+    use super::parse_vtt;
+
+    #[test]
+    fn oversized_timestamps_are_ignored_without_panicking() {
+        let content = concat!(
+            "WEBVTT\n\n",
+            "18446744073709551615:00:00.000 --> 00:00:01.000\n",
+            "invalid\n\n",
+            "00:00:01.000 --> 00:00:02.000\n",
+            "valid\n",
+        );
+
+        let transcript = parse_vtt(content, "en").expect("bounded parser result");
+
+        assert_eq!(transcript.segments.len(), 1);
+        assert_eq!(transcript.segments[0].source_text, "valid");
+    }
+
+    #[test]
+    fn inverted_cue_is_not_persisted() {
+        let content = "WEBVTT\n\n00:00:02.000 --> 00:00:01.000\ninvalid\n";
+
+        let transcript = parse_vtt(content, "en").expect("bounded parser result");
+
+        assert!(transcript.segments.is_empty());
+    }
 }

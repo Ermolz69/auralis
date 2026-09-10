@@ -1,6 +1,6 @@
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { useProjectContext, createProject } from '@/entities/project';
+import { useProjectContext, useProjectOperation, createProject } from '@/entities/project';
 import { importLocalMedia } from '@/entities/media';
 import { useNavigation } from '@/shared/router';
 import { toCommandError } from '@/shared/api/contracts';
@@ -20,37 +20,22 @@ export function useImportLocalMedia() {
     projectId,
     project: currentProject,
     operationGeneration,
-    captureToken,
-    validateToken,
   } = useProjectContext();
   const { setCurrentView, setPipelineStep = () => undefined } = useNavigation();
 
-  const latestAttemptRef = useRef(0);
-  const activeAttemptRef = useRef<number | null>(null);
+  const operation = useProjectOperation();
 
   useLayoutEffect(() => {
     setIsImporting(false);
     setStage('idle');
-    activeAttemptRef.current = null;
-    latestAttemptRef.current += 1;
   }, [operationGeneration, projectId]);
 
   const isBlockedByDeletion = deletingProjectId !== null;
 
   const handleImport = async () => {
     if (deletingProjectId !== null || isImporting) return;
-    if (activeAttemptRef.current !== null) return;
-
-    const token = captureToken();
-    if (!validateToken(token)) return;
-
-    const attemptId = ++latestAttemptRef.current;
-    activeAttemptRef.current = attemptId;
-
-    const ownsAttempt = () =>
-      latestAttemptRef.current === attemptId && activeAttemptRef.current === attemptId;
-
-    const isCurrentAttempt = () => ownsAttempt() && validateToken(token);
+    const attempt = operation.begin();
+    if (!attempt) return;
 
     setIsImporting(true);
     setStage('selecting');
@@ -69,12 +54,12 @@ export function useImportLocalMedia() {
         ],
       });
 
-      if (!isCurrentAttempt()) return;
+      if (!operation.isCurrent(attempt)) return;
 
       if (!selected || typeof selected !== 'string') {
         setIsImporting(false);
         setStage('idle');
-        activeAttemptRef.current = null;
+        operation.finish(attempt);
         return;
       }
 
@@ -83,32 +68,29 @@ export function useImportLocalMedia() {
 
       setStage('probing');
       const project = currentProject ?? (await createProject(filename));
-      if (!isCurrentAttempt()) return;
+      if (!operation.isCurrent(attempt)) return;
       setDraftProject(project);
 
       setStage('importing');
       const updatedProject = await importLocalMedia(project.id, selected);
-      if (!isCurrentAttempt()) return;
+      if (!operation.isCurrent(attempt)) return;
 
       setIsImporting(false);
       setStage('idle');
-      activeAttemptRef.current = null;
+      operation.finish(attempt);
       setDraftProject(null);
       setProject(updatedProject);
       setPipelineStep('source');
       setCurrentView('project');
     } catch (err: unknown) {
-      if (!isCurrentAttempt()) return;
+      if (!operation.isCurrent(attempt)) return;
       const cmdErr = toCommandError(err);
       setError(cmdErr.message);
       console.error(cmdErr);
     } finally {
-      if (ownsAttempt()) {
-        activeAttemptRef.current = null;
-        if (validateToken(token)) {
-          setIsImporting(false);
-          setStage('idle');
-        }
+      if (operation.finish(attempt)) {
+        setIsImporting(false);
+        setStage('idle');
       }
     }
   };

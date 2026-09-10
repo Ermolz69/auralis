@@ -8,10 +8,10 @@ edition.workspace = true
 tauri = { workspace = true, features = [] }
 tauri-plugin-shell.workspace = true
 serde = { workspace = true, features = ["derive"] }
-application = { path = "../application" }
-domain = { path = "../domain" }
-ports = { path = "../ports" }
-common = { version = "0.1.0", path = "../common" }
+application.workspace = true
+domain.workspace = true
+ports.workspace = true
+common.workspace = true
 async-trait.workspace = true
 tokio = { workspace = true, features = ["sync", "fs"] }
 tracing.workspace = true

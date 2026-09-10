@@ -92,6 +92,7 @@ test('release keeps the full reusable gate while PR checks avoid duplicate relea
   assert.deepEqual(ci.jobs['ci-summary'].needs, [
     'changes',
     'frontend',
+    'visual-regression',
     'rust',
     'docs',
     'quality-global',
@@ -102,6 +103,7 @@ test('release keeps the full reusable gate while PR checks avoid duplicate relea
 test('all toolchain consumers use the same bootstrap after checkout', () => {
   const jobs = [
     ci.jobs.frontend,
+    ci.jobs['visual-regression'],
     ci.jobs.rust,
     ci.jobs.docs,
     ci.jobs['quality-global'],
@@ -241,11 +243,12 @@ test('vendored GLib changes require source integrity and optimized Linux regress
     assert.ok(filters[group].includes('vendor/glib-0.18.5/**'));
     assert.ok(filters[group].includes('tools/glib-backport/**'));
   }
-  assert.equal(ci.jobs.rust.steps.some((step) => step.run === 'task rs:glib:reproduce'), false);
+  assert.equal(
+    ci.jobs.rust.steps.some((step) => step.run === 'task rs:glib:reproduce'),
+    false,
+  );
   assert.ok(
-    read('taskfiles/rust.yml').tasks.all.cmds.some(
-      (command) => command.task === 'glib:regression',
-    ),
+    read('taskfiles/rust.yml').tasks.all.cmds.some((command) => command.task === 'glib:regression'),
   );
 });
 
@@ -271,7 +274,7 @@ test('browser E2E keeps stable scenario IDs and uploads diagnostics after failur
   const scenarioNumbers = [...source.matchAll(/^e2e\('(\d{2}) /gm)].map((match) => match[1]);
   assert.deepEqual(
     scenarioNumbers,
-    Array.from({ length: 30 }, (_, index) => String(index + 1).padStart(2, '0')),
+    Array.from({ length: 34 }, (_, index) => String(index + 1).padStart(2, '0')),
   );
 
   const runner = readText('apps/desktop/scripts/run-e2e.mjs');
@@ -287,5 +290,18 @@ test('browser E2E keeps stable scenario IDs and uploads diagnostics after failur
   );
   assert.equal(upload.if, 'always()');
   assert.equal(upload.with.path, 'apps/desktop/e2e-results');
+  assert.equal(upload.with['if-no-files-found'], 'ignore');
+});
+
+test('Storybook visual regression uses pinned Windows rendering and uploads diagnostics', () => {
+  const job = ci.jobs['visual-regression'];
+  assert.equal(job['runs-on'], 'windows-2025');
+  assert.ok(job.if.includes("needs.changes.outputs.frontend == 'true'"));
+  assert.deepEqual(configured(job).with, { node: 'true', playwright: 'true' });
+  assert.ok(job.steps.some((step) => step.run === 'task frontend:storybook:visual'));
+
+  const upload = job.steps.find((step) => step.name === 'Upload Storybook visual diagnostics');
+  assert.equal(upload.if, 'always()');
+  assert.equal(upload.with.path, 'apps/desktop/storybook-visual-results');
   assert.equal(upload.with['if-no-files-found'], 'ignore');
 });

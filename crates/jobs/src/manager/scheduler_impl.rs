@@ -37,19 +37,38 @@ impl JobSchedulerPort for JobManager {
     }
 
     async fn cancel_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
+        let requested = self
+            .mutate_job(
+                job_id,
+                ports::job_scheduler::JobLifecycleEventKind::Cancelling,
+                |job| job.request_cancellation(),
+            )
+            .await?;
+
+        if requested.status() == &domain::job::JobStatus::Cancelled {
+            return Ok(map_job_to_scheduled(&requested));
+        }
+
+        let _runtime_outcome = self.cancel_runtime_and_wait(job_id).await;
         let job = self
             .mutate_job_terminal(
                 job_id,
                 domain::job::TerminalOutcome::Cancelled,
                 ports::job_scheduler::JobLifecycleEventKind::Cancelled,
-                |job| job.cancel(),
+                |job| {
+                    if matches!(
+                        job.status(),
+                        domain::job::JobStatus::Completed
+                            | domain::job::JobStatus::Failed
+                            | domain::job::JobStatus::Cancelled
+                    ) {
+                        return Ok(());
+                    }
+                    job.cancel()
+                },
             )
             .await?;
-        if let Some(crate::manager::runtime_registry::JobRuntimeEntry::Attached { task, .. }) =
-            self.runtime_registry.lock_entries().entries.get(job_id)
-        {
-            task.cancel.cancel();
-        }
+
         Ok(map_job_to_scheduled(&job))
     }
 

@@ -6,6 +6,8 @@ pub mod create_from_youtube;
 #[cfg(test)]
 mod create_tests;
 pub mod delete;
+#[cfg(test)]
+mod delete_tests;
 pub mod get;
 pub mod import_source;
 pub mod lifecycle;

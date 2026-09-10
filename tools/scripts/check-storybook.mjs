@@ -3,8 +3,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ALLOWED_ROOTS = ['Design System/', 'Product/'];
+const ALLOWED_CONTROL_TYPES = new Set(['boolean', 'range', 'radio', 'select', 'text']);
 
-export function collectStorybookErrors({ stories, mainSource, managerSource, introductionSource }) {
+export function collectStorybookErrors({
+  stories,
+  mainSource,
+  managerSource,
+  introductionSource,
+  previewSource,
+}) {
   const errors = [];
   const titles = new Map();
 
@@ -19,6 +26,10 @@ export function collectStorybookErrors({ stories, mainSource, managerSource, int
   }
   if (!introductionSource.includes('<Meta title="Design System/Introduction" />')) {
     errors.push('Introduction.mdx: canonical Design System introduction is missing');
+  }
+  const globalControls = extractObjectProperty(previewSource, 'controls');
+  if (!globalControls || !/\bdisable\s*:\s*true\b/.test(globalControls)) {
+    errors.push('.storybook/preview.tsx: controls must be disabled by default');
   }
 
   for (const [file, source] of stories) {
@@ -51,6 +62,7 @@ export function collectStorybookErrors({ stories, mainSource, managerSource, int
     if (!/docs\s*:\s*\{[\s\S]*?description\s*:\s*\{[\s\S]*?component\s*:/s.test(metaSource)) {
       errors.push(`${file}: meta.parameters.docs.description.component is required`);
     }
+    validateControls(file, metaSource, source.slice(metaEnd), errors);
     if (![...source.matchAll(/^export\s+const\s+\w+/gm)].length) {
       errors.push(`${file}: at least one named story export is required`);
     }
@@ -71,6 +83,7 @@ export function verifyStorybook(rootDir) {
     stories,
     mainSource: fs.readFileSync(path.join(desktopDir, '.storybook/main.ts'), 'utf8'),
     managerSource: fs.readFileSync(path.join(desktopDir, '.storybook/auralisTheme.ts'), 'utf8'),
+    previewSource: fs.readFileSync(path.join(desktopDir, '.storybook/preview.tsx'), 'utf8'),
     introductionSource: fs.readFileSync(
       path.join(srcDir, 'shared/ui/design-tokens/Introduction.mdx'),
       'utf8',
@@ -82,6 +95,125 @@ export function verifyStorybook(rootDir) {
   }
 
   return { storyFiles: stories.length, titles: stories.length };
+}
+
+function validateControls(file, metaSource, storySource, errors) {
+  if (/\bcontrols\s*:\s*\{[\s\S]*?\bdisable\s*:\s*false\b/.test(storySource)) {
+    errors.push(`${file}: story-level controls cannot bypass the meta safety policy`);
+  }
+
+  const controlsSource = extractObjectProperty(metaSource, 'controls');
+  if (!controlsSource) return;
+
+  const disabled = controlsSource.match(/\bdisable\s*:\s*(true|false)\b/)?.[1];
+  if (!disabled) {
+    errors.push(`${file}: controls must declare disable: true or disable: false`);
+    return;
+  }
+
+  const include = parseStringArrayProperty(controlsSource, 'include');
+  if (disabled === 'true') {
+    if (include) errors.push(`${file}: disabled controls cannot declare an include list`);
+    return;
+  }
+
+  if (!include?.length) {
+    errors.push(`${file}: enabled controls require a non-empty literal include list`);
+    return;
+  }
+
+  const argTypesSource = extractObjectProperty(metaSource, 'argTypes');
+  if (!argTypesSource) {
+    errors.push(`${file}: enabled controls require explicit argTypes`);
+    return;
+  }
+
+  const argTypeKeys = collectTopLevelKeys(argTypesSource);
+  for (const controlName of include) {
+    if (!argTypeKeys.includes(controlName)) {
+      errors.push(`${file}: included control "${controlName}" is missing from argTypes`);
+      continue;
+    }
+
+    const definition = extractObjectProperty(argTypesSource, controlName) ?? '';
+    const directType = definition.match(/\bcontrol\s*:\s*['"]([^'"]+)['"]/)?.[1];
+    const controlObject = extractObjectProperty(definition, 'control');
+    const structuredType = controlObject?.match(/\btype\s*:\s*['"]([^'"]+)['"]/)?.[1];
+    const controlType = directType ?? structuredType;
+
+    if (!controlType || !ALLOWED_CONTROL_TYPES.has(controlType)) {
+      errors.push(
+        `${file}: control "${controlName}" must use boolean, range, radio, select, or text`,
+      );
+      continue;
+    }
+    if (
+      (controlType === 'select' || controlType === 'radio') &&
+      !/\boptions\s*:/.test(definition)
+    ) {
+      errors.push(`${file}: control "${controlName}" requires finite options`);
+    }
+    if (
+      controlType === 'range' &&
+      (!controlObject ||
+        !/\bmin\s*:\s*-?\d/.test(controlObject) ||
+        !/\bmax\s*:\s*-?\d/.test(controlObject) ||
+        !/\bstep\s*:\s*\d/.test(controlObject))
+    ) {
+      errors.push(`${file}: range control "${controlName}" requires numeric min, max, and step`);
+    }
+  }
+
+  for (const argTypeKey of argTypeKeys) {
+    if (!include.includes(argTypeKey)) {
+      errors.push(`${file}: argType "${argTypeKey}" must be listed in controls.include`);
+    }
+  }
+}
+
+function extractObjectProperty(source, property) {
+  const match = new RegExp(`\\b${property}\\s*:\\s*\\{`).exec(source);
+  if (!match) return null;
+
+  const openingBrace = match.index + match[0].lastIndexOf('{');
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (let index = openingBrace; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"' || character === '`') {
+      quote = character;
+      continue;
+    }
+    if (character === '{') depth += 1;
+    if (character === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(openingBrace + 1, index);
+    }
+  }
+
+  return null;
+}
+
+function parseStringArrayProperty(source, property) {
+  const match = new RegExp(`\\b${property}\\s*:\\s*\\[([^\\]]*)\\]`).exec(source);
+  if (!match) return null;
+  const values = [...match[1].matchAll(/['"]([^'"]+)['"]/g)].map((entry) => entry[1]);
+  return values.length > 0 ? values : null;
+}
+
+function collectTopLevelKeys(objectSource) {
+  const candidates = [...objectSource.matchAll(/^([ \t]+)([A-Za-z_$][\w$]*)\s*:/gm)];
+  if (candidates.length === 0) return [];
+  const minimumIndent = Math.min(...candidates.map((match) => match[1].length));
+  return candidates.filter((match) => match[1].length === minimumIndent).map((match) => match[2]);
 }
 
 function findFiles(directory, predicate) {

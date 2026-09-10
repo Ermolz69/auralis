@@ -7,6 +7,10 @@ const meta = {
   component: Badge,
   parameters: {
     layout: 'centered',
+    controls: {
+      disable: false,
+      include: ['variant', 'size'],
+    },
     docs: {
       description: {
         component: 'Compact, non-interactive labels for status, category, and metadata.',

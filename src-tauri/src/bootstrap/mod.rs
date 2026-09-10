@@ -1,4 +1,6 @@
 pub mod media_tools;
+#[cfg(feature = "native-e2e")]
+pub mod native_e2e_subtitle_source;
 pub mod paths;
 pub mod services;
 pub mod storage;
@@ -16,9 +18,11 @@ pub fn setup(
     outbox_config: application::worker::outbox::maintenance::OutboxMaintenanceConfig,
     validated_settings: crate::observability::config::ValidatedObservabilitySettings,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    record_native_e2e_checkpoint("setup-started");
     let app_handle = app.handle().clone();
     let app_paths = paths::AppPaths::resolve(app)?;
     app.manage(app_paths.clone());
+    record_native_e2e_checkpoint("paths-ready");
 
     // 0a. Initialize observability
     let log_dir = crate::observability::config::LogDestination::Directory(app_paths.logs());
@@ -34,6 +38,7 @@ pub fn setup(
     app.manage(crate::state::ManagedTracingGuard(std::sync::Mutex::new(
         Some(guard),
     )));
+    record_native_e2e_checkpoint("observability-ready");
 
     tracing::info!(action = "observability_init", status = %mode_str, "Observability initialized");
 
@@ -43,6 +48,7 @@ pub fn setup(
 
     // 1. Setup storage Adapter (fallible)
     let (services, outbox_repo) = storage::setup_storage(&app_paths)?;
+    record_native_e2e_checkpoint("storage-ready");
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
         workspace_root.clone(),
@@ -58,6 +64,7 @@ pub fn setup(
         services.storage_uow.clone(),
         prepared_bridge.emitter(),
     )?;
+    record_native_e2e_checkpoint("scheduler-ready");
 
     // 4. Register all static Tauri state & use cases BEFORE spawning any tasks
     app.manage(crate::state::ManagedJobRuntime(
@@ -79,8 +86,9 @@ pub fn setup(
                 as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
             youtube_imports: services.youtube_imports.clone(),
         },
-    );
+    )?;
     app.manage(services.job_query.clone());
+    record_native_e2e_checkpoint("use-cases-ready");
 
     // 5. Spawn background workers only after all fallible operations have succeeded
     let publisher = TauriEventPublisher::new(app_handle.clone());
@@ -107,6 +115,24 @@ pub fn setup(
     app.manage(crate::state::ManagedJobEventBridge(std::sync::Mutex::new(
         Some(bridge_handle),
     )));
+    record_native_e2e_checkpoint("setup-complete");
 
     Ok(())
+}
+
+pub(crate) fn record_native_e2e_checkpoint(checkpoint: &str) {
+    if !cfg!(feature = "native-e2e") {
+        return;
+    }
+    let Some(root) = std::env::var_os("AURALIS_NATIVE_E2E_DATA_DIR") else {
+        return;
+    };
+    let path = std::path::PathBuf::from(root).join("native-e2e-bootstrap.txt");
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let _ = std::io::Write::write_fmt(&mut file, format_args!("{checkpoint}\n"));
+    }
 }

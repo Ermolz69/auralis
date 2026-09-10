@@ -2,7 +2,9 @@ import { Notice } from '../../../shared/ui/notice';
 import { StateView } from '../../../shared/ui/state-view';
 import { isActiveJobStatus, useJobContext } from '@/entities/job';
 import type { JobDto, JobStoreState } from '@/entities/job';
+import { Button } from '@/shared/ui/button';
 import { JobCard } from './JobCard';
+import { useJobHistory } from './useJobHistory';
 
 const isActiveJob = (job: JobDto) => isActiveJobStatus(job.status);
 
@@ -46,8 +48,10 @@ type JobQueuePanelProps = {
 
 export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
   const { activeJobs, completedJobs, phase, pendingRefetch } = useJobContext();
+  const history = useJobHistory(completedJobs, phase);
   const syncNotice = getSyncNotice(phase, pendingRefetch);
   const hasActiveJobs = activeJobs.some(isActiveJob);
+  const hasJobs = activeJobs.length > 0 || history.jobs.length > 0;
 
   return (
     <aside
@@ -79,7 +83,7 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
         </Notice>
       )}
       <div className="flex-1 flex flex-col gap-3 overflow-y-auto min-h-0">
-        {activeJobs.length === 0 && completedJobs.length === 0 ? (
+        {!hasJobs && !history.isLoading && !history.error ? (
           <StateView
             icon="Inbox"
             title="Queue is empty"
@@ -107,7 +111,7 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
               </section>
             )}
 
-            {completedJobs.length > 0 && (
+            {history.jobs.length > 0 && (
               <section aria-labelledby="job-history-heading" className="flex flex-col gap-3">
                 <h3
                   id="job-history-heading"
@@ -116,13 +120,38 @@ export const JobQueuePanel = ({ className = '' }: JobQueuePanelProps) => {
                   History
                 </h3>
                 <ul className="flex flex-col gap-3" aria-label="Operation history">
-                  {completedJobs.map((job) => (
+                  {history.jobs.map((job) => (
                     <li key={job.id}>
                       <JobCard job={job} />
                     </li>
                   ))}
                 </ul>
+                {history.hasMore && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={history.isLoading}
+                    disabled={history.isLoading}
+                    onClick={history.loadMore}
+                  >
+                    {history.isLoading ? 'Loading history...' : 'Load older jobs'}
+                  </Button>
+                )}
               </section>
+            )}
+            {history.isLoading && history.jobs.length === 0 && (
+              <p className="text-xs text-muted" role="status">
+                Loading job history...
+              </p>
+            )}
+            {history.error && (
+              <div className="flex items-center justify-between gap-2" role="alert">
+                <p className="text-xs text-danger">History unavailable: {history.error}</p>
+                <Button type="button" variant="secondary" size="sm" onClick={history.retry}>
+                  Retry
+                </Button>
+              </div>
             )}
           </>
         )}

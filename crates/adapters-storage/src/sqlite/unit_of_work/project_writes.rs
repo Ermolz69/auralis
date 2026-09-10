@@ -90,6 +90,15 @@ pub(super) async fn update_project_conditional(
           AND updated_at = ?
           AND status = ?
           AND (active_job_id = ? OR (active_job_id IS NULL AND ? IS NULL))
+          AND (
+              ? IS NULL
+              OR EXISTS (
+                  SELECT 1 FROM jobs
+                  WHERE jobs.id = ?
+                    AND jobs.project_id = projects.id
+                    AND jobs.status IN ('pending', 'running', 'Pending', 'Running')
+              )
+          )
         "#,
     )
     .bind(row.title)
@@ -106,6 +115,8 @@ pub(super) async fn update_project_conditional(
     .bind(row.revision)
     .bind(expected_updated_at.to_rfc3339())
     .bind(expected_status_str)
+    .bind(expected_active_job_id_str.clone())
+    .bind(expected_active_job_id_str.clone())
     .bind(expected_active_job_id_str.clone())
     .bind(expected_active_job_id_str)
     .execute(&mut **tx)

@@ -12,17 +12,10 @@ vi.mock('@/shared/ui/toast', () => ({
   },
 }));
 
-declare const require: any;
-
-vi.mock('@/entities/project', () => {
-  const React = require('react');
-  const mockProjectContext = React.createContext(undefined);
-  return {
-    ProjectContext: mockProjectContext,
-    startProjectMockPipeline: vi.fn(),
-    useProjectContext: () => React.useContext(mockProjectContext),
-  };
-});
+vi.mock('@/entities/project', async (original) => ({
+  ...(await original<typeof import('@/entities/project')>()),
+  startProjectMockPipeline: vi.fn(),
+}));
 
 const mockProject: Project = {
   id: 'test-id',

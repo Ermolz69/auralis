@@ -8,6 +8,10 @@ const meta = {
   component: Card,
   parameters: {
     layout: 'padded',
+    controls: {
+      disable: false,
+      include: ['variant'],
+    },
     docs: {
       description: {
         component:

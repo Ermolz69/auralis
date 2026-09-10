@@ -48,6 +48,7 @@ const preview: Preview = {
   ],
   parameters: {
     controls: {
+      disable: true,
       expanded: true,
       sort: 'requiredFirst',
       matchers: {

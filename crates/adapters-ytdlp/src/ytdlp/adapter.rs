@@ -14,6 +14,8 @@ pub struct YtDlpAdapter {
     ffmpeg_candidates: Vec<PathBuf>,
     timeout_ms: u64,
     media_download_timeout_ms: u64,
+    #[cfg(feature = "native-e2e")]
+    native_e2e_url: Option<String>,
 }
 
 impl Default for YtDlpAdapter {
@@ -29,6 +31,8 @@ impl YtDlpAdapter {
             ffmpeg_candidates: vec![PathBuf::from("ffmpeg"), PathBuf::from("ffmpeg.exe")],
             timeout_ms: 60_000,
             media_download_timeout_ms: 30 * 60_000,
+            #[cfg(feature = "native-e2e")]
+            native_e2e_url: None,
         }
     }
 
@@ -41,6 +45,23 @@ impl YtDlpAdapter {
         self.timeout_ms = timeout_ms;
         self.media_download_timeout_ms = timeout_ms;
         self
+    }
+
+    #[cfg(feature = "native-e2e")]
+    pub fn with_native_e2e_url(mut self, url: String) -> Self {
+        self.native_e2e_url = Some(url);
+        self
+    }
+
+    fn validate_url(&self, url: &str) -> Result<(), PortError> {
+        #[cfg(feature = "native-e2e")]
+        if self.native_e2e_url.as_deref() == Some(url) {
+            super::validation::validate_native_e2e_url(url)?;
+            return Ok(());
+        }
+
+        super::validation::validate_url(url)?;
+        Ok(())
     }
 
     fn command_paths(&self) -> YtDlpCommandPaths<'_> {
@@ -61,8 +82,7 @@ impl VideoSourcePort for YtDlpAdapter {
             }
         };
 
-        super::validation::validate_url(url_str)?;
-        Ok(())
+        self.validate_url(url_str)
     }
 
     async fn fetch_metadata(&self, source: &MediaSource) -> Result<MediaMetadata, PortError> {
@@ -259,6 +279,37 @@ mod tests {
         assert_eq!(
             build_output_template(None),
             "%(title).120B [%(id)s].%(ext)s"
+        );
+    }
+
+    #[cfg(feature = "native-e2e")]
+    #[tokio::test]
+    async fn native_e2e_url_allowlist_is_exact_and_loopback_only() {
+        let allowed = "http://127.0.0.1:43123/source.mp4".to_string();
+        let adapter = YtDlpAdapter::default().with_native_e2e_url(allowed.clone());
+
+        assert!(
+            adapter
+                .validate_source(&MediaSource::YoutubeUrl { url: allowed })
+                .await
+                .is_ok()
+        );
+        assert!(
+            adapter
+                .validate_source(&MediaSource::YoutubeUrl {
+                    url: "http://127.0.0.1:43123/other.mp4".to_string(),
+                })
+                .await
+                .is_err()
+        );
+        assert!(
+            YtDlpAdapter::default()
+                .with_native_e2e_url("http://example.com/source.mp4".to_string())
+                .validate_source(&MediaSource::YoutubeUrl {
+                    url: "http://example.com/source.mp4".to_string(),
+                })
+                .await
+                .is_err()
         );
     }
 

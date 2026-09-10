@@ -8,6 +8,10 @@ const meta = {
   component: Button,
   parameters: {
     layout: 'centered',
+    controls: {
+      disable: false,
+      include: ['variant', 'size', 'disabled', 'loading', 'fullWidth'],
+    },
     docs: {
       description: {
         component:

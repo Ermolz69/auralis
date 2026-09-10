@@ -11,6 +11,8 @@ task media:doctor
 task dev
 task desktop:dev
 task desktop:e2e:native
+task check:jobs
+task rs:soak:jobs
 task check:pr
 task check
 task check:all
@@ -25,8 +27,9 @@ media resources.
 
 `task desktop:e2e:native` is the Windows-only real desktop acceptance test. It
 generates a small video with the pinned FFmpeg binary, compiles a hidden Tauri test
-application, drives the production IPC commands from React, and validates the
-resulting SQLite and managed-file state. Its data lives under a unique temporary
+application, pauses a real pipeline at a deterministic asynchronous boundary,
+observes `cancelling`, cancels it, and validates the resulting SQLite, outbox,
+workspace, and managed-file state. Its data lives under a unique temporary
 directory and is removed after the run. Set `AURALIS_NATIVE_E2E_KEEP_TEMP=1` only
 when the isolated state must be retained for diagnosis.
 
@@ -55,11 +58,18 @@ task fe:install-update
 task fe:lint
 task fe:typecheck
 task fe:test
+task fe:test:unit
+task fe:test:components
+task fe:test:integration
+task fe:test:jobs
 task fe:build
 task fe:bundle:check
 task fe:smoke
 task fe:e2e
 task fe:storybook
+task fe:storybook:test
+task fe:storybook:visual
+task fe:storybook:visual:update
 task fe:storybook:dev
 task fe:storybook:check
 task check:storybook
@@ -81,17 +91,31 @@ are included in `task check:frontend`. See [bundle and CSP policy](../ci/011-des
 `task fe:setup:playwright:ci` to also install Chromium's system dependencies.
 On Linux, system package installation requires elevated permissions.
 
-`task fe:e2e` builds the production frontend and runs 30 browser journeys. Each
+`task fe:test` is the coverage gate. It runs four explicit Vitest projects: fast
+unit tests, React component and hook tests in jsdom, cross-provider integration
+tests, and Storybook interactions/accessibility checks in Chromium. Coverage fails
+below 90% statements, 80% branches, 90% functions, or 92% lines and writes
+JSON-summary plus LCOV output to `apps/desktop/coverage`. The `fe:test:unit`,
+`fe:test:components`, `fe:test:integration`, and `fe:storybook:test` tasks provide
+faster isolated feedback without changing the full gate.
+
+`task fe:e2e` builds the production frontend and runs 34 browser journeys. Each
 journey prints a stable ID and area. To isolate a failure, pass its ID, for
 example `task fe:e2e -- --test-name-pattern=E2E-027`. The run writes JUnit and
 failure diagnostics to `apps/desktop/e2e-results`; CI uploads this directory even
 when the frontend job fails.
 
+`task check:frontend` additionally runs typechecking, lint, production bundle
+budgets, CSP smoke, and all frontend architecture/policy checks. It is the single
+command used by pull-request CI for a complete frontend change.
+
 `task fe:storybook:dev` starts the interactive Auralis design-system catalog on
 port 6006. `task fe:storybook` creates its static production build.
 `task check:storybook` is the complete focused gate: it validates the catalog
-metadata, runs every component story and accessibility check in Chromium, and
-builds the static output. The metadata contract requires a unique `Design System`
+metadata, runs every component story and accessibility check in Chromium, compares
+the committed Windows visual baselines, rejects page-level horizontal overflow,
+and builds the static output. `task fe:storybook:visual:update` refreshes the
+baselines after an intentional visual review. The metadata contract requires a unique `Design System`
 or `Product` hierarchy, Autodocs, a component description, and at least one example
 per story file. The faster metadata-only check is available as
 `task q:storybook-contract` and is included in the frontend quality suite.
@@ -103,11 +127,22 @@ task install:rust
 task rs:fmt
 task rs:clippy
 task rs:test
+task rs:test:jobs
+task rs:soak:jobs
 task rs:check
 task rs:pr
 ```
 
 `task install:rust` (also available as `task rs:fetch`) fetches dependencies with `--locked`, without changing `Cargo.lock`.
+`task check:jobs` runs the focused job lifecycle suite across cancellation
+primitives, the runtime manager, the pipeline, SQLite transaction boundaries,
+event delivery, and frontend state synchronization. Its component tasks are
+`task rs:test:jobs` and `task fe:test:jobs`.
+`task rs:soak:jobs` is a separate ignored release-mode allocation profile. It runs
+for 10 minutes and at least 100,000 complete/cancel lifecycles by default, emits
+`target/job-soak/heap-profile.json`, and fails on retained-byte or heap-slope growth.
+For a short harness check, use
+`task rs:soak:jobs DURATION_SECS=1 MIN_ITERATIONS=5000`.
 `task rs:pr` runs dependency-policy verification, formatting, Clippy, and workspace
 tests. The standalone `task rs:check` remains available for diagnosis; it is not
 repeated after Clippy in the default PR path.

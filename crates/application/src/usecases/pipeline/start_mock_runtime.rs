@@ -35,31 +35,14 @@ impl CompletionGuard {
     }
 
     pub(super) fn record_outcome(&self, outcome: RuntimeTaskOutcome) -> RuntimeTaskOutcome {
-        let mut outcome_guard = self
-            .completion
-            .outcome
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
-        *outcome_guard = Some(outcome);
-        outcome
+        self.completion.record_outcome(outcome)
     }
 }
 
 impl Drop for CompletionGuard {
     fn drop(&mut self) {
-        let mut outcome_guard = self
-            .completion
-            .outcome
-            .lock()
-            .unwrap_or_else(|p| p.into_inner());
-        if outcome_guard.is_none() {
-            *outcome_guard = Some(RuntimeTaskOutcome::RecoveryRequired);
-        }
-        self.completion
-            .state
-            .store(1, std::sync::atomic::Ordering::Release);
-        self.completion.notify.notify_waiters();
         self.job_runtime.finish_now(&self.job_id);
+        self.completion.finish(RuntimeTaskOutcome::RecoveryRequired);
     }
 }
 

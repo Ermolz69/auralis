@@ -28,6 +28,7 @@ export function formatRange(startMs: number, endMs: number): string {
 
 export function formatJobStatus(status: Job['status']): string {
   if (status === 'completed') return 'Субтитры получены';
+  if (status === 'cancelling') return 'Импорт останавливается';
   if (status === 'cancelled') return 'Импорт отменён';
   return 'Ожидание импорта';
 }

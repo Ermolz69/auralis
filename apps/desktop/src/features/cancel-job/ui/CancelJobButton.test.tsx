@@ -76,7 +76,9 @@ describe('CancelJobButton', () => {
         false,
       );
     });
-    expect(screen.getByRole('status').textContent).toContain('Cancellation requested.');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Runtime stopped and cancellation confirmed.',
+    );
   });
 
   it('does not send duplicate cancellation while a request is pending', async () => {

@@ -26,13 +26,11 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
       sm: 'px-2 py-0.5 text-xs',
       md: 'px-2.5 py-1 text-xs',
     };
+    const variantClass = variants[variant] ?? variants.default;
+    const sizeClass = sizes[size] ?? sizes.md;
 
     return (
-      <div
-        ref={ref}
-        className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
-        {...props}
-      >
+      <div ref={ref} className={`${base} ${variantClass} ${sizeClass} ${className}`} {...props}>
         {icon && <span className="shrink-0 flex">{icon}</span>}
         <span className="truncate">{children}</span>
       </div>

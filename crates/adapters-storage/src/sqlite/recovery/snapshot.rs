@@ -49,14 +49,16 @@ pub async fn load_snapshot(pool: &SqlitePool) -> Result<RecoverySnapshot, PortEr
         }
     }
 
-    // 3. Load all other active jobs (Pending/Running) to find orphans and multiple active jobs
-    let active_job_rows: Vec<JobRow> =
-        sqlx::query_as("SELECT * FROM jobs WHERE status IN ('Pending', 'Running')")
-            .fetch_all(&mut *tx)
-            .await
-            .map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to fetch active jobs", e)
-            })?;
+    // 3. Load all other active jobs to find orphans and multiple active jobs
+    let active_job_rows: Vec<JobRow> = sqlx::query_as(
+        "SELECT * FROM jobs WHERE status IN (\
+            'pending', 'running', 'cancelling', \
+            'Pending', 'Running', 'Cancelling'\
+        )",
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch active jobs", e))?;
 
     let mut active_jobs = Vec::new();
     for row in active_job_rows {

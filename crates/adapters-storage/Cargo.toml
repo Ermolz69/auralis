@@ -6,15 +6,15 @@ edition.workspace = true
 rust-version = "1.94"
 
 [dependencies]
-common = { path = "../common" }
-domain = { path = "../domain" }
-ports = { path = "../ports" }
+common.workspace = true
+domain.workspace = true
+ports.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 uuid = { workspace = true, features = ["v4"] }
 tokio = { workspace = true, features = ["fs"] }
 sqlx = { workspace = true, features = ["derive"] }
-sqlx-sqlite = { version = "0.9.0", default-features = false, features = ["chrono"] }
+sqlx-sqlite = { workspace = true, features = ["chrono"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tracing.workspace = true
@@ -22,7 +22,7 @@ tracing.workspace = true
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tempfile.workspace = true
-filetime = "0.2.29"
+filetime.workspace = true
 
 [lints]
 workspace = true

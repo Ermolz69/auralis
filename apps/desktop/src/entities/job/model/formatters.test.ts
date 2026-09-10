@@ -9,6 +9,7 @@ describe('job presentation formatters', () => {
     expect(formatJobStatus({ status: 'running', stage: 'extractOrGenerateTranscript' })).toBe(
       'Running: Preparing transcript',
     );
+    expect(formatJobStatus({ status: 'cancelling', stage: 'downloadMedia' })).toBe('Stopping');
     expect(formatJobStatus({ status: 'completed', stage: 'exportResult' })).toBe('Completed');
   });
 
@@ -21,8 +22,10 @@ describe('job presentation formatters', () => {
     expect(getJobStatusTone('completed')).toBe('success');
     expect(getJobStatusTone('failed')).toBe('danger');
     expect(getJobStatusTone('cancelled')).toBe('warning');
+    expect(getJobStatusTone('cancelling')).toBe('warning');
     expect(getJobStatusTone('running')).toBe('default');
     expect(isActiveJobStatus('pending')).toBe(true);
+    expect(isActiveJobStatus('cancelling')).toBe(true);
     expect(isActiveJobStatus('completed')).toBe(false);
   });
 });

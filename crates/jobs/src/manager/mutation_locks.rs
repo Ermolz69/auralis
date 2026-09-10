@@ -58,6 +58,16 @@ impl JobMutationLocks {
         }
         Ok(())
     }
+
+    #[cfg(test)]
+    pub fn entry_count(&self) -> Result<usize, PortError> {
+        self.locks
+            .lock()
+            .map(|locks| locks.len())
+            .map_err(|_| PortError::Unexpected {
+                message: "Job mutation lock map is unavailable".to_string(),
+            })
+    }
 }
 
 #[cfg(test)]

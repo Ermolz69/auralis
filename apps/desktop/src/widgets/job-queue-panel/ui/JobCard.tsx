@@ -25,12 +25,15 @@ export function JobCard({ job }: { job: JobDto }) {
   const project = projectContext?.project ?? null;
   const deletingProjectId = projectContext?.deletingProjectId ?? null;
   const isActive = isActiveJobStatus(job.status);
+  const canCancel = job.status === 'pending' || job.status === 'running';
   const wasRecoveredAfterRestart = isRestartRecoveryFailure(job);
   const statusLabel = formatJobStatus(job);
   const progressMessage = job.progress.message || (job.status === 'pending' ? 'Queued' : 'Working');
   const backendPercent = getBackendPercent(job);
   const isIndeterminate =
-    backendPercent === null || (job.status === 'pending' && backendPercent === 0);
+    job.status === 'cancelling' ||
+    backendPercent === null ||
+    (job.status === 'pending' && backendPercent === 0);
   const projectLabel =
     project && job.projectId === project.id
       ? formatProjectTitle(project.title, project.source)
@@ -76,7 +79,7 @@ export function JobCard({ job }: { job: JobDto }) {
             <p className="truncate text-xs text-muted">Project: {projectLabel}</p>
             <p className="text-xs text-muted">{statusLabel}</p>
           </div>
-          {isActive && <CancelJobButton jobId={job.id} />}
+          {canCancel && <CancelJobButton jobId={job.id} />}
         </div>
 
         {isActive && (

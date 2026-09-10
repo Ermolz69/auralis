@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useProjectJobs } from '@/entities/job';
+import { isActiveJobStatus, useProjectJobs } from '@/entities/job';
 import { useProjectContext } from '@/entities/project';
 import { useTranscript, useYoutubeSubtitleTracks } from '@/entities/transcript';
 import { filterTracks } from './subtitle-workspace/model';
@@ -44,7 +44,7 @@ export function SubtitleWorkspace() {
           query={trackQuery}
           isLoading={trackState.isLoading}
           error={trackState.error}
-          isRunning={activity.some((job) => job.status === 'pending' || job.status === 'running')}
+          isRunning={activity.some((job) => isActiveJobStatus(job.status))}
           hasTranscript={Boolean(transcriptState.transcript)}
           onQueryChange={setTrackQuery}
           onSelect={setSelectedTrackId}

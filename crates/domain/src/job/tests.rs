@@ -101,3 +101,26 @@ fn test_job_cancel_idempotence() {
     assert!(job.cancel().is_ok());
     assert_eq!(job.status(), &JobStatus::Cancelled);
 }
+
+#[test]
+fn cancellation_request_is_visible_before_the_terminal_transition() {
+    let mut job = Job::new(ProjectId::new(), "Test Job".to_string(), JobKind::Dubbing);
+    job.start().unwrap();
+    let running_revision = job.revision();
+
+    job.request_cancellation().unwrap();
+
+    assert_eq!(job.status(), &JobStatus::Cancelling);
+    assert_eq!(job.revision(), running_revision + 1);
+    assert_eq!(job.progress().message, "Waiting for runtime to stop");
+    assert!(job.finished_at().is_none());
+
+    job.request_cancellation().unwrap();
+    assert_eq!(job.revision(), running_revision + 1);
+
+    job.cancel().unwrap();
+    assert_eq!(job.status(), &JobStatus::Cancelled);
+    assert_eq!(job.revision(), running_revision + 2);
+    assert_eq!(job.progress().message, "Runtime stopped; job cancelled");
+    assert!(job.finished_at().is_some());
+}

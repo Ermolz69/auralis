@@ -7,27 +7,33 @@ use super::error::YtDlpError;
 pub fn parse_ytdlp_metadata(json: &str) -> Result<MediaMetadata, YtDlpError> {
     let output: YtDlpOutput = serde_json::from_str(json).map_err(YtDlpError::ParseFailed)?;
 
-    let duration_ms = (output.duration.unwrap_or(0.0) * 1000.0) as u64;
+    let duration_ms = output.duration.and_then(seconds_to_millis).unwrap_or(0);
 
     let mut best_width = output.width;
     let mut best_height = output.height;
-    let mut best_fps = output.fps;
+    let mut best_fps = output.fps.filter(|fps| fps.is_finite() && *fps > 0.0);
     let mut best_tbr = None;
 
     if best_width.is_none() || best_height.is_none() {
         for format in &output.formats {
             if format.vcodec.as_deref().unwrap_or("none") != "none" {
                 if let (Some(w), Some(h)) = (format.width, format.height) {
-                    if w * h > best_width.unwrap_or(0) * best_height.unwrap_or(0) {
+                    let candidate_area = u64::from(w) * u64::from(h);
+                    let current_area =
+                        u64::from(best_width.unwrap_or(0)) * u64::from(best_height.unwrap_or(0));
+                    if candidate_area > current_area {
                         best_width = Some(w);
                         best_height = Some(h);
-                        if let Some(f) = format.fps {
+                        if let Some(f) = format.fps.filter(|fps| fps.is_finite() && *fps > 0.0) {
                             best_fps = Some(f);
                         }
                     }
                 }
             }
-            if let Some(t) = format.tbr {
+            if let Some(t) = format
+                .tbr
+                .filter(|bitrate| bitrate.is_finite() && *bitrate >= 0.0)
+            {
                 if t > best_tbr.unwrap_or(0.0) {
                     best_tbr = Some(t);
                 }
@@ -62,7 +68,7 @@ pub fn parse_ytdlp_metadata(json: &str) -> Result<MediaMetadata, YtDlpError> {
         None
     };
 
-    let bitrate = best_tbr.map(|t| (t * 1000.0) as u64);
+    let bitrate = best_tbr.and_then(kilobits_to_bits);
 
     let video = if has_video && (best_width.is_some() || best_height.is_some()) {
         Some(VideoStreamMetadata {
@@ -97,6 +103,18 @@ pub fn parse_ytdlp_metadata(json: &str) -> Result<MediaMetadata, YtDlpError> {
         video,
         audio_tracks: vec![],
     })
+}
+
+fn seconds_to_millis(seconds: f64) -> Option<u64> {
+    let millis = seconds * 1000.0;
+    (seconds.is_finite() && seconds >= 0.0 && millis.is_finite() && millis <= u64::MAX as f64)
+        .then_some(millis as u64)
+}
+
+fn kilobits_to_bits(kilobits: f32) -> Option<u64> {
+    let bits = f64::from(kilobits) * 1000.0;
+    (kilobits.is_finite() && kilobits >= 0.0 && bits.is_finite() && bits <= u64::MAX as f64)
+        .then_some(bits as u64)
 }
 
 pub fn parse_subtitle_tracks(value: &serde_json::Value) -> Vec<domain::media::SubtitleTrack> {
@@ -210,5 +228,25 @@ mod tests {
         let json = include_str!("../../tests/fixtures/youtube_duration.json");
         let meta = parse_ytdlp_metadata(json).unwrap();
         assert_eq!(meta.duration_ms, 1234);
+    }
+
+    #[test]
+    fn invalid_numeric_metadata_is_normalized_without_panicking() {
+        let negative_duration = r#"{"duration":-1,"fps":-30,"formats":[]}"#;
+        let metadata = parse_ytdlp_metadata(negative_duration).unwrap();
+        assert_eq!(metadata.duration_ms, 0);
+        assert_eq!(metadata.fps, None);
+
+        let maximum_dimensions = r#"{
+            "formats":[{
+                "width":4294967295,
+                "height":4294967295,
+                "fps":60,
+                "vcodec":"av1"
+            }]
+        }"#;
+        let metadata = parse_ytdlp_metadata(maximum_dimensions).unwrap();
+        assert_eq!(metadata.width, Some(u32::MAX));
+        assert_eq!(metadata.height, Some(u32::MAX));
     }
 }

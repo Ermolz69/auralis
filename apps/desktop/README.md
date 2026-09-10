@@ -27,7 +27,7 @@ Do not put business logic, data fetching, or Tauri calls in `shared/ui`.
 5. Add role-based `play` assertions when interaction, focus, or keyboard behavior
    is part of the contract.
 6. Export the component from its local and shared public APIs.
-7. Run `task check:quality:frontend` and `task check:storybook`.
+7. Run `task check:frontend`.
 
 ### How to Add a Story
 
@@ -68,10 +68,36 @@ This setup task is intentionally separate from the regression gates. Run gates t
 
 ```bash
 task check:frontend
-task check:quality:frontend
+task fe:test:components
+task fe:test:integration
 task check:storybook
+task fe:storybook:visual
 task fe:e2e
 ```
+
+`task check:frontend` is the complete local and CI gate: TypeScript, lint, unit,
+component, integration, Storybook interaction/accessibility tests, enforced coverage,
+production build budgets, 34 E2E journeys, CSP smoke, and frontend architecture
+policies. Use `task check:quality:frontend` only when you need the policy checks by
+themselves.
+
+Test files are routed by intent: `*.test.ts` contains logic/API unit tests,
+`*.test.tsx` contains jsdom component or hook tests, and
+`*.integration.test.tsx` contains cross-provider/application flows. Keep assertions
+at the public boundary—accessible role and label, emitted command, navigation,
+persisted state, or lifecycle cleanup—rather than checking private React state.
+
+Storybook controls are disabled by default. A component may expose only an explicit
+allowlist of primitive controls with bounded ranges or finite options; complex state,
+callbacks, React nodes, and story-level control overrides are rejected by the catalog
+contract. The Chromium control-safety matrix renders all exposed option families and
+stress values on every frontend check.
+
+The focused Storybook gate additionally compares committed Windows screenshots for
+dark and light themes, four representative window widths, long content,
+empty/loading/error states, the complete safe-control matrix, and a 100-job history.
+Each case rejects uncaught render errors and page-level horizontal overflow. Run
+`task fe:storybook:visual:update` only after reviewing an intentional UI change.
 
 The Settings page includes the signed application updater. Browser development reports it as
 unavailable; installed production builds read `latest.json` and their platform bundle from the

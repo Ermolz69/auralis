@@ -9,7 +9,6 @@ import {
   projectRemoved,
   useProjectContext,
 } from '@/entities/project';
-import { listen } from '@/shared/api/tauri';
 import type { Project } from '@/entities/project';
 import { useNavigation } from '@/shared/router';
 import { toast } from '@/shared/ui/toast';
@@ -17,6 +16,7 @@ import { toCommandError } from '@/shared/api/contracts';
 import { DeleteProjectDialog } from './DeleteProjectDialog';
 import { ProjectListRows } from './ProjectListRows';
 import { PendingYoutubeImports } from './PendingYoutubeImports';
+import { useProjectListUpdates } from '../model/useProjectListUpdates';
 import {
   ProjectListEmptyState,
   ProjectListErrorState,
@@ -82,27 +82,10 @@ export const ProjectList = () => {
   }, []);
 
   useEffect(() => {
-    fetchProjects(true);
-
-    let unlistenProject: (() => void) | undefined;
-    const setupListeners = async () => {
-      try {
-        unlistenProject = await listen('project-updated', (event) => {
-          if (event.payload.projectId === deletingProjectIdRef.current) {
-            return;
-          }
-          void fetchProjects();
-        });
-      } catch (e) {
-        console.warn('Failed to setup Tauri listeners:', e);
-      }
-    };
-
-    setupListeners();
-    return () => {
-      if (unlistenProject) unlistenProject();
-    };
+    void fetchProjects(true);
   }, [fetchProjects]);
+
+  useProjectListUpdates(fetchProjects, deletingProjectIdRef);
 
   useLayoutEffect(() => {
     const target = pendingFocusTargetRef.current;

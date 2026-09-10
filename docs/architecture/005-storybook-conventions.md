@@ -97,6 +97,10 @@ const meta = {
   component: Button,
   parameters: {
     layout: 'centered',
+    controls: {
+      disable: false,
+      include: ['variant'],
+    },
     docs: {
       description: {
         component:
@@ -120,8 +124,21 @@ type Story = StoryObj<typeof meta>;
 Descriptions explain purpose, boundaries, or important behavior. Avoid empty
 phrases such as “Button component” or descriptions that only repeat the title.
 
-Expose controls only for meaningful public props. Use finite option lists for
-variants and sizes, and do not add story-only props to a production component.
+Controls are default-deny in `.storybook/preview.tsx`. Provider state, callbacks,
+React nodes, arbitrary objects, native HTML props, and custom-render inputs therefore
+cannot become editable merely because Storybook inferred them from a component.
+
+Opt in only from meta-level `parameters.controls` with `disable: false` and a literal
+`include` allowlist. Every included property must have an explicit `argTypes` entry.
+Use finite `select`/`radio` options, bounded `range` values with `min`, `max`, and
+`step`, or a primitive boolean/text control. Story-level overrides are prohibited.
+The Storybook contract rejects omissions, complex object controls, unbounded choices,
+and controls that do not correspond to the allowlist.
+
+`Design System/Foundations/Control Safety Matrix` renders every allowed variant and
+size, every registered icon, numeric progress boundaries, long strings, boolean
+states, and a large finite option list in real Chromium. This guards both control
+metadata and component renderability without exposing impossible provider fixtures.
 
 ## Story design
 
@@ -260,6 +277,12 @@ task q:storybook-contract
 # Browser stories and accessibility only
 pnpm --filter desktop test:storybook
 
+# Compare the committed visual baselines on Windows
+task fe:storybook:visual
+
+# Intentionally refresh baselines after reviewing the diff
+task fe:storybook:visual:update
+
 # Production-static catalog only
 task fe:storybook
 
@@ -268,12 +291,26 @@ task check:storybook
 ```
 
 `task check:storybook` runs the metadata contract and its fixtures, all stories
-in Chromium, accessibility checks, and the static build. Static output under
-`apps/desktop/storybook-static` is generated and must not be committed.
+in Chromium, accessibility checks, committed screenshot comparisons, and the
+static build. The visual matrix covers representative dark and light themes,
+1440/1280/1024/800 widths, long content, empty/loading/error states, the complete
+allowed-control matrix, and a 100-job history. Every visual case also fails on
+runtime errors or page-level horizontal overflow.
+
+Visual baselines include the operating-system name and are reviewed on Windows;
+pull-request CI uses the pinned `windows-2025` image to keep fonts and rendering
+stable. `task fe:storybook:visual:update` is an intentional review action, never
+a way to accept an unexplained difference. Failure screenshots, traces, and the
+HTML/JUnit report are generated under `apps/desktop/storybook-visual-results` and
+are not committed. The visual runner removes its temporary
+`apps/desktop/storybook-visual-static` build after success or failure. The focused
+`task fe:storybook` command writes `apps/desktop/storybook-static`; that generated
+catalog must not be committed.
 
 `task check:frontend` already runs Storybook browser tests as part of the full
-frontend test suite. `task check:quality:frontend` runs the faster Storybook
-metadata contract. Pull-request CI therefore covers behavior and catalog
+frontend test suite and invokes the frontend policies that contain the faster
+Storybook metadata contract. `task check:quality:frontend` remains available for an
+isolated policy-only run. Pull-request CI therefore covers behavior and catalog
 structure without repeating the static Pages build.
 
 ## Publication
@@ -296,6 +333,7 @@ Published catalog:
 - Fixtures are deterministic and contain no private user data.
 - Production semantic tokens and components are used.
 - A dark and light theme have been reviewed where visual contrast matters.
+- Intentional visual changes include reviewed Windows baseline updates.
 - No FSD exception was introduced for documentation code.
 - `task check:storybook` passes before review.
 

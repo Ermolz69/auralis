@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React, { useEffect, useRef, useState } from 'react';
+import { expect, within } from 'storybook/test';
 import { AppShell } from './AppShell';
 import { ProjectContext, type Project } from '@/entities/project';
 import { NavigationProvider, useNavigation, type View } from '@/shared/router';
@@ -51,6 +52,11 @@ export const WithLongProjectTitle: Story = {
       </div>
     </ShellStory>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByTitle(longProject.title)).toBeInTheDocument();
+  },
 };
 
 export const SettingsWithProjectReturn: Story = {

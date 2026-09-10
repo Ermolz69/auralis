@@ -2,11 +2,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePasteYoutubeLink } from './usePasteYoutubeLink';
-import { useProjectContext, createProjectFromYoutube } from '@/entities/project';
+import { ProjectContext, createProjectFromYoutube } from '@/entities/project';
 
-vi.mock('@/entities/project', () => ({
+vi.mock('@/entities/project', async (original) => ({
+  ...(await original<typeof import('@/entities/project')>()),
   createProjectFromYoutube: vi.fn(),
-  useProjectContext: vi.fn(),
 }));
 const mockSetCurrentView = vi.fn();
 const mockSetPipelineStep = vi.fn();
@@ -20,6 +20,13 @@ vi.mock('@/shared/router', () => ({
 
 describe('usePasteYoutubeLink', () => {
   let mockContextValue: any;
+  const renderYoutubeHook = () =>
+    renderHook(() => usePasteYoutubeLink(), {
+      wrapper: ({ children }) => (
+        <ProjectContext.Provider value={mockContextValue}>{children}</ProjectContext.Provider>
+      ),
+    });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockContextValue = {
@@ -38,11 +45,10 @@ describe('usePasteYoutubeLink', () => {
         token.generation === mockContextValue.operationGeneration &&
         token.projectId === mockContextValue.projectId,
     };
-    vi.mocked(useProjectContext).mockReturnValue(mockContextValue);
   });
 
   it('exposes download states and retries the same source after failure', async () => {
-    const { result } = renderHook(() => usePasteYoutubeLink());
+    const { result } = renderYoutubeHook();
     expect(result.current.status).toBe('Idle');
     act(() => result.current.setUrl('https://youtube.com/watch?v=retry'));
     let rejectDownload!: (error: Error) => void;
@@ -80,7 +86,7 @@ describe('usePasteYoutubeLink', () => {
 
   it('blocks startProject when deletingProjectId is active', async () => {
     mockContextValue.deletingProjectId = 'p-2';
-    const { result } = renderHook(() => usePasteYoutubeLink());
+    const { result } = renderYoutubeHook();
     expect(result.current.isBlockedByDeletion).toBe(true);
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
@@ -98,7 +104,7 @@ describe('usePasteYoutubeLink', () => {
       id: 'p-new',
       title: 'New',
     } as any);
-    const { result } = renderHook(() => usePasteYoutubeLink());
+    const { result } = renderYoutubeHook();
     expect(result.current.isBlockedByDeletion).toBe(false);
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
@@ -121,7 +127,7 @@ describe('usePasteYoutubeLink', () => {
       resolveCreate = resolve;
     });
     vi.mocked(createProjectFromYoutube).mockReturnValue(createPromise as any);
-    const { result, rerender } = renderHook(() => usePasteYoutubeLink());
+    const { result, rerender } = renderYoutubeHook();
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
     });
@@ -150,7 +156,7 @@ describe('usePasteYoutubeLink', () => {
       resolveCreate = resolve;
     });
     vi.mocked(createProjectFromYoutube).mockReturnValue(createPromise as any);
-    const { result, rerender } = renderHook(() => usePasteYoutubeLink());
+    const { result, rerender } = renderYoutubeHook();
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
     });
@@ -179,7 +185,7 @@ describe('usePasteYoutubeLink', () => {
     });
     createPromise.catch(() => {});
     vi.mocked(createProjectFromYoutube).mockReturnValue(createPromise as any);
-    const { result, rerender } = renderHook(() => usePasteYoutubeLink());
+    const { result, rerender } = renderYoutubeHook();
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
     });
@@ -205,7 +211,7 @@ describe('usePasteYoutubeLink', () => {
       resolveCreate = resolve;
     });
     vi.mocked(createProjectFromYoutube).mockReturnValue(createPromise as any);
-    const { result } = renderHook(() => usePasteYoutubeLink());
+    const { result } = renderYoutubeHook();
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
     });
@@ -230,7 +236,7 @@ describe('usePasteYoutubeLink', () => {
       resolve1 = resolve;
     });
     vi.mocked(createProjectFromYoutube).mockReturnValueOnce(promise1 as any);
-    const { result, rerender } = renderHook(() => usePasteYoutubeLink());
+    const { result, rerender } = renderYoutubeHook();
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
     });
@@ -267,7 +273,7 @@ describe('usePasteYoutubeLink', () => {
 
   it('releases activeAttempt lock on actual error', async () => {
     vi.mocked(createProjectFromYoutube).mockRejectedValue(new Error('Failed') as any);
-    const { result } = renderHook(() => usePasteYoutubeLink());
+    const { result } = renderYoutubeHook();
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
     });
@@ -290,7 +296,7 @@ describe('usePasteYoutubeLink', () => {
     vi.mocked(createProjectFromYoutube).mockRejectedValue(
       new Error('C:\\Users\\secret\\video.mp4 token=SECRET') as any,
     );
-    const { result } = renderHook(() => usePasteYoutubeLink());
+    const { result } = renderYoutubeHook();
     act(() => {
       result.current.setUrl('https://youtube.com/watch?v=123');
     });

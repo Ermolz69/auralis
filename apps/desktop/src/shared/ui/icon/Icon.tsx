@@ -13,11 +13,11 @@ export interface IconProps extends Omit<React.SVGAttributes<SVGSVGElement>, 'col
 
 export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
   ({ name, size = 'md', color = 'default', className = '', ariaLabel, ...props }, ref) => {
-    const LucideIcon = icons[name] as React.ElementType;
+    const requestedIcon = icons[name];
+    const LucideIcon = (requestedIcon ?? icons.CircleQuestionMark) as React.ElementType;
 
-    if (!LucideIcon) {
+    if (!requestedIcon) {
       console.warn(`Icon "${name}" does not exist in lucide-react.`);
-      return null;
     }
 
     const sizeMap = {
@@ -49,6 +49,7 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
         size={iconSize}
         className={`shrink-0 ${colorClass} ${className}`}
         style={{ ...customColorStyle, ...props.style }}
+        role={ariaLabel ? 'img' : undefined}
         aria-hidden={ariaLabel ? undefined : true}
         aria-label={ariaLabel}
         {...props}
