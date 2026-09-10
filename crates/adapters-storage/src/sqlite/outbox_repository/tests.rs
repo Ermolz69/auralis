@@ -6,7 +6,11 @@ use ports::repository::OutboxRepository;
 use sqlx::SqlitePool;
 
 async fn setup_db() -> SqlitePool {
-    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
     sqlx::query(
         r#"
         CREATE TABLE outbox_messages (
