@@ -34,8 +34,10 @@ external-file ownership and explicit retries. Observability remains a module in 
   sampler, including console-only mode. Shutdown stops the sampler before sinks and shares one
   absolute deadline. Per-resource reports distinguish flushed, timed out, failed and not owned.
   Completion is acknowledged by the actual underlying writer, not merely by WorkerGuard drop
-  returning after its own internal timeout. A child-process test covers normal console tail, queue
-  overflow, blocked console shutdown and sampler termination. I/O failure cannot report Flushed.
+  returning after its own internal timeout. A zero-progress write is recorded as an I/O failure and
+  cannot report Flushed. The health sampler includes underlying console writer failures, and shutdown
+  diagnostics distinguish failure from timeout. A child-process test covers normal console tail,
+  queue overflow, blocked console shutdown and sampler termination.
 
 The recovery panel additionally refreshes while continuously visible. Its retry acknowledgement is
 worded as a historical request, not proof that finalization has already completed.

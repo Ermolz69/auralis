@@ -3,6 +3,8 @@ use super::{
     config::{
         LogDestination, ObservabilityConfig, ObservabilitySettings, ValidatedObservabilitySettings,
     },
+    diagnostic::{DiagnosticKind, DiagnosticSink, ProcessDiagnostic},
+    guard::TracingGuard,
     init::{
         ObservabilityEnvironment, ObservabilityResourceError, SubscriberInstallError,
         init_with_environment,
@@ -184,10 +186,110 @@ fn failed_sink_is_not_reported_as_flushed() {
             Ok(())
         }
     }
+    let failures_before = super::bounded_writer::WRITE_FAILURES.load(Ordering::Relaxed);
     let owner = OwnedSink::new(FailedWriter, 4, true);
     owner.writer.clone().write_all(b"event").unwrap();
     assert_eq!(
         owner.shutdown(Duration::from_secs(1)),
         TracingShutdownOutcome::Failed
     );
+    assert!(super::bounded_writer::WRITE_FAILURES.load(Ordering::Relaxed) > failures_before);
+}
+
+#[test]
+fn zero_progress_sink_is_counted_and_not_reported_as_flushed() {
+    struct ZeroWriter;
+    impl Write for ZeroWriter {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Ok(0)
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let failures_before = super::bounded_writer::WRITE_FAILURES.load(Ordering::Relaxed);
+    let owner = OwnedSink::new(ZeroWriter, 4, true);
+    owner.writer.clone().write_all(b"event").unwrap();
+    assert_eq!(
+        owner.shutdown(Duration::from_secs(1)),
+        TracingShutdownOutcome::Failed
+    );
+    assert!(super::bounded_writer::WRITE_FAILURES.load(Ordering::Relaxed) > failures_before);
+}
+
+#[derive(Default)]
+struct CapturingDiagnosticSink(Mutex<Vec<ProcessDiagnostic>>);
+
+impl DiagnosticSink for CapturingDiagnosticSink {
+    fn emit(&self, diagnostic: ProcessDiagnostic) {
+        self.0.lock().unwrap().push(diagnostic);
+    }
+}
+
+#[test]
+fn failed_shutdown_has_failure_diagnostic() {
+    struct FailedWriter;
+    impl Write for FailedWriter {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("private failure"))
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let diagnostic = Arc::new(CapturingDiagnosticSink::default());
+    let owner = OwnedSink::new(FailedWriter, 4, true);
+    owner.writer.clone().write_all(b"event").unwrap();
+    let report = TracingGuard {
+        file: Some(owner),
+        console: None,
+        sampler: None,
+        active_mode: super::init::TracingMode::ExistingSubscriber,
+        diagnostic: diagnostic.clone(),
+    }
+    .shutdown(Duration::from_secs(1));
+
+    assert_eq!(report.file, TracingShutdownOutcome::Failed);
+    assert_eq!(diagnostic.0.lock().unwrap().len(), 1);
+    assert_eq!(
+        diagnostic.0.lock().unwrap()[0].kind,
+        DiagnosticKind::TracingFlushFailed
+    );
+}
+
+#[test]
+fn timed_out_shutdown_has_timeout_diagnostic() {
+    let writer = ControlledWriter {
+        output: Arc::default(),
+        gate: Arc::new((Mutex::new(false), Condvar::new())),
+        entered: Arc::new(AtomicBool::new(false)),
+    };
+    let diagnostic = Arc::new(CapturingDiagnosticSink::default());
+    let owner = OwnedSink::new(writer.clone(), 4, true);
+    owner.writer.clone().write_all(b"event").unwrap();
+    let entered_deadline = Instant::now() + Duration::from_secs(1);
+    while !writer.entered.load(Ordering::Acquire) {
+        assert!(Instant::now() < entered_deadline);
+        std::thread::yield_now();
+    }
+
+    let report = TracingGuard {
+        file: Some(owner),
+        console: None,
+        sampler: None,
+        active_mode: super::init::TracingMode::ExistingSubscriber,
+        diagnostic: diagnostic.clone(),
+    }
+    .shutdown(Duration::from_millis(20));
+
+    assert_eq!(report.file, TracingShutdownOutcome::TimedOut);
+    assert_eq!(diagnostic.0.lock().unwrap().len(), 1);
+    assert_eq!(
+        diagnostic.0.lock().unwrap()[0].kind,
+        DiagnosticKind::TracingFlushTimedOut
+    );
+    *writer.gate.0.lock().unwrap() = true;
+    writer.gate.1.notify_all();
 }

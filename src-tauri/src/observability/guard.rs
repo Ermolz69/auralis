@@ -45,10 +45,10 @@ impl TracingGuard {
             .map(|sink| sink.stop_until(deadline))
             .unwrap_or(TracingShutdownOutcome::NotOwned);
         tracing::info!(event_name = "shutdown_sink_completed", sink = "file", outcome = ?file);
-        if !file.is_graceful() {
+        if let Some(kind) = shutdown_diagnostic_kind(file) {
             self.diagnostic.emit(ProcessDiagnostic {
                 level: DiagnosticLevel::Warning,
-                kind: DiagnosticKind::TracingFlushTimedOut,
+                kind,
                 os_code: None,
                 count: None,
                 fallback: None,
@@ -64,5 +64,15 @@ impl TracingGuard {
             console,
             sampler,
         }
+    }
+}
+
+fn shutdown_diagnostic_kind(outcome: TracingShutdownOutcome) -> Option<DiagnosticKind> {
+    match outcome {
+        TracingShutdownOutcome::TimedOut => Some(DiagnosticKind::TracingFlushTimedOut),
+        TracingShutdownOutcome::Failed | TracingShutdownOutcome::FlushThreadStartFailed => {
+            Some(DiagnosticKind::TracingFlushFailed)
+        }
+        TracingShutdownOutcome::Flushed | TracingShutdownOutcome::NotOwned => None,
     }
 }

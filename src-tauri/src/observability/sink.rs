@@ -91,18 +91,42 @@ struct CheckedWriter<W: Write> {
 
 impl<W: Write> Write for CheckedWriter<W> {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        let result = self.writer.write(bytes);
-        if result.is_err() {
-            self.failed.store(true, Ordering::Relaxed);
+        match self.writer.write(bytes) {
+            Ok(0) if !bytes.is_empty() => {
+                self.record_failure();
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::WriteZero,
+                    "Diagnostic sink made no write progress",
+                ))
+            }
+            Ok(written) => Ok(written),
+            Err(error) => {
+                self.record_failure();
+                Err(std::io::Error::new(
+                    error.kind(),
+                    "Diagnostic sink write failed",
+                ))
+            }
         }
-        result.map_err(|error| std::io::Error::new(error.kind(), "Diagnostic sink write failed"))
     }
     fn flush(&mut self) -> std::io::Result<()> {
-        let result = self.writer.flush();
-        if result.is_err() {
-            self.failed.store(true, Ordering::Relaxed);
+        match self.writer.flush() {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                self.record_failure();
+                Err(std::io::Error::new(
+                    error.kind(),
+                    "Diagnostic sink flush failed",
+                ))
+            }
         }
-        result.map_err(|error| std::io::Error::new(error.kind(), "Diagnostic sink flush failed"))
+    }
+}
+
+impl<W: Write> CheckedWriter<W> {
+    fn record_failure(&self) {
+        self.failed.store(true, Ordering::Relaxed);
+        super::bounded_writer::WRITE_FAILURES.fetch_add(1, Ordering::Relaxed);
     }
 }
 

@@ -16,6 +16,7 @@ pub enum DiagnosticKind {
     RuntimeLogWriteFailed,
     HealthSamplerUnavailable,
     TracingFlushTimedOut,
+    TracingFlushFailed,
     ApplicationConfigurationInvalid,
     ObservabilityConfigurationInvalid,
     TauriBuildFailed,
