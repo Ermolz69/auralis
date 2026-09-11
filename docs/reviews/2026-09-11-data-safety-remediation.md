@@ -1,5 +1,9 @@
 # Data safety audit remediation
 
+The subsequent review of `71cf1ad7` found gaps in the integration and lifecycle contracts below.
+See [the follow-up](2026-09-11-remediation-follow-up.md) for their corrections and additional tests.
+The verification table in this initial report describes the first implementation, not the follow-up.
+
 This change addresses D01–D08 from the audit of commit
 `7878e9df4d3db2090e791388cadd7989c315383e`. It does not implement the audit's unmeasured
 performance hypotheses, backup/restore, a telemetry exporter, or new media pipeline stages.

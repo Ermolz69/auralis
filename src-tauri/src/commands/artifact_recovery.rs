@@ -11,13 +11,16 @@ pub async fn list_artifact_recovery_cmd(
     request: tauri::ipc::Request<'_>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<String>, CommandError> {
-    Ok(usecases
-        .artifact_recovery
-        .list()
-        .await?
-        .into_iter()
-        .map(|id| id.to_string())
-        .collect())
+    crate::observability::command::observe("list_artifact_recovery_cmd", async {
+        Ok(usecases
+            .artifact_recovery
+            .list()
+            .await?
+            .into_iter()
+            .map(|id| id.to_string())
+            .collect())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -27,8 +30,11 @@ pub async fn retry_artifact_finalization_cmd(
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<(), CommandError> {
-    Ok(usecases
-        .artifact_recovery
-        .retry(&parse_project_id(&project_id)?)
-        .await?)
+    crate::observability::command::observe("retry_artifact_finalization_cmd", async {
+        Ok(usecases
+            .artifact_recovery
+            .retry(&parse_project_id(&project_id)?)
+            .await?)
+    })
+    .await
 }

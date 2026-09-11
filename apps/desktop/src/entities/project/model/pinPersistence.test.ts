@@ -106,6 +106,7 @@ describe('native pin preferences', () => {
     expect((await pins.setProjectPinned(id, true)).persisted).toBe(false);
     expect(pins.getStoredPin(id)).toBe(true);
     let acknowledge!: (value: unknown) => void;
+    expect(pins.getPinPersistence(id).status).toBe('error');
     invoke.mockResolvedValueOnce({ migrated: true, entries: [] }).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -118,5 +119,31 @@ describe('native pin preferences', () => {
     acknowledge({ projectId: id, pinned: true, revision: 1 });
     expect((await retry).persisted).toBe(false);
     expect(pins.getStoredPin(id)).toBe(false);
+  });
+
+  it('accepts native pins even when legacy migration is unreadable', async () => {
+    localStorage.setItem(key, '{broken');
+    invoke.mockResolvedValue({
+      migrated: false,
+      entries: [{ projectId: id, pinned: true, revision: 4 }],
+    });
+    const pins = await import('./pinPersistence');
+    await expect(pins.loadProjectPins()).rejects.toThrow();
+    expect(pins.getStoredPin(id)).toBe(true);
+    expect(pins.getPinLoadStatus()).toBe('error');
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps read failures distinct from an empty snapshot and retries without writing defaults', async () => {
+    invoke.mockRejectedValueOnce(new Error('unavailable'));
+    const pins = await import('./pinPersistence');
+    await expect(pins.loadProjectPins()).rejects.toThrow('unavailable');
+    expect(pins.getPinLoadStatus()).toBe('error');
+    expect(pins.getStoredPin(id)).toBeUndefined();
+    invoke.mockResolvedValue({ migrated: true, entries: [] });
+    await pins.loadProjectPins();
+    expect(pins.getPinLoadStatus()).toBe('ready');
+    expect(pins.getStoredPin(id)).toBe(false);
+    expect(invoke.mock.calls.every(([command]) => command === 'get_project_pins_cmd')).toBe(true);
   });
 });

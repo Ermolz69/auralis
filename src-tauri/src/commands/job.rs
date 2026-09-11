@@ -12,7 +12,7 @@ use tauri::{State, command};
 #[command]
 #[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn health_check(request: tauri::ipc::Request<'_>) -> Result<String, CommandError> {
-    Ok("ok".to_string())
+    crate::observability::command::observe("health_check", async { Ok("ok".to_string()) }).await
 }
 
 #[command]
@@ -21,18 +21,21 @@ pub async fn list_jobs_cmd(
     request: tauri::ipc::Request<'_>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<JobDto>, CommandError> {
-    let req = ListJobsRequest {};
-    let res = usecases
-        .list_jobs
-        .execute(req)
-        .await
-        .map_err(CommandError::from)?;
+    crate::observability::command::observe("list_jobs_cmd", async {
+        let req = ListJobsRequest {};
+        let res = usecases
+            .list_jobs
+            .execute(req)
+            .await
+            .map_err(CommandError::from)?;
 
-    let mut dtos = Vec::with_capacity(res.jobs.len());
-    for job in res.jobs {
-        dtos.push(map_job_dto_result(map_job_dto(&job))?);
-    }
-    Ok(dtos)
+        let mut dtos = Vec::with_capacity(res.jobs.len());
+        for job in res.jobs {
+            dtos.push(map_job_dto_result(map_job_dto(&job))?);
+        }
+        Ok(dtos)
+    })
+    .await
 }
 
 #[command]
@@ -42,16 +45,19 @@ pub async fn cancel_job_cmd(
     job_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<JobDto, CommandError> {
-    let id = parse_job_id(&job_id)?;
+    crate::observability::command::observe("cancel_job_cmd", async {
+        let id = parse_job_id(&job_id)?;
 
-    let req = CancelJobRequest { job_id: id };
-    let res = usecases
-        .cancel_job
-        .execute(req)
-        .await
-        .map_err(CommandError::from)?;
+        let req = CancelJobRequest { job_id: id };
+        let res = usecases
+            .cancel_job
+            .execute(req)
+            .await
+            .map_err(CommandError::from)?;
 
-    map_job_dto_result(map_job_dto(&res.job))
+        map_job_dto_result(map_job_dto(&res.job))
+    })
+    .await
 }
 
 #[command]
@@ -61,20 +67,23 @@ pub async fn list_jobs_snapshot_cmd(
     project_id: String,
     query_port: State<'_, Arc<dyn ports::job_query::JobQueryPort>>,
 ) -> Result<Vec<JobDto>, CommandError> {
-    let id = parse_project_id(&project_id)?;
+    crate::observability::command::observe("list_jobs_snapshot_cmd", async {
+        let id = parse_project_id(&project_id)?;
 
-    let jobs = query_port
-        .list_jobs_snapshot(&id)
-        .await
-        .map_err(CommandError::from)?;
+        let jobs = query_port
+            .list_jobs_snapshot(&id)
+            .await
+            .map_err(CommandError::from)?;
 
-    let mut dtos = Vec::with_capacity(jobs.len());
-    for job in jobs {
-        dtos.push(map_job_dto_result(
-            adapters_tauri::dto::mapper::map_job_dto(&job),
-        )?);
-    }
-    Ok(dtos)
+        let mut dtos = Vec::with_capacity(jobs.len());
+        for job in jobs {
+            dtos.push(map_job_dto_result(
+                adapters_tauri::dto::mapper::map_job_dto(&job),
+            )?);
+        }
+        Ok(dtos)
+    })
+    .await
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -99,22 +108,25 @@ pub async fn list_job_history_page_cmd(
     limit: Option<u32>,
     query_port: State<'_, Arc<dyn ports::job_query::JobQueryPort>>,
 ) -> Result<JobHistoryPageDto, CommandError> {
-    let limit = parse_history_page_size(limit)?;
-    let cursor = cursor.map(parse_history_cursor).transpose()?;
-    let page = query_port
-        .list_job_history_page(cursor.as_ref(), limit)
-        .await
-        .map_err(CommandError::from)?;
+    crate::observability::command::observe("list_job_history_page_cmd", async {
+        let limit = parse_history_page_size(limit)?;
+        let cursor = cursor.map(parse_history_cursor).transpose()?;
+        let page = query_port
+            .list_job_history_page(cursor.as_ref(), limit)
+            .await
+            .map_err(CommandError::from)?;
 
-    let mut jobs = Vec::with_capacity(page.jobs.len());
-    for job in page.jobs {
-        jobs.push(map_job_dto_result(map_job_dto(&job))?);
-    }
+        let mut jobs = Vec::with_capacity(page.jobs.len());
+        for job in page.jobs {
+            jobs.push(map_job_dto_result(map_job_dto(&job))?);
+        }
 
-    Ok(JobHistoryPageDto {
-        jobs,
-        next_cursor: page.next_cursor.map(JobHistoryCursorDto::from),
+        Ok(JobHistoryPageDto {
+            jobs,
+            next_cursor: page.next_cursor.map(JobHistoryCursorDto::from),
+        })
     })
+    .await
 }
 
 fn parse_history_page_size(limit: Option<u32>) -> Result<usize, CommandError> {

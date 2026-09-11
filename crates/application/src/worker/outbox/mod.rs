@@ -1,3 +1,6 @@
+mod attempt;
+#[cfg(test)]
+mod finalization_tests;
 pub mod maintenance;
 mod maintenance_config;
 #[cfg(test)]

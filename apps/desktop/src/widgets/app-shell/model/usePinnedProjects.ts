@@ -16,7 +16,6 @@ export function usePinnedProjects() {
     const refresh = async () => {
       const sequence = ++generation;
       try {
-        await loadProjectPins().catch(() => {});
         const items = await listProjects();
         if (!cancelled && sequence === generation) {
           setProjects((current) =>
@@ -45,6 +44,7 @@ export function usePinnedProjects() {
       );
       void refresh();
     });
+    void loadProjectPins().catch(() => undefined);
     void refresh();
     const unsubscribePreferences = subscribeProjectPreferences(() => void refresh());
     return () => {

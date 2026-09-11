@@ -55,6 +55,7 @@ fn test_runtime_shutdown_report_graceful_logic() {
         bridge_outcome: WorkerOutcome::AlreadyStopped,
         jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport::default(),
         tracing_outcome: TracingShutdownOutcome::Flushed,
+        tracing_sinks: crate::observability::shutdown::TracingShutdownReport::not_owned(),
     };
     assert!(report.is_graceful());
 
@@ -125,7 +126,7 @@ async fn test_shutdown_runtime_signal_failure() {
     assert_eq!(report.bridge_outcome, WorkerOutcome::AlreadyStopped);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_shutdown_runtime_timeout_abort() {
     // Outbox task ignores signal and hangs
     let (outbox_tx, mut outbox_rx) = mpsc::channel(1);
@@ -181,9 +182,16 @@ struct MockTracingShutdown {
 }
 
 impl TracingShutdown for MockTracingShutdown {
-    fn shutdown(self, _timeout: std::time::Duration) -> TracingShutdownOutcome {
+    fn shutdown(
+        self,
+        _timeout: std::time::Duration,
+    ) -> crate::observability::shutdown::TracingShutdownReport {
         self.called.store(true, std::sync::atomic::Ordering::SeqCst);
-        TracingShutdownOutcome::Flushed
+        crate::observability::shutdown::TracingShutdownReport {
+            file: TracingShutdownOutcome::Flushed,
+            console: TracingShutdownOutcome::Flushed,
+            sampler: TracingShutdownOutcome::Flushed,
+        }
     }
 }
 

@@ -147,6 +147,7 @@ async fn setup_storage_with_lease(
             job_repo,
             job_query,
             artifact_index: idx,
+            artifact_finalization: Arc::new(SqliteArtifactIndex::new(pool.clone())),
             artifact_store: store,
             storage_uow: tx_gateway,
         },

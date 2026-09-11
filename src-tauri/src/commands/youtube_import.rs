@@ -23,18 +23,21 @@ pub async fn list_pending_youtube_imports_cmd(
     request: tauri::ipc::Request<'_>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<PendingYoutubeImportDto>, CommandError> {
-    Ok(usecases
-        .create_project_from_youtube
-        .list_pending()
-        .await
-        .map_err(CommandError::from)?
-        .into_iter()
-        .map(|session| PendingYoutubeImportDto {
-            project_id: session.project.id.to_string(),
-            title: session.project.title,
-            state: format!("{:?}", session.state),
-        })
-        .collect())
+    crate::observability::command::observe("list_pending_youtube_imports_cmd", async {
+        Ok(usecases
+            .create_project_from_youtube
+            .list_pending()
+            .await
+            .map_err(CommandError::from)?
+            .into_iter()
+            .map(|session| PendingYoutubeImportDto {
+                project_id: session.project.id.to_string(),
+                title: session.project.title,
+                state: format!("{:?}", session.state),
+            })
+            .collect())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -45,17 +48,20 @@ pub async fn resume_youtube_import_cmd(
     app: tauri::AppHandle,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectDto, CommandError> {
-    let id = parse_project_id(&project_id)?;
-    let response = usecases
-        .create_project_from_youtube
-        .resume(&id)
-        .await
-        .map_err(CommandError::from)?;
-    let _ = app.emit(
-        EVENT_PROJECT_UPDATED,
-        serde_json::json!({"projectId": project_id}),
-    );
-    Ok(ProjectDto::from(&response.project))
+    crate::observability::command::observe("resume_youtube_import_cmd", async {
+        let id = parse_project_id(&project_id)?;
+        let response = usecases
+            .create_project_from_youtube
+            .resume(&id)
+            .await
+            .map_err(CommandError::from)?;
+        let _ = app.emit(
+            EVENT_PROJECT_UPDATED,
+            serde_json::json!({"projectId": project_id}),
+        );
+        Ok(ProjectDto::from(&response.project))
+    })
+    .await
 }
 
 #[tauri::command]
@@ -65,9 +71,12 @@ pub async fn discard_youtube_import_cmd(
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<(), CommandError> {
-    usecases
-        .create_project_from_youtube
-        .discard(&parse_project_id(&project_id)?)
-        .await
-        .map_err(CommandError::from)
+    crate::observability::command::observe("discard_youtube_import_cmd", async {
+        usecases
+            .create_project_from_youtube
+            .discard(&parse_project_id(&project_id)?)
+            .await
+            .map_err(CommandError::from)
+    })
+    .await
 }

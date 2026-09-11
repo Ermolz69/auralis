@@ -201,7 +201,7 @@ pub async fn import_external_file(
     ensure_safe_parent(base_dir, &staging_path).await?;
 
     // Only copy, do not move or remove original
-    if let Err(copy_err) = tokio::fs::copy(source_path, &staging_path).await {
+    if let Err(copy_err) = super::copy::copy_external(source_path, &staging_path).await {
         let _ = tokio::fs::remove_file(&staging_path).await;
         return Err(PortError::Io {
             message: format!(

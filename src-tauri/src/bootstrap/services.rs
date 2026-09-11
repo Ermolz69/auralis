@@ -16,6 +16,7 @@ pub struct RuntimeServices {
     pub job_repo: Arc<dyn JobRepository>,
     pub job_query: Arc<dyn ports::job_query::JobQueryPort>,
     pub artifact_index: RuntimeArtifactIndex,
+    pub artifact_finalization: Arc<dyn ports::artifact_finalization::ArtifactFinalizationLookup>,
     pub artifact_store: RuntimeArtifactStore,
     pub storage_uow: RuntimeStorageUnitOfWork,
 }

@@ -35,8 +35,7 @@ pub fn setup(
         log_dir,
     };
 
-    let sink = Arc::new(crate::observability::diagnostic::StderrDiagnosticSink);
-    let guard = crate::observability::init(config, sink);
+    let guard = crate::observability::init(config);
     let mode_str = format!("{:?}", guard.active_mode);
     app.manage(crate::state::ManagedTracingGuard(std::sync::Mutex::new(
         Some(guard),

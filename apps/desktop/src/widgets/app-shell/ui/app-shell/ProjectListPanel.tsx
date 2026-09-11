@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { createProject, useProjectContext } from '@/entities/project';
+import { createProject, useProjectContext, usePinPersistence } from '@/entities/project';
 import { toCommandError } from '@/shared/api/contracts';
 import { useNavigation } from '@/shared/router';
 import { Icon } from '@/shared/ui/icon';
@@ -15,6 +15,7 @@ export function ProjectListPanel({ height }: { height: number }) {
   const [required, setRequired] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const pinned = usePinnedProjects();
+  const pinPersistence = usePinPersistence();
 
   const create = async () => {
     const title = name.trim();
@@ -102,6 +103,19 @@ export function ProjectListPanel({ height }: { height: number }) {
       <p className="px-2.5 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-wider text-subtle">
         Закреплённые
       </p>
+      {pinPersistence.loadStatus === 'error' && (
+        <button type="button" onClick={pinPersistence.retryLoad}>
+          Pins unavailable. Retry loading pins
+        </button>
+      )}
+      {pinPersistence.unsavedIds.length > 0 && (
+        <button
+          type="button"
+          onClick={() => pinPersistence.unsavedIds.forEach(pinPersistence.retry)}
+        >
+          Pins not yet saved. Retry saving pins
+        </button>
+      )}
       {pinned.length === 0 ? (
         <p className="px-3 py-1.5 text-[11px] text-subtle">Нет закреплённых проектов</p>
       ) : (

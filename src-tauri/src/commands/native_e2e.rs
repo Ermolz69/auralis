@@ -21,22 +21,25 @@ pub async fn native_e2e_checkpoint_cmd(
     request: tauri::ipc::Request<'_>,
     checkpoint: String,
 ) -> Result<(), CommandError> {
-    #[cfg(feature = "native-e2e")]
-    {
-        if !ALLOWED_CHECKPOINTS.contains(&checkpoint.as_str()) {
-            return Err(CommandError::Validation(
-                "Unknown native E2E checkpoint".to_string(),
-            ));
+    crate::observability::command::observe("native_e2e_checkpoint_cmd", async {
+        #[cfg(feature = "native-e2e")]
+        {
+            if !ALLOWED_CHECKPOINTS.contains(&checkpoint.as_str()) {
+                return Err(CommandError::Validation(
+                    "Unknown native E2E checkpoint".to_string(),
+                ));
+            }
+            crate::bootstrap::record_native_e2e_checkpoint(&checkpoint);
+            Ok(())
         }
-        crate::bootstrap::record_native_e2e_checkpoint(&checkpoint);
-        Ok(())
-    }
 
-    #[cfg(not(feature = "native-e2e"))]
-    {
-        let _ = checkpoint;
-        Err(CommandError::NotFound("Command unavailable".to_string()))
-    }
+        #[cfg(not(feature = "native-e2e"))]
+        {
+            let _ = checkpoint;
+            Err(CommandError::NotFound("Command unavailable".to_string()))
+        }
+    })
+    .await
 }
 
 #[command]
@@ -44,7 +47,8 @@ pub async fn native_e2e_checkpoint_cmd(
 pub async fn native_e2e_pipeline_pause_reached_cmd(
     request: tauri::ipc::Request<'_>,
 ) -> Result<bool, CommandError> {
-    #[cfg(feature = "native-e2e")]
+    crate::observability::command::observe("native_e2e_pipeline_pause_reached_cmd", async {
+#[cfg(feature = "native-e2e")]
     {
         Ok(
             crate::bootstrap::native_e2e_subtitle_source::NativeE2ePausedSubtitleSource::pause_reached(),
@@ -53,4 +57,5 @@ pub async fn native_e2e_pipeline_pause_reached_cmd(
 
     #[cfg(not(feature = "native-e2e"))]
     Err(CommandError::NotFound("Command unavailable".to_string()))
+    }).await
 }

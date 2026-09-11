@@ -4,6 +4,7 @@ import { formatProjectTitle } from '@/entities/media';
 import { invoke } from '@/shared/api/tauri';
 import { toCommandError } from '@/shared/api/contracts';
 import { Button } from '@/shared/ui/button';
+import { subscribeSnapshotRefresh } from '@/shared/lib';
 
 export function ArtifactRecovery({ projects }: { projects: Project[] }) {
   const [ids, setIds] = useState<string[]>([]);
@@ -33,12 +34,12 @@ export function ArtifactRecovery({ projects }: { projects: Project[] }) {
       void reload();
     };
     const unsubscribe = subscribeProjectChanges(refresh);
-    window.addEventListener('focus', refresh);
+    const stopRefresh = subscribeSnapshotRefresh(reload);
     return () => {
       mounted.current = false;
       generation.current += 1;
       unsubscribe();
-      window.removeEventListener('focus', refresh);
+      stopRefresh();
     };
   }, [reload]);
   const retry = async (projectId: string) => {
@@ -62,7 +63,9 @@ export function ArtifactRecovery({ projects }: { projects: Project[] }) {
   return (
     <section aria-label="Artifact recovery" className="flex flex-col gap-2">
       {error && <p role="alert">File recovery: {error}</p>}
-      {queued && <p role="status">File finalization queued. Existing downloads will be reused.</p>}
+      {queued && (
+        <p role="status">File finalization retry requested. Existing downloads will be reused.</p>
+      )}
       {ids.map((id) => {
         const project = projects.find((project) => project.id === id);
         return (

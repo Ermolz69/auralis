@@ -12,11 +12,17 @@ pub(crate) fn classify_run_event(event: &tauri::RunEvent) -> RuntimeLifecycleAct
 }
 
 pub trait TracingShutdown {
-    fn shutdown(self, timeout: std::time::Duration) -> TracingShutdownOutcome;
+    fn shutdown(
+        self,
+        timeout: std::time::Duration,
+    ) -> crate::observability::shutdown::TracingShutdownReport;
 }
 
 impl TracingShutdown for crate::observability::init::TracingGuard {
-    fn shutdown(self, timeout: std::time::Duration) -> TracingShutdownOutcome {
+    fn shutdown(
+        self,
+        timeout: std::time::Duration,
+    ) -> crate::observability::shutdown::TracingShutdownReport {
         crate::observability::init::TracingGuard::shutdown(self, timeout)
     }
 }
@@ -46,6 +52,7 @@ pub enum TracingShutdownOutcome {
     TimedOut,
     NotOwned,
     FlushThreadStartFailed,
+    Failed,
 }
 
 impl TracingShutdownOutcome {
@@ -75,6 +82,7 @@ pub struct RuntimeShutdownReport {
     pub bridge_outcome: WorkerOutcome,
     pub jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport,
     pub tracing_outcome: TracingShutdownOutcome,
+    pub tracing_sinks: crate::observability::shutdown::TracingShutdownReport,
 }
 
 impl RuntimeShutdownReport {
@@ -82,6 +90,7 @@ impl RuntimeShutdownReport {
         self.outbox_outcome.is_graceful()
             && self.bridge_outcome.is_graceful()
             && self.tracing_outcome.is_graceful()
+            && self.tracing_sinks.outcome().is_graceful()
             && self.jobs_outcome.forced_aborted_count == 0
             && self.jobs_outcome.panicked_count == 0
             && self.jobs_outcome.unconfirmed_count == 0
@@ -106,17 +115,18 @@ pub fn finalize_runtime_shutdown<T: TracingShutdown>(
         "shutdown_handles: workers finished, initiating tracing flush"
     );
 
-    let tracing_outcome = if let Some(guard) = tracing {
+    let tracing_sinks = if let Some(guard) = tracing {
         guard.shutdown(TRACING_FLUSH_TIMEOUT.min(remaining))
     } else {
-        TracingShutdownOutcome::NotOwned
+        crate::observability::shutdown::TracingShutdownReport::not_owned()
     };
 
     RuntimeShutdownReport {
         outbox_outcome: workers.outbox_outcome,
         bridge_outcome: workers.bridge_outcome,
         jobs_outcome,
-        tracing_outcome,
+        tracing_outcome: tracing_sinks.outcome(),
+        tracing_sinks,
     }
 }
 

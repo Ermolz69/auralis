@@ -1,3 +1,4 @@
+pub mod artifact_finalization;
 pub mod artifact_index;
 pub mod artifact_recovery;
 pub mod cancellation;

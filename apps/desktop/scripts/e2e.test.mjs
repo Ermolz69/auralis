@@ -731,6 +731,32 @@ e2e('34 retries terminal history after a temporary storage failure', async () =>
   );
 });
 
+e2e('35 sanitizes real browser errors and rejected promises in production', async () => {
+  await scenario(baseSeed(), async (page) => {
+    const records = [];
+    page.on('console', (message) => records.push(message.text()));
+    page.on('pageerror', (error) => records.push(error.message));
+    await page.evaluate(() => {
+      window.__privacyHandled = 0;
+      const observed = (event) => {
+        if (event.defaultPrevented) window.__privacyHandled += 1;
+      };
+      window.addEventListener('error', observed);
+      window.addEventListener('unhandledrejection', observed);
+      setTimeout(() => {
+        throw new Error('SYNTHETIC_PRIVATE_TITLE token=synthetic');
+      }, 0);
+      void Promise.reject(new Error('SYNTHETIC_PRIVATE_TITLE token=synthetic'));
+    });
+    await page.waitForFunction(() => window.__privacyHandled === 2);
+    assert.equal(records.filter((line) => line.includes('UI_UNHANDLED')).length, 2);
+    assert.equal(
+      records.some((line) => line.includes('SYNTHETIC_PRIVATE_TITLE')),
+      false,
+    );
+  });
+});
+
 function e2e(name, run) {
   const match = /^(\d+)\s+(.+)$/.exec(name);
   assert.ok(match, `E2E scenario must start with a numeric ID: ${name}`);
@@ -779,6 +805,7 @@ async function scenario(seed, run) {
 }
 
 function scenarioArea(number) {
+  if (number === 35) return 'diagnostics';
   if ([1, 2, 3, 4, 21, 22].includes(number)) return 'projects';
   if ([5, 6, 30].includes(number)) return 'settings-and-updates';
   if ([7, 8, 31, 32, 33, 34].includes(number)) return 'jobs';

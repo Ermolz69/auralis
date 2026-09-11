@@ -14,6 +14,7 @@ pub enum DiagnosticKind {
     SubscriberAlreadyInstalled,
     BufferOverflow,
     RuntimeLogWriteFailed,
+    HealthSamplerUnavailable,
     TracingFlushTimedOut,
     ApplicationConfigurationInvalid,
     ObservabilityConfigurationInvalid,
@@ -65,28 +66,35 @@ pub fn write_diagnostic(
     )
 }
 
-pub fn stderr_writer() -> tracing_appender::non_blocking::NonBlocking {
-    static WRITER: std::sync::LazyLock<(
-        tracing_appender::non_blocking::NonBlocking,
-        tracing_appender::non_blocking::WorkerGuard,
-    )> = std::sync::LazyLock::new(|| {
-        tracing_appender::non_blocking::NonBlockingBuilder::default()
-            .lossy(true)
-            .buffered_lines_limit(super::bounded_writer::MAX_QUEUED_EVENTS)
-            .finish(std::io::stderr())
-    });
-    WRITER.0.clone()
-}
-
 pub trait DiagnosticSink: Send + Sync {
     fn emit(&self, diag: ProcessDiagnostic);
 }
 
-pub struct StderrDiagnosticSink;
+pub(crate) struct TracingDiagnosticSink;
+impl DiagnosticSink for TracingDiagnosticSink {
+    fn emit(&self, diag: ProcessDiagnostic) {
+        tracing::warn!(event_name = "process_diagnostic", kind = ?diag.kind, count = ?diag.count);
+    }
+}
+
+pub struct StderrDiagnosticSink(pub(crate) tracing_appender::non_blocking::NonBlocking);
+
+impl StderrDiagnosticSink {
+    pub fn owned() -> (Self, super::sink::OwnedSink) {
+        let owner = super::sink::OwnedSink::new(
+            std::io::stderr(),
+            super::bounded_writer::MAX_QUEUED_EVENTS,
+            true,
+        );
+        (Self(owner.writer.clone()), owner)
+    }
+}
 
 impl DiagnosticSink for StderrDiagnosticSink {
     fn emit(&self, diag: ProcessDiagnostic) {
-        let mut stderr = stderr_writer();
-        let _ = write_diagnostic(&mut stderr, diag);
+        let mut record = Vec::new();
+        if write_diagnostic(&mut record, diag).is_ok() {
+            let _ = self.0.clone().write_all(&record);
+        }
     }
 }

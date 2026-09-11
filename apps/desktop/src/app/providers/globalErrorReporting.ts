@@ -1,4 +1,7 @@
-export function installGlobalErrorReporting(target: Window = window): () => void {
+export function installGlobalErrorReporting(
+  target: Window = window,
+  suppressDefault = import.meta.env.PROD,
+): () => void {
   let windowStart = Date.now();
   let reported = 0;
   const report = (kind: 'error' | 'unhandledrejection') => {
@@ -10,8 +13,14 @@ export function installGlobalErrorReporting(target: Window = window): () => void
     if (reported++ < 20)
       console.error('Auralis UI unhandled failure', { code: 'UI_UNHANDLED', kind });
   };
-  const onError = () => report('error');
-  const onRejection = () => report('unhandledrejection');
+  const onError = (event: ErrorEvent) => {
+    report('error');
+    if (suppressDefault && event.cancelable) event.preventDefault();
+  };
+  const onRejection = (event: PromiseRejectionEvent) => {
+    report('unhandledrejection');
+    if (suppressDefault && event.cancelable) event.preventDefault();
+  };
   target.addEventListener('error', onError);
   target.addEventListener('unhandledrejection', onRejection);
   return () => {

@@ -217,6 +217,16 @@ impl ports::storage::ArtifactStore for MockStore {
 #[derive(Clone, Default)]
 struct MockIndex;
 #[async_trait]
+impl ports::artifact_finalization::ArtifactFinalizationLookup for MockIndex {
+    async fn get_for_finalization(
+        &self,
+        _project_id: &ProjectId,
+        _artifact_id: &domain::media::ArtifactId,
+    ) -> Result<ports::artifact_finalization::FinalizationMetadata, ports::error::PortError> {
+        unimplemented!()
+    }
+}
+#[async_trait]
 impl ports::artifact_index::ArtifactIndex for MockIndex {
     async fn add(
         &self,

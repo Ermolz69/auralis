@@ -1,47 +1,91 @@
-use super::diagnostic::{
-    DiagnosticKind, DiagnosticLevel, DiagnosticSink, ProcessDiagnostic, StderrDiagnosticSink,
+use super::diagnostic::{DiagnosticKind, DiagnosticLevel, DiagnosticSink, ProcessDiagnostic};
+use crate::TracingShutdownOutcome;
+use std::{
+    sync::{Arc, mpsc},
+    time::{Duration, Instant},
 };
-use std::sync::atomic::{AtomicBool, Ordering};
 use tracing_appender::non_blocking::ErrorCounter;
 
-pub(super) fn start_sampler(queue: ErrorCounter) {
-    static STARTED: AtomicBool = AtomicBool::new(false);
-    if STARTED.swap(true, Ordering::AcqRel) {
-        return;
-    }
-    let result = std::thread::Builder::new()
-        .name("diagnostic-health".into())
-        .spawn(move || {
-            let mut previous = (0, 0);
-            loop {
-                std::thread::sleep(std::time::Duration::from_secs(60));
-                let dropped = super::bounded_writer::DROPPED_EVENTS
-                    .load(Ordering::Relaxed)
-                    .saturating_add(queue.dropped_lines() as u64)
-                    .saturating_add(
-                        super::diagnostic::stderr_writer()
-                            .error_counter()
-                            .dropped_lines() as u64,
-                    );
-                let failed = super::bounded_writer::WRITE_FAILURES.load(Ordering::Relaxed);
-                for (kind, count, before) in [
-                    (DiagnosticKind::BufferOverflow, dropped, previous.0),
-                    (DiagnosticKind::RuntimeLogWriteFailed, failed, previous.1),
-                ] {
-                    if count > before {
-                        StderrDiagnosticSink.emit(ProcessDiagnostic {
-                            level: DiagnosticLevel::Warning,
-                            kind,
-                            count: Some(count - before),
-                            os_code: None,
-                            fallback: None,
-                        });
+pub(super) struct HealthSampler {
+    stop: mpsc::Sender<()>,
+    task: Option<std::thread::JoinHandle<()>>,
+}
+
+impl HealthSampler {
+    pub(super) fn start(
+        queues: Vec<ErrorCounter>,
+        sink: Arc<dyn DiagnosticSink>,
+        period: Duration,
+    ) -> std::io::Result<Self> {
+        let (stop, receiver) = mpsc::channel();
+        let task = std::thread::Builder::new()
+            .name("diagnostic-health".into())
+            .spawn(move || {
+                let mut previous = (0, 0);
+                while matches!(
+                    receiver.recv_timeout(period),
+                    Err(mpsc::RecvTimeoutError::Timeout)
+                ) {
+                    let dropped = super::bounded_writer::DROPPED_EVENTS
+                        .load(std::sync::atomic::Ordering::Relaxed)
+                        .saturating_add(
+                            queues
+                                .iter()
+                                .map(|queue| queue.dropped_lines() as u64)
+                                .fold(0, u64::saturating_add),
+                        );
+                    let failed = super::bounded_writer::WRITE_FAILURES
+                        .load(std::sync::atomic::Ordering::Relaxed);
+                    for (kind, count, before) in [
+                        (DiagnosticKind::BufferOverflow, dropped, previous.0),
+                        (DiagnosticKind::RuntimeLogWriteFailed, failed, previous.1),
+                    ] {
+                        if count > before {
+                            sink.emit(ProcessDiagnostic {
+                                level: DiagnosticLevel::Warning,
+                                kind,
+                                count: Some(count - before),
+                                os_code: None,
+                                fallback: None,
+                            });
+                        }
                     }
+                    previous = (dropped, failed);
                 }
-                previous = (dropped, failed);
+            })?;
+        Ok(Self {
+            stop,
+            task: Some(task),
+        })
+    }
+
+    pub(super) fn request_stop(&self) {
+        let _ = self.stop.send(());
+    }
+
+    pub(super) fn stop_until(mut self, deadline: Instant) -> TracingShutdownOutcome {
+        self.request_stop();
+        let Some(task) = self.task.take() else {
+            return TracingShutdownOutcome::NotOwned;
+        };
+        while !task.is_finished() {
+            if Instant::now() >= deadline {
+                return TracingShutdownOutcome::TimedOut;
             }
-        });
-    if result.is_err() {
-        STARTED.store(false, Ordering::Release);
+            std::thread::sleep(
+                Duration::from_millis(1).min(deadline.saturating_duration_since(Instant::now())),
+            );
+        }
+        if task.join().is_ok() {
+            TracingShutdownOutcome::Flushed
+        } else {
+            TracingShutdownOutcome::Failed
+        }
+    }
+}
+
+impl Drop for HealthSampler {
+    fn drop(&mut self) {
+        self.request_stop();
     }
 }

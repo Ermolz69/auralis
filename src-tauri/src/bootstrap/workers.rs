@@ -31,7 +31,7 @@ pub fn spawn_outbox_worker(
     let worker = OutboxWorker::new(
         outbox_repo,
         services.artifact_store.clone(),
-        services.artifact_index.clone(),
+        services.artifact_finalization.clone(),
         services.storage_uow.clone(),
         event_publisher,
         workspace_port,

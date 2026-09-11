@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { invoke } from '@/shared/api/tauri';
 import { ArtifactRecovery } from './ArtifactRecovery';
 vi.mock('@/shared/api/tauri', () => ({ invoke: vi.fn() }));
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 beforeEach(() => {
   vi.mocked(invoke)
     .mockReset()
@@ -12,6 +16,18 @@ beforeEach(() => {
     );
 });
 describe('artifact recovery', () => {
+  it('discovers a new dead intent while the page stays visible', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+    vi.mocked(invoke)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValue(['project-1'] as never);
+    render(<ArtifactRecovery projects={[]} />);
+    await act(async () => {});
+    expect(screen.queryByRole('button', { name: 'Retry file finalization' })).toBeNull();
+    await act(async () => vi.advanceTimersByTimeAsync(30_000));
+    expect(screen.getByRole('button', { name: 'Retry file finalization' })).not.toBeNull();
+  });
   it('never resumes automatically and deduplicates a pending manual retry', async () => {
     let acknowledge!: () => void;
     render(<ArtifactRecovery projects={[]} />);

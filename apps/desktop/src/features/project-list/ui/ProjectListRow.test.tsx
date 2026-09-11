@@ -51,10 +51,10 @@ beforeEach(() => {
 
 afterEach(() => cleanup());
 
-function renderRow() {
+function renderRow(id = project.id) {
   return render(
     <ProjectListRow
-      project={project}
+      project={{ ...project, id }}
       isDeleting={false}
       isAnyDeleting={false}
       openButtonRef={vi.fn()}
@@ -66,6 +66,78 @@ function renderRow() {
 }
 
 describe('ProjectListRow', () => {
+  it.each([true, false])(
+    'retains a failed pin across remount (failure before unmount: %s)',
+    async (beforeUnmount) => {
+      const id = `pin-remount-${beforeUnmount}`;
+      let fail!: (error: Error) => void;
+      invoke.mockImplementation(async (command: string, args?: { pinned: boolean }) => {
+        if (command === 'get_project_pins_cmd') return { migrated: true, entries: [] };
+        if (command === 'set_project_pin_cmd')
+          return new Promise((_resolve, reject) => {
+            fail = reject;
+          });
+        return args;
+      });
+      const first = renderRow(id);
+      fireEvent.contextMenu(screen.getByRole('button', { name: /^Open clip\.mp4/ }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Закрепить' }));
+      await waitFor(() => expect(fail).toBeDefined());
+      if (beforeUnmount) {
+        fail(new Error('write unavailable'));
+        await screen.findByRole('button', { name: 'Retry saving pin' });
+      }
+      first.unmount();
+      if (!beforeUnmount) fail(new Error('write unavailable'));
+      renderRow(id);
+      await screen.findByRole('button', { name: 'Retry saving pin' });
+      invoke.mockImplementation(async (command: string, args?: { pinned: boolean }) =>
+        command === 'get_project_pins_cmd'
+          ? { migrated: true, entries: [] }
+          : { projectId: id, pinned: args!.pinned, revision: 1 },
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Retry saving pin' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Retry saving pin' })).toBeNull(),
+      );
+      await waitFor(() => expect(screen.queryByText('Saving pin…')).toBeNull());
+      expect(getProjectPreferences(id).pinned).toBe(true);
+    },
+  );
+
+  it('queues a second real toggle while the first save is pending', async () => {
+    const id = 'rapid-pin-row';
+    let acknowledge!: () => void;
+    let saved = { projectId: id, pinned: false, revision: 0 };
+    invoke.mockImplementation(
+      async (command: string, args?: { pinned: boolean; expectedRevision: number }) => {
+        if (command === 'get_project_pins_cmd')
+          return { migrated: true, entries: saved.revision ? [saved] : [] };
+        if (command === 'set_project_pin_cmd') {
+          expect(args!.expectedRevision).toBe(saved.revision);
+          if (!saved.revision)
+            await new Promise<void>((resolve) => {
+              acknowledge = resolve;
+            });
+          saved = { ...saved, pinned: args!.pinned, revision: saved.revision + 1 };
+          return saved;
+        }
+        return null;
+      },
+    );
+    renderRow(id);
+    const open = screen.getByRole('button', { name: /^Open clip\.mp4/ });
+    fireEvent.contextMenu(open);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Закрепить' }));
+    await waitFor(() => expect(acknowledge).toBeDefined());
+    fireEvent.contextMenu(open);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Открепить' }));
+    expect(getProjectPreferences(id).pinned).toBe(false);
+    acknowledge();
+    await waitFor(() => expect(saved).toEqual({ projectId: id, pinned: false, revision: 2 }));
+    await waitFor(() => expect(screen.queryByText('Saving pin…')).toBeNull());
+  });
+
   it('uses safe title, status, and source labels without exposing full local paths', () => {
     renderRow();
 

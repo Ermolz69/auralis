@@ -6,6 +6,7 @@ export type { ProjectSelection } from './model/selection';
 export * from './model/useProjectContext';
 export { useProjectOperation } from './model/useProjectOperation';
 export * from './model/preferences';
+export { usePinPersistence } from './model/usePinPersistence';
 export * from './model/projectChanges';
 export * from './model/youtubeImportChanges';
 export * from './api/projectAvatarApi';

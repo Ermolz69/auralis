@@ -15,11 +15,14 @@ pub async fn get_project_avatar_cmd(
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectAvatarDto, CommandError> {
-    Ok(usecases
-        .project_avatar
-        .get(parse_project_id(&project_id)?)
-        .await?
-        .into())
+    crate::observability::command::observe("get_project_avatar_cmd", async {
+        Ok(usecases
+            .project_avatar
+            .get(parse_project_id(&project_id)?)
+            .await?
+            .into())
+    })
+    .await
 }
 
 #[command]
@@ -31,9 +34,12 @@ pub async fn set_project_avatar_cmd(
     only_if_missing: bool,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectAvatarDto, CommandError> {
-    Ok(usecases
-        .project_avatar
-        .set(parse_project_id(&project_id)?, data_url, only_if_missing)
-        .await?
-        .into())
+    crate::observability::command::observe("set_project_avatar_cmd", async {
+        Ok(usecases
+            .project_avatar
+            .set(parse_project_id(&project_id)?, data_url, only_if_missing)
+            .await?
+            .into())
+    })
+    .await
 }
