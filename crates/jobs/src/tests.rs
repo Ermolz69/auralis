@@ -10,6 +10,44 @@ use domain::job::{Job, JobId, JobStatus};
 use ports::error::PortError;
 use ports::job_scheduler::JobSchedulerPort;
 use ports::repository::JobRepository;
+
+#[tokio::test(start_paused = true)]
+async fn shutdown_deadline_includes_a_held_mutation_lock() {
+    use ports::job_runtime_control::{
+        JobRuntimeControlPort, RuntimeCompletion, RuntimeTask, RuntimeTaskOutcome,
+    };
+    let repo = Arc::new(MockJobRepository::new());
+    let uow = Arc::new(MockStorageUnitOfWork::new(repo.jobs.clone()));
+    let manager = JobManager::new(repo, uow, None);
+    let id = JobId::new();
+    manager
+        .reserve(id.clone(), domain::project::ProjectId::new())
+        .await
+        .unwrap();
+    let (cancel, _) = ports::cancellation::CancelHandle::new();
+    let join_handle = tokio::spawn(async { RuntimeTaskOutcome::Completed });
+    tokio::task::yield_now().await;
+    manager
+        .attach_task(
+            id.clone(),
+            RuntimeTask {
+                cancel,
+                join_handle,
+                completion: Arc::new(RuntimeCompletion::new()),
+            },
+        )
+        .await
+        .unwrap();
+    let lock = manager.mutation_lock_for_test(&id).unwrap();
+    let guard = lock.lock().await;
+    let started = tokio::time::Instant::now();
+    let report = manager.drain_all(Duration::from_millis(100)).await.unwrap();
+    assert!(started.elapsed() <= Duration::from_millis(101));
+    assert_eq!(report.completed_count, 1);
+    assert_eq!(report.cleanup_deferred_count, 1);
+    assert_eq!(report.unconfirmed_count, 0);
+    drop(guard);
+}
 use ports::transaction::{
     ApplyTerminalLifecycle, CommitJobUpdate, CommitManagedSourceImport, CommitPipelineStart,
     CommitPipelineStartFailure, CommitProjectDelete, CommitTerminalJobUpdate,

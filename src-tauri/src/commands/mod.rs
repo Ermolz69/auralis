@@ -1,7 +1,9 @@
 pub mod artifact;
+pub mod artifact_recovery;
 pub mod job;
 pub mod media;
 pub mod native_e2e;
 pub mod project;
 pub mod project_avatar;
+pub mod ui_preferences;
 pub mod youtube_import;

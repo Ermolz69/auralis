@@ -75,8 +75,10 @@ impl ArtifactStore for LocalArtifactStore {
         &self,
         staging_key: &str,
         final_key: &str,
+        expected_size: Option<u64>,
     ) -> Result<(), PortError> {
-        staging::finalize_staged_artifact(&self.base_dir, staging_key, final_key).await
+        staging::finalize_staged_artifact(&self.base_dir, staging_key, final_key, expected_size)
+            .await
     }
 
     async fn delete_storage_key(&self, storage_key: &str) -> Result<(), PortError> {

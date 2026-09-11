@@ -13,7 +13,10 @@ pub enum DiagnosticKind {
     FileAppenderUnavailable,
     SubscriberAlreadyInstalled,
     BufferOverflow,
+    RuntimeLogWriteFailed,
+    HealthSamplerUnavailable,
     TracingFlushTimedOut,
+    TracingFlushFailed,
     ApplicationConfigurationInvalid,
     ObservabilityConfigurationInvalid,
     TauriBuildFailed,
@@ -64,19 +67,35 @@ pub fn write_diagnostic(
     )
 }
 
-pub fn stderr_writer() -> std::io::Stderr {
-    std::io::stderr()
-}
-
 pub trait DiagnosticSink: Send + Sync {
     fn emit(&self, diag: ProcessDiagnostic);
 }
 
-pub struct StderrDiagnosticSink;
+pub(crate) struct TracingDiagnosticSink;
+impl DiagnosticSink for TracingDiagnosticSink {
+    fn emit(&self, diag: ProcessDiagnostic) {
+        tracing::warn!(event_name = "process_diagnostic", kind = ?diag.kind, count = ?diag.count);
+    }
+}
+
+pub struct StderrDiagnosticSink(pub(crate) tracing_appender::non_blocking::NonBlocking);
+
+impl StderrDiagnosticSink {
+    pub fn owned() -> (Self, super::sink::OwnedSink) {
+        let owner = super::sink::OwnedSink::new(
+            std::io::stderr(),
+            super::bounded_writer::MAX_QUEUED_EVENTS,
+            true,
+        );
+        (Self(owner.writer.clone()), owner)
+    }
+}
 
 impl DiagnosticSink for StderrDiagnosticSink {
     fn emit(&self, diag: ProcessDiagnostic) {
-        let mut stderr = stderr_writer().lock();
-        let _ = write_diagnostic(&mut stderr, diag);
+        let mut record = Vec::new();
+        if write_diagnostic(&mut record, diag).is_ok() {
+            let _ = self.0.clone().write_all(&record);
+        }
     }
 }

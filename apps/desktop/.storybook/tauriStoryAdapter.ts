@@ -93,6 +93,7 @@ const storyProjects: Project[] = [
     title: 'YouTube project',
     status: 'processing',
     source: { kind: 'youtubeUrl', url: 'https://youtube.com/watch?v=storybook' },
+    revision: 1,
     metadata: null,
     createdAt,
     updatedAt,
@@ -106,6 +107,7 @@ const storyProjects: Project[] = [
       artifactId: 'artifact-local-interview',
       originalFilename: 'local-interview.mp4',
     },
+    revision: 1,
     metadata: storyMediaMetadata,
     createdAt,
     updatedAt,
@@ -156,6 +158,7 @@ export function installTauriStoryAdapter() {
         return handleGetTranscript(readPayload<CommandMap['get_transcript_cmd']['args']>(payload));
       case 'list_projects_cmd':
         return handleListProjects();
+      case 'list_artifact_recovery_cmd':
       case 'list_pending_youtube_imports_cmd':
         return [];
       case 'get_project_cmd':
@@ -231,6 +234,7 @@ function handleCreateProject({
     title,
     status: 'draft',
     source: null,
+    revision: 1,
     metadata: null,
     createdAt,
     updatedAt,
@@ -245,6 +249,7 @@ function handleCreateProjectFromYoutube({
     title: 'YouTube project',
     status: 'processing',
     source: { kind: 'youtubeUrl', url },
+    revision: 1,
     metadata: null,
     createdAt,
     updatedAt,
@@ -316,6 +321,7 @@ function handleImportLocalMedia({
       artifactId: 'artifact-local-interview',
       originalFilename: 'local-interview.mp4',
     },
+    revision: 1,
     metadata: storyMediaMetadata,
     createdAt,
     updatedAt,

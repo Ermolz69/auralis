@@ -24,6 +24,7 @@ vi.mock('./pages/project', async (importOriginal) => ({
 vi.mock('./pages/settings', () => ({ SettingsPage: () => <h1>Settings page</h1> }));
 
 const project: Project = {
+  revision: 1,
   id: 'p1',
   title: 'Selected',
   status: 'draft',

@@ -10,6 +10,27 @@ mod tests {
         let db_path = dir.path().join("fresh.sqlite");
 
         let pool = connect_sqlite(&db_path).await.expect("Failed to connect");
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("PRAGMA synchronous")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            2
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("PRAGMA busy_timeout")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            5000
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("PRAGMA foreign_keys")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            1
+        );
 
         let tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -23,7 +44,10 @@ mod tests {
                 "artifacts",
                 "jobs",
                 "outbox_messages",
+                "project_pins",
                 "projects",
+                "ui_migrations",
+                "ui_settings",
                 "youtube_imports"
             ]
         );

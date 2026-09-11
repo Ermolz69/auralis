@@ -95,7 +95,7 @@ async fn version_one_upgrade_preserves_project_data_and_is_idempotent() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(version, 4);
+    assert_eq!(version, 5);
     let repo = SqliteProjectRepository::new(pool.clone());
     assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), project);
     let renamed = repo

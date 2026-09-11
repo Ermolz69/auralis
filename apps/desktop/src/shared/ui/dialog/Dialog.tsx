@@ -1,14 +1,6 @@
-import React, { createContext, useContext, useEffect, useRef, useState, useId } from 'react';
+import React, { useContext, useEffect, useRef, useState, useId } from 'react';
 import { Icon } from '../icon';
-
-interface DialogContextValue {
-  handleClose: () => void;
-  titleId: string;
-  descriptionId: string;
-  setHasDescription: (hasDescription: boolean) => void;
-}
-
-const DialogContext = createContext<DialogContextValue | null>(null);
+import { DialogContext } from './DialogContext';
 
 export interface DialogProps {
   open?: boolean;
@@ -60,6 +52,12 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
     handleClose();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDialogElement>) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    e.preventDefault();
+    handleClose();
+  };
+
   const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
     if (e.target === e.currentTarget) {
       handleClose();
@@ -85,6 +83,7 @@ export const Dialog = ({ open, onOpenChange, trigger, children }: DialogProps) =
       <dialog
         ref={dialogRef}
         onCancel={handleCancel}
+        onKeyDown={handleKeyDown}
         onClick={handleBackdropClick}
         aria-labelledby={titleId}
         aria-describedby={hasDescription ? descriptionId : undefined}

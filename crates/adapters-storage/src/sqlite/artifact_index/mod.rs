@@ -1,3 +1,4 @@
+mod finalization;
 pub(crate) mod mapper;
 mod mutations;
 mod queries;

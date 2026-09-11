@@ -197,6 +197,7 @@ function createJobState(
 
 function createProjectContext() {
   const project: Project = {
+    revision: 1,
     id: 'project-1',
     title: 'https://youtube.com/watch?v=123',
     status: 'failed',

@@ -18,6 +18,7 @@ pub enum RecoveryApplyResult {
 }
 
 pub struct FailInterruptedPairCommand {
+    pub expected_job_revision: u64,
     pub project: Project,
     pub job: Job,
     pub expected_project_status: ProjectStatus,
@@ -49,6 +50,7 @@ pub struct FailProjectWithoutActiveJobCommand {
 }
 
 pub struct FailOrphanJobCommand {
+    pub expected_job_revision: u64,
     pub job: Job,
     pub expected_job_status: JobStatus, // Pending or Running
                                         // job must not be referenced by any current Processing project's active_job_id

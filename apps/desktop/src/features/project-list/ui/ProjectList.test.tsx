@@ -62,6 +62,7 @@ vi.mock('@/shared/ui/dialog', () => ({
 }));
 
 const mockProject: Project = {
+  revision: 1,
   id: 'p-1',
   title: 'Test Project',
   status: 'draft',
@@ -72,6 +73,7 @@ const mockProject: Project = {
 };
 
 const mockProject2: Project = {
+  revision: 1,
   id: 'p-2',
   title: '', // Empty title to test fallback
   status: 'completed',

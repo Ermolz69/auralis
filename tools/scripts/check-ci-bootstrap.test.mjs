@@ -274,7 +274,7 @@ test('browser E2E keeps stable scenario IDs and uploads diagnostics after failur
   const scenarioNumbers = [...source.matchAll(/^e2e\('(\d{2}) /gm)].map((match) => match[1]);
   assert.deepEqual(
     scenarioNumbers,
-    Array.from({ length: 34 }, (_, index) => String(index + 1).padStart(2, '0')),
+    Array.from({ length: 35 }, (_, index) => String(index + 1).padStart(2, '0')),
   );
 
   const runner = readText('apps/desktop/scripts/run-e2e.mjs');

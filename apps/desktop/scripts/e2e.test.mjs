@@ -129,10 +129,8 @@ e2e('05 persists the theme and installs a signed application update from setting
       await page.getByLabel('Color theme').selectOption('frost');
 
       await page.waitForFunction(() => document.documentElement.dataset.colorTheme === 'frost');
-      assert.equal(
-        await page.evaluate(() => localStorage.getItem('auralis:color-theme:v1')),
-        'frost',
-      );
+      await page.waitForFunction(() => window.__e2e.theme?.value === 'frost');
+      assert.equal(await page.evaluate(() => localStorage.getItem('auralis:color-theme:v1')), null);
       await page.getByRole('button', { name: 'Download and install 0.2.0' }).click();
       await page.getByText('Restarting', { exact: true }).waitFor();
       assert.equal(await page.evaluate(() => window.__e2e.restarted), true);
@@ -314,6 +312,7 @@ e2e('16 renames a project from its context menu', async () => {
     assert.deepEqual(await lastCallArgs(page, 'rename_project_cmd'), {
       projectId: youtubeProject.id,
       title: 'Renamed Project',
+      expectedRevision: youtubeProject.revision,
     });
   });
 });
@@ -324,10 +323,10 @@ e2e('17 pins a project and exposes it in the sidebar', async () => {
     await page.getByRole('menuitem', { name: 'Закрепить' }).click();
 
     await page.getByRole('button', { name: 'YouTube Project', exact: true }).waitFor();
-    const preferences = await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('auralis.project-preferences.v1') ?? '{}'),
+    await page.waitForFunction(
+      (id) => window.__e2e.pins.entries.some((pin) => pin.projectId === id && pin.pinned),
+      youtubeProject.id,
     );
-    assert.equal(preferences[youtubeProject.id].pinned, true);
   });
 });
 
@@ -672,17 +671,20 @@ e2e('33 restores a cancelling job after reload and rejects stale progress', asyn
       await page.getByText('Stopping', { exact: true }).waitFor();
       assert.equal(await page.getByRole('button', { name: 'Cancel', exact: true }).count(), 0);
 
-      await page.evaluate(
-        ({ kind, job }) => window.__e2e.emitJobEvent(kind, job),
-        { kind: 'progressed', job: staleRunningJob },
-      );
+      await page.evaluate(({ kind, job }) => window.__e2e.emitJobEvent(kind, job), {
+        kind: 'progressed',
+        job: staleRunningJob,
+      });
       assert.equal(await page.getByText('Stopping', { exact: true }).isVisible(), true);
-      assert.equal(await page.getByText('Stale progress must be ignored', { exact: true }).count(), 0);
-
-      await page.evaluate(
-        ({ kind, job }) => window.__e2e.emitJobEvent(kind, job),
-        { kind: 'cancelled', job: cancelledJob },
+      assert.equal(
+        await page.getByText('Stale progress must be ignored', { exact: true }).count(),
+        0,
       );
+
+      await page.evaluate(({ kind, job }) => window.__e2e.emitJobEvent(kind, job), {
+        kind: 'cancelled',
+        job: cancelledJob,
+      });
       await page
         .getByLabel('Operation history')
         .getByText(cancellingJob.title, { exact: true })
@@ -727,6 +729,32 @@ e2e('34 retries terminal history after a temporary storage failure', async () =>
       assert.equal((await callsFor(page, 'list_job_history_page_cmd')).length, 2);
     },
   );
+});
+
+e2e('35 sanitizes real browser errors and rejected promises in production', async () => {
+  await scenario(baseSeed(), async (page) => {
+    const records = [];
+    page.on('console', (message) => records.push(message.text()));
+    page.on('pageerror', (error) => records.push(error.message));
+    await page.evaluate(() => {
+      window.__privacyHandled = 0;
+      const observed = (event) => {
+        if (event.defaultPrevented) window.__privacyHandled += 1;
+      };
+      window.addEventListener('error', observed);
+      window.addEventListener('unhandledrejection', observed);
+      setTimeout(() => {
+        throw new Error('SYNTHETIC_PRIVATE_TITLE token=synthetic');
+      }, 0);
+      void Promise.reject(new Error('SYNTHETIC_PRIVATE_TITLE token=synthetic'));
+    });
+    await page.waitForFunction(() => window.__privacyHandled === 2);
+    assert.equal(records.filter((line) => line.includes('UI_UNHANDLED')).length, 2);
+    assert.equal(
+      records.some((line) => line.includes('SYNTHETIC_PRIVATE_TITLE')),
+      false,
+    );
+  });
 });
 
 function e2e(name, run) {
@@ -777,6 +805,7 @@ async function scenario(seed, run) {
 }
 
 function scenarioArea(number) {
+  if (number === 35) return 'diagnostics';
   if ([1, 2, 3, 4, 21, 22].includes(number)) return 'projects';
   if ([5, 6, 30].includes(number)) return 'settings-and-updates';
   if ([7, 8, 31, 32, 33, 34].includes(number)) return 'jobs';
@@ -885,6 +914,7 @@ function createProject(overrides) {
     title: 'Project',
     status: 'draft',
     source: null,
+    revision: 1,
     metadata: null,
     createdAt: timestamp,
     updatedAt: timestamp,

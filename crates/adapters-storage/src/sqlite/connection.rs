@@ -1,11 +1,12 @@
 use ports::error::PortError;
 use sqlx::SqlitePool;
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use std::path::Path;
 
 pub(crate) const SCHEMA: &str = concat!(
     include_str!("schema.sql"),
-    include_str!("youtube_import_schema.sql")
+    include_str!("youtube_import_schema.sql"),
+    include_str!("ui_preferences_schema.sql")
 );
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
@@ -13,6 +14,8 @@ pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError>
         .filename(db_path)
         .create_if_missing(true)
         .foreign_keys(true)
+        .synchronous(SqliteSynchronous::Full)
+        .busy_timeout(std::time::Duration::from_secs(5))
         .journal_mode(SqliteJournalMode::Wal);
 
     SqlitePoolOptions::new()
@@ -69,10 +72,14 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
             crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
         })?;
     let mut expected_tables = FINAL_TABLES.to_vec();
-    if schema_marker == 4 {
+    if schema_marker >= 4 {
         expected_tables.push("youtube_imports");
     }
-    if table_names != expected_tables || ![1, 2, 3, 4].contains(&schema_marker) {
+    if schema_marker >= 5 {
+        expected_tables.extend(["project_pins", "ui_migrations", "ui_settings"]);
+        expected_tables.sort_unstable();
+    }
+    if table_names != expected_tables || !(1..=5).contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -166,6 +173,12 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 4 {
         super::youtube_import_migration::migrate(pool).await?;
     }
+    if schema_marker < 5 {
+        super::ui_preferences_migration::migrate(pool).await?;
+    }
+    validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
+    validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
+    validate_columns(pool, "ui_migrations", &["key"]).await?;
     validate_columns(
         pool,
         "youtube_imports",

@@ -100,6 +100,14 @@ pub fn run() -> Result<(), AppRunError> {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::ui_preferences::get_color_theme_cmd,
+            commands::ui_preferences::set_color_theme_cmd,
+            commands::ui_preferences::import_color_theme_cmd,
+            commands::ui_preferences::get_project_pins_cmd,
+            commands::ui_preferences::set_project_pin_cmd,
+            commands::ui_preferences::import_project_pins_cmd,
+            commands::artifact_recovery::list_artifact_recovery_cmd,
+            commands::artifact_recovery::retry_artifact_finalization_cmd,
             commands::youtube_import::list_pending_youtube_imports_cmd,
             commands::youtube_import::resume_youtube_import_cmd,
             commands::youtube_import::discard_youtube_import_cmd,
@@ -132,6 +140,7 @@ pub fn run() -> Result<(), AppRunError> {
 
     app.run(move |app_handle, event| {
         if let RuntimeLifecycleAction::FinalShutdown = classify_run_event(&event) {
+            let shutdown_deadline = std::time::Instant::now() + shutdown_timeout;
             use crate::state::{
                 ManagedJobEventBridge, ManagedJobRuntime, ManagedOutboxWorker, ManagedTracingGuard,
             };
@@ -142,7 +151,9 @@ pub fn run() -> Result<(), AppRunError> {
                 .map(|state| state.0.clone());
 
             let jobs_report = if let Some(runtime) = job_runtime {
-                match tauri::async_runtime::block_on(runtime.drain_all(shutdown_timeout)) {
+                match tauri::async_runtime::block_on(
+                    runtime.drain_all(shutdown_timeout.mul_f64(0.8)),
+                ) {
                     Ok(rep) => rep,
                     Err(ports::error::PortError::AlreadyStopped) => {
                         ports::job_runtime_control::RuntimeShutdownReport::default()
@@ -175,9 +186,17 @@ pub fn run() -> Result<(), AppRunError> {
                 .try_state::<ManagedTracingGuard>()
                 .and_then(|state| state.take());
 
-            let workers_report =
-                tauri::async_runtime::block_on(shutdown_runtime(outbox, bridge, shutdown_timeout));
-            let final_report = finalize_runtime_shutdown(workers_report, jobs_report, tracing);
+            let workers_report = tauri::async_runtime::block_on(shutdown_runtime(
+                outbox,
+                bridge,
+                shutdown_deadline.saturating_duration_since(std::time::Instant::now()),
+            ));
+            let final_report = finalize_runtime_shutdown(
+                workers_report,
+                jobs_report,
+                tracing,
+                shutdown_deadline.saturating_duration_since(std::time::Instant::now()),
+            );
 
             let mut guard = shutdown_report_clone
                 .lock()

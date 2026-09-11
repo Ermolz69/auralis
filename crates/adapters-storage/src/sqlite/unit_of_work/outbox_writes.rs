@@ -80,5 +80,6 @@ pub(crate) async fn save_outbox_message(
         });
     }
 
+    tracing::info!(operation_id = %msg.id, action = "outbox_intent_inserted", "outbox intent inserted in transaction");
     Ok(())
 }

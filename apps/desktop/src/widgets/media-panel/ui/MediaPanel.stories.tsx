@@ -4,6 +4,7 @@ import { ProjectContext, type Project } from '@/entities/project';
 import { MediaPanel } from './MediaPanel';
 
 const baseProject: Project = {
+  revision: 1,
   id: 'project-media',
   title: 'Local review clip',
   status: 'source_imported',
@@ -59,6 +60,7 @@ const baseProject: Project = {
 };
 
 const audioOnlyProject: Project = {
+  revision: 1,
   ...baseProject,
   id: 'project-audio-only',
   title: 'Audio only capture',

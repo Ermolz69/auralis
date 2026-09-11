@@ -31,6 +31,23 @@ pub struct JobManager {
 }
 
 impl JobManager {
+    async fn evict_stopped_before(
+        &self,
+        job_id: &DomainJobId,
+        deadline: tokio::time::Instant,
+    ) -> Result<bool, PortError> {
+        let cleanup = async {
+            let lock = self.mutation_locks.get_lock(job_id)?;
+            let guard = lock.lock().await;
+            self.cache.remove(job_id).await;
+            drop(guard);
+            self.mutation_locks.release_if_unused(job_id, &lock)
+        };
+        match tokio::time::timeout_at(deadline, cleanup).await {
+            Ok(result) => result.map(|_| true),
+            Err(_) => Ok(false),
+        }
+    }
     pub fn new(
         repo: Arc<dyn JobRepository>,
         storage_uow: Arc<dyn ports::transaction::StorageUnitOfWork>,
@@ -52,6 +69,14 @@ impl JobManager {
             self.cache.track_persisted(&job).await;
         }
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn mutation_lock_for_test(
+        &self,
+        job_id: &DomainJobId,
+    ) -> Result<Arc<tokio::sync::Mutex<()>>, PortError> {
+        self.mutation_locks.get_lock(job_id)
     }
 
     #[cfg(test)]
@@ -522,6 +547,7 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
         deadline: std::time::Duration,
     ) -> Result<ports::job_runtime_control::RuntimeShutdownReport, ports::error::PortError> {
         let start_time = std::time::Instant::now();
+        let expires_at = tokio::time::Instant::now() + deadline;
         let mut reaper_entries = Vec::new();
         let mut report = ports::job_runtime_control::RuntimeShutdownReport::default();
 
@@ -582,11 +608,7 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                                 abort_handles.remove(&job_id);
                                 classify_outcome(join_res, &mut report, false);
 
-                                let lock = self.mutation_locks.get_lock(&job_id)?;
-                                let _guard = lock.lock().await;
-                                self.cache.remove(&job_id).await;
-                                drop(_guard);
-                                self.mutation_locks.release_if_unused(&job_id, &lock)?;
+                                if !self.evict_stopped_before(&job_id, expires_at).await? { report.cleanup_deferred_count += 1; }
                             }
                             None => {
                                 break;
@@ -619,23 +641,12 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
                         abort_handles.remove(&job_id);
                         classify_outcome(join_res, &mut report, true);
 
-                        let lock = self.mutation_locks.get_lock(&job_id)?;
-                        let _guard = lock.lock().await;
-                        self.cache.remove(&job_id).await;
-                        drop(_guard);
-                        self.mutation_locks.release_if_unused(&job_id, &lock)?;
+                        if !self.evict_stopped_before(&job_id, expires_at).await? { report.cleanup_deferred_count += 1; }
                     }
                 }
             }
 
             report.unconfirmed_count += abort_handles.len();
-            for job_id in abort_handles.keys() {
-                let lock = self.mutation_locks.get_lock(job_id)?;
-                let _guard = lock.lock().await;
-                self.cache.remove(job_id).await;
-                drop(_guard);
-                self.mutation_locks.release_if_unused(job_id, &lock)?;
-            }
         }
 
         Ok(report)

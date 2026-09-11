@@ -1,5 +1,6 @@
 use sqlx::{Pool, Sqlite};
 
+mod artifact_recovery;
 pub mod claim;
 pub mod mutations;
 pub mod queries;

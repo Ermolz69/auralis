@@ -62,6 +62,8 @@ impl SubtitleSourcePort for RuntimeSubtitleSource {
 }
 
 pub struct AppUseCases {
+    pub ui_preferences: application::usecases::system::ui_preferences::UiPreferencesUseCase,
+    pub artifact_recovery: application::usecases::artifact::recovery::ArtifactRecoveryUseCase,
     pub project_avatar: application::usecases::project::avatar::ProjectAvatarUseCase,
     pub list_project_artifacts: ListProjectArtifactsUseCase<RuntimeArtifactIndex>,
     pub resolve_artifact_path:
@@ -94,6 +96,8 @@ pub struct AppUseCases {
 }
 
 pub(super) struct AppUseCaseDependencies {
+    pub(super) ui_preferences: Arc<dyn ports::ui_preferences::UiPreferencesRepository>,
+    pub(super) artifact_recovery: Arc<dyn ports::artifact_recovery::ArtifactRecoveryRepository>,
     pub(super) projects_root: std::path::PathBuf,
     pub(super) project_repo: RuntimeProjectRepository,
     pub(super) project_avatar_repo: Arc<dyn ports::project_avatar::ProjectAvatarRepository>,
@@ -111,6 +115,8 @@ pub(super) fn setup_usecases(
     dependencies: AppUseCaseDependencies,
 ) -> Result<(), PortError> {
     let AppUseCaseDependencies {
+        ui_preferences,
+        artifact_recovery,
         projects_root,
         project_repo,
         project_avatar_repo,
@@ -149,6 +155,12 @@ pub(super) fn setup_usecases(
     let project_workspace = adapters_tauri::ProjectWorkspaceOpener::new(app.clone(), projects_root);
 
     let usecases = AppUseCases {
+        ui_preferences: application::usecases::system::ui_preferences::UiPreferencesUseCase::new(
+            ui_preferences,
+        ),
+        artifact_recovery: application::usecases::artifact::recovery::ArtifactRecoveryUseCase::new(
+            artifact_recovery,
+        ),
         project_avatar: application::usecases::project::avatar::ProjectAvatarUseCase::new(
             project_avatar_repo,
         ),

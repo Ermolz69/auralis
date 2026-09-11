@@ -1,4 +1,6 @@
+pub mod artifact_finalization;
 pub mod artifact_index;
+pub mod artifact_recovery;
 pub mod cancellation;
 pub mod control;
 pub mod engine;
@@ -16,6 +18,7 @@ pub mod repository;
 pub mod source;
 pub mod storage;
 pub mod transaction;
+pub mod ui_preferences;
 pub mod workspace;
 
 pub use control::*;

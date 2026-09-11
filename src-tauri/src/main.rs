@@ -3,7 +3,9 @@
 fn main() {
     if let Err(e) = auralis_app::run() {
         use auralis_app::observability::diagnostic::{DiagnosticSink, StderrDiagnosticSink};
-        StderrDiagnosticSink.emit(e.diagnostic());
+        let (sink, owner) = StderrDiagnosticSink::owned();
+        sink.emit(e.diagnostic());
+        owner.shutdown(auralis_app::TRACING_FLUSH_TIMEOUT);
         std::process::exit(1);
     }
 }

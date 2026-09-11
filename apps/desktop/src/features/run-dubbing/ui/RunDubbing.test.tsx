@@ -18,6 +18,7 @@ vi.mock('@/entities/project', async (original) => ({
 }));
 
 const mockProject: Project = {
+  revision: 1,
   id: 'test-id',
   title: 'Test',
   status: 'ready_for_processing',

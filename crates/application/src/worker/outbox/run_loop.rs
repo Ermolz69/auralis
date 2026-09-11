@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use ports::artifact_index::ArtifactIndex;
+use ports::artifact_finalization::ArtifactFinalizationLookup;
 use ports::repository::OutboxRepository;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
@@ -15,7 +15,7 @@ impl<O, S, I, U> OutboxWorker<O, S, I, U>
 where
     O: OutboxRepository,
     S: ArtifactStore + Clone,
-    I: ArtifactIndex + Clone,
+    I: ArtifactFinalizationLookup + Clone,
     U: StorageUnitOfWork,
 {
     pub async fn run_loop(self: Arc<Self>, mut shutdown_rx: tokio::sync::mpsc::Receiver<()>)

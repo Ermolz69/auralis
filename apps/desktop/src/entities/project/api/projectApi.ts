@@ -42,8 +42,12 @@ export async function deleteProject(projectId: string): Promise<void> {
   await invoke('delete_project_cmd', { projectId });
 }
 
-export async function renameProject(projectId: string, title: string): Promise<Project> {
-  return invoke('rename_project_cmd', { projectId, title });
+export async function renameProject(
+  projectId: string,
+  title: string,
+  expectedRevision: number,
+): Promise<Project> {
+  return invoke('rename_project_cmd', { projectId, title, expectedRevision });
 }
 
 export async function openProjectFolder(projectId: string): Promise<void> {

@@ -55,6 +55,7 @@ fn test_runtime_shutdown_report_graceful_logic() {
         bridge_outcome: WorkerOutcome::AlreadyStopped,
         jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport::default(),
         tracing_outcome: TracingShutdownOutcome::Flushed,
+        tracing_sinks: crate::observability::shutdown::TracingShutdownReport::not_owned(),
     };
     assert!(report.is_graceful());
 
@@ -125,7 +126,7 @@ async fn test_shutdown_runtime_signal_failure() {
     assert_eq!(report.bridge_outcome, WorkerOutcome::AlreadyStopped);
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn test_shutdown_runtime_timeout_abort() {
     // Outbox task ignores signal and hangs
     let (outbox_tx, mut outbox_rx) = mpsc::channel(1);
@@ -156,14 +157,41 @@ fn test_classify_run_event() {
     );
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn shutdown_does_not_wait_forever_for_a_blocked_worker() {
+    let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let task = tokio::spawn(async move {
+        let _ = started_tx.send(());
+        let _ = release_rx.recv_timeout(Duration::from_secs(3));
+    });
+    started_rx.await.unwrap();
+    let handle = crate::bootstrap::workers::OutboxWorkerHandle {
+        worker_task: Some(task),
+        shutdown_tx: None,
+    };
+    let start = std::time::Instant::now();
+    let report = shutdown_runtime(Some(handle), None, Duration::from_millis(50)).await;
+    let _ = release_tx.send(());
+    assert_eq!(report.outbox_outcome, WorkerOutcome::Unconfirmed);
+    assert!(start.elapsed() < Duration::from_millis(250));
+}
+
 struct MockTracingShutdown {
     called: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl TracingShutdown for MockTracingShutdown {
-    fn shutdown(self, _timeout: std::time::Duration) -> TracingShutdownOutcome {
+    fn shutdown(
+        self,
+        _timeout: std::time::Duration,
+    ) -> crate::observability::shutdown::TracingShutdownReport {
         self.called.store(true, std::sync::atomic::Ordering::SeqCst);
-        TracingShutdownOutcome::Flushed
+        crate::observability::shutdown::TracingShutdownReport {
+            file: TracingShutdownOutcome::Flushed,
+            console: TracingShutdownOutcome::Flushed,
+            sampler: TracingShutdownOutcome::Flushed,
+        }
     }
 }
 
@@ -181,6 +209,7 @@ fn test_finalize_runtime_shutdown_tracing() {
         Some(MockTracingShutdown {
             called: called.clone(),
         }),
+        Duration::from_millis(500),
     );
 
     assert!(called.load(std::sync::atomic::Ordering::SeqCst));

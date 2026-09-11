@@ -1,5 +1,5 @@
 use domain::outbox::OutboxPayload;
-use ports::artifact_index::ArtifactIndex;
+use ports::artifact_finalization::{ArtifactFinalizationLookup, FinalizationMetadata};
 use ports::events::AppEventPublisher;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
@@ -11,7 +11,7 @@ use crate::error::ApplicationError;
 pub struct PayloadHandler<S, I, U>
 where
     S: ArtifactStore + Clone,
-    I: ArtifactIndex + Clone,
+    I: ArtifactFinalizationLookup + Clone,
     U: StorageUnitOfWork,
 {
     pub artifact_store: S,
@@ -24,9 +24,10 @@ where
 impl<S, I, U> PayloadHandler<S, I, U>
 where
     S: ArtifactStore + Clone,
-    I: ArtifactIndex + Clone,
+    I: ArtifactFinalizationLookup + Clone,
     U: StorageUnitOfWork,
 {
+    #[tracing::instrument(skip_all, fields(operation_id = %message_id))]
     pub async fn process_payload(
         &self,
         message_id: &domain::outbox::OutboxMessageId,
@@ -39,18 +40,31 @@ where
                 staging_key,
                 final_key,
             } => {
-                // 1. Perform persistent move
-                match self
-                    .artifact_store
-                    .finalize_staged_artifact(staging_key, final_key)
-                    .await
+                let metadata = self
+                    .artifact_index
+                    .get_for_finalization(project_id, artifact_id)
+                    .await?;
+                let FinalizationMetadata::Artifact(artifact) = metadata else {
+                    return Ok(());
+                };
+                if artifact.id != *artifact_id
+                    || artifact.location
+                        != domain::media::ArtifactLocation::StorageKey(final_key.clone())
+                    || !matches!(
+                        artifact.state,
+                        domain::media::ArtifactState::PendingFinalize
+                            | domain::media::ArtifactState::Ready
+                    )
                 {
-                    Ok(_) => {}
-                    Err(ports::error::PortError::NotFound { .. }) => {
-                        // Staging file missing. We must assume it was already finalized.
+                    return Err(ports::error::PortError::Conflict {
+                        resource: "Artifact".into(),
+                        message: "Finalization metadata does not match the committed intent".into(),
                     }
-                    Err(e) => return Err(e.into()),
+                    .into());
                 }
+                self.artifact_store
+                    .finalize_staged_artifact(staging_key, final_key, artifact.size_bytes)
+                    .await?;
 
                 // 2. Commit transaction with CAS
                 let cmd = ports::transaction::CommitArtifactFinalize {
@@ -127,16 +141,13 @@ where
                     transcript_ready,
                 } = res
                 {
-                    if transcript_ready {
-                        let _ = self
-                            .event_publisher
-                            .publish_transcript_ready(&project_id.to_string(), &job_id.to_string())
-                            .await;
-                    }
-                    let _ = self
-                        .event_publisher
-                        .publish_project_updated(&project_id.to_string())
-                        .await;
+                    super::notifications::publish_terminal_notifications(
+                        self.event_publisher.as_ref(),
+                        &project_id.to_string(),
+                        &job_id.to_string(),
+                        transcript_ready,
+                    )
+                    .await;
                 }
             }
         }

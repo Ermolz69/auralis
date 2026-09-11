@@ -5,6 +5,7 @@ import { ProjectContext, type Project } from '@/entities/project';
 import { MediaPanel } from './MediaPanel';
 
 const project: Project = {
+  revision: 1,
   id: 'p-1',
   title: 'Long media project',
   status: 'ready_for_processing',

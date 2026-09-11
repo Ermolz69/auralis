@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { listen } from '@/shared/api/tauri';
+import { subscribeSnapshotRefresh } from '@/shared/lib';
 import { toCommandError } from '@/shared/api/contracts';
 import { getTranscript } from '../api/transcriptApi';
 import type { Transcript } from './types';
@@ -133,9 +134,11 @@ export function useTranscript(projectId: string | null) {
     };
 
     void setupListener();
+    const stopSnapshotRefresh = subscribeSnapshotRefresh(() => fetchTranscript(scope));
 
     return () => {
       cancelled = true;
+      stopSnapshotRefresh();
       unlisten?.();
     };
   }, [fetchTranscript, renderedScope]);

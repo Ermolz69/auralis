@@ -144,6 +144,8 @@ pub(crate) async fn stage_owned_temp_file_with_ops<F: FileOps>(
 
     let size_bytes = metadata.len();
 
+    super::durability::sync_file(base_dir, &staging_path, Some(size_bytes)).await?;
+
     let artifact = Artifact {
         id: artifact_id,
         kind,
@@ -199,7 +201,7 @@ pub async fn import_external_file(
     ensure_safe_parent(base_dir, &staging_path).await?;
 
     // Only copy, do not move or remove original
-    if let Err(copy_err) = tokio::fs::copy(source_path, &staging_path).await {
+    if let Err(copy_err) = super::copy::copy_external(source_path, &staging_path).await {
         let _ = tokio::fs::remove_file(&staging_path).await;
         return Err(PortError::Io {
             message: format!(
@@ -220,6 +222,8 @@ pub async fn import_external_file(
     };
 
     let size_bytes = metadata.len();
+
+    super::durability::sync_file(base_dir, &staging_path, Some(size_bytes)).await?;
 
     let artifact = Artifact {
         id: artifact_id,
@@ -244,6 +248,7 @@ pub async fn finalize_staged_artifact(
     base_dir: &Path,
     staging_key: &str,
     final_key: &str,
+    expected_size: Option<u64>,
 ) -> Result<(), PortError> {
     let staging_path = resolve_storage_key(base_dir, staging_key)?;
     let final_path = resolve_storage_key(base_dir, final_key)?;
@@ -257,7 +262,7 @@ pub async fn finalize_staged_artifact(
             ),
         })?;
     if final_exists {
-        return Ok(());
+        return super::durability::sync_file(base_dir, &final_path, expected_size).await;
     }
 
     let staging_exists = tokio::fs::try_exists(&staging_path)
@@ -278,6 +283,7 @@ pub async fn finalize_staged_artifact(
     }
 
     ensure_safe_parent(base_dir, &final_path).await?;
+    super::durability::sync_file(base_dir, &staging_path, expected_size).await?;
 
     tokio::fs::rename(&staging_path, &final_path)
         .await
@@ -288,5 +294,6 @@ pub async fn finalize_staged_artifact(
             ),
         })?;
 
-    Ok(())
+    super::durability::sync_file(base_dir, &final_path, expected_size).await?;
+    super::durability::sync_directories(base_dir, &staging_path).await
 }

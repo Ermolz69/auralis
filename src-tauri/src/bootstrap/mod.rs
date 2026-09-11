@@ -1,3 +1,4 @@
+mod app_root_lease;
 pub mod media_tools;
 #[cfg(feature = "native-e2e")]
 pub mod native_e2e_subtitle_source;
@@ -21,6 +22,8 @@ pub fn setup(
     record_native_e2e_checkpoint("setup-started");
     let app_handle = app.handle().clone();
     let app_paths = paths::AppPaths::resolve(app)?;
+    let storage_lease = Arc::new(app_root_lease::AppRootLease::acquire(app_paths.root())?);
+    app.manage(storage_lease.clone());
     app.manage(app_paths.clone());
     record_native_e2e_checkpoint("paths-ready");
 
@@ -32,8 +35,7 @@ pub fn setup(
         log_dir,
     };
 
-    let sink = Arc::new(crate::observability::diagnostic::StderrDiagnosticSink);
-    let guard = crate::observability::init(config, sink);
+    let guard = crate::observability::init(config);
     let mode_str = format!("{:?}", guard.active_mode);
     app.manage(crate::state::ManagedTracingGuard(std::sync::Mutex::new(
         Some(guard),
@@ -47,7 +49,7 @@ pub fn setup(
     std::fs::create_dir_all(&workspace_root)?;
 
     // 1. Setup storage Adapter (fallible)
-    let (services, outbox_repo) = storage::setup_storage(&app_paths)?;
+    let (services, outbox_repo) = storage::setup_storage(&app_paths, storage_lease)?;
     record_native_e2e_checkpoint("storage-ready");
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
@@ -74,6 +76,8 @@ pub fn setup(
     usecases::setup_usecases(
         app.handle(),
         usecases::AppUseCaseDependencies {
+            ui_preferences: services.ui_preferences.clone(),
+            artifact_recovery: Arc::new(outbox_repo.clone()),
             projects_root: app_paths.projects(),
             project_repo: services.project_repo.clone(),
             project_avatar_repo: services.project_avatar_repo.clone(),

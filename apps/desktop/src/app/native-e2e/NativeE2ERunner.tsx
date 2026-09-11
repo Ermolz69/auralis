@@ -97,14 +97,22 @@ async function runNativeScenario() {
     if (pendingImports.length !== 0) {
       throw new Error('Completed native yt-dlp import retained its journal entry');
     }
-    await renameProject(youtubeProject.id, `native-e2e-ytdlp-complete:${runId}`);
+    await renameProject(
+      youtubeProject.id,
+      `native-e2e-ytdlp-complete:${runId}`,
+      youtubeProject.revision,
+    );
     await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'ytdlp-project-ready' });
 
-    await renameProject(project.id, `native-e2e-complete:${runId}`);
+    const latestProject = await invoke('get_project_cmd', { projectId: project.id });
+    await renameProject(project.id, `native-e2e-complete:${runId}`, latestProject.revision);
   } catch (error) {
     console.error('Native E2E scenario failed', error);
     if (projectIds[0]) {
-      await renameProject(projectIds[0], `native-e2e-failed:${runId}`).catch(() => undefined);
+      const projectId = projectIds[0];
+      await invoke('get_project_cmd', { projectId })
+        .then((current) => renameProject(projectId, `native-e2e-failed:${runId}`, current.revision))
+        .catch(() => undefined);
     }
   } finally {
     unlisten?.();

@@ -30,6 +30,8 @@ async fn setup_db() -> SqlitePool {
             aggregate_id TEXT
         );
         CREATE INDEX idx_outbox_aggregate_status ON outbox_messages(aggregate_type, aggregate_id, status);
+        CREATE TABLE projects (id TEXT PRIMARY KEY);
+        CREATE TABLE artifacts (id TEXT PRIMARY KEY, project_id TEXT, state TEXT);
 
         "#,
     )

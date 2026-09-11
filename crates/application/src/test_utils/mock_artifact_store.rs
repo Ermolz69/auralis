@@ -72,6 +72,7 @@ impl ArtifactStore for MockArtifactStore {
         &self,
         _staging_key: &str,
         _final_key: &str,
+        _expected_size: Option<u64>,
     ) -> Result<(), PortError> {
         Ok(())
     }

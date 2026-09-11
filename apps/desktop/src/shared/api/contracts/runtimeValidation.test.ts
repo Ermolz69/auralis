@@ -6,6 +6,7 @@ const project = {
   title: 'Project',
   status: 'draft',
   source: null,
+  revision: 1,
   metadata: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',

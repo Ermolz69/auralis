@@ -115,6 +115,7 @@ where
 
             report
         }
+        .instrument(span)
     }
 
     async fn run_maintenance_inner_at(
@@ -239,3 +240,4 @@ where
         report
     }
 }
+use tracing::Instrument;

@@ -9,6 +9,7 @@ import type { Project } from './types';
 vi.mock('@/shared/api/tauri', () => ({ invoke: vi.fn(), listen: vi.fn() }));
 
 const project: Project = {
+  revision: 1,
   id: 'p1',
   title: 'Selected',
   status: 'draft',
@@ -40,6 +41,24 @@ function setup() {
 }
 
 describe('atomic project selection', () => {
+  it('rejects older same-project snapshots without invalidating the current scope', () => {
+    const { result } = setup();
+    act(() => result.current.setProject({ ...project, revision: 3, title: 'Newest' }));
+    const token = result.current.captureToken();
+    act(() => result.current.setProject({ ...project, revision: 2, title: 'Stale' }));
+    expect(result.current.project?.title).toBe('Newest');
+    expect(result.current.validateToken(token)).toBe(true);
+  });
+
+  it('rejects an older event fetch even when it is the latest request', async () => {
+    const { result } = setup();
+    act(() => result.current.setProject({ ...project, revision: 3, title: 'Newest' }));
+    vi.mocked(invoke).mockResolvedValueOnce({ ...project, revision: 2 });
+    await act(async () => {
+      await emit();
+    });
+    expect(result.current.project?.title).toBe('Newest');
+  });
   it('closes a missing project, clears both derived values and invalidates operations', async () => {
     const { result } = setup();
     expect(result.current.selection).toEqual({ status: 'closed' });

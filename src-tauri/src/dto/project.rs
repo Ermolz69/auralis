@@ -5,6 +5,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectDto {
+    pub revision: u64,
     pub id: String,
     pub title: String,
     pub status: String,
@@ -17,6 +18,7 @@ pub struct ProjectDto {
 impl From<&Project> for ProjectDto {
     fn from(p: &Project) -> Self {
         Self {
+            revision: p.revision(),
             id: p.id().to_string(),
             title: p.title().to_string(),
             status: match p.status() {

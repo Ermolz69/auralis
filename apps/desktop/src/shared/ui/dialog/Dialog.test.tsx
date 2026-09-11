@@ -55,4 +55,17 @@ describe('Dialog', () => {
       false,
     );
   });
+
+  it('closes on Escape without relying on a synthesized native cancel event', () => {
+    render(
+      <Dialog trigger={<button type="button">Open dialog</button>}>
+        <DialogTitle>Keyboard dialog</DialogTitle>
+      </Dialog>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open dialog' }));
+    fireEvent.keyDown(screen.getByRole('dialog', { hidden: true }), { key: 'Escape' });
+
+    expect(HTMLDialogElement.prototype.close).toHaveBeenCalled();
+  });
 });

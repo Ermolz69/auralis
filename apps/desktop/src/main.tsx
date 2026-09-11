@@ -8,10 +8,13 @@ import { NavigationProvider } from './shared/router';
 
 import { AppErrorBoundary, AppJobProvider, reportReactError } from './app/providers';
 import { Toaster } from './shared/ui/toast';
-import { initializeColorTheme, ThemeProvider } from './shared/theme';
+import { initializeColorTheme } from './shared/theme';
+import { NativeThemeProvider as ThemeProvider, installGlobalErrorReporting } from './app/providers';
 import { NativeE2ERunner } from './app/native-e2e';
 
 initializeColorTheme();
+const stopGlobalErrorReporting = installGlobalErrorReporting();
+if (import.meta.hot) import.meta.hot.dispose(stopGlobalErrorReporting);
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Auralis root element is missing');

@@ -13,6 +13,8 @@ mod project_revision_migration;
 pub mod project_row;
 mod project_updates;
 pub mod recovery;
+pub mod ui_preferences;
+mod ui_preferences_migration;
 pub mod unit_of_work;
 
 pub mod helpers;

@@ -1,6 +1,8 @@
 pub mod orphan_writes;
 pub mod pair_writes;
 pub mod project_writes;
+#[cfg(test)]
+mod revision_tests;
 pub mod snapshot;
 #[cfg(test)]
 mod tests;

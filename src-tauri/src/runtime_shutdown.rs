@@ -12,11 +12,17 @@ pub(crate) fn classify_run_event(event: &tauri::RunEvent) -> RuntimeLifecycleAct
 }
 
 pub trait TracingShutdown {
-    fn shutdown(self, timeout: std::time::Duration) -> TracingShutdownOutcome;
+    fn shutdown(
+        self,
+        timeout: std::time::Duration,
+    ) -> crate::observability::shutdown::TracingShutdownReport;
 }
 
 impl TracingShutdown for crate::observability::init::TracingGuard {
-    fn shutdown(self, timeout: std::time::Duration) -> TracingShutdownOutcome {
+    fn shutdown(
+        self,
+        timeout: std::time::Duration,
+    ) -> crate::observability::shutdown::TracingShutdownReport {
         crate::observability::init::TracingGuard::shutdown(self, timeout)
     }
 }
@@ -28,6 +34,7 @@ pub enum WorkerOutcome {
     JoinFailed,
     AlreadyStopped,
     SignalFailed,
+    Unconfirmed,
 }
 
 impl WorkerOutcome {
@@ -45,6 +52,7 @@ pub enum TracingShutdownOutcome {
     TimedOut,
     NotOwned,
     FlushThreadStartFailed,
+    Failed,
 }
 
 impl TracingShutdownOutcome {
@@ -74,6 +82,7 @@ pub struct RuntimeShutdownReport {
     pub bridge_outcome: WorkerOutcome,
     pub jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport,
     pub tracing_outcome: TracingShutdownOutcome,
+    pub tracing_sinks: crate::observability::shutdown::TracingShutdownReport,
 }
 
 impl RuntimeShutdownReport {
@@ -81,9 +90,11 @@ impl RuntimeShutdownReport {
         self.outbox_outcome.is_graceful()
             && self.bridge_outcome.is_graceful()
             && self.tracing_outcome.is_graceful()
+            && self.tracing_sinks.outcome().is_graceful()
             && self.jobs_outcome.forced_aborted_count == 0
             && self.jobs_outcome.panicked_count == 0
             && self.jobs_outcome.unconfirmed_count == 0
+            && self.jobs_outcome.cleanup_deferred_count == 0
             && self.jobs_outcome.join_failed_count == 0
     }
 }
@@ -94,6 +105,7 @@ pub fn finalize_runtime_shutdown<T: TracingShutdown>(
     workers: WorkerShutdownReport,
     jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport,
     tracing: Option<T>,
+    remaining: std::time::Duration,
 ) -> RuntimeShutdownReport {
     tracing::info!(
         action = "workers_shutdown_completed",
@@ -103,17 +115,18 @@ pub fn finalize_runtime_shutdown<T: TracingShutdown>(
         "shutdown_handles: workers finished, initiating tracing flush"
     );
 
-    let tracing_outcome = if let Some(guard) = tracing {
-        guard.shutdown(TRACING_FLUSH_TIMEOUT)
+    let tracing_sinks = if let Some(guard) = tracing {
+        guard.shutdown(TRACING_FLUSH_TIMEOUT.min(remaining))
     } else {
-        TracingShutdownOutcome::NotOwned
+        crate::observability::shutdown::TracingShutdownReport::not_owned()
     };
 
     RuntimeShutdownReport {
         outbox_outcome: workers.outbox_outcome,
         bridge_outcome: workers.bridge_outcome,
         jobs_outcome,
-        tracing_outcome,
+        tracing_outcome: tracing_sinks.outcome(),
+        tracing_sinks,
     }
 }
 
@@ -122,7 +135,8 @@ pub async fn shutdown_runtime(
     bridge: Option<adapters_tauri::job_event_bridge::JobEventBridgeHandle>,
     timeout: std::time::Duration,
 ) -> WorkerShutdownReport {
-    let deadline = tokio::time::sleep(timeout);
+    let expires_at = tokio::time::Instant::now() + timeout;
+    let deadline = tokio::time::sleep(timeout.mul_f64(0.8));
     tokio::pin!(deadline);
 
     let mut outbox_outcome = WorkerOutcome::AlreadyStopped;
@@ -195,10 +209,16 @@ pub async fn shutdown_runtime(
     }
 
     if let Some(task) = outbox_task {
-        update_outcome(&mut outbox_outcome, task.await);
+        match tokio::time::timeout_at(expires_at, task).await {
+            Ok(result) => update_outcome(&mut outbox_outcome, result),
+            Err(_) => outbox_outcome = WorkerOutcome::Unconfirmed,
+        }
     }
     if let Some(task) = bridge_task {
-        update_outcome(&mut bridge_outcome, task.await);
+        match tokio::time::timeout_at(expires_at, task).await {
+            Ok(result) => update_outcome(&mut bridge_outcome, result),
+            Err(_) => bridge_outcome = WorkerOutcome::Unconfirmed,
+        }
     }
 
     WorkerShutdownReport {

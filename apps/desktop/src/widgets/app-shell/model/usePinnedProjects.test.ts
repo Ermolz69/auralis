@@ -15,6 +15,7 @@ vi.mock('@/entities/project', async (original) => ({
   listProjects: vi.fn(),
 }));
 const project: Project = {
+  revision: 1,
   id: 'pinned',
   title: 'Before',
   status: 'draft',

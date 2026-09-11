@@ -57,7 +57,11 @@ async fn assert_extensions(owned: bool) {
         );
         assert_eq!(source_path.exists(), !owned);
         store
-            .finalize_staged_artifact(&staged.staging_key, &staged.final_key)
+            .finalize_staged_artifact(
+                &staged.staging_key,
+                &staged.final_key,
+                staged.artifact.size_bytes,
+            )
             .await
             .unwrap();
         assert_eq!(

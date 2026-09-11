@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ports::artifact_index::ArtifactIndex;
+use ports::artifact_finalization::ArtifactFinalizationLookup;
 use ports::events::AppEventPublisher;
 use ports::repository::OutboxRepository;
 use ports::storage::ArtifactStore;
@@ -17,7 +17,7 @@ pub struct OutboxWorker<O, S, I, U>
 where
     O: OutboxRepository,
     S: ArtifactStore + Clone,
-    I: ArtifactIndex + Clone,
+    I: ArtifactFinalizationLookup + Clone,
     U: StorageUnitOfWork,
 {
     pub(super) outbox_repo: O,
@@ -30,7 +30,7 @@ impl<O, S, I, U> OutboxWorker<O, S, I, U>
 where
     O: OutboxRepository,
     S: ArtifactStore + Clone,
-    I: ArtifactIndex + Clone,
+    I: ArtifactFinalizationLookup + Clone,
     U: StorageUnitOfWork,
 {
     pub fn new(
@@ -102,6 +102,7 @@ where
             }
             res
         }
+        .instrument(span)
     }
 
     async fn process_pending_messages_inner(
@@ -156,18 +157,27 @@ where
             }
 
             report.claimed += 1;
+            let started = std::time::Instant::now();
 
             let result = self
                 .handler
                 .process_payload(&message.id, &message.payload)
+                .instrument(tracing::info_span!("outbox_attempt", operation_id = %message.id, attempt = message.attempts + 1))
                 .await;
 
             match result {
                 Ok(_) => match self.outbox_repo.mark_done(&message.id).await {
                     Ok(_) => {
                         report.completed += 1;
+                        super::attempt::completed(&message, "completed", "None", started);
                     }
                     Err(_e) => {
+                        super::attempt::completed(
+                            &message,
+                            "acknowledgement_failed",
+                            "OutboxMarkDone",
+                            started,
+                        );
                         tracing::error!(
                             error = %common::observability::redaction::DiagnosticError {
                                 kind: "OutboxMarkDoneFailed",
@@ -190,11 +200,29 @@ where
                             // If attempts >= 4 previously, it's dead, else retry_scheduled.
                             if message.attempts >= 4 {
                                 report.dead += 1;
+                                super::attempt::completed(
+                                    &message,
+                                    "dead",
+                                    &super::attempt::error_code(&e),
+                                    started,
+                                );
                             } else {
                                 report.retry_scheduled += 1;
+                                super::attempt::completed(
+                                    &message,
+                                    "retry_scheduled",
+                                    &super::attempt::error_code(&e),
+                                    started,
+                                );
                             }
                         }
                         Err(_db_err) => {
+                            super::attempt::completed(
+                                &message,
+                                "retry_persistence_failed",
+                                "OutboxMarkFailed",
+                                started,
+                            );
                             tracing::error!(
                                 error = %common::observability::redaction::DiagnosticError {
                                     kind: "OutboxMarkFailedError",
@@ -214,3 +242,4 @@ where
         Ok(report)
     }
 }
+use tracing::Instrument;

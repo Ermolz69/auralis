@@ -104,7 +104,7 @@ async fn youtube_resume_crash_child() {
             );
             fixture
                 .store
-                .finalize_staged_artifact(&staging_key, &final_key)
+                .finalize_staged_artifact(&staging_key, &final_key, None)
                 .await
                 .unwrap();
             checkpoint(&fixture.root, "outbox-before-ack");

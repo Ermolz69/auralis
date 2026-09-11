@@ -39,6 +39,7 @@ let context: ProjectContextType;
 let navigation: ReturnType<typeof useNavigation>;
 
 const project = (id: string): Project => ({
+  revision: 1,
   id,
   title: id,
   status: 'ready_for_processing',

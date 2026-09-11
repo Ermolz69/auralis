@@ -19,6 +19,7 @@ vi.mock('@/entities/transcript', () => ({
 type TranscriptHookState = ReturnType<typeof useTranscript>;
 
 const defaultProject: Project = {
+  revision: 1,
   id: 'project-1',
   title: 'Demo project',
   status: 'completed',

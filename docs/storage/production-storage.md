@@ -8,11 +8,18 @@ Desktop production composition always uses SQLite as the durable source of truth
 
 SQLite owns the persistent project, job, artifact, and outbox state. The outbox worker is part of the production storage graph and is started whenever production storage is initialized.
 
-New databases use schema version 4. Valid version-1 databases gain `projects.revision` with an
+New databases use schema version 5. Valid version-1 databases gain `projects.revision` with an
 initial value of 1, and version-1/version-2 databases gain `projects.avatar_data_url`. Version 3
-gains the `youtube_imports` journal. Each migration is atomic and preserves existing project
+gains the `youtube_imports` journal. Version 4 gains `ui_settings`, `project_pins`, and
+`ui_migrations`. Each migration is atomic and preserves existing project
 data. Unsupported schemas are rejected at startup without conversion. Older application builds
-cannot open version-4 databases; keep a database backup before downgrading.
+cannot open version-5 databases; keep a database backup before downgrading.
+
+An exclusive OS lease on `.auralis-owner.lock` is acquired before opening SQLite or running
+recovery and retained for the runtime lifetime. Another process using that root is rejected;
+independent roots are allowed. The filename survives exit; ownership is the OS lock, not the
+existence of the file. SQLite connections explicitly use WAL, FULL synchronous mode, foreign
+keys, and a five-second busy timeout. Filesystem and hardware guarantees still apply.
 
 Project revisions advance once per committed aggregate mutation, including pipeline, transcript,
 source-import, and recovery writes. Rename and metadata-only source import use field-scoped
@@ -37,10 +44,13 @@ UI consumers directly, without dummy localStorage writes. Older in-flight fetche
 these notifications. Preference cleanup failures produce a separate warning, never a false
 backend-command failure.
 
-Only pin preferences remain in localStorage. Reads validate JSON and entry shapes; inaccessible
-storage retains the last readable snapshot. Failed mutations and deletion tombstones stay in
-memory for the session and are flushed on the next successful preference write. Unreadable or
-malformed storage is not overwritten. This fallback is not durable across application restarts.
+Theme and pin preferences are authoritative in SQLite and use separate preference revisions.
+Theme initialization imports only a recognized legacy value when no native row exists; a missing
+value never triggers a default write. Existing native values win over legacy values. Pin migration
+inserts only missing project preferences and commits its migration marker in the same transaction.
+Legacy fields are removed only after backend acknowledgement; pin migration retains avatar fields.
+Malformed or inaccessible legacy storage is preserved. Failed writes remain session-only and are
+reported to the user, with explicit retry; they are not durable across application restarts.
 
 Avatars are stored in SQLite's project row, not the shared preferences JSON. These presentation
 writes do not advance the aggregate revision or timestamp, and aggregate saves cannot overwrite
@@ -96,6 +106,10 @@ are terminated rather than continuing to write into a workspace later reused by 
 
 The janitors exclude pending journal allocations, checkpoint files, and unacknowledged outbox
 staging files, including retryable finalization. Unjournaled abandoned staging is still aged out.
+Dead finalization messages are not age-pruned while they protect a live pending artifact.
+Malformed recovery payloads are retained conservatively. The home-screen file-finalization retry
+requeues only the selected project's dead pending-artifact messages, without starting downloads.
+Successful finalization and project deletion allow the normal retention/cleanup policies.
 Discard atomically removes the journal and enqueues owned-file cleanup without deleting an
 existing project. Small lease files under `.import-locks` are retained; their OS locks are released
 when the holder exits. After commit, outbox processing resumes without downloading again. A

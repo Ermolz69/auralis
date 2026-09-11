@@ -34,6 +34,7 @@ test('extracts registered, annotated and typed commands', () => {
 test('compares command argument names, optionality and result types', () => {
   const rust = extractRustCommandSignatures([
     `#[command]
+#[tracing::instrument(skip_all, fields(request_id = %new_id()))]
 pub async fn one_cmd(project_id: String, optional: Option<bool>, state: State<'_, App>) -> Result<Vec<ProjectDto>, CommandError> {}
 #[tauri::command]
 pub async fn empty_cmd(app: tauri::AppHandle) -> Result<(), CommandError> {}`,
@@ -59,9 +60,7 @@ pub async fn empty_cmd(app: tauri::AppHandle) -> Result<(), CommandError> {}`,
 
 test('extracts the centralized Rust event registry and quoted EventMap keys', () => {
   assert.deepEqual(
-    extractRustEvents(
-      'pub const EVENT_ONE: &str = "one";\npub const EVENT_TWO: &str = "two";',
-    ),
+    extractRustEvents('pub const EVENT_ONE: &str = "one";\npub const EVENT_TWO: &str = "two";'),
     ['one', 'two'],
   );
   assert.deepEqual(
