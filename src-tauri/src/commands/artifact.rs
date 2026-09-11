@@ -7,7 +7,9 @@ use std::sync::Arc;
 use tauri::State;
 
 #[tauri::command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn list_project_artifacts_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     kind: Option<ArtifactKindDto>,
     usecases: State<'_, Arc<AppUseCases>>,
@@ -27,7 +29,9 @@ pub async fn list_project_artifacts_cmd(
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn resolve_artifact_path_cmd(
+    request: tauri::ipc::Request<'_>,
     artifact_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<String, CommandError> {

@@ -27,6 +27,7 @@ where
     I: ArtifactIndex + Clone,
     U: StorageUnitOfWork,
 {
+    #[tracing::instrument(skip_all, fields(operation_id = %message_id))]
     pub async fn process_payload(
         &self,
         message_id: &domain::outbox::OutboxMessageId,
@@ -39,18 +40,14 @@ where
                 staging_key,
                 final_key,
             } => {
-                // 1. Perform persistent move
-                match self
-                    .artifact_store
-                    .finalize_staged_artifact(staging_key, final_key)
-                    .await
-                {
-                    Ok(_) => {}
-                    Err(ports::error::PortError::NotFound { .. }) => {
-                        // Staging file missing. We must assume it was already finalized.
-                    }
-                    Err(e) => return Err(e.into()),
-                }
+                let expected_size = self
+                    .artifact_index
+                    .get(artifact_id)
+                    .await?
+                    .and_then(|artifact| artifact.size_bytes);
+                self.artifact_store
+                    .finalize_staged_artifact(staging_key, final_key, expected_size)
+                    .await?;
 
                 // 2. Commit transaction with CAS
                 let cmd = ports::transaction::CommitArtifactFinalize {
@@ -127,16 +124,13 @@ where
                     transcript_ready,
                 } = res
                 {
-                    if transcript_ready {
-                        let _ = self
-                            .event_publisher
-                            .publish_transcript_ready(&project_id.to_string(), &job_id.to_string())
-                            .await;
-                    }
-                    let _ = self
-                        .event_publisher
-                        .publish_project_updated(&project_id.to_string())
-                        .await;
+                    super::notifications::publish_terminal_notifications(
+                        self.event_publisher.as_ref(),
+                        &project_id.to_string(),
+                        &job_id.to_string(),
+                        transcript_ready,
+                    )
+                    .await;
                 }
             }
         }

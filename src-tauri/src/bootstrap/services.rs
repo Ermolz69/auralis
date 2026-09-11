@@ -8,6 +8,8 @@ use ports::repository::JobRepository;
 use std::sync::Arc;
 
 pub struct RuntimeServices {
+    pub(crate) ui_preferences: Arc<dyn ports::ui_preferences::UiPreferencesRepository>,
+    pub(crate) _storage_lease: Arc<super::app_root_lease::AppRootLease>,
     pub youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
     pub project_repo: RuntimeProjectRepository,
     pub project_avatar_repo: Arc<dyn ports::project_avatar::ProjectAvatarRepository>,

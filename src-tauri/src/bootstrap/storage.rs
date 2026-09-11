@@ -26,19 +26,31 @@ fn resolve_storage_backend(
     }
 }
 
-pub fn setup_storage(
+pub(crate) fn setup_storage(
     app_paths: &AppPaths,
+    storage_lease: Arc<super::app_root_lease::AppRootLease>,
 ) -> Result<(RuntimeServices, SqliteOutboxRepository), Box<dyn std::error::Error>> {
     match resolve_storage_backend(std::env::var("AURALIS_STORAGE").ok().as_deref())? {
-        StorageBackend::Sqlite => tauri::async_runtime::block_on(setup_storage_at_paths(app_paths)),
+        StorageBackend::Sqlite => {
+            tauri::async_runtime::block_on(setup_storage_with_lease(app_paths, storage_lease))
+        }
     }
 }
 
+#[cfg(test)]
 pub async fn setup_storage_at_paths(
     app_paths: &AppPaths,
 ) -> Result<(RuntimeServices, SqliteOutboxRepository), Box<dyn std::error::Error>> {
-    std::fs::create_dir_all(app_paths.root())?;
+    let storage_lease = Arc::new(super::app_root_lease::AppRootLease::acquire(
+        app_paths.root(),
+    )?);
+    setup_storage_with_lease(app_paths, storage_lease).await
+}
 
+async fn setup_storage_with_lease(
+    app_paths: &AppPaths,
+    storage_lease: Arc<super::app_root_lease::AppRootLease>,
+) -> Result<(RuntimeServices, SqliteOutboxRepository), Box<dyn std::error::Error>> {
     let pool = adapters_storage::sqlite::connect_sqlite(app_paths.database()).await?;
 
     let repo: crate::state::RuntimeProjectRepository =
@@ -119,6 +131,10 @@ pub async fn setup_storage_at_paths(
 
     Ok((
         RuntimeServices {
+            ui_preferences: Arc::new(
+                adapters_storage::sqlite::ui_preferences::SqliteUiPreferences::new(pool.clone()),
+            ),
+            _storage_lease: storage_lease,
             youtube_imports: Arc::new(
                 adapters_storage::sqlite::youtube_import_journal::SqliteYoutubeImportJournal::new(
                     pool.clone(),
@@ -181,7 +197,7 @@ mod tests {
     #[test]
     fn production_storage_module_does_not_import_memory_adapter() {
         let source = include_str!("storage.rs");
-        let production_source = source.split("#[cfg(test)]").next().unwrap();
+        let production_source = source.split("mod tests {").next().unwrap();
         assert!(!production_source.contains("adapters_storage::memory"));
         assert!(!production_source.contains("InMemoryProjectRepository"));
         assert!(!production_source.contains("InMemoryArtifactIndex"));
@@ -238,7 +254,11 @@ mod tests {
             .unwrap();
         services
             .artifact_store
-            .finalize_staged_artifact(&staged.staging_key, &staged.final_key)
+            .finalize_staged_artifact(
+                &staged.staging_key,
+                &staged.final_key,
+                staged.artifact.size_bytes,
+            )
             .await
             .unwrap();
 

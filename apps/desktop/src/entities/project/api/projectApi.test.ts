@@ -22,6 +22,7 @@ vi.mock('../model/youtubeImportChanges', () => ({
 }));
 
 const project: Project = {
+  revision: 1,
   id: 'project-1',
   title: 'Project',
   status: 'draft',
@@ -101,7 +102,7 @@ describe('projectApi', () => {
     await expect(createProject('Project')).resolves.toBe(project);
     await expect(listProjects()).resolves.toEqual([project]);
     await expect(deleteProject('project-1')).resolves.toBeUndefined();
-    await expect(renameProject('project-1', 'Renamed')).resolves.toBe(project);
+    await expect(renameProject('project-1', 'Renamed', 1)).resolves.toBe(project);
     await expect(openProjectFolder('project-1')).resolves.toBeUndefined();
 
     expect(invoke).toHaveBeenNthCalledWith(1, 'create_project_cmd', { title: 'Project' });
@@ -112,6 +113,7 @@ describe('projectApi', () => {
     expect(invoke).toHaveBeenNthCalledWith(4, 'rename_project_cmd', {
       projectId: 'project-1',
       title: 'Renamed',
+      expectedRevision: 1,
     });
     expect(invoke).toHaveBeenNthCalledWith(5, 'open_project_folder_cmd', {
       projectId: 'project-1',

@@ -71,7 +71,7 @@ impl DeleteProjectUseCase {
                 Err(_) => guard.summary.update_status("failed"),
             }
             res.map(|_| ())
-        }
+        }.instrument(span)
     }
 
     async fn execute_inner(
@@ -144,3 +144,4 @@ impl DeleteProjectUseCase {
         Ok((deleted_count, failed_count))
     }
 }
+use tracing::Instrument;

@@ -18,7 +18,9 @@ pub struct PendingYoutubeImportDto {
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn list_pending_youtube_imports_cmd(
+    request: tauri::ipc::Request<'_>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<PendingYoutubeImportDto>, CommandError> {
     Ok(usecases
@@ -36,7 +38,9 @@ pub async fn list_pending_youtube_imports_cmd(
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn resume_youtube_import_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     app: tauri::AppHandle,
     usecases: State<'_, Arc<AppUseCases>>,
@@ -55,7 +59,9 @@ pub async fn resume_youtube_import_cmd(
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn discard_youtube_import_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<(), CommandError> {

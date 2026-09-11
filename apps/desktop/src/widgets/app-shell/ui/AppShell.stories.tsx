@@ -6,6 +6,7 @@ import { ProjectContext, type Project } from '@/entities/project';
 import { NavigationProvider, useNavigation, type View } from '@/shared/router';
 
 const longProject: Project = {
+  revision: 1,
   id: 'p-1',
   title:
     'Quarterly product launch keynote with a very long source title that must not crowd navigation',

@@ -51,6 +51,7 @@ pub trait ArtifactStore: Send + Sync {
         &self,
         staging_key: &str,
         final_key: &str,
+        expected_size: Option<u64>,
     ) -> Result<(), PortError>;
 
     async fn resolve_artifact(&self, artifact: &Artifact) -> Result<PathBuf, PortError>;
@@ -120,9 +121,10 @@ where
         &self,
         staging_key: &str,
         final_key: &str,
+        expected_size: Option<u64>,
     ) -> Result<(), PortError> {
         (**self)
-            .finalize_staged_artifact(staging_key, final_key)
+            .finalize_staged_artifact(staging_key, final_key, expected_size)
             .await
     }
 

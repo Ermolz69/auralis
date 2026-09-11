@@ -171,6 +171,17 @@ impl SqliteOutboxRepository {
                 SELECT id FROM outbox_messages
                 WHERE status = 'dead'
                   AND updated_at < ?
+                  AND CASE WHEN kind = 'finalize_staged_artifact' THEN
+                    CASE WHEN json_valid(payload_json) THEN
+                      json_extract(payload_json, '$.artifact_id') IS NOT NULL
+                      AND NOT EXISTS (
+                        SELECT 1 FROM artifacts a
+                        JOIN projects p ON p.id = a.project_id
+                        WHERE a.id = json_extract(payload_json, '$.artifact_id')
+                          AND a.state = 'pending_finalize'
+                      )
+                    ELSE 0 END
+                  ELSE 1 END
                 ORDER BY updated_at ASC, id ASC
                 LIMIT ?
             )

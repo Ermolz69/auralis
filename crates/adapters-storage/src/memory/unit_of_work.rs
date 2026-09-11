@@ -83,7 +83,11 @@ impl StorageUnitOfWork for InMemoryStorageUnitOfWork {
         command.validate()?;
 
         self.artifact_store
-            .finalize_staged_artifact(&command.staging_key, &command.final_key)
+            .finalize_staged_artifact(
+                &command.staging_key,
+                &command.final_key,
+                command.artifact.size_bytes,
+            )
             .await?;
 
         let mut artifact = command.artifact;

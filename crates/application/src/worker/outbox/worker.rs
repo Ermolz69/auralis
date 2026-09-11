@@ -102,6 +102,7 @@ where
             }
             res
         }
+        .instrument(span)
     }
 
     async fn process_pending_messages_inner(
@@ -160,12 +161,14 @@ where
             let result = self
                 .handler
                 .process_payload(&message.id, &message.payload)
+                .instrument(tracing::info_span!("outbox_attempt", operation_id = %message.id, attempt = message.attempts + 1))
                 .await;
 
             match result {
                 Ok(_) => match self.outbox_repo.mark_done(&message.id).await {
                     Ok(_) => {
                         report.completed += 1;
+                        tracing::info!(operation_id = %message.id, action = "outbox_acknowledged", "outbox operation acknowledged");
                     }
                     Err(_e) => {
                         tracing::error!(
@@ -214,3 +217,4 @@ where
         Ok(report)
     }
 }
+use tracing::Instrument;

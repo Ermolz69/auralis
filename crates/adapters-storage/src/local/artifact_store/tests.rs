@@ -69,7 +69,11 @@ async fn test_finalize_moves_to_final() {
         .unwrap();
 
     store
-        .finalize_staged_artifact(&staged.staging_key, &staged.final_key)
+        .finalize_staged_artifact(
+            &staged.staging_key,
+            &staged.final_key,
+            staged.artifact.size_bytes,
+        )
         .await
         .unwrap();
 
@@ -96,13 +100,21 @@ async fn test_finalize_is_idempotent_when_final_exists() {
         .unwrap();
 
     store
-        .finalize_staged_artifact(&staged.staging_key, &staged.final_key)
+        .finalize_staged_artifact(
+            &staged.staging_key,
+            &staged.final_key,
+            staged.artifact.size_bytes,
+        )
         .await
         .unwrap();
 
     // Finalize again should be ok
     let result = store
-        .finalize_staged_artifact(&staged.staging_key, &staged.final_key)
+        .finalize_staged_artifact(
+            &staged.staging_key,
+            &staged.final_key,
+            staged.artifact.size_bytes,
+        )
         .await;
     assert!(result.is_ok());
 }
@@ -113,7 +125,7 @@ async fn test_finalize_fails_when_both_missing() {
     let store = LocalArtifactStore::new(temp_dir.path().to_path_buf());
 
     let result = store
-        .finalize_staged_artifact(".staging/missing", "missing_final.txt")
+        .finalize_staged_artifact(".staging/missing", "missing_final.txt", None)
         .await;
     assert!(result.is_err());
     if let Err(PortError::Io { message }) = result {

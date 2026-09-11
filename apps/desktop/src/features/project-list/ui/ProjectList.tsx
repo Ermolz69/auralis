@@ -16,6 +16,7 @@ import { toCommandError } from '@/shared/api/contracts';
 import { DeleteProjectDialog } from './DeleteProjectDialog';
 import { ProjectListRows } from './ProjectListRows';
 import { PendingYoutubeImports } from './PendingYoutubeImports';
+import { ArtifactRecovery } from './ArtifactRecovery';
 import { useProjectListUpdates } from '../model/useProjectListUpdates';
 import {
   ProjectListEmptyState,
@@ -68,7 +69,12 @@ export const ProjectList = () => {
     try {
       const data = await listProjects();
       if (currentGen === fetchGenerationRef.current) {
-        setProjects(data);
+        setProjects((current) =>
+          data.map((incoming) => {
+            const existing = current.find((item) => item.id === incoming.id);
+            return existing && existing.revision > incoming.revision ? existing : incoming;
+          }),
+        );
         setListError(null);
         setIsLoading(false);
       }
@@ -194,13 +200,23 @@ export const ProjectList = () => {
   const handleRename = async (project: Project, title: string) => {
     let updated: Project;
     try {
-      updated = await renameProject(project.id, title);
+      updated = await renameProject(project.id, title, project.revision);
     } catch (error) {
-      toast.error(toCommandError(error).message);
+      const commandError = toCommandError(error);
+      if (commandError.code === 'CONFLICT') {
+        await fetchProjects();
+        toast.error('Project changed. Review the current title and retry your rename.');
+      } else {
+        toast.error(commandError.message);
+      }
       return;
     }
     fetchGenerationRef.current += 1;
-    setProjects((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+    setProjects((items) =>
+      items.map((item) =>
+        item.id === updated.id && item.revision <= updated.revision ? updated : item,
+      ),
+    );
     if (currentProjectIdRef.current === updated.id) setProject(updated);
     projectUpdated(updated);
     toast.success('Project renamed');
@@ -217,6 +233,7 @@ export const ProjectList = () => {
   return (
     <section className="flex w-full flex-col gap-3" aria-labelledby="recent-projects-heading">
       <PendingYoutubeImports onCompleted={() => void fetchProjects()} />
+      <ArtifactRecovery projects={projects} />
       <DeleteProjectDialog
         project={projectToDelete}
         isDeleting={deletingProjectId !== null}

@@ -178,18 +178,17 @@ impl ObservabilityEnvironment for RealObservabilityEnvironment {
         ),
         ObservabilityResourceError,
     > {
-        let appender = tracing_appender::rolling::Builder::new()
-            .rotation(rotation)
-            .filename_prefix("auralis.log")
-            .max_log_files(max_log_files)
-            .build(path)
-            .map_err(|_| ObservabilityResourceError::AppenderInitialization)?;
-
+        let appender = super::file_budget::FileBudget::new(path, rotation, max_log_files).map_err(
+            |error| ObservabilityResourceError::Io {
+                os_code: error.raw_os_error(),
+            },
+        )?;
         let (non_blocking, guard) = tracing_appender::non_blocking::NonBlockingBuilder::default()
             .lossy(lossy)
-            .buffered_lines_limit(capacity)
+            .buffered_lines_limit(capacity.min(super::bounded_writer::MAX_QUEUED_EVENTS))
             .finish(appender);
 
+        super::health::start_sampler(non_blocking.error_counter());
         Ok((non_blocking, guard))
     }
 
@@ -279,7 +278,9 @@ pub(crate) fn init_with_environment(
                         }
                         guard = Some(worker_guard);
 
-                        let file_base = fmt::layer().with_writer(non_blocking).with_ansi(false);
+                        let file_base = fmt::layer()
+                            .with_writer(super::bounded_writer::BoundedWriter(non_blocking))
+                            .with_ansi(false);
                         let fl = match config.settings.file_format {
                             LogFormat::Pretty => file_base.pretty().boxed(),
                             LogFormat::Compact => file_base.compact().boxed(),
@@ -325,7 +326,9 @@ pub(crate) fn init_with_environment(
     }
 
     let console_base = fmt::layer()
-        .with_writer(crate::observability::diagnostic::stderr_writer)
+        .with_writer(super::bounded_writer::BoundedWriter(
+            crate::observability::diagnostic::stderr_writer,
+        ))
         .with_ansi(true);
     let console_layer = match config.settings.console_format {
         LogFormat::Pretty => console_base.pretty().boxed(),

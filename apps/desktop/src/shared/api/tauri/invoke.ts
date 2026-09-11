@@ -14,7 +14,9 @@ export async function invoke<K extends keyof CommandMap>(
 ): Promise<CommandMap[K]['result']> {
   let result: unknown;
   try {
-    result = await tauriInvoke<unknown>(cmd, args[0] as InvokeArgs);
+    result = await tauriInvoke<unknown>(cmd, args[0] as InvokeArgs, {
+      headers: { 'x-auralis-request-id': crypto.randomUUID() },
+    });
   } catch (err) {
     throw toCommandError(err);
   }

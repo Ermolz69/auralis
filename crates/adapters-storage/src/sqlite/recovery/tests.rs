@@ -86,8 +86,9 @@ async fn insert_project(
 async fn insert_job(pool: &SqlitePool, job: &Job, status: JobStatus) {
     sqlx::query(
         "INSERT INTO jobs (
-            id, project_id, title, kind, status, progress_json, error_json, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            id, project_id, title, kind, status, progress_json, error_json, created_at, updated_at,
+            revision, started_at, finished_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(job.id().to_string())
     .bind(job.project_id().to_string())
@@ -98,6 +99,9 @@ async fn insert_job(pool: &SqlitePool, job: &Job, status: JobStatus) {
     .bind(job.error().map(|e| serde_json::to_string(e).unwrap()))
     .bind(job.created_at().to_rfc3339())
     .bind(job.updated_at().to_rfc3339())
+    .bind(job.revision() as i64)
+    .bind(job.started_at())
+    .bind(job.finished_at())
     .execute(pool)
     .await
     .unwrap();
@@ -183,7 +187,7 @@ async fn test_already_applied_partial_pair() {
     insert_job(&pool, &job, JobStatus::Running).await;
 
     // Now simulate another worker applied the change to JOB ONLY (partial already applied)
-    sqlx::query("UPDATE jobs SET status = 'failed' WHERE id = ?")
+    sqlx::query("UPDATE jobs SET status = 'failed', revision = revision + 1 WHERE id = ?")
         .bind(job.id().to_string())
         .execute(&pool)
         .await
@@ -197,6 +201,7 @@ async fn test_already_applied_partial_pair() {
         .unwrap();
 
     let cmd = FailInterruptedPairCommand {
+        expected_job_revision: job.revision() - 1,
         project: project.clone(),
         job: job.clone(),
         expected_project_status: ProjectStatus::Processing,
@@ -211,6 +216,7 @@ async fn test_already_applied_partial_pair() {
 
     // If we run it AGAIN, BOTH will be 0, and it should return AlreadyApplied.
     let cmd2 = FailInterruptedPairCommand {
+        expected_job_revision: job.revision() - 1,
         project: project.clone(),
         job: job.clone(),
         expected_project_status: ProjectStatus::Processing,
@@ -261,6 +267,7 @@ async fn test_snapshot_apply_reload_interrupted_pair() {
         .unwrap();
 
     let cmd = FailInterruptedPairCommand {
+        expected_job_revision: job.revision() - 1,
         project,
         job,
         expected_project_status: ProjectStatus::Processing,
@@ -345,6 +352,7 @@ async fn test_second_pair_write_failure_rolls_back_first_write() {
         .unwrap();
 
     let cmd = FailInterruptedPairCommand {
+        expected_job_revision: job.revision() - 1,
         project,
         job: job.clone(),
         expected_project_status: ProjectStatus::Processing,
@@ -408,6 +416,7 @@ async fn test_concurrent_zero_row_update() {
         .unwrap();
 
     let cmd = FailInterruptedPairCommand {
+        expected_job_revision: job.revision() - 1,
         project: project.clone(),
         job: job.clone(),
         expected_project_status: ProjectStatus::Processing,
@@ -582,6 +591,7 @@ async fn test_orphan_adapter_conflict() {
         .unwrap();
 
     let cmd = FailOrphanJobCommand {
+        expected_job_revision: job.revision() - 1,
         job: job.clone(),
         expected_job_status: JobStatus::Running,
     };
@@ -624,6 +634,7 @@ async fn test_last_terminal_job_id_conflict() {
         .unwrap();
 
     let cmd = FailInterruptedPairCommand {
+        expected_job_revision: job.revision() - 1,
         project: project.clone(),
         job: job.clone(),
         expected_project_status: ProjectStatus::Processing,

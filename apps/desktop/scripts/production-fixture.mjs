@@ -5,6 +5,7 @@ export function installFixture() {
     title: 'Review fixture',
     status: 'draft',
     source: null,
+    revision: 1,
     metadata: null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -55,6 +56,9 @@ export function installFixture() {
       if (command === 'plugin:event|unlisten') return null;
       if (command === 'list_projects_cmd') return [project];
       if (command === 'list_pending_youtube_imports_cmd') return [];
+      if (command === 'list_artifact_recovery_cmd') return [];
+      if (command === 'get_color_theme_cmd') return { value: 'auralis', revision: 1 };
+      if (command === 'get_project_pins_cmd') return { entries: [], migrated: true };
       if (command === 'list_jobs_cmd') return [job];
       if (command === 'list_job_history_page_cmd') return { jobs: [], nextCursor: null };
       if (command === 'get_project_cmd') return project;

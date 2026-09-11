@@ -17,7 +17,7 @@ export function extractAnnotatedCommands(sources) {
     .flatMap((source) =>
       [
         ...source.matchAll(
-          /#\[(?:tauri::)?command(?:\([^\]]*\))?\]\s*pub\s+async\s+fn\s+([a-zA-Z0-9_]+)/g,
+          /#\[(?:tauri::)?command(?:\([^\]]*\))?\]\s*(?:#\[[^\]]*\]\s*)*pub\s+async\s+fn\s+([a-zA-Z0-9_]+)/g,
         ),
       ].map((match) => match[1]),
     )
@@ -27,7 +27,8 @@ export function extractAnnotatedCommands(sources) {
 export function extractRustCommandSignatures(sources) {
   const signatures = {};
   for (const source of sources) {
-    const commandPattern = /#\[(?:tauri::)?command(?:\([^\]]*\))?\]\s*pub\s+async\s+fn\s+([a-zA-Z0-9_]+)\s*\(/g;
+    const commandPattern =
+      /#\[(?:tauri::)?command(?:\([^\]]*\))?\]\s*(?:#\[[^\]]*\]\s*)*pub\s+async\s+fn\s+([a-zA-Z0-9_]+)\s*\(/g;
     for (const match of source.matchAll(commandPattern)) {
       const openParenthesis = match.index + match[0].length - 1;
       const closeParenthesis = findMatching(source, openParenthesis, '(', ')');
@@ -171,12 +172,7 @@ function splitTopLevel(source, separator) {
     if (character === '}') braceDepth -= 1;
     if (character === '(') parenthesisDepth += 1;
     if (character === ')') parenthesisDepth -= 1;
-    if (
-      character === separator &&
-      angleDepth === 0 &&
-      braceDepth === 0 &&
-      parenthesisDepth === 0
-    ) {
+    if (character === separator && angleDepth === 0 && braceDepth === 0 && parenthesisDepth === 0) {
       entries.push(source.slice(start, index));
       start = index + 1;
     }
@@ -190,7 +186,11 @@ function parseRustParameter(parameter) {
   if (separator < 0) throw new Error(`Cannot parse Rust command parameter: ${parameter}`);
   const name = parameter.slice(0, separator).trim();
   const type = parameter.slice(separator + 1).trim();
-  if (/\bState\s*</.test(type) || /(?:^|::)(?:AppHandle|Window|WebviewWindow)\b/.test(type)) {
+  if (
+    /\bState\s*</.test(type) ||
+    /\btauri::ipc::Request\s*</.test(type) ||
+    /(?:^|::)(?:AppHandle|Window|WebviewWindow)\b/.test(type)
+  ) {
     return null;
   }
   const optional = type.startsWith('Option<');

@@ -19,8 +19,12 @@ vi.mock('@/entities/project', async (importOriginal) => ({
 vi.mock('@/shared/ui/toast', () => ({
   toast: { error: vi.fn(), warning: vi.fn() },
 }));
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock('@/shared/api/tauri', () => ({ invoke }));
+let pinRevision = 0;
 
 const project: Project = {
+  revision: 1,
   id: 'project-1',
   title: 'C:\\Users\\person\\Videos\\private-folder\\clip.mp4',
   status: 'failed',
@@ -36,6 +40,13 @@ const project: Project = {
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  invoke.mockImplementation(
+    async (command: string, args?: { projectId: string; pinned: boolean }) => {
+      if (command === 'get_project_pins_cmd') return { migrated: true, entries: [] };
+      if (command === 'set_project_pin_cmd') return { ...args, revision: ++pinRevision };
+      return null;
+    },
+  );
 });
 
 afterEach(() => cleanup());
@@ -89,7 +100,7 @@ describe('ProjectListRow', () => {
     expect(setProjectAvatar).toHaveBeenCalledWith(project.id, null);
   });
 
-  it('pins and unpins a project from the context menu', () => {
+  it('pins and unpins a project from the context menu', async () => {
     renderRow();
 
     const openProject = screen.getByRole('button', { name: /^Open clip\.mp4/ });
@@ -97,11 +108,17 @@ describe('ProjectListRow', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Закрепить' }));
 
     expect(getProjectPreferences(project.id).pinned).toBe(true);
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        'set_project_pin_cmd',
+        expect.objectContaining({ pinned: true }),
+      ),
+    );
 
     fireEvent.contextMenu(openProject);
     fireEvent.click(screen.getByRole('menuitem', { name: 'Открепить' }));
 
-    expect(getProjectPreferences(project.id).pinned).toBe(false);
+    await waitFor(() => expect(getProjectPreferences(project.id).pinned).toBe(false));
   });
 
   it.each([

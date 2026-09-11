@@ -16,7 +16,9 @@ use std::sync::Arc;
 use tauri::{State, command};
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn create_project_cmd(
+    request: tauri::ipc::Request<'_>,
     title: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectDto, CommandError> {
@@ -31,14 +33,18 @@ pub async fn create_project_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn rename_project_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     title: String,
+    expected_revision: u64,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectDto, CommandError> {
     let project = usecases
         .rename_project
         .execute(RenameProjectRequest {
+            expected_revision,
             project_id: parse_project_id(&project_id)?,
             title,
         })
@@ -48,7 +54,9 @@ pub async fn rename_project_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn open_project_folder_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<(), CommandError> {
@@ -63,7 +71,9 @@ pub async fn open_project_folder_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn create_project_from_youtube_cmd(
+    request: tauri::ipc::Request<'_>,
     url: String,
     project_id: Option<String>,
     usecases: State<'_, Arc<AppUseCases>>,
@@ -82,7 +92,9 @@ pub async fn create_project_from_youtube_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn get_transcript_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Option<TranscriptDto>, CommandError> {
@@ -103,7 +115,9 @@ pub async fn get_transcript_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn list_youtube_subtitle_tracks_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<SubtitleTrackDto>, CommandError> {
@@ -118,7 +132,9 @@ pub async fn list_youtube_subtitle_tracks_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn get_project_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<ProjectDto, CommandError> {
@@ -134,7 +150,9 @@ pub async fn get_project_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn list_projects_cmd(
+    request: tauri::ipc::Request<'_>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<ProjectDto>, CommandError> {
     let req = ListProjectsRequest {};
@@ -152,7 +170,9 @@ pub async fn list_projects_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn delete_project_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<(), CommandError> {
@@ -168,7 +188,9 @@ pub async fn delete_project_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn start_project_mock_pipeline_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     subtitle_track_id: Option<String>,
     subtitle_language: Option<String>,

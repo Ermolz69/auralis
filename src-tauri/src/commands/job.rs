@@ -10,12 +10,15 @@ use std::sync::Arc;
 use tauri::{State, command};
 
 #[command]
-pub async fn health_check() -> Result<String, CommandError> {
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
+pub async fn health_check(request: tauri::ipc::Request<'_>) -> Result<String, CommandError> {
     Ok("ok".to_string())
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn list_jobs_cmd(
+    request: tauri::ipc::Request<'_>,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<Vec<JobDto>, CommandError> {
     let req = ListJobsRequest {};
@@ -33,7 +36,9 @@ pub async fn list_jobs_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn cancel_job_cmd(
+    request: tauri::ipc::Request<'_>,
     job_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<JobDto, CommandError> {
@@ -50,7 +55,9 @@ pub async fn cancel_job_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn list_jobs_snapshot_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     query_port: State<'_, Arc<dyn ports::job_query::JobQueryPort>>,
 ) -> Result<Vec<JobDto>, CommandError> {
@@ -85,7 +92,9 @@ pub struct JobHistoryPageDto {
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn list_job_history_page_cmd(
+    request: tauri::ipc::Request<'_>,
     cursor: Option<JobHistoryCursorDto>,
     limit: Option<u32>,
     query_port: State<'_, Arc<dyn ports::job_query::JobQueryPort>>,

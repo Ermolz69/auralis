@@ -1,22 +1,37 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { SettingsPage } from './SettingsPage';
-import { ThemeProvider } from '../../../shared/theme';
-import { AppUpdateProvider, type AppUpdateClient } from '../../../features/app-update';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { SettingsPage } from '@/pages/settings';
+import { NativeThemeProvider as ThemeProvider } from './NativeThemeProvider';
+import { AppUpdateProvider, type AppUpdateClient } from '@/features/app-update';
 
 afterEach(() => cleanup());
-beforeEach(() => localStorage.clear());
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock('@/shared/api/tauri', () => ({ invoke }));
+beforeEach(() => {
+  localStorage.clear();
+  invoke
+    .mockReset()
+    .mockImplementation(async (command: string, args?: { value: string }) =>
+      command === 'get_color_theme_cmd' ? null : { value: args!.value, revision: 1 },
+    );
+});
 
 describe('SettingsPage', () => {
-  it('switches and persists the application color theme', () => {
+  it('switches and persists the application color theme', async () => {
     renderSettings();
 
     const themeSelect = screen.getByLabelText('Color theme');
     fireEvent.change(themeSelect, { target: { value: 'frost' } });
 
     expect(document.documentElement.getAttribute('data-color-theme')).toBe('frost');
-    expect(localStorage.getItem('auralis:color-theme:v1')).toBe('frost');
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith('set_color_theme_cmd', {
+        value: 'frost',
+        expectedRevision: 0,
+      }),
+    );
+    expect(localStorage.getItem('auralis:color-theme:v1')).toBeNull();
   });
 
   it('keeps unsupported settings visibly unavailable', () => {

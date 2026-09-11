@@ -110,6 +110,7 @@ pub struct RuntimeShutdownReport {
     pub panicked_count: usize,
     pub join_failed_count: usize,
     pub unconfirmed_count: usize,
+    pub cleanup_deferred_count: usize,
 }
 
 #[async_trait::async_trait]

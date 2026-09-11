@@ -22,6 +22,40 @@ use super::{
 use crate::error::ApplicationError;
 
 #[tokio::test]
+async fn rename_from_a_stale_view_conflicts_even_when_the_backend_read_is_fresh() {
+    let dir = tempfile::tempdir().unwrap();
+    let pool = connect_sqlite(dir.path().join("rename.sqlite"))
+        .await
+        .unwrap();
+    let repo = Arc::new(SqliteProjectRepository::new(pool.clone()));
+    let original = repo
+        .create(Project::new("Original".into()).unwrap())
+        .await
+        .unwrap();
+    let usecase = RenameProjectUseCase::new(repo.clone());
+    let winner = usecase
+        .execute(RenameProjectRequest {
+            project_id: original.id().clone(),
+            expected_revision: original.revision(),
+            title: "Winner".into(),
+        })
+        .await
+        .unwrap();
+    assert!(matches!(
+        usecase
+            .execute(RenameProjectRequest {
+                project_id: original.id().clone(),
+                expected_revision: original.revision(),
+                title: "Stale view".into(),
+            })
+            .await,
+        Err(ApplicationError::Port(PortError::Conflict { .. }))
+    ));
+    assert_eq!(repo.get(original.id()).await.unwrap().unwrap(), winner);
+    pool.close().await;
+}
+
+#[tokio::test]
 async fn rename_conflicts_with_pipeline_then_retry_only_changes_title() {
     let dir = tempfile::tempdir().unwrap();
     let pool = connect_sqlite(dir.path().join("projects.sqlite"))
@@ -43,6 +77,7 @@ async fn rename_conflicts_with_pipeline_then_retry_only_changes_title() {
     let paused = PausedProjectRepository::new(repo.clone(), false);
     let use_case = RenameProjectUseCase::new(paused.clone());
     let request = RenameProjectRequest {
+        expected_revision: project.revision(),
         project_id: project.id().clone(),
         title: "New title".into(),
     };
@@ -72,6 +107,7 @@ async fn rename_conflicts_with_pipeline_then_retry_only_changes_title() {
 
     let renamed = RenameProjectUseCase::new(repo.clone())
         .execute(RenameProjectRequest {
+            expected_revision: processing.revision(),
             project_id: project.id().clone(),
             title: "  New title  ".into(),
         })

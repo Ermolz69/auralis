@@ -20,8 +20,8 @@ pub async fn commit_failed_interrupted_pair(
     let expected_job_status = serialize_enum(&cmd.expected_job_status, "expected_job_status")?;
 
     let job_affected = sqlx::query(
-        "UPDATE jobs SET status = ?, updated_at = ?, progress_json = ?, error_json = ? 
-         WHERE id = ? AND status = ?",
+        "UPDATE jobs SET status = ?, updated_at = ?, progress_json = ?, error_json = ?, revision = ?, finished_at = ?
+         WHERE id = ? AND status = ? AND revision = ?",
     )
     .bind(serialize_enum(cmd.job.status(), "job.status")?)
     .bind(cmd.job.updated_at())
@@ -32,8 +32,11 @@ pub async fn commit_failed_interrupted_pair(
             .map(|e| serialize_json(&e, "job.error"))
             .transpose()?,
     )
+    .bind(cmd.job.revision() as i64)
+    .bind(cmd.job.finished_at())
     .bind(cmd.job.id().to_string())
     .bind(&expected_job_status)
+    .bind(cmd.expected_job_revision as i64)
     .execute(&mut *tx)
     .await
     .map_err(map_recovery_sqlite_error)?
@@ -65,8 +68,8 @@ pub async fn commit_failed_interrupted_pair(
     .rows_affected();
 
     if job_affected == 0 || project_affected == 0 {
-        let current_job_status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
+        let current_job_status: Option<(String, i64)> =
+            sqlx::query_as("SELECT status, revision FROM jobs WHERE id = ?")
                 .bind(cmd.job.id().to_string())
                 .fetch_optional(&mut *tx)
                 .await
@@ -85,7 +88,8 @@ pub async fn commit_failed_interrupted_pair(
         let new_active_job = cmd.project.active_job_id().map(|id| id.to_string());
         let new_last_terminal = cmd.project.last_terminal_job_id().map(|id| id.to_string());
 
-        let job_ok = job_affected > 0 || current_job_status == Some(new_job_status);
+        let job_ok = job_affected > 0
+            || current_job_status == Some((new_job_status, cmd.job.revision() as i64));
         let proj_ok = project_affected > 0
             || current_project
                 == Some((

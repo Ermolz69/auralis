@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   getProjectPreferences,
+  loadProjectPins,
   listProjects,
   subscribeProjectChanges,
   subscribeProjectPreferences,
@@ -15,9 +16,17 @@ export function usePinnedProjects() {
     const refresh = async () => {
       const sequence = ++generation;
       try {
+        await loadProjectPins().catch(() => {});
         const items = await listProjects();
         if (!cancelled && sequence === generation) {
-          setProjects(items.filter((item) => getProjectPreferences(item.id).pinned));
+          setProjects((current) =>
+            items
+              .filter((item) => getProjectPreferences(item.id).pinned)
+              .map((item) => {
+                const previous = current.find((project) => project.id === item.id);
+                return previous && previous.revision > item.revision ? previous : item;
+              }),
+          );
         }
       } catch {
         // Keep the last confirmed sidebar state when refresh is unavailable.
@@ -28,7 +37,11 @@ export function usePinnedProjects() {
       setProjects((current) =>
         change.type === 'removed'
           ? current.filter((project) => project.id !== change.projectId)
-          : current.map((project) => (project.id === change.project.id ? change.project : project)),
+          : current.map((project) =>
+              project.id === change.project.id && project.revision <= change.project.revision
+                ? change.project
+                : project,
+            ),
       );
       void refresh();
     });

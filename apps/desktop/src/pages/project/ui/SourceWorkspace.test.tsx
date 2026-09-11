@@ -20,6 +20,7 @@ vi.mock('@/features/import-local-media', () => ({
 }));
 
 const baseProject: Project = {
+  revision: 1,
   id: 'project-1',
   title: 'Demo',
   status: 'source_imported',

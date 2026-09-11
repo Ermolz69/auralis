@@ -28,6 +28,7 @@ pub enum WorkerOutcome {
     JoinFailed,
     AlreadyStopped,
     SignalFailed,
+    Unconfirmed,
 }
 
 impl WorkerOutcome {
@@ -84,6 +85,7 @@ impl RuntimeShutdownReport {
             && self.jobs_outcome.forced_aborted_count == 0
             && self.jobs_outcome.panicked_count == 0
             && self.jobs_outcome.unconfirmed_count == 0
+            && self.jobs_outcome.cleanup_deferred_count == 0
             && self.jobs_outcome.join_failed_count == 0
     }
 }
@@ -94,6 +96,7 @@ pub fn finalize_runtime_shutdown<T: TracingShutdown>(
     workers: WorkerShutdownReport,
     jobs_outcome: ports::job_runtime_control::RuntimeShutdownReport,
     tracing: Option<T>,
+    remaining: std::time::Duration,
 ) -> RuntimeShutdownReport {
     tracing::info!(
         action = "workers_shutdown_completed",
@@ -104,7 +107,7 @@ pub fn finalize_runtime_shutdown<T: TracingShutdown>(
     );
 
     let tracing_outcome = if let Some(guard) = tracing {
-        guard.shutdown(TRACING_FLUSH_TIMEOUT)
+        guard.shutdown(TRACING_FLUSH_TIMEOUT.min(remaining))
     } else {
         TracingShutdownOutcome::NotOwned
     };
@@ -122,7 +125,8 @@ pub async fn shutdown_runtime(
     bridge: Option<adapters_tauri::job_event_bridge::JobEventBridgeHandle>,
     timeout: std::time::Duration,
 ) -> WorkerShutdownReport {
-    let deadline = tokio::time::sleep(timeout);
+    let expires_at = tokio::time::Instant::now() + timeout;
+    let deadline = tokio::time::sleep(timeout.mul_f64(0.8));
     tokio::pin!(deadline);
 
     let mut outbox_outcome = WorkerOutcome::AlreadyStopped;
@@ -195,10 +199,16 @@ pub async fn shutdown_runtime(
     }
 
     if let Some(task) = outbox_task {
-        update_outcome(&mut outbox_outcome, task.await);
+        match tokio::time::timeout_at(expires_at, task).await {
+            Ok(result) => update_outcome(&mut outbox_outcome, result),
+            Err(_) => outbox_outcome = WorkerOutcome::Unconfirmed,
+        }
     }
     if let Some(task) = bridge_task {
-        update_outcome(&mut bridge_outcome, task.await);
+        match tokio::time::timeout_at(expires_at, task).await {
+            Ok(result) => update_outcome(&mut bridge_outcome, result),
+            Err(_) => bridge_outcome = WorkerOutcome::Unconfirmed,
+        }
     }
 
     WorkerShutdownReport {

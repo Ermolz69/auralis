@@ -16,7 +16,11 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
 ];
 
 #[command]
-pub async fn native_e2e_checkpoint_cmd(checkpoint: String) -> Result<(), CommandError> {
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
+pub async fn native_e2e_checkpoint_cmd(
+    request: tauri::ipc::Request<'_>,
+    checkpoint: String,
+) -> Result<(), CommandError> {
     #[cfg(feature = "native-e2e")]
     {
         if !ALLOWED_CHECKPOINTS.contains(&checkpoint.as_str()) {
@@ -36,7 +40,10 @@ pub async fn native_e2e_checkpoint_cmd(checkpoint: String) -> Result<(), Command
 }
 
 #[command]
-pub async fn native_e2e_pipeline_pause_reached_cmd() -> Result<bool, CommandError> {
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
+pub async fn native_e2e_pipeline_pause_reached_cmd(
+    request: tauri::ipc::Request<'_>,
+) -> Result<bool, CommandError> {
     #[cfg(feature = "native-e2e")]
     {
         Ok(

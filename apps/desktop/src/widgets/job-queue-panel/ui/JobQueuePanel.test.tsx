@@ -46,6 +46,7 @@ const makeJob = (overrides: Partial<JobDto>): JobDto => ({
 });
 
 const mockProject: Project = {
+  revision: 1,
   id: 'project-1',
   title: 'https://youtube.com/watch?v=123',
   status: 'failed',

@@ -3,6 +3,7 @@ import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
 import type { MediaMetadata, MediaSource } from './media';
 import type { Project } from './project';
+import { isSafeRevision } from './jobValidation';
 
 type Validator = (value: unknown) => boolean;
 type CommandResultValidators = { [K in keyof CommandMap]: Validator };
@@ -43,6 +44,8 @@ export class IpcContractError extends Error {
 export function validateProject(value: unknown): value is Project {
   if (!isRecord(value)) return false;
   return (
+    isNonNegativeSafeInteger(value.revision) &&
+    value.revision > 0 &&
     isString(value.id) &&
     isString(value.title) &&
     isEnumValue(value.status, projectStatuses) &&
@@ -50,6 +53,23 @@ export function validateProject(value: unknown): value is Project {
     isTimestamp(value.updatedAt) &&
     isNullable(value.source, validateMediaSource) &&
     isNullable(value.metadata, validateMediaMetadata)
+  );
+}
+
+function validateStoredTheme(value: unknown): boolean {
+  return isRecord(value) && isString(value.value) && isSafeRevision(value.revision);
+}
+function validatePin(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.projectId) &&
+    typeof value.pinned === 'boolean' &&
+    isSafeRevision(value.revision)
+  );
+}
+function validatePins(value: unknown): boolean {
+  return (
+    isRecord(value) && typeof value.migrated === 'boolean' && isArrayOf(value.entries, validatePin)
   );
 }
 
@@ -103,6 +123,14 @@ const commandResultValidators = {
         : false,
     ),
   resume_youtube_import_cmd: validateProject,
+  get_color_theme_cmd: (value) => isNullable(value, validateStoredTheme),
+  set_color_theme_cmd: validateStoredTheme,
+  import_color_theme_cmd: validateStoredTheme,
+  get_project_pins_cmd: validatePins,
+  import_project_pins_cmd: validatePins,
+  set_project_pin_cmd: validatePin,
+  list_artifact_recovery_cmd: (value) => isArrayOf(value, isString),
+  retry_artifact_finalization_cmd: isNull,
   discard_youtube_import_cmd: isNull,
   get_project_avatar_cmd: validateProjectAvatar,
   set_project_avatar_cmd: validateProjectAvatar,

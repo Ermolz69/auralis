@@ -5,6 +5,7 @@ import { NavigationProvider } from '@/shared/router';
 import { ProjectHeader } from './ProjectHeader';
 
 const youtubeProject: Project = {
+  revision: 1,
   id: 'project-youtube',
   title: 'https://www.youtube.com/watch?v=private-source',
   status: 'ready_for_processing',
@@ -15,6 +16,7 @@ const youtubeProject: Project = {
 };
 
 const localProject: Project = {
+  revision: 1,
   id: 'project-local',
   title: 'C:\\Users\\person\\Videos\\private-folder\\clip.mp4',
   status: 'source_imported',

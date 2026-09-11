@@ -11,6 +11,7 @@ export type ProjectStatus =
   | 'cancelled';
 
 export interface Project {
+  revision: number;
   id: string;
   title: string;
   status: ProjectStatus;

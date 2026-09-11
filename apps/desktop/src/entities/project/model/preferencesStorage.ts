@@ -8,6 +8,9 @@ type Entries = Record<string, StoredPreferences>;
 const pending = new Map<string, StoredPreferences | null>();
 let lastReadable: Entries = Object.create(null);
 const preferenceChanges = createWindowEventChannel<{ projectId: string }>(projectPreferencesEvent);
+export function notifyProjectPreferences(projectId: string) {
+  preferenceChanges.emit({ projectId });
+}
 
 export function subscribeProjectPreferences(listener: (change: { projectId: string }) => void) {
   return preferenceChanges.subscribe(listener);

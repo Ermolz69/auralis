@@ -13,7 +13,7 @@ import { AppUpdatePanel } from '../../../features/app-update';
 import { colorThemeOptionGroups, unavailableSections } from './settings.data';
 
 export const SettingsPage = () => {
-  const { colorTheme, setColorTheme } = useColorTheme();
+  const { colorTheme, setColorTheme, persistenceStatus } = useColorTheme();
   const activeTheme = COLOR_THEMES.find((theme) => theme.id === colorTheme);
 
   return (
@@ -53,6 +53,13 @@ export const SettingsPage = () => {
                   if (isColorTheme(event.target.value)) setColorTheme(event.target.value);
                 }}
               />
+              {persistenceStatus === 'error' && (
+                <p role="alert" className="mt-2 text-xs text-danger">
+                  Theme could not be saved. It is applied only for this session. Select it again to
+                  retry.
+                </p>
+              )}
+              {persistenceStatus === 'pending' && <p role="status">Saving or loading theme…</p>}
             </div>
           </section>
 
@@ -86,7 +93,7 @@ export const SettingsPage = () => {
           ))}
 
           <p className="pt-2 text-xs text-subtle">
-            Цветовая тема хранится локально и применяется при следующем запуске приложения.
+            Цветовая тема хранится в SQLite и применяется при следующем запуске приложения.
           </p>
         </div>
       </div>

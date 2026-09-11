@@ -20,6 +20,7 @@ vi.mock('@/entities/project', async (importOriginal) => {
 });
 
 const project: Project = {
+  revision: 1,
   id: 'p-1',
   title: 'A very long project title that should remain in the workspace page title',
   status: 'draft',

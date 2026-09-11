@@ -1,4 +1,5 @@
 import type { Project, CreateProjectResponse } from './project';
+import type { StoredTheme, ProjectPin, ProjectPins, LegacyPin } from './uiPreferences';
 import type { Transcript } from './transcript';
 import type { Job, JobHistoryCursor, JobHistoryPage } from './job';
 import type { MediaMetadata } from './media';
@@ -9,6 +10,17 @@ import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
 
 export interface CommandMap {
+  get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
+  set_color_theme_cmd: { args: { value: string; expectedRevision: number }; result: StoredTheme };
+  import_color_theme_cmd: { args: { value: string }; result: StoredTheme };
+  get_project_pins_cmd: { args: undefined; result: ProjectPins };
+  set_project_pin_cmd: {
+    args: { projectId: string; pinned: boolean; expectedRevision: number };
+    result: ProjectPin;
+  };
+  import_project_pins_cmd: { args: { entries: LegacyPin[] }; result: ProjectPins };
+  list_artifact_recovery_cmd: { args: undefined; result: string[] };
+  retry_artifact_finalization_cmd: { args: { projectId: string }; result: null };
   list_pending_youtube_imports_cmd: { args: undefined; result: PendingYoutubeImport[] };
   resume_youtube_import_cmd: { args: { projectId: string }; result: Project };
   discard_youtube_import_cmd: { args: { projectId: string }; result: null };
@@ -38,7 +50,7 @@ export interface CommandMap {
     result: Project;
   };
   rename_project_cmd: {
-    args: { projectId: string; title: string };
+    args: { projectId: string; title: string; expectedRevision: number };
     result: Project;
   };
   open_project_folder_cmd: {

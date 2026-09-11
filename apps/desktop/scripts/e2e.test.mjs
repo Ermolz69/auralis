@@ -129,10 +129,8 @@ e2e('05 persists the theme and installs a signed application update from setting
       await page.getByLabel('Color theme').selectOption('frost');
 
       await page.waitForFunction(() => document.documentElement.dataset.colorTheme === 'frost');
-      assert.equal(
-        await page.evaluate(() => localStorage.getItem('auralis:color-theme:v1')),
-        'frost',
-      );
+      await page.waitForFunction(() => window.__e2e.theme?.value === 'frost');
+      assert.equal(await page.evaluate(() => localStorage.getItem('auralis:color-theme:v1')), null);
       await page.getByRole('button', { name: 'Download and install 0.2.0' }).click();
       await page.getByText('Restarting', { exact: true }).waitFor();
       assert.equal(await page.evaluate(() => window.__e2e.restarted), true);
@@ -314,6 +312,7 @@ e2e('16 renames a project from its context menu', async () => {
     assert.deepEqual(await lastCallArgs(page, 'rename_project_cmd'), {
       projectId: youtubeProject.id,
       title: 'Renamed Project',
+      expectedRevision: youtubeProject.revision,
     });
   });
 });
@@ -324,10 +323,10 @@ e2e('17 pins a project and exposes it in the sidebar', async () => {
     await page.getByRole('menuitem', { name: 'Закрепить' }).click();
 
     await page.getByRole('button', { name: 'YouTube Project', exact: true }).waitFor();
-    const preferences = await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('auralis.project-preferences.v1') ?? '{}'),
+    await page.waitForFunction(
+      (id) => window.__e2e.pins.entries.some((pin) => pin.projectId === id && pin.pinned),
+      youtubeProject.id,
     );
-    assert.equal(preferences[youtubeProject.id].pinned, true);
   });
 });
 
@@ -672,17 +671,20 @@ e2e('33 restores a cancelling job after reload and rejects stale progress', asyn
       await page.getByText('Stopping', { exact: true }).waitFor();
       assert.equal(await page.getByRole('button', { name: 'Cancel', exact: true }).count(), 0);
 
-      await page.evaluate(
-        ({ kind, job }) => window.__e2e.emitJobEvent(kind, job),
-        { kind: 'progressed', job: staleRunningJob },
-      );
+      await page.evaluate(({ kind, job }) => window.__e2e.emitJobEvent(kind, job), {
+        kind: 'progressed',
+        job: staleRunningJob,
+      });
       assert.equal(await page.getByText('Stopping', { exact: true }).isVisible(), true);
-      assert.equal(await page.getByText('Stale progress must be ignored', { exact: true }).count(), 0);
-
-      await page.evaluate(
-        ({ kind, job }) => window.__e2e.emitJobEvent(kind, job),
-        { kind: 'cancelled', job: cancelledJob },
+      assert.equal(
+        await page.getByText('Stale progress must be ignored', { exact: true }).count(),
+        0,
       );
+
+      await page.evaluate(({ kind, job }) => window.__e2e.emitJobEvent(kind, job), {
+        kind: 'cancelled',
+        job: cancelledJob,
+      });
       await page
         .getByLabel('Operation history')
         .getByText(cancellingJob.title, { exact: true })
@@ -885,6 +887,7 @@ function createProject(overrides) {
     title: 'Project',
     status: 'draft',
     source: null,
+    revision: 1,
     metadata: null,
     createdAt: timestamp,
     updatedAt: timestamp,

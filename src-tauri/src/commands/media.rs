@@ -9,7 +9,9 @@ use std::sync::Arc;
 use tauri::{State, command};
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn probe_local_media_cmd(
+    request: tauri::ipc::Request<'_>,
     path: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<MediaMetadataDto, CommandError> {
@@ -26,7 +28,9 @@ pub async fn probe_local_media_cmd(
 }
 
 #[command]
+#[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn import_local_media_cmd(
+    request: tauri::ipc::Request<'_>,
     project_id: String,
     path: String,
     usecases: State<'_, Arc<AppUseCases>>,

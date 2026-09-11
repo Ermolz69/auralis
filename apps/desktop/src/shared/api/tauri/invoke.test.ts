@@ -15,7 +15,9 @@ describe('typed Tauri invoke boundary', () => {
     vi.mocked(tauriInvoke).mockResolvedValueOnce('healthy');
 
     await expect(invoke('health_check')).resolves.toBe('healthy');
-    expect(tauriInvoke).toHaveBeenCalledExactlyOnceWith('health_check', undefined);
+    expect(tauriInvoke).toHaveBeenCalledExactlyOnceWith('health_check', undefined, {
+      headers: { 'x-auralis-request-id': expect.stringMatching(/^[0-9a-f-]{36}$/) },
+    });
   });
 
   it('keeps only the public fields of a known command error', async () => {

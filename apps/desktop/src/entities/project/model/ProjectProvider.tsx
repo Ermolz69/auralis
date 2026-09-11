@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { invoke, listen } from '@/shared/api/tauri';
+import { subscribeSnapshotRefresh } from '@/shared/lib';
 import { toCommandError } from '@/shared/api/contracts';
 import { ProjectContext } from './context';
 import type { Project } from './types';
@@ -29,6 +30,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const setProject = (nextProject: Project | null) => {
+    if (
+      nextProject &&
+      selectionRef.current.status === 'open' &&
+      selectionRef.current.project.id === nextProject.id &&
+      nextProject.revision < selectionRef.current.project.revision
+    )
+      return;
     if (nextProject === null || nextProject.id !== currentProjectId()) {
       invalidateOperations();
     }
@@ -148,9 +156,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     };
 
     void setupListener();
+    const stopSnapshotRefresh = subscribeSnapshotRefresh(refreshSelectedProject);
 
     return () => {
       cancelled = true;
+      stopSnapshotRefresh();
       unsubscribe();
       if (unlisten) unlisten();
     };

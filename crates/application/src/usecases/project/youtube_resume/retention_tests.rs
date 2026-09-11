@@ -19,7 +19,7 @@ use ports::{
 };
 use std::{sync::Arc, time::Duration};
 
-async fn maintenance(fixture: &Fixture) {
+pub(super) async fn maintenance(fixture: &Fixture) {
     let mut config = OutboxMaintenanceConfig::try_default().unwrap();
     config.staging_max_age = Duration::ZERO;
     config.workspace_max_age = Duration::ZERO;
@@ -36,7 +36,7 @@ async fn maintenance(fixture: &Fixture) {
     assert_eq!(report.workspace_cleanup, MaintenanceStepOutcome::Succeeded);
 }
 
-async fn drain(fixture: &Fixture) {
+pub(super) async fn drain(fixture: &Fixture) {
     let worker = OutboxWorker::new(
         SqliteOutboxRepository::new(fixture.pool.clone()),
         fixture.store.clone(),

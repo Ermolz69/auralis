@@ -9,6 +9,8 @@ export function installE2EFixture(seed) {
     ]),
   );
   const state = {
+    theme: input.theme ?? null,
+    pins: input.pins ?? { entries: [], migrated: false },
     projects: input.projects ?? [],
     jobs: input.jobs ?? [],
     historyJobs:
@@ -77,6 +79,7 @@ export function installE2EFixture(seed) {
     title,
     status: 'draft',
     source: null,
+    revision: 1,
     metadata: null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -236,6 +239,47 @@ export function installE2EFixture(seed) {
       if (command === 'plugin:resources|close') return null;
       if (command === 'plugin:dialog|open') return state.selectedFile;
       if (command === 'health_check') return 'healthy';
+      if (command === 'list_artifact_recovery_cmd') return [];
+      if (command === 'get_color_theme_cmd') return copy(state.theme);
+      if (command === 'set_color_theme_cmd' || command === 'import_color_theme_cmd') {
+        if (command === 'import_color_theme_cmd' && state.theme) return copy(state.theme);
+        if (
+          command === 'set_color_theme_cmd' &&
+          args.expectedRevision !== (state.theme?.revision ?? 0)
+        )
+          throw { code: 'CONFLICT', message: 'Reload theme' };
+        state.theme = { value: args.value, revision: (state.theme?.revision ?? 0) + 1 };
+        return copy(state.theme);
+      }
+      if (command === 'get_project_pins_cmd') return copy(state.pins);
+      if (command === 'import_project_pins_cmd') {
+        if (!state.pins.migrated) {
+          for (const pin of args.entries) {
+            if (
+              findProject(pin.projectId) &&
+              !state.pins.entries.some((item) => item.projectId === pin.projectId)
+            )
+              state.pins.entries.push({ ...pin, revision: 1 });
+          }
+          state.pins.migrated = true;
+        }
+        return copy(state.pins);
+      }
+      if (command === 'set_project_pin_cmd') {
+        const previous = state.pins.entries.find((pin) => pin.projectId === args.projectId);
+        if (!findProject(args.projectId)) throw { code: 'NOT_FOUND', message: 'Project missing' };
+        if ((previous?.revision ?? 0) !== args.expectedRevision)
+          throw { code: 'CONFLICT', message: 'Reload pins' };
+        const saved = {
+          projectId: args.projectId,
+          pinned: args.pinned,
+          revision: (previous?.revision ?? 0) + 1,
+        };
+        state.pins.entries = state.pins.entries
+          .filter((pin) => pin.projectId !== args.projectId)
+          .concat(saved);
+        return copy(saved);
+      }
       if (command === 'list_projects_cmd') return copy(state.projects);
       if (command === 'list_pending_youtube_imports_cmd') return copy(state.pendingImports);
       if (command === 'list_jobs_cmd') return copy(state.jobs);
@@ -319,7 +363,16 @@ export function installE2EFixture(seed) {
       if (command === 'rename_project_cmd') {
         const current = findProject(args.projectId);
         if (!current) throw { code: 'NOT_FOUND', message: 'Project not found' };
-        return copy(replaceProject({ ...current, title: args.title, updatedAt: timestamp }));
+        if (current.revision !== args.expectedRevision)
+          throw { code: 'CONFLICT', message: 'Reload project' };
+        return copy(
+          replaceProject({
+            ...current,
+            title: args.title,
+            updatedAt: timestamp,
+            revision: current.revision + 1,
+          }),
+        );
       }
       if (command === 'open_project_folder_cmd') {
         state.openedFolders.push(args.projectId);

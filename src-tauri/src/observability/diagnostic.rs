@@ -13,6 +13,7 @@ pub enum DiagnosticKind {
     FileAppenderUnavailable,
     SubscriberAlreadyInstalled,
     BufferOverflow,
+    RuntimeLogWriteFailed,
     TracingFlushTimedOut,
     ApplicationConfigurationInvalid,
     ObservabilityConfigurationInvalid,
@@ -64,8 +65,17 @@ pub fn write_diagnostic(
     )
 }
 
-pub fn stderr_writer() -> std::io::Stderr {
-    std::io::stderr()
+pub fn stderr_writer() -> tracing_appender::non_blocking::NonBlocking {
+    static WRITER: std::sync::LazyLock<(
+        tracing_appender::non_blocking::NonBlocking,
+        tracing_appender::non_blocking::WorkerGuard,
+    )> = std::sync::LazyLock::new(|| {
+        tracing_appender::non_blocking::NonBlockingBuilder::default()
+            .lossy(true)
+            .buffered_lines_limit(super::bounded_writer::MAX_QUEUED_EVENTS)
+            .finish(std::io::stderr())
+    });
+    WRITER.0.clone()
 }
 
 pub trait DiagnosticSink: Send + Sync {
@@ -76,7 +86,7 @@ pub struct StderrDiagnosticSink;
 
 impl DiagnosticSink for StderrDiagnosticSink {
     fn emit(&self, diag: ProcessDiagnostic) {
-        let mut stderr = stderr_writer().lock();
+        let mut stderr = stderr_writer();
         let _ = write_diagnostic(&mut stderr, diag);
     }
 }

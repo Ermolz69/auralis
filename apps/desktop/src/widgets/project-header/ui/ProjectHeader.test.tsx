@@ -19,6 +19,7 @@ vi.mock('../../../features/run-dubbing', () => ({
 }));
 
 const project: Project = {
+  revision: 1,
   id: 'project-1',
   title: 'https://www.youtube.com/watch?v=abc',
   status: 'ready_for_processing',

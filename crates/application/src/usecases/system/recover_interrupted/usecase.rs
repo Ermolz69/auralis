@@ -97,6 +97,7 @@ impl RecoverInterruptedStateUseCase {
                     let expected_project_status = project.status().clone();
                     let expected_active_job_id = active_job_id;
                     let expected_job_status = job.status().clone();
+                    let expected_job_revision = job.revision();
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
                     if let Err(e) = job.mark_failed(JobError::new(
@@ -112,6 +113,7 @@ impl RecoverInterruptedStateUseCase {
                     } else {
                         recovery_storage
                             .commit_failed_interrupted_pair(FailInterruptedPairCommand {
+                                expected_job_revision,
                                 project,
                                 job,
                                 expected_project_status,
@@ -203,6 +205,7 @@ impl RecoverInterruptedStateUseCase {
                 RecoveryAction::FailOrphanJob { mut job } => {
                     job_id_for_err = Some(job.id().clone());
                     let expected_job_status = job.status().clone();
+                    let expected_job_revision = job.revision();
 
                     if let Err(e) = job.mark_failed(JobError::new(
                         "APP_RESTART",
@@ -213,6 +216,7 @@ impl RecoverInterruptedStateUseCase {
                     } else {
                         recovery_storage
                             .commit_failed_orphan_job(FailOrphanJobCommand {
+                                expected_job_revision,
                                 job,
                                 expected_job_status,
                             })

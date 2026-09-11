@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { ProjectPage } from './ProjectPage';
 
 const project: Project = {
+  revision: 1,
   id: 'workspace-story',
   title: 'auralis',
   status: 'processing',
@@ -83,9 +84,7 @@ export const Wide1280: Story = {
   },
 };
 
-export const Medium1024: Story = {
-  parameters: viewport('1024x720', 1024, 720),
-};
+export const Medium1024: Story = { parameters: viewport('1024x720', 1024, 720) };
 
 export const Small800: Story = { parameters: viewport('800x600', 800, 600) };
 

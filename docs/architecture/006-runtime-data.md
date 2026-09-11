@@ -6,6 +6,7 @@ Tauri for the `com.auralis.desktop` bundle identifier.
 ```text
 <app-data>/
 ├── auralis.sqlite
+├── .auralis-owner.lock
 ├── projects/
 │   ├── .staging/
 │   └── <project-id>/
@@ -24,10 +25,13 @@ Tauri for the `com.auralis.desktop` bundle identifier.
     └── workspaces/
 ```
 
-- `auralis.sqlite` is the only source of truth for projects, jobs, artifacts, and outbox state.
+- `auralis.sqlite` is the only source of truth for projects, jobs, artifacts, outbox, theme, and pins.
+- `.auralis-owner.lock` carries an exclusive OS lease before migrations and startup recovery.
 - `projects/` contains only physical project files addressed by managed storage keys.
 - `projects/.staging/` contains artifact files waiting for atomic finalization.
-- `logs/` contains structured diagnostic logs with daily rotation and a 30-file retention limit.
+- `logs/` contains structured diagnostic logs with daily rotation, at most 30 owned files,
+  16 MiB per file, and a 480 MiB total write budget. Existing oversized files are not truncated;
+  they consume the budget until normal rotation removes them.
 - `cache/workspaces/` contains temporary pipeline workspaces.
 
 There is no per-project metadata file. In particular, `project.json` is not created because it

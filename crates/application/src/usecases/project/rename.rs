@@ -6,6 +6,7 @@ use crate::error::ApplicationError;
 
 #[derive(Debug)]
 pub struct RenameProjectRequest {
+    pub expected_revision: u64,
     pub project_id: ProjectId,
     pub title: String,
 }
@@ -33,7 +34,7 @@ impl<R: ProjectRepository> RenameProjectUseCase<R> {
             .project_repo
             .update(
                 project.id(),
-                project.revision(),
+                request.expected_revision,
                 ProjectUpdate::Rename {
                     title: project.title().to_string(),
                 },

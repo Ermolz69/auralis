@@ -38,8 +38,8 @@ pub async fn commit_failed_orphan_job(
     let expected_job_status = serialize_enum(&cmd.expected_job_status, "expected_job_status")?;
 
     let rows = sqlx::query(
-        "UPDATE jobs SET status = ?, updated_at = ?, progress_json = ?, error_json = ? 
-         WHERE id = ? AND status = ?",
+        "UPDATE jobs SET status = ?, updated_at = ?, progress_json = ?, error_json = ?, revision = ?, finished_at = ?
+         WHERE id = ? AND status = ? AND revision = ?",
     )
     .bind(serialize_enum(cmd.job.status(), "job.status")?)
     .bind(cmd.job.updated_at())
@@ -50,24 +50,27 @@ pub async fn commit_failed_orphan_job(
             .map(|e| serialize_json(&e, "job.error"))
             .transpose()?,
     )
+    .bind(cmd.job.revision() as i64)
+    .bind(cmd.job.finished_at())
     .bind(cmd.job.id().to_string())
     .bind(&expected_job_status)
+    .bind(cmd.expected_job_revision as i64)
     .execute(&mut *tx)
     .await
     .map_err(map_recovery_sqlite_error)?
     .rows_affected();
 
     if rows == 0 {
-        let _ = tx.rollback().await; // allow-fallback
-        let current_status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM jobs WHERE id = ?")
+        let current_status: Option<(String, i64)> =
+            sqlx::query_as("SELECT status, revision FROM jobs WHERE id = ?")
                 .bind(cmd.job.id().to_string())
-                .fetch_optional(pool)
+                .fetch_optional(&mut *tx)
                 .await
                 .map_err(map_recovery_sqlite_error)?;
 
         let new_status = serialize_enum(cmd.job.status(), "job.status")?;
-        if current_status == Some(new_status) {
+        tx.rollback().await.map_err(map_recovery_sqlite_error)?;
+        if current_status == Some((new_status, cmd.job.revision() as i64)) {
             return Ok(RecoveryApplyResult::AlreadyApplied);
         } else {
             return Err(PortError::Conflict {

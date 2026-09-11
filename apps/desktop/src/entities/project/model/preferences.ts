@@ -1,10 +1,14 @@
 import { mutatePreferences, readPreferencesStorage } from './preferencesStorage';
+import { getStoredPin, forgetStoredPin } from './pinPersistence';
+export { loadProjectPins, setProjectPinned } from './pinPersistence';
 export { projectPreferencesEvent, subscribeProjectPreferences } from './preferencesStorage';
 
 export type ProjectPreferences = { pinned: boolean };
 export type PreferencesWriteResult = { preferences: ProjectPreferences; persisted: boolean };
 
 export function getProjectPreferences(projectId: string): ProjectPreferences {
+  const stored = getStoredPin(projectId);
+  if (stored !== undefined) return { pinned: stored };
   const { entries } = readPreferencesStorage();
   return { pinned: Object.hasOwn(entries, projectId) && entries[projectId].pinned === true };
 }
@@ -23,6 +27,7 @@ export function updateProjectPreferences(
 }
 
 export function removeProjectPreferences(projectId: string) {
+  forgetStoredPin(projectId);
   return mutatePreferences(projectId, () => null);
 }
 

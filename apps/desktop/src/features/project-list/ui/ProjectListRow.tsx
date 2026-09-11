@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type RefCallback } from 'react';
 import {
   getProjectPreferences,
   subscribeProjectPreferences,
-  updateProjectPreferences,
+  setProjectPinned,
+  loadProjectPins,
   type Project,
 } from '@/entities/project';
 import {
@@ -43,11 +44,26 @@ export const ProjectListRow = ({
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [preferences, setPreferences] = useState(() => getProjectPreferences(project.id));
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const pinSaving = useRef(false);
+  const [pinFailed, setPinFailed] = useState(false);
+  const savePin = async (pinned: boolean) => {
+    if (pinSaving.current) return;
+    pinSaving.current = true;
+    const result = await setProjectPinned(project.id, pinned);
+    pinSaving.current = false;
+    setPreferences(result.preferences);
+    setPinFailed(!result.persisted);
+    if (!result.persisted)
+      toast.warning('Pin preference is only saved for this session. Retry to save it in SQLite.');
+  };
   const { avatar, updateAvatar, isSaving } = useProjectAvatar(project.id, isAnyDeleting);
   useEffect(() => {
     const refresh = () => setPreferences(getProjectPreferences(project.id));
+    void loadProjectPins()
+      .then(refresh)
+      .catch(() => {});
     return subscribeProjectPreferences(({ projectId }) => {
-      if (projectId === project.id) refresh();
+      if (projectId === project.id || projectId === '*') refresh();
     });
   }, [project.id]);
   const openButtonElementRef = useRef<HTMLButtonElement>(null);
@@ -154,6 +170,15 @@ export const ProjectListRow = ({
       </button>
 
       <div className="shrink-0 pr-2">
+        {pinFailed && (
+          <Button
+            size="sm"
+            disabled={isAnyDeleting}
+            onClick={() => void savePin(preferences.pinned)}
+          >
+            Retry saving pin
+          </Button>
+        )}
         <Button
           ref={deleteButtonRef}
           variant="ghost"
@@ -182,14 +207,7 @@ export const ProjectListRow = ({
           onRemoveAvatar={() => {
             void updateAvatar(null);
           }}
-          onTogglePinned={() => {
-            const result = updateProjectPreferences(project.id, { pinned: !preferences.pinned });
-            setPreferences(result.preferences);
-            if (!result.persisted)
-              toast.warning(
-                'Pin preference is only saved for this session because local storage is unavailable.',
-              );
-          }}
+          onTogglePinned={() => void savePin(!preferences.pinned)}
           onOpenFolder={() => onOpenFolder(project)}
           onDelete={() => onDelete(project)}
         />
