@@ -31,7 +31,7 @@ re-auditing an unchanged lockfile.
 ## Pull-request jobs
 
 - `Frontend`: typecheck, lint, separated unit, component, integration, and Storybook
-  browser tests with coverage, production build budgets, 34 E2E journeys, CSP smoke,
+  browser tests with coverage, production build budgets, E2E journeys, CSP smoke,
   and frontend policies.
 - `Rust`: dependency graph policy, formatting, Clippy, and workspace tests. Clippy
   already compiles all targets, so the job does not immediately repeat `cargo check`.

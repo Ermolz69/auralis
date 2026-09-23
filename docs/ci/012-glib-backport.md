@@ -71,12 +71,8 @@ It installs packages in that distribution, not on the Windows host.
 `task rs:exec:wsl -- build --locked --release -p auralis-app`.
 Linux build output is isolated in `/tmp/auralis-glib-backport-target`.
 
-The pre-commit run on 2026-09-03 passed the complete Windows `task check`
-(387 frontend tests, Rust tests, production browser smoke and quality gates),
-Linux workspace tests, strict Clippy, formatting and the native release build.
 With Rust 1.95.0 and `RUSTFLAGS=-Dwarnings`, all four optimized iterator tests
 passed on the patched package; the original pointer test terminated with SIGSEGV.
-Native GUI interaction and a signed/distributed installer were not tested.
 
 ## Security scanning and maintenance
 

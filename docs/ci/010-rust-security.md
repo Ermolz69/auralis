@@ -40,7 +40,7 @@ The remaining rollout blockers were remediated without advisory exceptions:
   the advisory scanner's treatment of a local package is not sufficient evidence.
 
 Do not merge a failing security gate or silence findings without a project-owner
-decision. The 16 transitive maintenance notices for GTK3, `unic-*` and
+decision. Transitive maintenance notices for GTK3, `unic-*` and
 `proc-macro-error` remain visible in cargo-audit; they are not compiler warnings,
 version-deprecation messages or fixed vulnerabilities. The policy still rejects
 all vulnerabilities and unsound advisories and does not inherit upstream ignores.

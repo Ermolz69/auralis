@@ -12,10 +12,18 @@ GitHub repository or environment secrets.
 
 Every Windows, macOS, and Linux update must carry a Tauri updater signature.
 Windows and macOS packages additionally require their platform signing. Generate
-the updater key pair once on a trusted maintainer machine from the repository root:
+the updater key pair once on a trusted maintainer machine at a path outside the
+repository. In a POSIX shell:
 
 ```bash
 pnpm tauri signer generate -w ~/.tauri/auralis.key
+```
+
+In PowerShell, use an explicit home-directory path because `~` may be passed to
+the CLI literally:
+
+```powershell
+pnpm tauri signer generate -w "$env:USERPROFILE\.tauri\auralis.key"
 ```
 
 Use a strong, non-empty password. Then configure GitHub:

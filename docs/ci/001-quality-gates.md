@@ -25,7 +25,7 @@ The local and CI entrypoints are:
 - **frontend install**: Installs frozen pnpm dependencies without Rust (`task install:frontend`).
 - **Rust install**: Fetches locked Cargo dependencies without frontend tooling (`task install:rust`).
 - **full install**: Runs both installers (`task install:all`, also available as `task install`); browser setup is a separate prerequisite for checks.
-- **frontend**: Runs strict TypeScript checks, lint, separated unit, component, integration, and Storybook browser suites with enforced V8 coverage thresholds (90% statements, 80% branches, 90% functions, and 92% lines), build with bundle budgets, 34 production-browser E2E journeys, production CSP smoke tests, and frontend architecture policies (`task check:frontend`).
+- **frontend**: Runs strict TypeScript checks, lint, separated unit, component, integration, and Storybook browser suites with enforced V8 coverage thresholds (90% statements, 80% branches, 90% functions, and 92% lines), build with bundle budgets, production-browser E2E journeys, production CSP smoke tests, and frontend architecture policies (`task check:frontend`).
 - **frontend coverage diagnostics**: Writes JSON-summary and LCOV reports under `apps/desktop/coverage`; CI uploads the directory even when the frontend gate fails.
 - **browser E2E diagnostics**: Prints stable scenario IDs and areas in the job log, writes a JUnit report, and retains a screenshot, page snapshot, and Playwright trace for each failed journey under `apps/desktop/e2e-results` (`task fe:e2e`). CI uploads the directory even when the frontend gate fails.
 - **targeted browser E2E**: Re-runs one scenario locally by its stable ID, for example `task fe:e2e -- --test-name-pattern=E2E-027`.
