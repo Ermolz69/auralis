@@ -13,7 +13,13 @@ const RULES = [
   { dir: 'apps/desktop/src/entities', maxLines: 300, pattern: /\.(ts|tsx)$/ },
   { dir: 'apps/desktop/src/shared/ui', maxLines: 200, pattern: /\.(ts|tsx)$/ },
   { dir: 'apps/desktop/src/shared/lib', maxLines: 250, pattern: /\.(ts|tsx)$/ },
+  { dir: 'apps/desktop/src/shared/api', maxLines: 250, pattern: /\.(ts|tsx)$/ },
   { dir: 'crates/application/src', maxLines: 300, pattern: /\.rs$/ },
+  { dir: 'crates/jobs/src', maxLines: 300, pattern: /\.rs$/ },
+  { dir: 'crates/domain/src', maxLines: 300, pattern: /\.rs$/ },
+  { dir: 'crates/ports/src', maxLines: 300, pattern: /\.rs$/ },
+  { dir: 'crates/common/src', maxLines: 300, pattern: /\.rs$/ },
+  { dir: 'src-tauri/src', maxLines: 300, pattern: /\.rs$/ },
 ];
 
 // Existing oversized modules are ratcheted at their current size. This keeps the
@@ -94,7 +100,11 @@ function walkSync(dir, filelist = []) {
 
 export function checkFileSize({ rootDir = defaultRootDir } = {}) {
   const errors = [];
-  const searchRoots = [path.join(rootDir, 'apps/desktop/src'), path.join(rootDir, 'crates')];
+  const searchRoots = [
+    path.join(rootDir, 'apps/desktop/src'),
+    path.join(rootDir, 'crates'),
+    path.join(rootDir, 'src-tauri/src'),
+  ];
 
   for (const searchRoot of searchRoots) {
     for (const file of walkSync(searchRoot)) {

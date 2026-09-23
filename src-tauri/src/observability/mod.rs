@@ -4,6 +4,7 @@ pub(crate) mod command;
 mod command_tests;
 pub mod config;
 pub mod diagnostic;
+mod environment;
 pub mod error;
 mod file_budget;
 mod guard;

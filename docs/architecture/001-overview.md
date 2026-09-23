@@ -22,6 +22,16 @@ state, and adapter-owned external processes.
 - **Storage**: SQLite stores projects, jobs, artifacts, the YouTube import journal, and outbox messages. Project files use managed storage keys.
 - **External tools**: Bundled FFmpeg, ffprobe, and yt-dlp processes are invoked through adapters. Production local AI model runners are not wired yet.
 
+## IPC contract
+
+The frontend uses one typed Tauri boundary for commands and events. `CommandMap` and
+`EventMap` define the allowed names and payload shapes, and runtime validators reject
+incompatible success results and event payloads before they reach application state.
+Command failures and event-listener registration failures use the same public
+`CommandError` shape. Invalid events trigger a subscriber recovery callback when one
+is registered; otherwise the boundary logs a bounded contract error without the
+payload.
+
 ## Implemented workflows
 
 - Create, rename, list, open, and delete persistent projects.

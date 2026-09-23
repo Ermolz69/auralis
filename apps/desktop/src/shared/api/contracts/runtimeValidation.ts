@@ -1,11 +1,22 @@
 import type { Artifact } from './artifact';
 import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
-import type { MediaMetadata, MediaSource } from './media';
 import type { Project } from './project';
+import { validateMediaMetadata, validateMediaSource } from './mediaValidation';
+import {
+  isArrayOf,
+  isBoolean,
+  isEnumValue,
+  isNonNegativeSafeInteger,
+  isNull,
+  isNullable,
+  isRecord,
+  isString,
+  isTimestamp,
+  type Validator,
+} from './validationPrimitives';
 import { isSafeRevision } from './jobValidation';
 
-type Validator = (value: unknown) => boolean;
 type CommandResultValidators = { [K in keyof CommandMap]: Validator };
 type EventPayloadValidators = { [K in keyof EventMap]: Validator };
 
@@ -70,30 +81,6 @@ function validatePin(value: unknown): boolean {
 function validatePins(value: unknown): boolean {
   return (
     isRecord(value) && typeof value.migrated === 'boolean' && isArrayOf(value.entries, validatePin)
-  );
-}
-
-export function validateMediaMetadata(value: unknown): value is MediaMetadata {
-  if (!isRecord(value)) return false;
-  return (
-    isNonNegativeSafeInteger(value.durationMs) &&
-    nullableField(value, 'width', isNonNegativeSafeInteger) &&
-    nullableField(value, 'height', isNonNegativeSafeInteger) &&
-    nullableField(value, 'fps', isPositiveFiniteNumber) &&
-    nullableField(value, 'videoCodec', isString) &&
-    nullableField(value, 'audioCodec', isString) &&
-    nullableField(value, 'sampleRate', isNonNegativeSafeInteger) &&
-    nullableField(value, 'audioChannels', isNonNegativeSafeInteger) &&
-    nullableField(value, 'container', isString) &&
-    nullableField(value, 'bitrate', isNonNegativeSafeInteger) &&
-    nullableField(value, 'formatName', isString) &&
-    typeof value.hasVideo === 'boolean' &&
-    typeof value.hasAudio === 'boolean' &&
-    Array.isArray(value.streams) &&
-    value.streams.every(validateMediaStream) &&
-    nullableField(value, 'video', validateVideoStream) &&
-    Array.isArray(value.audioTracks) &&
-    value.audioTracks.every(validateAudioTrack)
   );
 }
 
@@ -186,59 +173,6 @@ export function parseEventPayload<K extends keyof EventMap>(event: K, value: unk
   return value as EventMap[K];
 }
 
-function validateMediaSource(value: unknown): value is MediaSource {
-  if (!isRecord(value) || !isString(value.kind)) return false;
-  switch (value.kind) {
-    case 'managedLocalFile':
-      return isString(value.artifactId) && isString(value.originalFilename);
-    case 'youtubeUrl':
-    case 'remoteUrl':
-      return isString(value.url);
-    case 'externalLocalFile':
-      return isString(value.path);
-    default:
-      return false;
-  }
-}
-
-function validateMediaStream(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isNonNegativeSafeInteger(value.index) &&
-    isString(value.codecType) &&
-    nullableField(value, 'codecName', isString) &&
-    nullableField(value, 'codecLongName', isString) &&
-    nullableField(value, 'language', isString) &&
-    nullableField(value, 'durationMs', isNonNegativeSafeInteger)
-  );
-}
-
-function validateVideoStream(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isNonNegativeSafeInteger(value.streamIndex) &&
-    isNonNegativeSafeInteger(value.width) &&
-    isNonNegativeSafeInteger(value.height) &&
-    nullableField(value, 'fps', isPositiveFiniteNumber) &&
-    nullableField(value, 'codec', isString) &&
-    nullableField(value, 'pixelFormat', isString)
-  );
-}
-
-function validateAudioTrack(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isNonNegativeSafeInteger(value.streamIndex) &&
-    nullableField(value, 'codec', isString) &&
-    nullableField(value, 'channels', isNonNegativeSafeInteger) &&
-    nullableField(value, 'channelLayout', isString) &&
-    nullableField(value, 'sampleRate', isNonNegativeSafeInteger) &&
-    nullableField(value, 'language', isString) &&
-    nullableField(value, 'title', isString) &&
-    typeof value.isDefault === 'boolean'
-  );
-}
-
 function validateProjectAvatar(value: unknown): boolean {
   return (
     isRecord(value) && isNullable(value.dataUrl, isString) && typeof value.initialized === 'boolean'
@@ -283,56 +217,4 @@ function validateTranscript(value: unknown): boolean {
 
 function validateProjectIdPayload(value: unknown): boolean {
   return isRecord(value) && isString(value.projectId);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === 'string';
-}
-
-function isBoolean(value: unknown): value is boolean {
-  return typeof value === 'boolean';
-}
-
-function isNull(value: unknown): value is null {
-  return value === null;
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function isPositiveFiniteNumber(value: unknown): value is number {
-  return isFiniteNumber(value) && value > 0;
-}
-
-function isNonNegativeSafeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
-}
-
-function isTimestamp(value: unknown): value is string {
-  return isString(value) && Number.isFinite(Date.parse(value));
-}
-
-function isEnumValue(value: unknown, values: ReadonlySet<string>): value is string {
-  return isString(value) && values.has(value);
-}
-
-function isNullable(value: unknown, validator: Validator): boolean {
-  return value === null || validator(value);
-}
-
-function nullableField(
-  record: Record<string, unknown>,
-  key: string,
-  validator: Validator,
-): boolean {
-  return !Object.hasOwn(record, key) || record[key] === null || validator(record[key]);
-}
-
-function isArrayOf(value: unknown, validator: Validator): boolean {
-  return Array.isArray(value) && value.every(validator);
 }
