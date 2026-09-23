@@ -18,10 +18,9 @@
 - [Release workflow](./release/001-release-workflow.md)
 - [Production signing](./release/002-signing.md)
 
-The [Figma interface integration document](./figma-interface-integration.md) is a
-design analysis and implementation plan. Historical completion reports live in
-`reviews/`; they record the state at the date in their filename and are not
-maintained as current-reference documentation.
+The architecture documents distinguish implemented capabilities from the planned
+speech-generation and media pipeline. The current product scope and setup commands
+are summarized in the [project README](../README.md).
 
 ## Storybook
 

@@ -57,4 +57,26 @@ describe('typed Tauri event boundary', () => {
     expect(JSON.stringify(consoleError.mock.calls)).not.toContain('not-forwarded');
     consoleError.mockRestore();
   });
+
+  it('normalizes listener registration failures like command failures', async () => {
+    vi.mocked(tauriListen).mockRejectedValueOnce(new Error('private filesystem path'));
+
+    await expect(listen('project-updated', vi.fn())).rejects.toEqual({
+      code: 'INTERNAL',
+      message: 'An unexpected system error occurred',
+    });
+  });
+
+  it('keeps only public fields from a known listener failure', async () => {
+    vi.mocked(tauriListen).mockRejectedValueOnce({
+      code: 'BUSY',
+      message: 'Try again',
+      internalContext: 'private',
+    });
+
+    await expect(listen('project-updated', vi.fn())).rejects.toEqual({
+      code: 'BUSY',
+      message: 'Try again',
+    });
+  });
 });

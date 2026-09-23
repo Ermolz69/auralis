@@ -16,9 +16,8 @@ Module sizes precede final chunk compression; budgets use the actual output file
 | All JavaScript gzip                                         | 160 KiB |
 | Stylesheets                                                 | 100 KiB |
 
-The initial measurement after integration was 263.27 KiB JS / 82.88 KiB gzip;
-all JS was 308.56 KiB / 99.68 KiB gzip. Compare future results with the current
-report rather than raising limits automatically. `task q:desktop-policies` covers
+Compare future results with the current report rather than raising limits
+automatically. `task q:desktop-policies` covers
 shared/cyclic imports, lazy chunks, invalid manifests, budget failures, and UTF-8 sizes.
 
 The icon registry uses named Lucide imports rather than the full dynamic catalog.

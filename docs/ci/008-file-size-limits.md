@@ -8,15 +8,17 @@ Prevents the creation of huge, unreadable files and "god objects". Strict limits
 
 It rejects production files above the configured limit:
 
-| Source area                   | Maximum lines |
-| ----------------------------- | ------------: |
-| Frontend pages                |           120 |
-| Frontend widgets and features |           250 |
-| Frontend entities             |           300 |
-| Shared UI                     |           200 |
-| Shared libraries              |           250 |
-| Rust application crate        |           300 |
-| Rust adapter crates           |           400 |
+| Source area                                        | Maximum lines |
+| -------------------------------------------------- | ------------: |
+| Frontend pages                                     |           120 |
+| Frontend widgets and features                      |           250 |
+| Frontend entities                                  |           300 |
+| Shared UI                                          |           200 |
+| Shared libraries                                   |           250 |
+| Shared API                                         |           250 |
+| Rust application crate                             |           300 |
+| Rust jobs, domain, ports, common, and Tauri source |           300 |
+| Rust adapter crates                                |           400 |
 
 A small explicit ratchet list preserves existing oversized files at their current
 size while they are split; those files may not grow.

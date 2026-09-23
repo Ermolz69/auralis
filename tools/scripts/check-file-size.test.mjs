@@ -98,6 +98,31 @@ test('checks production filenames that contain mock', () => {
   ]);
 });
 
+test('enforces shared API, job runtime, and Tauri source limits', () => {
+  const root = fixture();
+  writeLines(root, 'apps/desktop/src/shared/api/contracts/payload.ts', 251);
+  writeLines(root, 'crates/jobs/src/manager/runtime.rs', 301);
+  writeLines(root, 'src-tauri/src/bootstrap/runtime.rs', 301);
+
+  assert.deepEqual(checkFileSize({ rootDir: root }), [
+    {
+      file: 'apps/desktop/src/shared/api/contracts/payload.ts',
+      lines: 251,
+      maxLines: 250,
+    },
+    {
+      file: 'crates/jobs/src/manager/runtime.rs',
+      lines: 301,
+      maxLines: 300,
+    },
+    {
+      file: 'src-tauri/src/bootstrap/runtime.rs',
+      lines: 301,
+      maxLines: 300,
+    },
+  ]);
+});
+
 test('counts rust production lines without inline cfg test modules', () => {
   const root = fixture();
   writeLines(root, 'crates/application/src/runtime.rs', 299);

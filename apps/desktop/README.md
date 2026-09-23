@@ -77,7 +77,7 @@ task fe:e2e
 
 `task check:frontend` is the complete local and CI gate: TypeScript, lint, unit,
 component, integration, Storybook interaction/accessibility tests, enforced coverage,
-production build budgets, 34 E2E journeys, CSP smoke, and frontend architecture
+production build budgets, browser E2E journeys, CSP smoke, and frontend architecture
 policies. Use `task check:quality:frontend` only when you need the policy checks by
 themselves.
 
