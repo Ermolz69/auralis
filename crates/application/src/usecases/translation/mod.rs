@@ -1,5 +1,7 @@
 mod begin;
 mod begin_request;
+mod execute;
+mod execute_request;
 mod inspect_source;
 mod inspect_source_request;
 mod publish;
@@ -9,6 +11,8 @@ mod reconcile_item;
 
 pub use begin::BeginTranslationUseCase;
 pub use begin_request::BeginTranslationRequest;
+pub use execute::ExecuteTranslationUseCase;
+pub use execute_request::ExecuteTranslationRequest;
 pub use inspect_source::InspectTranslationSourceUseCase;
 pub use inspect_source_request::InspectTranslationSourceRequest;
 pub use publish::PublishTranslationResultUseCase;

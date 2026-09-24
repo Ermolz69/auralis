@@ -5,18 +5,15 @@ use adapters_storage::{
         SqliteStorageUnitOfWork, SqliteTranslationLinkStore, connect_sqlite,
     },
 };
-use adapters_translate::{FormatInspector, TranslateResultReader, TranslateRunRegistrar};
+use adapters_translate::{
+    FormatInspector, TranslateResultReader, TranslateRunExecutor, TranslateRunRegistrar,
+};
 use application::usecases::translation::{
-    BeginTranslationRequest, BeginTranslationUseCase, InspectTranslationSourceUseCase,
-    PublishTranslationRequest, PublishTranslationResultUseCase,
+    BeginTranslationRequest, BeginTranslationUseCase, ExecuteTranslationRequest,
+    ExecuteTranslationUseCase, InspectTranslationSourceUseCase, PublishTranslationRequest,
+    PublishTranslationResultUseCase,
 };
 use application::worker::outbox::{OutboxWorker, maintenance::OutboxMaintenanceConfig};
-use auralis_translation::{
-    BlockPolicy, LanguageCode, LanguagePair, ProviderError, ProviderResponse, ResultId,
-    ReviewState, RunId, TargetSegment, TranslationBatch, TranslationProvider,
-};
-use auralis_translation_formats::srt::SrtRunPlan;
-use auralis_translation_sqlite::{ResultSpec, SqliteConfig, TranslateDb};
 use domain::media::{ArtifactId, ArtifactKind, ArtifactState};
 use domain::project::Project;
 use ports::artifact_index::ArtifactIndex;
@@ -25,30 +22,15 @@ use ports::storage::ArtifactStore;
 use ports::translation_inspection::TranslationSourceFormat;
 use ports::translation_links::{TranslationLinkStore, TranslationPublicationState};
 use std::error::Error;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 const PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.experimental.json"
 );
-
-struct FakeProvider;
-
-impl TranslationProvider for FakeProvider {
-    fn translate(&self, batch: &TranslationBatch) -> Result<ProviderResponse, ProviderError> {
-        Ok(ProviderResponse {
-            schema_version: 1,
-            translations: batch
-                .targets()
-                .iter()
-                .map(|segment| TargetSegment {
-                    id: segment.id(),
-                    lines: vec!["Привет.".into()],
-                })
-                .collect(),
-        })
-    }
-}
 
 struct NoEvents;
 
@@ -118,31 +100,29 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     })
     .await?;
 
-    let mut translate = TranslateDb::open(&translate_path, SqliteConfig::default())?;
-    let run_id_typed = RunId::new(run_id).ok_or("nil run ID")?;
-    let run = translate.run(run_id_typed)?;
-    let plan = SrtRunPlan::new(
-        source,
-        run.translation_id,
-        run_id_typed,
-        LanguagePair::new(LanguageCode::Chinese, LanguageCode::Russian)?,
-        BlockPolicy::default(),
-    )?;
-    translate.begin_initial_attempt(&run, None)?;
-    let expected_output = plan.execute(&FakeProvider, &mut translate)?;
-    let result_id = ResultId::new(Uuid::new_v4()).ok_or("nil result ID")?;
-    translate.commit_result(
-        &ResultSpec {
-            result_id,
-            run_id: run_id_typed,
-            revision: 1,
-            source_hash: plan.source_hash(),
-            block_fingerprints: plan.block_fingerprints(),
-            review_state: ReviewState::NeedsReview,
-        },
-        &plan,
-    )?;
-    drop(translate);
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let endpoint = format!("http://{}/", listener.local_addr()?);
+    let server = std::thread::spawn(move || respond_once(listener));
+    let result_id = ExecuteTranslationUseCase::new(
+        inspector.clone(),
+        links.clone(),
+        Arc::new(TranslateRunRegistrar::new(translate_path.clone())),
+        Arc::new(TranslateRunExecutor::experimental_unchecked(
+            translate_path.clone(),
+        )),
+    )
+    .execute(ExecuteTranslationRequest {
+        project_id: project.id().clone(),
+        translation_id,
+        server_url: endpoint,
+    })
+    .await?;
+    server
+        .join()
+        .map_err(|_| "mock server panicked")?
+        .map_err(|error| error.to_string())?;
+    let expected_output =
+        b"1\n00:00:01,000 --> 00:00:02,000\n\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82.\n";
 
     let publisher = PublishTranslationResultUseCase::new(
         inspector,
@@ -170,7 +150,7 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     let request = || PublishTranslationRequest {
         project_id: project.id().clone(),
         translation_id,
-        result_id: result_id.get(),
+        result_id,
     };
     let pending = publisher.execute(request()).await?;
     assert_eq!(pending.state, TranslationPublicationState::Pending);
@@ -191,7 +171,7 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     .with_translations(links.clone());
     assert_eq!(worker.process_pending_messages(10).await?.fetched, 1);
     let selected = links.get(translation_id).await?.ok_or("missing link")?;
-    assert_eq!(selected.selected_result_id, Some(result_id.get()));
+    assert_eq!(selected.selected_result_id, Some(result_id));
     assert_eq!(
         selected.output_artifact_id,
         Some(pending.artifact_id.clone())
@@ -209,6 +189,58 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     let output_path = file_store.resolve_artifact(&output_artifact).await?;
     assert_eq!(std::fs::read(output_path)?, expected_output);
     assert_eq!(std::fs::read(&source_path)?, source);
-    assert!(String::from_utf8(expected_output)?.contains("Привет."));
+    assert!(String::from_utf8(expected_output.to_vec())?.contains("Привет."));
     Ok(())
+}
+
+fn respond_once(listener: TcpListener) -> Result<(), Box<dyn Error + Send + Sync>> {
+    listener.set_nonblocking(true)?;
+    let started = Instant::now();
+    let mut stream = loop {
+        match listener.accept() {
+            Ok((stream, _)) => break stream,
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                if started.elapsed() > Duration::from_secs(10) {
+                    return Err("timed out waiting for model request".into());
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(error) => return Err(error.into()),
+        }
+    };
+    stream.set_read_timeout(Some(Duration::from_secs(5)))?;
+    read_request(&mut stream)?;
+    let body = r#"{"choices":[{"message":{"content":"Привет."},"finish_reason":"stop"}]}"#;
+    write!(
+        stream,
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    )?;
+    Ok(())
+}
+
+fn read_request(stream: &mut TcpStream) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let mut raw = Vec::new();
+    let mut buffer = [0_u8; 4096];
+    loop {
+        let count = stream.read(&mut buffer)?;
+        if count == 0 {
+            return Err("model request ended early".into());
+        }
+        raw.extend_from_slice(&buffer[..count]);
+        if let Some(header_end) = raw.windows(4).position(|part| part == b"\r\n\r\n") {
+            let headers = std::str::from_utf8(&raw[..header_end])?;
+            let length = headers
+                .lines()
+                .find_map(|line| {
+                    line.to_ascii_lowercase()
+                        .strip_prefix("content-length: ")
+                        .and_then(|value| value.parse::<usize>().ok())
+                })
+                .ok_or("missing model request length")?;
+            if raw.len() >= header_end + 4 + length {
+                return Ok(());
+            }
+        }
+    }
 }
