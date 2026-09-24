@@ -12,6 +12,7 @@ thiserror.workspace = true
 async-trait.workspace = true
 tokio = { workspace = true, features = ["sync", "time", "rt", "macros", "fs"] }
 uuid = { workspace = true, features = ["v4"] }
+chrono.workspace = true
 tempfile.workspace = true
 bytes.workspace = true
 tracing.workspace = true
@@ -24,6 +25,8 @@ adapters-storage.workspace = true
 adapters-ytdlp.workspace = true
 adapters-model.workspace = true
 adapters-translate.workspace = true
+auralis-translation = { path = "../../modules/auralis-translate/crates/auralis-translation" }
+auralis-translation-sqlite = { path = "../../modules/auralis-translate/crates/auralis-translation-sqlite" }
 adapters-ffmpeg.workspace = true
 jobs.workspace = true
 tempfile.workspace = true

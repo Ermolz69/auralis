@@ -74,10 +74,14 @@ dependencies = [
  "async-trait",
  "auralis-translation",
  "auralis-translation-formats",
+ "auralis-translation-llamacpp",
  "auralis-translation-sqlite",
+ "chrono",
+ "domain",
  "ports",
  "tempfile",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -159,6 +163,8 @@ dependencies = [
  "adapters-translate",
  "adapters-ytdlp",
  "async-trait",
+ "auralis-translation",
+ "auralis-translation-sqlite",
  "bytes",
  "chrono",
  "common",
@@ -278,6 +284,16 @@ name = "auralis-translation-formats"
 version = "0.1.0"
 dependencies = [
  "auralis-translation",
+]
+
+[[package]]
+name = "auralis-translation-llamacpp"
+version = "0.1.0"
+dependencies = [
+ "auralis-translation",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3016,6 +3032,7 @@ checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
 dependencies = [
  "base64 0.22.1",
  "bytes",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "http",

@@ -172,8 +172,11 @@ text. Repeating the same IDs and configuration succeeds; conflicting configurati
 `run_intent(run_id)` reads the record for reconciliation after a crash between the two database
 writes. A failed intent insert rolls back the link. Earlier version-6 links migrate without
 invented run-intent records; the integration layer must handle those legacy links explicitly.
-New starts should use `begin_with_run_intent`; `begin` remains for compatibility with older
-callers. The current `start_run` method does not yet freeze configuration for later runs.
+New starts use `begin_with_run_intent`; `begin` remains for compatibility with older callers.
+`BeginTranslationUseCase` commits this intent before idempotent Translate registration, and
+`ReconcileTranslationRunsUseCase` can replay it for every active link after a failed second write.
+The reconciliation entry point is not yet wired to desktop startup. The current `start_run`
+method does not yet freeze configuration for later runs.
 
 Atomic YouTube import explicitly returns `Unsupported` on the in-memory adapter because it has
 no shared durable artifact/outbox transaction. Its contract tests use the real SQLite adapter.

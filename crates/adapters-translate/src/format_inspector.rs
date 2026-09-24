@@ -130,7 +130,7 @@ fn invalid_range(error: std::num::TryFromIntError) -> PortError {
     }
 }
 
-fn read_bounded(path: &Path, max_bytes: usize) -> Result<Vec<u8>, PortError> {
+pub(crate) fn read_bounded(path: &Path, max_bytes: usize) -> Result<Vec<u8>, PortError> {
     let file = std::fs::File::open(path).map_err(io_error)?;
     if file.metadata().map_err(io_error)?.len() > max_bytes as u64 {
         return Err(PortError::InvalidSource {

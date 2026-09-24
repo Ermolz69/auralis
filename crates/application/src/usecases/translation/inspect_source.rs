@@ -5,6 +5,7 @@ use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
 use ports::storage::ArtifactStore;
 use ports::translation_inspection::{TranslationInspection, TranslationInspectorPort};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 pub struct InspectTranslationSourceUseCase {
@@ -33,6 +34,15 @@ impl InspectTranslationSourceUseCase {
         &self,
         request: InspectTranslationSourceRequest,
     ) -> Result<TranslationInspection, ApplicationError> {
+        self.inspect_with_path(request)
+            .await
+            .map(|(_, report)| report)
+    }
+
+    pub(crate) async fn inspect_with_path(
+        &self,
+        request: InspectTranslationSourceRequest,
+    ) -> Result<(PathBuf, TranslationInspection), ApplicationError> {
         self.projects
             .get(&request.project_id)
             .await?
@@ -63,6 +73,6 @@ impl InspectTranslationSourceUseCase {
                 message: "Original subtitle artifact size differs from the indexed value".into(),
             });
         }
-        Ok(inspection)
+        Ok((source_path, inspection))
     }
 }

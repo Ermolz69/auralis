@@ -1,6 +1,6 @@
 # Auralis Translate integration status
 
-Status: inspection and storage integration in progress, 24 September 2026.
+Status: inspection, durable run registration, and storage integration in progress, 24 September 2026.
 
 The independent Translate repository is pinned as a Git submodule at `modules/auralis-translate`. `.gitmodules` uses the relative sibling URL `../auralis-translate`. This local checkout builds against the pinned commit; the sibling GitHub repository must be created and pushed before another clone can initialise it from GitHub. Auralis excludes the nested workspace from its own workspace members and imports Translate crates through Cargo path dependencies. Translate rusqlite 0.39 and Auralis SQLx 0.9 resolve to one compatible `libsqlite3-sys` version.
 
@@ -19,7 +19,9 @@ flowchart LR
     F --> M["Source hash and text-slot map"]
 ```
 
-Inspection is an application API, not yet exposed through Tauri or the UI. It does not create a Translate run or project translation link. Auralis SQLite schema v7 provides `begin_with_run_intent`, which atomically stores the project link and the exact frozen profile and planning configuration needed to retry Translate run creation. The application must call it before idempotently creating the Translate run in the separate database. Recovery must repeat that second step after a crash between the two database writes. The application does not yet invoke this new path. A project result is selected only after the translated copy is a ready managed artifact.
+Inspection is an application API, not yet exposed through Tauri or the UI. Auralis SQLite schema v7 provides `begin_with_run_intent`, which atomically stores the project link and the exact frozen profile and planning configuration needed to retry Translate run creation. `BeginTranslationUseCase` validates a ready project-owned original, inspects its strict format, freezes a validated model profile and parser policy, commits the link and run intent, then calls `TranslateRunRegistrar::ensure_run` against the separate SQLite file. Registration verifies the original hash and frozen configuration again before writing Translate translations, source segments, and the block plan. Repeating the same request is idempotent; a changed source or profile conflicts.
+
+`ReconcileTranslationRunsUseCase` enumerates active links, reads their frozen intents, rechecks the original, and retries missing Translate records. It reports each link's outcome independently, including a legacy link with no frozen intent. A real two-database integration test starts with the Translate database directory absent, observes the persisted Auralis link, then creates the directory and reconciles the run. The original remains byte-for-byte unchanged. Host job scheduling, inference, Tauri/UI exposure, and output publication are still open. A project result is selected only after the translated copy is a ready managed artifact.
 
 ## Checks
 
