@@ -1,9 +1,25 @@
 use super::{row, validation};
 use ports::error::PortError;
 use ports::translation_links::PublicationIntent;
+#[cfg(test)]
 use sqlx::SqlitePool;
+use sqlx::{Sqlite, Transaction};
 
+#[cfg(test)]
 pub(super) async fn record(pool: &SqlitePool, intent: &PublicationIntent) -> Result<(), PortError> {
+    let mut transaction = pool.begin_with("BEGIN IMMEDIATE").await.map_err(|error| {
+        super::super::helpers::map_sqlite_error("record_translation_publication", error)
+    })?;
+    record_in_tx(&mut transaction, intent).await?;
+    transaction.commit().await.map_err(|error| {
+        super::super::helpers::map_sqlite_error("commit_translation_publication", error)
+    })
+}
+
+pub(super) async fn record_in_tx(
+    transaction: &mut Transaction<'_, Sqlite>,
+    intent: &PublicationIntent,
+) -> Result<(), PortError> {
     validation::uuid(intent.translation_id, "ID")?;
     validation::uuid(intent.result_id, "result ID")?;
     validation::uuid(intent.run_id, "run ID")?;
@@ -15,16 +31,13 @@ pub(super) async fn record(pool: &SqlitePool, intent: &PublicationIntent) -> Res
     }
     let expected_revision = i64::try_from(intent.expected_link_revision)
         .map_err(|_| validation::conflict("invalid expected link revision"))?;
-    let mut transaction = pool.begin_with("BEGIN IMMEDIATE").await.map_err(|error| {
-        super::super::helpers::map_sqlite_error("record_translation_publication", error)
-    })?;
     let existing: Option<(String, String, String, i64, i64)> = sqlx::query_as(
         "SELECT run_id, artifact_id, source_sha256, expected_link_revision, needs_review
          FROM translation_publications WHERE translation_id = ? AND result_id = ?",
     )
     .bind(intent.translation_id.to_string())
     .bind(intent.result_id.to_string())
-    .fetch_optional(&mut *transaction)
+    .fetch_optional(&mut **transaction)
     .await
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("read_translation_publication", error)
@@ -42,7 +55,7 @@ pub(super) async fn record(pool: &SqlitePool, intent: &PublicationIntent) -> Res
             "result publication differs from stored record",
         ));
     }
-    let link = row::load(&mut *transaction, intent.translation_id)
+    let link = row::load(&mut **transaction, intent.translation_id)
         .await?
         .ok_or_else(|| PortError::NotFound {
             resource: "translation link".into(),
@@ -58,7 +71,7 @@ pub(super) async fn record(pool: &SqlitePool, intent: &PublicationIntent) -> Res
     let artifact: Option<(String, String, String)> =
         sqlx::query_as("SELECT project_id, kind, state FROM artifacts WHERE id = ?")
             .bind(intent.artifact_id.to_string())
-            .fetch_optional(&mut *transaction)
+            .fetch_optional(&mut **transaction)
             .await
             .map_err(|error| {
                 super::super::helpers::map_sqlite_error("check_translation_output", error)
@@ -91,12 +104,10 @@ pub(super) async fn record(pool: &SqlitePool, intent: &PublicationIntent) -> Res
     .bind(i64::from(intent.needs_review))
     .bind(intent.created_at.to_rfc3339())
     .bind(intent.created_at.to_rfc3339())
-    .execute(&mut *transaction)
+    .execute(&mut **transaction)
     .await
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("insert_translation_publication", error)
     })?;
-    transaction.commit().await.map_err(|error| {
-        super::super::helpers::map_sqlite_error("commit_translation_publication", error)
-    })
+    Ok(())
 }

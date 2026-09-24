@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use super::SqliteTranslationLinkStore;
+use super::{SqliteTranslationLinkStore, publication};
 use crate::sqlite::connect_sqlite;
 use chrono::Utc;
 use domain::media::ArtifactId;
@@ -134,8 +134,8 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
         needs_review: true,
         created_at: Utc::now(),
     };
-    store.record_publication(publication.clone()).await.unwrap();
-    store.record_publication(publication.clone()).await.unwrap();
+    publication::record(&pool, &publication).await.unwrap();
+    publication::record(&pool, &publication).await.unwrap();
     assert!(matches!(
         store
             .select_ready_result(
@@ -211,7 +211,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
         ..publication
     };
     assert!(matches!(
-        store.record_publication(newer).await,
+        publication::record(&pool, &newer).await,
         Err(PortError::Conflict { .. })
     ));
     let next = StartTranslationRun {

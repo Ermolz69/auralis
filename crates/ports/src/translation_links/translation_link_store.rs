@@ -1,5 +1,6 @@
 use super::{PublicationIntent, StartTranslationRun, TranslationIntent, TranslationLink};
 use crate::error::PortError;
+use crate::storage::StagedArtifact;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use domain::project::ProjectId;
@@ -15,7 +16,11 @@ pub trait TranslationLinkStore: Send + Sync {
     ) -> Result<Vec<TranslationLink>, PortError>;
     async fn list_active(&self) -> Result<Vec<TranslationLink>, PortError>;
     async fn start_run(&self, request: StartTranslationRun) -> Result<TranslationLink, PortError>;
-    async fn record_publication(&self, intent: PublicationIntent) -> Result<(), PortError>;
+    async fn commit_staged_publication(
+        &self,
+        intent: PublicationIntent,
+        staged: StagedArtifact,
+    ) -> Result<(), PortError>;
     async fn select_ready_result(
         &self,
         translation_id: Uuid,

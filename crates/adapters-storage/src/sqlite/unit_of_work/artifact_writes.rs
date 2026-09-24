@@ -43,7 +43,7 @@ pub(super) async fn save_artifact(
     Ok(())
 }
 
-pub(super) async fn insert_new_artifact(
+pub(crate) async fn insert_new_artifact(
     tx: &mut Transaction<'_, Sqlite>,
     project_id: &domain::project::ProjectId,
     artifact: &Artifact,
