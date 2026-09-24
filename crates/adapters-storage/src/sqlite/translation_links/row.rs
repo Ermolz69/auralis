@@ -42,7 +42,7 @@ where
 }
 
 impl LinkRow {
-    fn decode(self) -> Result<TranslationLink, PortError> {
+    pub(super) fn decode(self) -> Result<TranslationLink, PortError> {
         let invalid = |field: &str| PortError::InvalidStoredData {
             entity_type: "TranslationLink".into(),
             entity_id: self.translation_id.clone(),

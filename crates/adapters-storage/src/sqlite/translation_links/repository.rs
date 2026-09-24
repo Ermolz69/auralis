@@ -1,6 +1,7 @@
-use super::{begin, publication, row, select, start_run};
+use super::{begin, list, publication, row, select, start_run};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use domain::project::ProjectId;
 use ports::error::PortError;
 use ports::translation_links::{
     PublicationIntent, StartTranslationRun, TranslationIntent, TranslationLink,
@@ -27,6 +28,17 @@ impl TranslationLinkStore for SqliteTranslationLinkStore {
 
     async fn get(&self, translation_id: Uuid) -> Result<Option<TranslationLink>, PortError> {
         row::load(&self.pool, translation_id).await
+    }
+
+    async fn list_by_project(
+        &self,
+        project_id: &ProjectId,
+    ) -> Result<Vec<TranslationLink>, PortError> {
+        list::by_project(&self.pool, project_id).await
+    }
+
+    async fn list_active(&self) -> Result<Vec<TranslationLink>, PortError> {
+        list::active(&self.pool).await
     }
 
     async fn start_run(&self, request: StartTranslationRun) -> Result<TranslationLink, PortError> {

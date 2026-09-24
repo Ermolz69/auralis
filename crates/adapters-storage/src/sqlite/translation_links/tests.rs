@@ -15,8 +15,51 @@ use uuid::Uuid;
 async fn seed_project(pool: &SqlitePool, project_id: &ProjectId, source_id: &ArtifactId) {
     sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'Test', 'Draft', 'now', 'now')")
         .bind(project_id.to_string()).execute(pool).await.unwrap();
-    sqlx::query("INSERT INTO artifacts (id, project_id, kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'OriginalSubtitle', 'source.srt', 'ready', 'now', 'now')")
-        .bind(source_id.to_string()).bind(project_id.to_string()).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO artifacts (id, project_id, kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'OriginalSubtitle', ?, 'ready', 'now', 'now')")
+        .bind(source_id.to_string()).bind(project_id.to_string()).bind(format!("source-{source_id}.srt")).execute(pool).await.unwrap();
+}
+
+#[tokio::test]
+async fn project_and_active_lists_keep_links_visible_across_restart() {
+    let directory = tempfile::tempdir().unwrap();
+    let db_path = directory.path().join("auralis.sqlite");
+    let pool = connect_sqlite(&db_path).await.unwrap();
+    let first_project = ProjectId::new();
+    let second_project = ProjectId::new();
+    let first_source = ArtifactId::new();
+    let second_source = ArtifactId::new();
+    seed_project(&pool, &first_project, &first_source).await;
+    seed_project(&pool, &second_project, &second_source).await;
+    let first = intent(first_project.clone(), first_source);
+    let second = intent(second_project.clone(), second_source);
+    let store = SqliteTranslationLinkStore::new(pool.clone());
+    store.begin(first.clone()).await.unwrap();
+    store.begin(second.clone()).await.unwrap();
+    assert_eq!(
+        store.list_by_project(&first_project).await.unwrap()[0].translation_id,
+        first.translation_id
+    );
+    assert_eq!(
+        store.list_by_project(&first_project).await.unwrap().len(),
+        1
+    );
+    assert_eq!(
+        store.list_by_project(&second_project).await.unwrap().len(),
+        1
+    );
+    assert_eq!(store.list_active().await.unwrap().len(), 2);
+    pool.close().await;
+
+    let reopened = connect_sqlite(&db_path).await.unwrap();
+    let store = SqliteTranslationLinkStore::new(reopened);
+    let active = store.list_active().await.unwrap();
+    assert_eq!(active.len(), 2);
+    assert!(active.iter().any(|link| {
+        link.translation_id == first.translation_id && link.active_run_id == Some(first.run_id)
+    }));
+    assert!(active.iter().any(|link| {
+        link.translation_id == second.translation_id && link.active_run_id == Some(second.run_id)
+    }));
 }
 
 fn intent(project_id: ProjectId, source_id: ArtifactId) -> TranslationIntent {
@@ -151,6 +194,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
     assert_eq!(selected.output_artifact_id, Some(output_id));
     assert_eq!(selected.active_run_id, None);
     assert_eq!(selected.revision, 2);
+    assert!(store.list_active().await.unwrap().is_empty());
     assert_eq!(
         store
             .select_ready_result(
@@ -178,6 +222,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
         updated_at: Utc::now(),
     };
     let running = store.start_run(next.clone()).await.unwrap();
+    assert_eq!(store.list_active().await.unwrap().len(), 1);
     assert_eq!(running.active_run_id, Some(next.run_id));
     assert_eq!(running.selected_result_id, selected.selected_result_id);
     assert_eq!(running.output_artifact_id, selected.output_artifact_id);
