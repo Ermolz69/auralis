@@ -23,6 +23,7 @@ jobs.workspace = true
 adapters-storage.workspace = true
 adapters-ytdlp.workspace = true
 adapters-model.workspace = true
+adapters-translate.workspace = true
 adapters-ffmpeg.workspace = true
 adapters-tauri.workspace = true
 tokio = { workspace = true, features = ["rt", "time", "macros", "sync"] }

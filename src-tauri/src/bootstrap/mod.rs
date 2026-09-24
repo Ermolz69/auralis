@@ -5,6 +5,7 @@ pub mod native_e2e_subtitle_source;
 pub mod paths;
 pub mod services;
 pub mod storage;
+pub mod translation;
 pub mod usecases;
 pub mod workers;
 
@@ -51,6 +52,25 @@ pub fn setup(
     // 1. Setup storage Adapter (fallible)
     let (services, outbox_repo) = storage::setup_storage(&app_paths, storage_lease)?;
     record_native_e2e_checkpoint("storage-ready");
+
+    let translations = translation::TranslationUseCases::new(
+        services.project_repo.clone(),
+        services.artifact_index.clone(),
+        services.artifact_store.clone(),
+        services.translation_links.clone(),
+        app_paths.translate_database(),
+    );
+    for item in tauri::async_runtime::block_on(translations.reconcile.execute())? {
+        if let Err(error) = item.outcome {
+            tracing::warn!(
+                translation_id = %item.translation_id,
+                error = %error,
+                "translation run registration needs attention"
+            );
+        }
+    }
+    app.manage(Arc::new(translations));
+    record_native_e2e_checkpoint("translations-ready");
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
         workspace_root.clone(),

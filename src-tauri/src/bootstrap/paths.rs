@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 const DATABASE_FILE_NAME: &str = "auralis.sqlite";
+const TRANSLATE_DATABASE_FILE_NAME: &str = "auralis-translate.sqlite";
 const PROJECTS_DIRECTORY_NAME: &str = "projects";
 const LOGS_DIRECTORY_NAME: &str = "logs";
 const CACHE_DIRECTORY_NAME: &str = "cache";
@@ -46,6 +47,10 @@ impl AppPaths {
 
     pub fn database(&self) -> PathBuf {
         self.root.join(DATABASE_FILE_NAME)
+    }
+
+    pub fn translate_database(&self) -> PathBuf {
+        self.root.join(TRANSLATE_DATABASE_FILE_NAME)
     }
 
     pub fn projects(&self) -> PathBuf {
@@ -93,6 +98,10 @@ mod tests {
         let paths = AppPaths::new(root.clone());
 
         assert_eq!(paths.database(), root.join("auralis.sqlite"));
+        assert_eq!(
+            paths.translate_database(),
+            root.join("auralis-translate.sqlite")
+        );
     }
 
     #[test]
