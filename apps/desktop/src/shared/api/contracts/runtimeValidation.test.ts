@@ -144,6 +144,7 @@ describe('IPC runtime validation', () => {
       updatedAt: '2026-09-25T00:01:00Z',
     };
     expect(parseCommandResult('list_project_translations_cmd', [link])).toEqual([link]);
+    expect(parseCommandResult('begin_translation_run_cmd', link)).toEqual(link);
     expect(() =>
       parseCommandResult('list_project_translations_cmd', [
         { ...link, outputArtifactId: null },
@@ -153,6 +154,30 @@ describe('IPC runtime validation', () => {
       parseCommandResult('list_project_translations_cmd', [
         { ...link, sourceLanguage: 'fr' },
       ]),
+    ).toThrow(IpcContractError);
+  });
+
+  it('validates translation edit and publication identities', () => {
+    const resultId = '00000000-0000-4000-8000-000000000021';
+    const publication = {
+      translationId: '00000000-0000-4000-8000-000000000022',
+      resultId,
+      runId: '00000000-0000-4000-8000-000000000023',
+      artifactId: '00000000-0000-4000-8000-000000000024',
+      sourceSha256: 'b'.repeat(64),
+      needsReview: true,
+      state: 'pending',
+    };
+    expect(parseCommandResult('edit_translation_result_cmd', resultId)).toBe(resultId);
+    expect(parseCommandResult('publish_translation_result_cmd', publication)).toEqual(publication);
+    expect(() => parseCommandResult('edit_translation_result_cmd', 'bad-id')).toThrow(
+      IpcContractError,
+    );
+    expect(() =>
+      parseCommandResult('publish_translation_result_cmd', {
+        ...publication,
+        state: 'unknown',
+      }),
     ).toThrow(IpcContractError);
   });
 

@@ -5,7 +5,9 @@ import type { Project } from './project';
 import {
   validateTranslationInspection,
   validateTranslationLink,
+  validateTranslationPublication,
   validateTranslationRunSnapshot,
+  isUuid,
 } from './translationValidation';
 import { validateMediaMetadata, validateMediaSource } from './mediaValidation';
 import {
@@ -143,6 +145,9 @@ const commandResultValidators = {
   list_project_artifacts_cmd: (value) => isArrayOf(value, validateArtifact),
   resolve_artifact_path_cmd: isString,
   inspect_translation_source_cmd: validateTranslationInspection,
+  begin_translation_run_cmd: validateTranslationLink,
+  edit_translation_result_cmd: isUuid,
+  publish_translation_result_cmd: validateTranslationPublication,
   list_project_translations_cmd: (value) => isArrayOf(value, validateTranslationLink),
   get_translation_run_status_cmd: validateTranslationRunSnapshot,
   pause_translation_run_cmd: isNull,

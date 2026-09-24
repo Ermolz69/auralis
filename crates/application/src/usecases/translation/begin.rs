@@ -43,12 +43,17 @@ impl BeginTranslationUseCase {
                 format: request.format,
             })
             .await?;
+        let created_at = self
+            .links
+            .run_intent(request.run_id)
+            .await?
+            .map_or(request.created_at, |existing| existing.created_at);
         let run = self.registrar.prepare_intent(
             request.format,
             request.translation_id,
             request.run_id,
             request.profile_manifest_json,
-            request.created_at,
+            created_at,
         )?;
         if run.parser_version != inspection.parser_version {
             return Err(ApplicationError::InvalidOperation {

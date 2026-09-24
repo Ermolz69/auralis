@@ -8,7 +8,12 @@ import type { ProjectAvatar } from './projectAvatar';
 import type { PendingYoutubeImport } from './youtubeImport';
 import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
-import type { TranslationInspection, TranslationLink, TranslationRunSnapshot } from './translation';
+import type {
+  TranslationInspection,
+  TranslationLink,
+  TranslationPublication,
+  TranslationRunSnapshot,
+} from './translation';
 
 export interface CommandMap {
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
@@ -98,6 +103,32 @@ export interface CommandMap {
   inspect_translation_source_cmd: {
     args: { projectId: string; sourceArtifactId: string; format: 'srt' | 'vtt' };
     result: TranslationInspection;
+  };
+  begin_translation_run_cmd: {
+    args: { input: {
+      projectId: string;
+      sourceArtifactId: string;
+      format: 'srt' | 'vtt';
+      sourceLanguage: 'zh';
+      translationId: string;
+      runId: string;
+    } };
+    result: TranslationLink;
+  };
+  edit_translation_result_cmd: {
+    args: { input: {
+      projectId: string;
+      translationId: string;
+      baseResultId: string;
+      resultId: string;
+      segmentId: number;
+      lines: string[];
+    } };
+    result: string;
+  };
+  publish_translation_result_cmd: {
+    args: { projectId: string; translationId: string; resultId: string };
+    result: TranslationPublication;
   };
   list_project_translations_cmd: {
     args: { projectId: string };

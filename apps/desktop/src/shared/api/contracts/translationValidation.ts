@@ -1,4 +1,9 @@
-import type { TranslationInspection, TranslationLink, TranslationRunSnapshot } from './translation';
+import type {
+  TranslationInspection,
+  TranslationLink,
+  TranslationPublication,
+  TranslationRunSnapshot,
+} from './translation';
 import {
   isNonNegativeSafeInteger,
   isNullable,
@@ -8,7 +13,21 @@ import {
 } from './validationPrimitives';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const isUuid = (value: unknown): value is string => isString(value) && uuid.test(value);
+export const isUuid = (value: unknown): value is string => isString(value) && uuid.test(value);
+
+export function validateTranslationPublication(value: unknown): value is TranslationPublication {
+  return (
+    isRecord(value) &&
+    isUuid(value.translationId) &&
+    isUuid(value.resultId) &&
+    isUuid(value.runId) &&
+    isUuid(value.artifactId) &&
+    isString(value.sourceSha256) &&
+    /^[0-9a-f]{64}$/.test(value.sourceSha256) &&
+    typeof value.needsReview === 'boolean' &&
+    (value.state === 'pending' || value.state === 'ready' || value.state === 'failed')
+  );
+}
 
 export function validateTranslationLink(value: unknown): value is TranslationLink {
   return (

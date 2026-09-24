@@ -23,6 +23,9 @@ use uuid::Uuid;
 const PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.experimental.json"
 );
+const CHECKED_PROFILE: &str = include_str!(
+    "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.checked.experimental.json"
+);
 
 #[tokio::test]
 async fn begin_keeps_link_after_translate_database_failure_and_retries()
@@ -94,6 +97,29 @@ async fn begin_keeps_link_after_translate_database_failure_and_retries()
     let completed = begin.execute(request()).await?;
     assert_eq!(completed.translation_id, translation_id);
     assert_eq!(completed.active_run_id, Some(run_id));
+    let retried = begin
+        .execute(BeginTranslationRequest {
+            created_at: created_at + domain::chrono::Duration::seconds(1),
+            ..request()
+        })
+        .await?;
+    assert_eq!(retried, completed);
+    let checked_translation_id = Uuid::new_v4();
+    let checked_run_id = Uuid::new_v4();
+    let checked = begin
+        .execute(BeginTranslationRequest {
+            project_id: project.id().clone(),
+            source_artifact_id: source_id.clone(),
+            format: TranslationSourceFormat::Srt,
+            source_language: "zh".into(),
+            translation_id: checked_translation_id,
+            run_id: checked_run_id,
+            profile_manifest_json: CHECKED_PROFILE.into(),
+            created_at,
+        })
+        .await?;
+    assert_eq!(checked.active_run_id, Some(checked_run_id));
+    assert!(links.run_intent(checked_run_id).await?.is_some());
     assert_eq!(std::fs::read(&source_path)?, original);
 
     let translated = TranslateDb::open(&translate_path, SqliteConfig::default())?;
@@ -126,11 +152,16 @@ async fn begin_keeps_link_after_translate_database_failure_and_retries()
         })
         .await?;
     let outcomes = reconcile.execute().await?;
-    assert_eq!(outcomes.len(), 2);
+    assert_eq!(outcomes.len(), 3);
     assert!(
         outcomes
             .iter()
             .any(|item| item.translation_id == translation_id && item.outcome.is_ok())
+    );
+    assert!(
+        outcomes
+            .iter()
+            .any(|item| item.translation_id == checked_translation_id && item.outcome.is_ok())
     );
     assert!(
         outcomes

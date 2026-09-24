@@ -15,6 +15,10 @@ use ports::translation_links::TranslationLinkStore;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+pub(crate) const EXPERIMENTAL_CHECKED_CHINESE_PROFILE: &str = include_str!(
+    "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.checked.experimental.json"
+);
+
 pub struct TranslationUseCases {
     pub inspect: Arc<InspectTranslationSourceUseCase>,
     pub list: ListProjectTranslationsUseCase,

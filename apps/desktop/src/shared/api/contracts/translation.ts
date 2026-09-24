@@ -32,6 +32,16 @@ export interface TranslationLink {
   updatedAt: string;
 }
 
+export interface TranslationPublication {
+  translationId: string;
+  resultId: string;
+  runId: string;
+  artifactId: string;
+  sourceSha256: string;
+  needsReview: boolean;
+  state: 'pending' | 'ready' | 'failed';
+}
+
 export type TranslationRunPhase = 'requested' | 'running' | 'paused' | 'failed' | 'validated';
 
 export interface TranslationRunSnapshot {

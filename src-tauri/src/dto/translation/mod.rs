@@ -1,12 +1,20 @@
+mod begin_request;
+mod edit_request;
 mod format;
 mod inspection;
 mod link;
+mod publication;
 mod run_phase;
 mod run_snapshot;
 mod segment;
+mod source_language;
 
+pub use begin_request::BeginTranslationRunDto;
+pub use edit_request::EditTranslationResultDto;
 pub use format::TranslationFormatDto;
 pub use inspection::TranslationInspectionDto;
 pub use link::TranslationLinkDto;
+pub use publication::TranslationPublicationDto;
 pub use run_snapshot::TranslationRunSnapshotDto;
 pub use segment::TranslationSegmentDto;
+pub use source_language::TranslationSourceLanguageDto;
