@@ -15,6 +15,7 @@ pub mod media;
 pub mod project_avatar;
 pub mod project_update;
 pub mod project_workspace;
+pub mod recovered_translation_run;
 pub mod recovery;
 pub mod repository;
 pub mod source;

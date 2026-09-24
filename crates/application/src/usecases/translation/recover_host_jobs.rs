@@ -50,9 +50,33 @@ impl RecoverTranslationHostJobsUseCase {
             });
         }
         self.runs.recover_for_host(active.run_id, job.id()).await?;
-        let phase = self.runs.phase(active.run_id).await?;
+        let state = self.runs.state(active.run_id).await?;
+        if state.run_id != active.run_id {
+            return Err(ApplicationError::InvalidOperation {
+                message: "Recovered progress belongs to another translation run".into(),
+            });
+        }
+        if job.status() == &JobStatus::Running {
+            let saved = u64::try_from(state.saved_blocks).map_err(|_| {
+                ApplicationError::InvalidOperation {
+                    message: "Recovered checkpoint count exceeds host range".into(),
+                }
+            })?;
+            let total = u64::try_from(state.total_blocks).map_err(|_| {
+                ApplicationError::InvalidOperation {
+                    message: "Recovered block plan exceeds host range".into(),
+                }
+            })?;
+            if job.progress().processed_items != Some(saved)
+                || job.progress().total_items != Some(total)
+            {
+                let expected_revision = job.revision();
+                job.report_translation_progress(saved, total)?;
+                self.jobs.record_progress(&job, expected_revision).await?;
+            }
+        }
         let expected_revision = job.revision();
-        match phase {
+        match state.phase {
             TranslationRunPhase::Validated if job.status() == &JobStatus::Running => {
                 job.mark_completed()?;
             }

@@ -131,6 +131,10 @@ async fn recovery_adapter_only_pauses_its_matching_host_attempt() -> Result<(), 
     drop(database);
     assert!(recovery.recover_for_host(intent.run_id, &owner).await?);
     assert!(!recovery.recover_for_host(intent.run_id, &owner).await?);
+    let recovered = recovery.state(intent.run_id).await?;
+    assert_eq!(recovered.run_id, intent.run_id);
+    assert_eq!(recovered.phase, TranslationRunPhase::Paused);
+    assert_eq!((recovered.saved_blocks, recovered.total_blocks), (0, 1));
     let database = TranslateDb::open(&database_path, SqliteConfig::default())?;
     assert_eq!(
         database.run_state(run_id)?,

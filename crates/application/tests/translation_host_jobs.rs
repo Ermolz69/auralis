@@ -12,6 +12,7 @@ use domain::job::{Job, JobId, JobKind, JobStatus};
 use domain::media::ArtifactId;
 use domain::project::{Project, ProjectId};
 use ports::error::PortError;
+use ports::recovered_translation_run::RecoveredTranslationRun;
 use ports::repository::{JobRepository, ProjectRepository};
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLink;
@@ -32,6 +33,8 @@ struct FixedRunControl {
 struct FixedRecovery {
     phase: TranslationRunPhase,
     fail: bool,
+    saved_blocks: usize,
+    total_blocks: usize,
 }
 
 #[async_trait]
@@ -46,8 +49,13 @@ impl TranslationRunRecoveryPort for FixedRecovery {
         Ok(false)
     }
 
-    async fn phase(&self, _run_id: Uuid) -> Result<TranslationRunPhase, PortError> {
-        Ok(self.phase)
+    async fn state(&self, run_id: Uuid) -> Result<RecoveredTranslationRun, PortError> {
+        Ok(RecoveredTranslationRun {
+            run_id,
+            phase: self.phase,
+            saved_blocks: self.saved_blocks,
+            total_blocks: self.total_blocks,
+        })
     }
 }
 
@@ -196,6 +204,8 @@ async fn startup_recovery_closes_pending_and_validated_jobs_without_losing_the_r
         Arc::new(FixedRecovery {
             phase: TranslationRunPhase::Requested,
             fail: false,
+            saved_blocks: 0,
+            total_blocks: 2,
         }),
     );
     let recovered = pending_recovery.execute().await?;
@@ -227,20 +237,21 @@ async fn startup_recovery_closes_pending_and_validated_jobs_without_losing_the_r
         Arc::new(FixedRecovery {
             phase: TranslationRunPhase::Validated,
             fail: false,
+            saved_blocks: 2,
+            total_blocks: 2,
         }),
     );
     let recovered = validated_recovery.execute().await?;
     assert_eq!(recovered.len(), 1);
     assert!(recovered[0].outcome.is_ok());
     assert!(jobs.active_for_run(run_id).await?.is_none());
-    assert_eq!(
-        SqliteJobRepository::new(pool)
-            .get(resumed.id())
-            .await?
-            .ok_or("missing resumed job")?
-            .status(),
-        &JobStatus::Completed
-    );
+    let recovered_job = SqliteJobRepository::new(pool)
+        .get(resumed.id())
+        .await?
+        .ok_or("missing resumed job")?;
+    assert_eq!(recovered_job.status(), &JobStatus::Completed);
+    assert_eq!(recovered_job.progress().processed_items, Some(2));
+    assert_eq!(recovered_job.progress().total_items, Some(2));
     Ok(())
 }
 
@@ -262,6 +273,8 @@ async fn failed_scoped_recovery_leaves_the_host_job_for_attention() -> Result<()
         Arc::new(FixedRecovery {
             phase: TranslationRunPhase::Running,
             fail: true,
+            saved_blocks: 1,
+            total_blocks: 2,
         }),
     );
     let outcomes = recovery.execute().await?;

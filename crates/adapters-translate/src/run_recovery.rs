@@ -3,6 +3,7 @@ use auralis_translation::{RunId, RunState};
 use auralis_translation_sqlite::{DbError, SqliteConfig, TranslateDb};
 use domain::job::JobId;
 use ports::error::PortError;
+use ports::recovered_translation_run::RecoveredTranslationRun;
 use ports::translation_run_control::TranslationRunPhase;
 use ports::translation_run_recovery::TranslationRunRecoveryPort;
 use std::path::{Path, PathBuf};
@@ -30,9 +31,9 @@ impl TranslationRunRecoveryPort for TranslateRunRecovery {
             })?
     }
 
-    async fn phase(&self, run_id: Uuid) -> Result<TranslationRunPhase, PortError> {
+    async fn state(&self, run_id: Uuid) -> Result<RecoveredTranslationRun, PortError> {
         let database_path = self.database_path.clone();
-        tokio::task::spawn_blocking(move || read_phase(&database_path, run_id))
+        tokio::task::spawn_blocking(move || read_state(&database_path, run_id))
             .await
             .map_err(|error| PortError::Unexpected {
                 message: error.to_string(),
@@ -47,15 +48,29 @@ fn recover(database_path: &Path, run_id: Uuid, job_id: &str) -> Result<bool, Por
         .map_err(map_db)
 }
 
-fn read_phase(database_path: &Path, run_id: Uuid) -> Result<TranslationRunPhase, PortError> {
+fn read_state(database_path: &Path, run_id: Uuid) -> Result<RecoveredTranslationRun, PortError> {
     let (database, run_id) = open(database_path, run_id)?;
-    match database.run_state(run_id).map_err(map_db)? {
-        RunState::Requested => Ok(TranslationRunPhase::Requested),
-        RunState::Running => Ok(TranslationRunPhase::Running),
-        RunState::Paused => Ok(TranslationRunPhase::Paused),
-        RunState::Failed => Ok(TranslationRunPhase::Failed),
-        RunState::Validated => Ok(TranslationRunPhase::Validated),
+    let phase = match database.run_state(run_id).map_err(map_db)? {
+        RunState::Requested => TranslationRunPhase::Requested,
+        RunState::Running => TranslationRunPhase::Running,
+        RunState::Paused => TranslationRunPhase::Paused,
+        RunState::Failed => TranslationRunPhase::Failed,
+        RunState::Validated => TranslationRunPhase::Validated,
+    };
+    let total_blocks = database.run(run_id).map_err(map_db)?.blocks.len();
+    let saved_blocks = database.checkpoints(run_id).map_err(map_db)?.len();
+    if total_blocks == 0 || saved_blocks > total_blocks {
+        return Err(PortError::Conflict {
+            resource: "translation run".into(),
+            message: "stored checkpoint count differs from block plan".into(),
+        });
     }
+    Ok(RecoveredTranslationRun {
+        run_id: run_id.get(),
+        phase,
+        saved_blocks,
+        total_blocks,
+    })
 }
 
 fn open(database_path: &Path, run_id: Uuid) -> Result<(TranslateDb, RunId), PortError> {
