@@ -8,7 +8,7 @@ The desktop bootstrap reserves one installation-wide `auralis-translate.sqlite` 
 
 The desktop frontend declares these commands in its typed IPC map and validates their responses at runtime, including bounded byte ranges inside the reported source size and the result identity of a validated run. No screen calls the commands yet.
 
-The host translation job design in `modules/auralis-translate/docs/architecture/006-host-translation-jobs.md` defines the next S7 step: a translation job kind linked to a run and attempt, committed checkpoint progress, managed model runtime, and recovery scoped to Auralis-owned attempts. This design is not yet implemented.
+The host translation job design in `modules/auralis-translate/docs/architecture/006-host-translation-jobs.md` defines the next S7 step: a translation job linked to a run and attempt, committed checkpoint progress, managed model runtime, and recovery scoped to Auralis-owned attempts. A distinct `Translation` job kind now round-trips through the Auralis jobs table without changing the project's dubbing processing state. Job/run association, scheduling, runtime ownership, progress, and terminal handling are not implemented yet.
 
 The embedded HTTP adapter enables reqwest's rustls provider explicitly. A full workspace test exposed a feature-unification panic when reqwest had no provider; the aligned Auralis lockfile uses rustls 0.23.43 from the available offline dependency set. The full `task rs:test` passes with Translate pinned to the provider fix.
 
