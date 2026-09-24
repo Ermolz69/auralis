@@ -10,6 +10,10 @@ use super::cleanup;
 use super::deletion;
 use super::resolver;
 use super::staging;
+use sha2::{Digest, Sha256};
+use tokio::io::AsyncReadExt;
+
+const DIGEST_READ_CHUNK_BYTES: usize = 64 * 1024;
 
 pub struct LocalArtifactStore {
     base_dir: PathBuf,
@@ -28,6 +32,42 @@ impl LocalArtifactStore {
 
 #[async_trait]
 impl ArtifactStore for LocalArtifactStore {
+    async fn verify_staging_digest(
+        &self,
+        key: &str,
+        size: u64,
+        sha256: &str,
+    ) -> Result<bool, PortError> {
+        let path = resolver::resolve_storage_key(&self.base_dir, key)?;
+        let metadata = tokio::fs::symlink_metadata(&path)
+            .await
+            .map_err(|error| PortError::Io {
+                message: error.to_string(),
+            })?;
+        if !metadata.is_file() || metadata.len() != size {
+            return Ok(false);
+        }
+        let mut file = tokio::fs::File::open(&path)
+            .await
+            .map_err(|error| PortError::Io {
+                message: error.to_string(),
+            })?;
+        let mut digest = Sha256::new();
+        let mut buffer = [0_u8; DIGEST_READ_CHUNK_BYTES];
+        loop {
+            let read = file
+                .read(&mut buffer)
+                .await
+                .map_err(|error| PortError::Io {
+                    message: error.to_string(),
+                })?;
+            if read == 0 {
+                break;
+            }
+            digest.update(&buffer[..read]);
+        }
+        Ok(format!("{:x}", digest.finalize()) == sha256)
+    }
     async fn verify_staging(&self, key: &str, size: u64) -> Result<bool, PortError> {
         let path = resolver::resolve_storage_key(&self.base_dir, key)?;
         match tokio::fs::symlink_metadata(path).await {

@@ -14,6 +14,16 @@ pub struct StagedArtifact {
 
 #[async_trait]
 pub trait ArtifactStore: Send + Sync {
+    async fn verify_staging_digest(
+        &self,
+        _key: &str,
+        _size: u64,
+        _sha256: &str,
+    ) -> Result<bool, PortError> {
+        Err(PortError::Unsupported {
+            message: "Staging digest verification is not supported".into(),
+        })
+    }
     async fn verify_staging(&self, _key: &str, _size: u64) -> Result<bool, PortError> {
         Err(PortError::Unsupported {
             message: "Staging verification is not supported".into(),
@@ -81,6 +91,14 @@ impl<T> ArtifactStore for Arc<T>
 where
     T: ArtifactStore + ?Sized,
 {
+    async fn verify_staging_digest(
+        &self,
+        key: &str,
+        size: u64,
+        sha256: &str,
+    ) -> Result<bool, PortError> {
+        (**self).verify_staging_digest(key, size, sha256).await
+    }
     async fn verify_staging(&self, key: &str, size: u64) -> Result<bool, PortError> {
         (**self).verify_staging(key, size).await
     }

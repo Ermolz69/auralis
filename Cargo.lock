@@ -164,6 +164,7 @@ dependencies = [
  "adapters-ytdlp",
  "async-trait",
  "auralis-translation",
+ "auralis-translation-formats",
  "auralis-translation-sqlite",
  "bytes",
  "chrono",

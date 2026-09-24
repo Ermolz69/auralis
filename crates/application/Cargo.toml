@@ -26,6 +26,7 @@ adapters-ytdlp.workspace = true
 adapters-model.workspace = true
 adapters-translate.workspace = true
 auralis-translation = { path = "../../modules/auralis-translate/crates/auralis-translation" }
+auralis-translation-formats = { path = "../../modules/auralis-translate/crates/auralis-translation-formats" }
 auralis-translation-sqlite = { path = "../../modules/auralis-translate/crates/auralis-translation-sqlite" }
 adapters-ffmpeg.workspace = true
 jobs.workspace = true

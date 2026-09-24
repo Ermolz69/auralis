@@ -1,6 +1,7 @@
 mod begin;
 mod list;
 mod publication;
+mod publication_row;
 mod ready_publications;
 mod repository;
 mod row;

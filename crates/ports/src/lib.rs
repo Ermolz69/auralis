@@ -20,6 +20,7 @@ pub mod storage;
 pub mod transaction;
 pub mod translation_inspection;
 pub mod translation_links;
+pub mod translation_result;
 pub mod translation_run_registration;
 pub mod ui_preferences;
 pub mod workspace;

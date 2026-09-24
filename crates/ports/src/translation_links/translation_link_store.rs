@@ -1,6 +1,6 @@
 use super::{
     PublicationIntent, ReadyPublication, StartTranslationRun, TranslationIntent, TranslationLink,
-    TranslationRunIntent,
+    TranslationPublicationRecord, TranslationRunIntent,
 };
 use crate::error::PortError;
 use crate::storage::StagedArtifact;
@@ -18,6 +18,11 @@ pub trait TranslationLinkStore: Send + Sync {
         run: TranslationRunIntent,
     ) -> Result<TranslationLink, PortError>;
     async fn run_intent(&self, run_id: Uuid) -> Result<Option<TranslationRunIntent>, PortError>;
+    async fn get_publication(
+        &self,
+        translation_id: Uuid,
+        result_id: Uuid,
+    ) -> Result<Option<TranslationPublicationRecord>, PortError>;
     async fn get(&self, translation_id: Uuid) -> Result<Option<TranslationLink>, PortError>;
     async fn list_by_project(
         &self,

@@ -12,7 +12,7 @@ ports.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 uuid = { workspace = true, features = ["v4"] }
-tokio = { workspace = true, features = ["fs"] }
+tokio = { workspace = true, features = ["fs", "io-util"] }
 sqlx = { workspace = true, features = ["derive"] }
 sqlx-sqlite = { workspace = true, features = ["chrono"] }
 serde = { workspace = true, features = ["derive"] }
