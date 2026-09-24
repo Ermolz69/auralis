@@ -8,13 +8,14 @@ Desktop production composition always uses SQLite as the durable source of truth
 
 SQLite owns the persistent project, job, artifact, and outbox state. The outbox worker is part of the production storage graph and is started whenever production storage is initialized.
 
-New databases use schema version 6. Valid version-1 databases gain `projects.revision` with an
+New databases use schema version 7. Valid version-1 databases gain `projects.revision` with an
 initial value of 1, and version-1/version-2 databases gain `projects.avatar_data_url`. Version 3
 gains the `youtube_imports` journal. Version 4 gains `ui_settings`, `project_pins`, and
-`ui_migrations`. Version 5 gains `project_translations` and `translation_publications` for
-stable links to the separate Translate SQLite database. Each migration is atomic and preserves existing project
+`ui_migrations`. Version 6 gains `project_translations` and `translation_publications` for
+stable links to the separate Translate SQLite database. Version 7 adds frozen
+`translation_run_intents` for crash-safe run creation. Each migration is atomic and preserves existing project
 data. Unsupported schemas are rejected at startup without conversion. Older application builds
-cannot open version-6 databases; keep a database backup before downgrading.
+cannot open version-7 databases; keep a database backup before downgrading.
 
 An exclusive OS lease on `.auralis-owner.lock` is acquired before opening SQLite or running
 recovery and retained for the runtime lifetime. Another process using that root is rejected;
@@ -162,6 +163,17 @@ The production outbox worker now queries ready pending translation publications 
 
 This is the storage slice of integration. Application orchestration, the host job, managed artifact staging, Translate `ensure_run` calls, cross-database reconciliation, and UI are still required before a project can translate or publish subtitles. The caller must verify Translate's immutable `result_id` and output digest before recording publication; Auralis storage cannot query the separate database inside its transaction.
 The caller must also stop or explicitly supersede an earlier active Translate run before using `start_run` with its ID as the expected active run. The link store enforces identity and revision, but it cannot determine whether a worker in the separate Translate process is still running.
+
+Schema version 7 adds `translation_run_intents`. `begin_with_run_intent` atomically records the
+project link and the frozen run configuration before any write to Translate SQLite. The record
+contains the same `translation_id` and `run_id`, exact profile manifest and SHA-256, parser
+version, source policy fingerprint, block size, and context bounds. It contains no subtitle
+text. Repeating the same IDs and configuration succeeds; conflicting configuration fails.
+`run_intent(run_id)` reads the record for reconciliation after a crash between the two database
+writes. A failed intent insert rolls back the link. Earlier version-6 links migrate without
+invented run-intent records; the integration layer must handle those legacy links explicitly.
+New starts should use `begin_with_run_intent`; `begin` remains for compatibility with older
+callers. The current `start_run` method does not yet freeze configuration for later runs.
 
 Atomic YouTube import explicitly returns `Unsupported` on the in-memory adapter because it has
 no shared durable artifact/outbox transaction. Its contract tests use the real SQLite adapter.

@@ -4,6 +4,7 @@ mod publication;
 mod ready_publications;
 mod repository;
 mod row;
+mod run_intent;
 mod select;
 mod staged_publication;
 mod start_run;

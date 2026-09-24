@@ -1,4 +1,6 @@
-use super::{begin, list, ready_publications, row, select, staged_publication, start_run};
+use super::{
+    begin, list, ready_publications, row, run_intent, select, staged_publication, start_run,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use domain::project::ProjectId;
@@ -6,7 +8,7 @@ use ports::error::PortError;
 use ports::storage::StagedArtifact;
 use ports::translation_links::{
     PublicationIntent, ReadyPublication, StartTranslationRun, TranslationIntent, TranslationLink,
-    TranslationLinkStore,
+    TranslationLinkStore, TranslationRunIntent,
 };
 use sqlx::SqlitePool;
 use uuid::Uuid;
@@ -24,7 +26,19 @@ impl SqliteTranslationLinkStore {
 #[async_trait]
 impl TranslationLinkStore for SqliteTranslationLinkStore {
     async fn begin(&self, intent: TranslationIntent) -> Result<TranslationLink, PortError> {
-        begin::run(&self.pool, &intent).await
+        begin::run(&self.pool, &intent, None).await
+    }
+
+    async fn begin_with_run_intent(
+        &self,
+        intent: TranslationIntent,
+        run: TranslationRunIntent,
+    ) -> Result<TranslationLink, PortError> {
+        begin::run(&self.pool, &intent, Some(&run)).await
+    }
+
+    async fn run_intent(&self, run_id: Uuid) -> Result<Option<TranslationRunIntent>, PortError> {
+        run_intent::load(&self.pool, run_id).await
     }
 
     async fn get(&self, translation_id: Uuid) -> Result<Option<TranslationLink>, PortError> {

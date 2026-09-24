@@ -19,7 +19,7 @@ flowchart LR
     F --> M["Source hash and text-slot map"]
 ```
 
-Inspection is an application API, not yet exposed through Tauri or the UI. It does not create a Translate run or project translation link. The existing Auralis SQLite link/publication/outbox storage remains separate from Translate SQLite. The next write path must commit Auralis run intent first, then idempotently create the Translate run. Recovery must repeat that second step after a crash between the two database writes. A project result is selected only after the translated copy is a ready managed artifact.
+Inspection is an application API, not yet exposed through Tauri or the UI. It does not create a Translate run or project translation link. Auralis SQLite schema v7 provides `begin_with_run_intent`, which atomically stores the project link and the exact frozen profile and planning configuration needed to retry Translate run creation. The application must call it before idempotently creating the Translate run in the separate database. Recovery must repeat that second step after a crash between the two database writes. The application does not yet invoke this new path. A project result is selected only after the translated copy is a ready managed artifact.
 
 ## Checks
 

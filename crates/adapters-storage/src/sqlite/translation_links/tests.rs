@@ -8,7 +8,9 @@ use domain::project::ProjectId;
 use ports::error::PortError;
 use ports::translation_links::{
     PublicationIntent, StartTranslationRun, TranslationIntent, TranslationLinkStore,
+    TranslationRunIntent,
 };
+use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -74,6 +76,95 @@ fn intent(project_id: ProjectId, source_id: ArtifactId) -> TranslationIntent {
         run_id: Uuid::new_v4(),
         created_at: Utc::now(),
     }
+}
+
+fn frozen_run(intent: &TranslationIntent) -> TranslationRunIntent {
+    let profile_manifest_json = r#"{"schema_version":1,"model_alias":"test"}"#.to_string();
+    TranslationRunIntent {
+        run_id: intent.run_id,
+        translation_id: intent.translation_id,
+        profile_sha256: format!("{:x}", Sha256::digest(profile_manifest_json.as_bytes())),
+        profile_manifest_json,
+        max_target_segments: 8,
+        context_before_segments: 0,
+        context_after_segments: 0,
+        parser_version: 1,
+        policy_fingerprint: "b".repeat(64),
+        created_at: intent.created_at,
+    }
+}
+
+#[tokio::test]
+async fn frozen_run_intent_is_atomic_idempotent_and_recoverable() {
+    let directory = tempfile::tempdir().unwrap();
+    let db_path = directory.path().join("auralis.sqlite");
+    let pool = connect_sqlite(&db_path).await.unwrap();
+    let project_id = ProjectId::new();
+    let source_id = ArtifactId::new();
+    seed_project(&pool, &project_id, &source_id).await;
+    let intent = intent(project_id, source_id);
+    let frozen = frozen_run(&intent);
+    let store = SqliteTranslationLinkStore::new(pool.clone());
+    let link = store
+        .begin_with_run_intent(intent.clone(), frozen.clone())
+        .await
+        .unwrap();
+    assert_eq!(link.active_run_id, Some(intent.run_id));
+    assert_eq!(
+        store.run_intent(intent.run_id).await.unwrap(),
+        Some(frozen.clone())
+    );
+    assert_eq!(
+        store
+            .begin_with_run_intent(intent.clone(), frozen.clone())
+            .await
+            .unwrap(),
+        link
+    );
+    let mut changed = frozen.clone();
+    changed.profile_manifest_json = r#"{"schema_version":1,"model_alias":"changed"}"#.into();
+    changed.profile_sha256 = format!(
+        "{:x}",
+        Sha256::digest(changed.profile_manifest_json.as_bytes())
+    );
+    assert!(matches!(
+        store.begin_with_run_intent(intent.clone(), changed).await,
+        Err(PortError::Conflict { .. })
+    ));
+    assert_eq!(
+        store.run_intent(intent.run_id).await.unwrap(),
+        Some(frozen.clone())
+    );
+    pool.close().await;
+
+    let reopened = connect_sqlite(&db_path).await.unwrap();
+    let store = SqliteTranslationLinkStore::new(reopened);
+    assert_eq!(store.get(intent.translation_id).await.unwrap(), Some(link));
+    assert_eq!(store.run_intent(intent.run_id).await.unwrap(), Some(frozen));
+}
+
+#[tokio::test]
+async fn run_intent_insert_failure_rolls_back_project_link() {
+    let directory = tempfile::tempdir().unwrap();
+    let pool = connect_sqlite(directory.path().join("auralis.sqlite"))
+        .await
+        .unwrap();
+    let project_id = ProjectId::new();
+    let source_id = ArtifactId::new();
+    seed_project(&pool, &project_id, &source_id).await;
+    let intent = intent(project_id, source_id);
+    let frozen = frozen_run(&intent);
+    sqlx::query("CREATE TRIGGER reject_run_intent BEFORE INSERT ON translation_run_intents BEGIN SELECT RAISE(ABORT, 'injected failure'); END")
+        .execute(&pool).await.unwrap();
+    let store = SqliteTranslationLinkStore::new(pool.clone());
+    assert!(
+        store
+            .begin_with_run_intent(intent.clone(), frozen)
+            .await
+            .is_err()
+    );
+    assert!(store.get(intent.translation_id).await.unwrap().is_none());
+    assert!(store.run_intent(intent.run_id).await.unwrap().is_none());
 }
 
 #[tokio::test]

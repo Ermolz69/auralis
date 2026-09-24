@@ -15,6 +15,7 @@ mod project_updates;
 pub mod recovery;
 pub mod translation_links;
 mod translation_links_migration;
+mod translation_run_intents_migration;
 pub mod ui_preferences;
 mod ui_preferences_migration;
 pub mod unit_of_work;
@@ -39,5 +40,7 @@ mod project_avatar_tests;
 mod project_revision_migration_tests;
 #[cfg(test)]
 mod translation_links_migration_tests;
+#[cfg(test)]
+mod translation_run_intents_migration_tests;
 pub mod youtube_import_journal;
 mod youtube_import_migration;

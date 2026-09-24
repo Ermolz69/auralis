@@ -206,7 +206,7 @@ async fn youtube_journal_v3_migration_preserves_projects_and_is_idempotent() {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            6
+            7
         );
         assert_eq!(
             SqliteProjectRepository::new(pool.clone())

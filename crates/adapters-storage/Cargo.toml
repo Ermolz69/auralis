@@ -17,6 +17,7 @@ sqlx = { workspace = true, features = ["derive"] }
 sqlx-sqlite = { workspace = true, features = ["chrono"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+sha2.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]

@@ -48,6 +48,7 @@ mod tests {
                 "project_translations",
                 "projects",
                 "translation_publications",
+                "translation_run_intents",
                 "ui_migrations",
                 "ui_settings",
                 "youtube_imports"
@@ -58,7 +59,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            6
+            7
         );
 
         let project_columns: Vec<String> =

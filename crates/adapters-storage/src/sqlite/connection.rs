@@ -7,7 +7,8 @@ pub(crate) const SCHEMA: &str = concat!(
     include_str!("schema.sql"),
     include_str!("youtube_import_schema.sql"),
     include_str!("ui_preferences_schema.sql"),
-    include_str!("translation_links_schema.sql")
+    include_str!("translation_links_schema.sql"),
+    include_str!("translation_run_intents_schema.sql")
 );
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
@@ -82,8 +83,11 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker >= 6 {
         expected_tables.extend(["project_translations", "translation_publications"]);
     }
+    if schema_marker >= 7 {
+        expected_tables.push("translation_run_intents");
+    }
     expected_tables.sort_unstable();
-    if table_names != expected_tables || !(1..=6).contains(&schema_marker) {
+    if table_names != expected_tables || !(1..=7).contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -183,6 +187,9 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 6 {
         super::translation_links_migration::migrate(pool).await?;
     }
+    if schema_marker < 7 {
+        super::translation_run_intents_migration::migrate(pool).await?;
+    }
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
     validate_columns(pool, "ui_migrations", &["key"]).await?;
@@ -226,6 +233,23 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
             "needs_review",
             "created_at",
             "updated_at",
+        ],
+    )
+    .await?;
+    validate_columns(
+        pool,
+        "translation_run_intents",
+        &[
+            "run_id",
+            "translation_id",
+            "profile_manifest_json",
+            "profile_sha256",
+            "max_target_segments",
+            "context_before_segments",
+            "context_after_segments",
+            "parser_version",
+            "policy_fingerprint",
+            "created_at",
         ],
     )
     .await?;
