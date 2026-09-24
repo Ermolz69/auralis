@@ -3,7 +3,8 @@ use adapters_storage::sqlite::{
     SqliteTranslationLinkStore, connect_sqlite,
 };
 use application::usecases::translation::{
-    RecoverTranslationHostJobsUseCase, StartTranslationJobUseCase, TranslationRunRequest,
+    ListProjectTranslationsUseCase, RecoverTranslationHostJobsUseCase, StartTranslationJobUseCase,
+    TranslationRunRequest,
 };
 use async_trait::async_trait;
 use auralis_translation::SourceHash;
@@ -124,6 +125,25 @@ fn use_case(
         Arc::new(FixedRunControl { run_id, phase }),
         Arc::new(SqliteTranslationHostJobStore::new(pool.clone())),
     )
+}
+
+#[tokio::test]
+async fn project_translation_list_is_scoped_to_an_existing_project() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let pool = connect_sqlite(directory.path().join("auralis.sqlite")).await?;
+    let (project_id, translation_id, _) = seed_run(&pool).await?;
+    let projects = Arc::new(SqliteProjectRepository::new(pool.clone()));
+    let other = projects.create(Project::new("Other".into())?).await?;
+    let list = ListProjectTranslationsUseCase::new(
+        projects,
+        Arc::new(SqliteTranslationLinkStore::new(pool)),
+    );
+    let own = list.execute(&project_id).await?;
+    assert_eq!(own.len(), 1);
+    assert_eq!(own[0].translation_id, translation_id);
+    assert!(list.execute(other.id()).await?.is_empty());
+    assert!(list.execute(&ProjectId::new()).await.is_err());
+    Ok(())
 }
 
 #[tokio::test]

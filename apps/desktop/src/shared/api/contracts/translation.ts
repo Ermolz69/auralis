@@ -16,6 +16,22 @@ export interface TranslationInspection {
   segments: TranslationSegment[];
 }
 
+export interface TranslationLink {
+  translationId: string;
+  projectId: string;
+  sourceArtifactId: string;
+  sourceSha256: string;
+  sourceFormat: 'srt' | 'vtt';
+  sourceLanguage: 'zh' | 'ja';
+  targetLanguage: 'ru';
+  activeRunId: string | null;
+  selectedResultId: string | null;
+  outputArtifactId: string | null;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type TranslationRunPhase = 'requested' | 'running' | 'paused' | 'failed' | 'validated';
 
 export interface TranslationRunSnapshot {

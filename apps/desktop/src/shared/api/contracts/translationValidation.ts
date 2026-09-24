@@ -1,10 +1,36 @@
-import type { TranslationInspection, TranslationRunSnapshot } from './translation';
+import type { TranslationInspection, TranslationLink, TranslationRunSnapshot } from './translation';
 import {
   isNonNegativeSafeInteger,
   isNullable,
   isRecord,
   isString,
+  isTimestamp,
 } from './validationPrimitives';
+
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (value: unknown): value is string => isString(value) && uuid.test(value);
+
+export function validateTranslationLink(value: unknown): value is TranslationLink {
+  return (
+    isRecord(value) &&
+    isUuid(value.translationId) &&
+    isUuid(value.projectId) &&
+    isUuid(value.sourceArtifactId) &&
+    isString(value.sourceSha256) &&
+    /^[0-9a-f]{64}$/.test(value.sourceSha256) &&
+    (value.sourceFormat === 'srt' || value.sourceFormat === 'vtt') &&
+    (value.sourceLanguage === 'zh' || value.sourceLanguage === 'ja') &&
+    value.targetLanguage === 'ru' &&
+    isNullable(value.activeRunId, isUuid) &&
+    isNullable(value.selectedResultId, isUuid) &&
+    isNullable(value.outputArtifactId, isUuid) &&
+    (value.selectedResultId === null) === (value.outputArtifactId === null) &&
+    isNonNegativeSafeInteger(value.revision) &&
+    value.revision > 0 &&
+    isTimestamp(value.createdAt) &&
+    isTimestamp(value.updatedAt)
+  );
+}
 
 export function validateTranslationInspection(value: unknown): value is TranslationInspection {
   if (

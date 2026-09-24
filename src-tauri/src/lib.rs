@@ -126,6 +126,7 @@ pub fn run() -> Result<(), AppRunError> {
             commands::artifact::list_project_artifacts_cmd,
             commands::artifact::resolve_artifact_path_cmd,
             commands::translation::inspect::inspect_translation_source_cmd,
+            commands::translation::list::list_project_translations_cmd,
             commands::translation::status::get_translation_run_status_cmd,
             commands::translation::pause::pause_translation_run_cmd,
             commands::job::health_check,

@@ -127,6 +127,35 @@ describe('IPC runtime validation', () => {
     ).toThrow(IpcContractError);
   });
 
+  it('validates project translation links and paired result artifacts', () => {
+    const link = {
+      translationId: '00000000-0000-4000-8000-000000000011',
+      projectId: '00000000-0000-4000-8000-000000000012',
+      sourceArtifactId: '00000000-0000-4000-8000-000000000013',
+      sourceSha256: 'a'.repeat(64),
+      sourceFormat: 'srt',
+      sourceLanguage: 'zh',
+      targetLanguage: 'ru',
+      activeRunId: null,
+      selectedResultId: '00000000-0000-4000-8000-000000000014',
+      outputArtifactId: '00000000-0000-4000-8000-000000000015',
+      revision: 2,
+      createdAt: '2026-09-25T00:00:00Z',
+      updatedAt: '2026-09-25T00:01:00Z',
+    };
+    expect(parseCommandResult('list_project_translations_cmd', [link])).toEqual([link]);
+    expect(() =>
+      parseCommandResult('list_project_translations_cmd', [
+        { ...link, outputArtifactId: null },
+      ]),
+    ).toThrow(IpcContractError);
+    expect(() =>
+      parseCommandResult('list_project_translations_cmd', [
+        { ...link, sourceLanguage: 'fr' },
+      ]),
+    ).toThrow(IpcContractError);
+  });
+
   it('rejects impossible media rates and structurally conflicting transcript segments', () => {
     expect(() =>
       parseCommandResult('probe_local_media_cmd', {

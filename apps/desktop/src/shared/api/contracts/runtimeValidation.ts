@@ -4,6 +4,7 @@ import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobV
 import type { Project } from './project';
 import {
   validateTranslationInspection,
+  validateTranslationLink,
   validateTranslationRunSnapshot,
 } from './translationValidation';
 import { validateMediaMetadata, validateMediaSource } from './mediaValidation';
@@ -142,6 +143,7 @@ const commandResultValidators = {
   list_project_artifacts_cmd: (value) => isArrayOf(value, validateArtifact),
   resolve_artifact_path_cmd: isString,
   inspect_translation_source_cmd: validateTranslationInspection,
+  list_project_translations_cmd: (value) => isArrayOf(value, validateTranslationLink),
   get_translation_run_status_cmd: validateTranslationRunSnapshot,
   pause_translation_run_cmd: isNull,
   list_jobs_cmd: validateJobSnapshot,

@@ -5,9 +5,10 @@ use adapters_translate::{
 };
 use application::usecases::translation::{
     BeginTranslationUseCase, EditTranslationResultUseCase, ExecuteTranslationUseCase,
-    InspectTranslationSourceUseCase, PublishTranslationResultUseCase,
-    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
-    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunUseCase,
+    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase,
+    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
+    RecoverTranslationHostJobsUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
+    TranslationRunUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -16,6 +17,7 @@ use std::sync::Arc;
 
 pub struct TranslationUseCases {
     pub inspect: Arc<InspectTranslationSourceUseCase>,
+    pub list: ListProjectTranslationsUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
     pub execute: Arc<ExecuteTranslationUseCase>,
@@ -37,7 +39,7 @@ impl TranslationUseCases {
         database_path: PathBuf,
     ) -> Self {
         let inspect = Arc::new(InspectTranslationSourceUseCase::new(
-            projects,
+            projects.clone(),
             artifacts,
             artifact_store.clone(),
             Arc::new(FormatInspector),
@@ -52,6 +54,7 @@ impl TranslationUseCases {
         ));
         Self {
             inspect: inspect.clone(),
+            list: ListProjectTranslationsUseCase::new(projects, links.clone()),
             begin: BeginTranslationUseCase::new(inspect.clone(), links.clone(), registrar.clone()),
             edit: EditTranslationResultUseCase::new(
                 inspect.clone(),
