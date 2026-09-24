@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use domain::job::{Job, JobKind, JobStatus};
+use ports::active_translation_host_job::ActiveTranslationHostJob;
 use ports::error::PortError;
 use ports::translation_host_job::TranslationHostJobStore;
-use sqlx::SqlitePool;
+use sqlx::{FromRow, Row, SqlitePool};
 use uuid::Uuid;
 
 use super::helpers::map_sqlite_error;
@@ -111,6 +112,37 @@ impl TranslationHostJobStore for SqliteTranslationHostJobStore {
         .map_err(|error| map_sqlite_error("get_active_translation_host_job", error))?
         .map(row_to_job)
         .transpose()
+    }
+
+    async fn list_active(&self) -> Result<Vec<ActiveTranslationHostJob>, PortError> {
+        let rows = sqlx::query(
+            "SELECT job.id, job.revision, job.project_id, job.title, job.kind, job.status,
+                    job.stage, job.progress_json, job.error_json, job.created_at, job.updated_at,
+                    job.started_at, job.finished_at, host.run_id AS host_run_id
+               FROM translation_host_jobs AS host
+               JOIN jobs AS job ON job.id = host.job_id
+              WHERE host.ended_at IS NULL ORDER BY host.created_at, host.job_id",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|error| map_sqlite_error("list_active_translation_host_jobs", error))?;
+        rows.into_iter()
+            .map(|row| {
+                let job = JobRow::from_row(&row)
+                    .map_err(|error| map_sqlite_error("decode_translation_host_job", error))
+                    .and_then(row_to_job)?;
+                let raw: String = row
+                    .try_get("host_run_id")
+                    .map_err(|error| map_sqlite_error("decode_translation_host_run", error))?;
+                let run_id = Uuid::parse_str(&raw).map_err(|_| PortError::InvalidStoredData {
+                    entity_type: "translation host job".into(),
+                    entity_id: job.id().to_string(),
+                    field: "run_id".into(),
+                    message: "invalid stored run ID".into(),
+                })?;
+                Ok(ActiveTranslationHostJob { job, run_id })
+            })
+            .collect()
     }
 
     async fn finish(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {

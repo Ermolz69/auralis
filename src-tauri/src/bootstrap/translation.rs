@@ -1,12 +1,14 @@
 use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository};
 use adapters_translate::{
     FormatInspector, TranslateResultReader, TranslateRunControl, TranslateRunExecutor,
-    TranslateRunRegistrar,
+    TranslateRunRecovery, TranslateRunRegistrar,
 };
 use application::usecases::translation::{
     BeginTranslationUseCase, ExecuteTranslationUseCase, InspectTranslationSourceUseCase,
-    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase, TranslationRunUseCase,
+    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
+    RecoverTranslationHostJobsUseCase, StartTranslationJobUseCase, TranslationRunUseCase,
 };
+use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,6 +20,8 @@ pub struct TranslationUseCases {
     pub run: TranslationRunUseCase,
     pub publish: PublishTranslationResultUseCase,
     pub reconcile: ReconcileTranslationRunsUseCase,
+    pub start_job: StartTranslationJobUseCase,
+    pub recover_jobs: RecoverTranslationHostJobsUseCase,
 }
 
 impl TranslationUseCases {
@@ -26,6 +30,7 @@ impl TranslationUseCases {
         artifacts: RuntimeArtifactIndex,
         artifact_store: RuntimeArtifactStore,
         links: Arc<dyn TranslationLinkStore>,
+        jobs: Arc<dyn TranslationHostJobStore>,
         database_path: PathBuf,
     ) -> Self {
         let inspect = Arc::new(InspectTranslationSourceUseCase::new(
@@ -35,6 +40,7 @@ impl TranslationUseCases {
             Arc::new(FormatInspector),
         ));
         let registrar = Arc::new(TranslateRunRegistrar::new(database_path.clone()));
+        let control = Arc::new(TranslateRunControl::new(database_path.clone()));
         Self {
             inspect: inspect.clone(),
             begin: BeginTranslationUseCase::new(inspect.clone(), links.clone(), registrar.clone()),
@@ -44,9 +50,11 @@ impl TranslationUseCases {
                 registrar.clone(),
                 Arc::new(TranslateRunExecutor::new(database_path.clone())),
             ),
-            run: TranslationRunUseCase::new(
-                links.clone(),
-                Arc::new(TranslateRunControl::new(database_path.clone())),
+            run: TranslationRunUseCase::new(links.clone(), control.clone()),
+            start_job: StartTranslationJobUseCase::new(links.clone(), control, jobs.clone()),
+            recover_jobs: RecoverTranslationHostJobsUseCase::new(
+                jobs,
+                Arc::new(TranslateRunRecovery::new(database_path.clone())),
             ),
             publish: PublishTranslationResultUseCase::new(
                 inspect.clone(),

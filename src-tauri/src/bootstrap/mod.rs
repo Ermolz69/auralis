@@ -58,6 +58,7 @@ pub fn setup(
         services.artifact_index.clone(),
         services.artifact_store.clone(),
         services.translation_links.clone(),
+        services.translation_host_jobs.clone(),
         app_paths.translate_database(),
     );
     for item in tauri::async_runtime::block_on(translations.reconcile.execute())? {
@@ -66,6 +67,16 @@ pub fn setup(
                 translation_id = %item.translation_id,
                 error = %error,
                 "translation run registration needs attention"
+            );
+        }
+    }
+    for item in tauri::async_runtime::block_on(translations.recover_jobs.execute())? {
+        if let Err(error) = item.outcome {
+            tracing::warn!(
+                job_id = %item.job_id,
+                run_id = %item.run_id,
+                error = %error,
+                "translation host job recovery needs attention"
             );
         }
     }

@@ -1,20 +1,24 @@
 use adapters_storage::sqlite::{
-    SqliteProjectRepository, SqliteTranslationHostJobStore, SqliteTranslationLinkStore,
-    connect_sqlite,
+    SqliteJobRepository, SqliteProjectRepository, SqliteTranslationHostJobStore,
+    SqliteTranslationLinkStore, connect_sqlite,
 };
-use application::usecases::translation::{StartTranslationJobUseCase, TranslationRunRequest};
+use application::usecases::translation::{
+    RecoverTranslationHostJobsUseCase, StartTranslationJobUseCase, TranslationRunRequest,
+};
 use async_trait::async_trait;
 use auralis_translation::SourceHash;
 use chrono::Utc;
-use domain::job::{JobKind, JobStatus};
+use domain::job::{Job, JobId, JobKind, JobStatus};
 use domain::media::ArtifactId;
 use domain::project::{Project, ProjectId};
 use ports::error::PortError;
-use ports::repository::ProjectRepository;
+use ports::repository::{JobRepository, ProjectRepository};
+use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLink;
 use ports::translation_run_control::{
     TranslationRunControlPort, TranslationRunPhase, TranslationRunSnapshot,
 };
+use ports::translation_run_recovery::TranslationRunRecoveryPort;
 use sqlx::SqlitePool;
 use std::error::Error;
 use std::sync::Arc;
@@ -23,6 +27,28 @@ use uuid::Uuid;
 struct FixedRunControl {
     run_id: Uuid,
     phase: TranslationRunPhase,
+}
+
+struct FixedRecovery {
+    phase: TranslationRunPhase,
+    fail: bool,
+}
+
+#[async_trait]
+impl TranslationRunRecoveryPort for FixedRecovery {
+    async fn recover_for_host(&self, _run_id: Uuid, _job_id: &JobId) -> Result<bool, PortError> {
+        if self.fail {
+            return Err(PortError::Conflict {
+                resource: "translation run".into(),
+                message: "another host owns the attempt".into(),
+            });
+        }
+        Ok(false)
+    }
+
+    async fn phase(&self, _run_id: Uuid) -> Result<TranslationRunPhase, PortError> {
+        Ok(self.phase)
+    }
 }
 
 #[async_trait]
@@ -148,5 +174,101 @@ async fn running_or_validated_translate_run_cannot_create_a_new_job() -> Result<
         .fetch_one(&pool)
         .await?;
     assert_eq!(count, 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn startup_recovery_closes_pending_and_validated_jobs_without_losing_the_run()
+-> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let pool = connect_sqlite(directory.path().join("auralis.sqlite")).await?;
+    let (project_id, translation_id, run_id) = seed_run(&pool).await?;
+    let jobs = Arc::new(SqliteTranslationHostJobStore::new(pool.clone()));
+    let pending = jobs
+        .create_pending(
+            Job::new(project_id.clone(), "Pending".into(), JobKind::Translation),
+            translation_id,
+            run_id,
+        )
+        .await?;
+    let pending_recovery = RecoverTranslationHostJobsUseCase::new(
+        jobs.clone(),
+        Arc::new(FixedRecovery {
+            phase: TranslationRunPhase::Requested,
+            fail: false,
+        }),
+    );
+    let recovered = pending_recovery.execute().await?;
+    assert_eq!(recovered.len(), 1);
+    assert!(recovered[0].outcome.is_ok());
+    assert!(pending_recovery.execute().await?.is_empty());
+    assert!(jobs.active_for_run(run_id).await?.is_none());
+    assert_eq!(
+        SqliteJobRepository::new(pool.clone())
+            .get(pending.id())
+            .await?
+            .ok_or("missing pending job")?
+            .status(),
+        &JobStatus::Cancelled
+    );
+
+    let resumed = jobs
+        .create_pending(
+            Job::new(project_id, "Resumed".into(), JobKind::Translation),
+            translation_id,
+            run_id,
+        )
+        .await?;
+    let mut running = resumed.clone();
+    running.start()?;
+    SqliteJobRepository::new(pool.clone())
+        .save(&running, resumed.revision())
+        .await?;
+    let validated_recovery = RecoverTranslationHostJobsUseCase::new(
+        jobs.clone(),
+        Arc::new(FixedRecovery {
+            phase: TranslationRunPhase::Validated,
+            fail: false,
+        }),
+    );
+    let recovered = validated_recovery.execute().await?;
+    assert_eq!(recovered.len(), 1);
+    assert!(recovered[0].outcome.is_ok());
+    assert!(jobs.active_for_run(run_id).await?.is_none());
+    assert_eq!(
+        SqliteJobRepository::new(pool)
+            .get(resumed.id())
+            .await?
+            .ok_or("missing resumed job")?
+            .status(),
+        &JobStatus::Completed
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_scoped_recovery_leaves_the_host_job_for_attention() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let pool = connect_sqlite(directory.path().join("auralis.sqlite")).await?;
+    let (project_id, translation_id, run_id) = seed_run(&pool).await?;
+    let jobs = Arc::new(SqliteTranslationHostJobStore::new(pool));
+    let pending = jobs
+        .create_pending(
+            Job::new(project_id, "Pending".into(), JobKind::Translation),
+            translation_id,
+            run_id,
+        )
+        .await?;
+    let recovery = RecoverTranslationHostJobsUseCase::new(
+        jobs.clone(),
+        Arc::new(FixedRecovery {
+            phase: TranslationRunPhase::Running,
+            fail: true,
+        }),
+    );
+    let outcomes = recovery.execute().await?;
+    assert_eq!(outcomes.len(), 1);
+    assert!(outcomes[0].outcome.is_err());
+    assert_eq!(jobs.active_for_run(run_id).await?, Some(pending));
     Ok(())
 }

@@ -20,6 +20,7 @@ pub struct RuntimeServices {
     pub artifact_store: RuntimeArtifactStore,
     pub storage_uow: RuntimeStorageUnitOfWork,
     pub translation_links: Arc<dyn ports::translation_links::TranslationLinkStore>,
+    pub translation_host_jobs: Arc<dyn ports::translation_host_job::TranslationHostJobStore>,
 }
 
 pub fn build_job_scheduler(

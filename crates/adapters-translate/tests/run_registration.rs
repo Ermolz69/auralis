@@ -1,17 +1,20 @@
 use adapters_translate::{
-    TranslateResultReader, TranslateRunControl, TranslateRunExecutor, TranslateRunRegistrar,
+    TranslateResultReader, TranslateRunControl, TranslateRunExecutor, TranslateRunRecovery,
+    TranslateRunRegistrar,
 };
 use auralis_translation::{BlockPolicy, RunId, SourceHash, TranslationId};
 use auralis_translation_formats::srt::SrtRunPlan;
 use auralis_translation_formats::vtt::VttRunPlan;
 use auralis_translation_sqlite::{RunStop, SqliteConfig, TranslateDb};
 use chrono::Utc;
+use domain::job::JobId;
 use domain::media::ArtifactId;
 use domain::project::ProjectId;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_links::{TranslationLink, TranslationRunIntent};
 use ports::translation_result::TranslationResultPort;
 use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPhase};
+use ports::translation_run_recovery::TranslationRunRecoveryPort;
 use ports::translation_run_registration::TranslationRunRegistrationPort;
 use std::error::Error;
 use std::io::{Read, Write};
@@ -91,6 +94,49 @@ async fn registration_is_idempotent_and_preserves_original() -> Result<(), Box<d
     assert_eq!(database.segments(translation_id)?.len(), 1);
     assert_eq!(database.run(run_id)?.blocks.len(), 1);
     assert_eq!(std::fs::read(&source_path)?, source);
+    Ok(())
+}
+
+#[tokio::test]
+async fn recovery_adapter_only_pauses_its_matching_host_attempt() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let source = b"1\n00:00:01,000 --> 00:00:02,000\n\xe4\xbd\xa0\xe5\xa5\xbd\xe3\x80\x82\n";
+    let source_path = directory.path().join("source.srt");
+    let database_path = directory.path().join("translate.sqlite");
+    std::fs::write(&source_path, source)?;
+    let (link, intent) = records("srt", source);
+    TranslateRunRegistrar::new(database_path.clone())
+        .ensure_run(&source_path, &link, &intent)
+        .await?;
+    let run_id = RunId::new(intent.run_id).ok_or("nil run ID")?;
+    let owner = JobId::new();
+    let mut database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    let run = database.run(run_id)?;
+    database.begin_initial_attempt(&run, Some(&owner.to_string()))?;
+    drop(database);
+
+    let recovery = TranslateRunRecovery::new(database_path.clone());
+    let other = JobId::new();
+    assert!(
+        recovery
+            .recover_for_host(intent.run_id, &other)
+            .await
+            .is_err()
+    );
+    let database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    assert_eq!(
+        database.run_state(run_id)?,
+        auralis_translation::RunState::Running
+    );
+    drop(database);
+    assert!(recovery.recover_for_host(intent.run_id, &owner).await?);
+    assert!(!recovery.recover_for_host(intent.run_id, &owner).await?);
+    let database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    assert_eq!(
+        database.run_state(run_id)?,
+        auralis_translation::RunState::Paused
+    );
+    assert_eq!(std::fs::read(source_path)?, source);
     Ok(())
 }
 

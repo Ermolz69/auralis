@@ -1,3 +1,4 @@
+pub mod active_translation_host_job;
 pub mod artifact_finalization;
 pub mod artifact_index;
 pub mod artifact_recovery;
@@ -24,6 +25,7 @@ pub mod translation_inspection;
 pub mod translation_links;
 pub mod translation_result;
 pub mod translation_run_control;
+pub mod translation_run_recovery;
 pub mod translation_run_registration;
 pub mod ui_preferences;
 pub mod workspace;

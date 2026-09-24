@@ -51,7 +51,7 @@ pub async fn load_snapshot(pool: &SqlitePool) -> Result<RecoverySnapshot, PortEr
 
     // 3. Load all other active jobs to find orphans and multiple active jobs
     let active_job_rows: Vec<JobRow> = sqlx::query_as(
-        "SELECT * FROM jobs WHERE status IN (\
+        "SELECT * FROM jobs WHERE kind IN ('dubbing', 'Dubbing') AND status IN (\
             'pending', 'running', 'cancelling', \
             'Pending', 'Running', 'Cancelling'\
         )",

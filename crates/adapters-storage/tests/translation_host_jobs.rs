@@ -1,9 +1,11 @@
+use adapters_storage::sqlite::recovery::SqliteRecoveryStorage;
 use adapters_storage::sqlite::{
     SqliteJobRepository, SqliteProjectRepository, SqliteTranslationHostJobStore, connect_sqlite,
 };
 use domain::job::{Job, JobKind};
 use domain::project::Project;
 use ports::error::PortError;
+use ports::recovery::RecoveryStorage;
 use ports::repository::{JobRepository, ProjectRepository};
 use ports::translation_host_job::TranslationHostJobStore;
 use sqlx::SqlitePool;
@@ -86,7 +88,15 @@ async fn job_and_run_association_commit_together_and_reject_concurrent_start()
             run_id,
         )
         .await?;
-    assert_eq!(store.active_for_run(run_id).await?, Some(resumed));
+    assert_eq!(store.active_for_run(run_id).await?, Some(resumed.clone()));
+    let active = store.list_active().await?;
+    assert_eq!(active.len(), 1);
+    assert_eq!(active[0].run_id, run_id);
+    assert_eq!(active[0].job, resumed);
+    let dubbing_recovery = SqliteRecoveryStorage::new(pool.clone())
+        .load_snapshot()
+        .await?;
+    assert!(dubbing_recovery.active_jobs.is_empty());
     let history_count: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM translation_host_jobs WHERE run_id = ?")
             .bind(run_id.to_string())
