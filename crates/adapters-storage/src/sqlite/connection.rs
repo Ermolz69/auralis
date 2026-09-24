@@ -6,7 +6,8 @@ use std::path::Path;
 pub(crate) const SCHEMA: &str = concat!(
     include_str!("schema.sql"),
     include_str!("youtube_import_schema.sql"),
-    include_str!("ui_preferences_schema.sql")
+    include_str!("ui_preferences_schema.sql"),
+    include_str!("translation_links_schema.sql")
 );
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
@@ -77,9 +78,12 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     }
     if schema_marker >= 5 {
         expected_tables.extend(["project_pins", "ui_migrations", "ui_settings"]);
-        expected_tables.sort_unstable();
     }
-    if table_names != expected_tables || !(1..=5).contains(&schema_marker) {
+    if schema_marker >= 6 {
+        expected_tables.extend(["project_translations", "translation_publications"]);
+    }
+    expected_tables.sort_unstable();
+    if table_names != expected_tables || !(1..=6).contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -176,6 +180,9 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 5 {
         super::ui_preferences_migration::migrate(pool).await?;
     }
+    if schema_marker < 6 {
+        super::translation_links_migration::migrate(pool).await?;
+    }
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
     validate_columns(pool, "ui_migrations", &["key"]).await?;
@@ -183,6 +190,43 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
         pool,
         "youtube_imports",
         &["project_id", "request_key", "revision", "payload_json"],
+    )
+    .await?;
+    validate_columns(
+        pool,
+        "project_translations",
+        &[
+            "translation_id",
+            "project_id",
+            "source_artifact_id",
+            "source_sha256",
+            "source_format",
+            "source_language",
+            "target_language",
+            "active_run_id",
+            "selected_result_id",
+            "output_artifact_id",
+            "revision",
+            "created_at",
+            "updated_at",
+        ],
+    )
+    .await?;
+    validate_columns(
+        pool,
+        "translation_publications",
+        &[
+            "translation_id",
+            "result_id",
+            "run_id",
+            "artifact_id",
+            "source_sha256",
+            "expected_link_revision",
+            "state",
+            "needs_review",
+            "created_at",
+            "updated_at",
+        ],
     )
     .await?;
 

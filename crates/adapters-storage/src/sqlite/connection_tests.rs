@@ -45,11 +45,20 @@ mod tests {
                 "jobs",
                 "outbox_messages",
                 "project_pins",
+                "project_translations",
                 "projects",
+                "translation_publications",
                 "ui_migrations",
                 "ui_settings",
                 "youtube_imports"
             ]
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>("PRAGMA user_version")
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            6
         );
 
         let project_columns: Vec<String> =

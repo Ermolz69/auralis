@@ -8,12 +8,13 @@ Desktop production composition always uses SQLite as the durable source of truth
 
 SQLite owns the persistent project, job, artifact, and outbox state. The outbox worker is part of the production storage graph and is started whenever production storage is initialized.
 
-New databases use schema version 5. Valid version-1 databases gain `projects.revision` with an
+New databases use schema version 6. Valid version-1 databases gain `projects.revision` with an
 initial value of 1, and version-1/version-2 databases gain `projects.avatar_data_url`. Version 3
 gains the `youtube_imports` journal. Version 4 gains `ui_settings`, `project_pins`, and
-`ui_migrations`. Each migration is atomic and preserves existing project
+`ui_migrations`. Version 5 gains `project_translations` and `translation_publications` for
+stable links to the separate Translate SQLite database. Each migration is atomic and preserves existing project
 data. Unsupported schemas are rejected at startup without conversion. Older application builds
-cannot open version-5 databases; keep a database backup before downgrading.
+cannot open version-6 databases; keep a database backup before downgrading.
 
 An exclusive OS lease on `.auralis-owner.lock` is acquired before opening SQLite or running
 recovery and retained for the runtime lifetime. Another process using that root is rejected;

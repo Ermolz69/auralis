@@ -13,6 +13,7 @@ mod project_revision_migration;
 pub mod project_row;
 mod project_updates;
 pub mod recovery;
+mod translation_links_migration;
 pub mod ui_preferences;
 mod ui_preferences_migration;
 pub mod unit_of_work;
@@ -34,5 +35,7 @@ mod driver_compatibility_tests;
 mod project_avatar_tests;
 #[cfg(test)]
 mod project_revision_migration_tests;
+#[cfg(test)]
+mod translation_links_migration_tests;
 pub mod youtube_import_journal;
 mod youtube_import_migration;
