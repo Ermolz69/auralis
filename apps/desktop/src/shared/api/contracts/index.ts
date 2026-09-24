@@ -3,6 +3,7 @@ export * from './media';
 export * from './job';
 export * from './jobValidation';
 export * from './transcript';
+export * from './translation';
 export * from './project';
 export * from './runtimeValidation';
 export * from './commandMap';

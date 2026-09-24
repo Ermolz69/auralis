@@ -80,6 +80,33 @@ describe('IPC runtime validation', () => {
     ).toThrow(IpcContractError);
   });
 
+  it('accepts bounded translation text slots and rejects ranges outside the source', () => {
+    const inspection = {
+      format: 'vtt',
+      sourceSha256: 'a'.repeat(64),
+      sourceSize: 100,
+      parserVersion: 1,
+      segments: [
+        {
+          id: 1,
+          ordinal: 0,
+          cueLabel: null,
+          startMs: 1000,
+          endMs: 2000,
+          sourceLines: ['你好。'],
+          textRanges: [[40, 49]],
+        },
+      ],
+    };
+    expect(parseCommandResult('inspect_translation_source_cmd', inspection)).toEqual(inspection);
+    expect(() =>
+      parseCommandResult('inspect_translation_source_cmd', {
+        ...inspection,
+        segments: [{ ...inspection.segments[0], textRanges: [[40, 101]] }],
+      }),
+    ).toThrow(IpcContractError);
+  });
+
   it('rejects impossible media rates and structurally conflicting transcript segments', () => {
     expect(() =>
       parseCommandResult('probe_local_media_cmd', {

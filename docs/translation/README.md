@@ -6,6 +6,8 @@ The independent Translate repository is pinned as a Git submodule at `modules/au
 
 The desktop bootstrap reserves one installation-wide `auralis-translate.sqlite` beside `auralis.sqlite`, constructs the strict Translate application use cases, and replays active frozen run intents after acquiring the application data-root lease. Individual registration failures are logged against their translation ID while desktop startup continues. This startup pass repairs missing Translate records; it does not resume inference or recover an orphaned running attempt. The read-only Tauri command `inspect_translation_source_cmd` accepts a project ID, managed original artifact ID, and `srt` or `vtt`; it returns the source digest, parser version, timing, cue identity, source text lines, and exact byte ranges. Start, execution, status, pause, publication, and UI flows are not exposed yet.
 
+The desktop frontend declares the inspection command in its typed IPC map and validates its response at runtime, including bounded byte ranges inside the reported source size. No screen calls the command yet.
+
 The embedded HTTP adapter enables reqwest's rustls provider explicitly. A full workspace test exposed a feature-unification panic when reqwest had no provider; the aligned Auralis lockfile uses rustls 0.23.43 from the available offline dependency set. The full `task rs:test` passes with Translate pinned to the provider fix.
 
 ## Implemented boundary
