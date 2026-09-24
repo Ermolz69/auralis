@@ -13,6 +13,7 @@ mod project_revision_migration;
 pub mod project_row;
 mod project_updates;
 pub mod recovery;
+pub mod translation_host_job_repository;
 mod translation_host_jobs_migration;
 pub mod translation_links;
 mod translation_links_migration;
@@ -28,6 +29,7 @@ pub use job_repository::SqliteJobRepository;
 pub use outbox_repository::SqliteOutboxRepository;
 pub use project_avatar_repository::SqliteProjectAvatarRepository;
 pub use project_repository::SqliteProjectRepository;
+pub use translation_host_job_repository::SqliteTranslationHostJobStore;
 pub use translation_links::SqliteTranslationLinkStore;
 pub use unit_of_work::SqliteStorageUnitOfWork;
 

@@ -19,6 +19,7 @@ pub mod source;
 pub mod storage;
 pub mod transaction;
 pub mod translation_execution;
+pub mod translation_host_job;
 pub mod translation_inspection;
 pub mod translation_links;
 pub mod translation_result;
