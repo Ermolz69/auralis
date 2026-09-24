@@ -8,7 +8,8 @@ pub(crate) const SCHEMA: &str = concat!(
     include_str!("youtube_import_schema.sql"),
     include_str!("ui_preferences_schema.sql"),
     include_str!("translation_links_schema.sql"),
-    include_str!("translation_run_intents_schema.sql")
+    include_str!("translation_run_intents_schema.sql"),
+    include_str!("translation_host_jobs_schema.sql")
 );
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
@@ -86,8 +87,11 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker >= 7 {
         expected_tables.push("translation_run_intents");
     }
+    if schema_marker >= 8 {
+        expected_tables.push("translation_host_jobs");
+    }
     expected_tables.sort_unstable();
-    if table_names != expected_tables || !(1..=7).contains(&schema_marker) {
+    if table_names != expected_tables || !(1..=8).contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -190,6 +194,9 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 7 {
         super::translation_run_intents_migration::migrate(pool).await?;
     }
+    if schema_marker < 8 {
+        super::translation_host_jobs_migration::migrate(pool).await?;
+    }
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
     validate_columns(pool, "ui_migrations", &["key"]).await?;
@@ -251,6 +258,12 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
             "policy_fingerprint",
             "created_at",
         ],
+    )
+    .await?;
+    validate_columns(
+        pool,
+        "translation_host_jobs",
+        &["job_id", "run_id", "created_at", "ended_at"],
     )
     .await?;
 

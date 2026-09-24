@@ -13,6 +13,7 @@ mod project_revision_migration;
 pub mod project_row;
 mod project_updates;
 pub mod recovery;
+mod translation_host_jobs_migration;
 pub mod translation_links;
 mod translation_links_migration;
 mod translation_run_intents_migration;
@@ -38,6 +39,8 @@ mod driver_compatibility_tests;
 mod project_avatar_tests;
 #[cfg(test)]
 mod project_revision_migration_tests;
+#[cfg(test)]
+mod translation_host_jobs_migration_tests;
 #[cfg(test)]
 mod translation_links_migration_tests;
 #[cfg(test)]

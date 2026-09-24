@@ -26,7 +26,7 @@ async fn existing_v6_links_gain_run_intents_without_losing_identity() -> Result<
     let marker: i64 = sqlx::query_scalar("PRAGMA user_version")
         .fetch_one(&pool)
         .await?;
-    assert_eq!(marker, 7);
+    assert_eq!(marker, 8);
     let active: String = sqlx::query_scalar(
         "SELECT active_run_id FROM project_translations WHERE translation_id = 'translation-1'",
     )
@@ -42,6 +42,6 @@ async fn existing_v6_links_gain_run_intents_without_losing_identity() -> Result<
     let marker: i64 = sqlx::query_scalar("PRAGMA user_version")
         .fetch_one(&reopened)
         .await?;
-    assert_eq!(marker, 7);
+    assert_eq!(marker, 8);
     Ok(())
 }
