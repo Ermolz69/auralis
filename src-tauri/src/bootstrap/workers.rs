@@ -37,7 +37,8 @@ pub fn spawn_outbox_worker(
         workspace_port,
         config,
     )
-    .with_imports(services.youtube_imports.clone());
+    .with_imports(services.youtube_imports.clone())
+    .with_translations(services.translation_links.clone());
     let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
     let worker_task = tauri::async_runtime::handle()
         .inner()

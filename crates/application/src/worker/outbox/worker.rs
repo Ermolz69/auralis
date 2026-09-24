@@ -5,6 +5,7 @@ use ports::events::AppEventPublisher;
 use ports::repository::OutboxRepository;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
+use ports::translation_links::TranslationLinkStore;
 use ports::workspace::TempWorkspacePort;
 
 use super::payload_handler::PayloadHandler;
@@ -24,6 +25,7 @@ where
     pub(super) handler: PayloadHandler<S, I, U>,
     pub(super) config: OutboxMaintenanceConfig,
     pub(super) imports: Option<Arc<dyn ports::youtube_import::YoutubeImportJournal>>,
+    pub(super) translations: Option<Arc<dyn TranslationLinkStore>>,
 }
 
 impl<O, S, I, U> OutboxWorker<O, S, I, U>
@@ -55,6 +57,7 @@ where
             handler,
             config,
             imports: None,
+            translations: None,
         }
     }
 
@@ -63,6 +66,11 @@ where
         imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
     ) -> Self {
         self.imports = Some(imports);
+        self
+    }
+
+    pub fn with_translations(mut self, translations: Arc<dyn TranslationLinkStore>) -> Self {
+        self.translations = Some(translations);
         self
     }
 
@@ -121,6 +129,7 @@ where
         };
 
         if count == 0 {
+            self.reconcile_ready_publications(limit).await?;
             return Ok(report);
         }
 
@@ -239,7 +248,39 @@ where
             }
         }
 
+        self.reconcile_ready_publications(limit).await?;
         Ok(report)
+    }
+
+    async fn reconcile_ready_publications(&self, limit: usize) -> Result<(), ApplicationError> {
+        let Some(translations) = &self.translations else {
+            return Ok(());
+        };
+        for publication in translations.list_ready_publications(limit).await? {
+            match translations
+                .select_ready_result(
+                    publication.translation_id,
+                    publication.result_id,
+                    domain::chrono::Utc::now(),
+                )
+                .await
+            {
+                Ok(_) => tracing::info!(
+                    translation_id = %publication.translation_id,
+                    result_id = %publication.result_id,
+                    "ready translation result selected"
+                ),
+                Err(ports::error::PortError::Conflict { .. }) => {
+                    tracing::debug!(
+                        translation_id = %publication.translation_id,
+                        result_id = %publication.result_id,
+                        "translation publication changed during reconciliation"
+                    );
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
+        Ok(())
     }
 }
 use tracing::Instrument;

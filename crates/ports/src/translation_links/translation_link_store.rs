@@ -1,4 +1,6 @@
-use super::{PublicationIntent, StartTranslationRun, TranslationIntent, TranslationLink};
+use super::{
+    PublicationIntent, ReadyPublication, StartTranslationRun, TranslationIntent, TranslationLink,
+};
 use crate::error::PortError;
 use crate::storage::StagedArtifact;
 use async_trait::async_trait;
@@ -15,6 +17,10 @@ pub trait TranslationLinkStore: Send + Sync {
         project_id: &ProjectId,
     ) -> Result<Vec<TranslationLink>, PortError>;
     async fn list_active(&self) -> Result<Vec<TranslationLink>, PortError>;
+    async fn list_ready_publications(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<ReadyPublication>, PortError>;
     async fn start_run(&self, request: StartTranslationRun) -> Result<TranslationLink, PortError>;
     async fn commit_staged_publication(
         &self,

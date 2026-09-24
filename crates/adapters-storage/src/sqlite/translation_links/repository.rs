@@ -1,11 +1,11 @@
-use super::{begin, list, row, select, staged_publication, start_run};
+use super::{begin, list, ready_publications, row, select, staged_publication, start_run};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use domain::project::ProjectId;
 use ports::error::PortError;
 use ports::storage::StagedArtifact;
 use ports::translation_links::{
-    PublicationIntent, StartTranslationRun, TranslationIntent, TranslationLink,
+    PublicationIntent, ReadyPublication, StartTranslationRun, TranslationIntent, TranslationLink,
     TranslationLinkStore,
 };
 use sqlx::SqlitePool;
@@ -40,6 +40,13 @@ impl TranslationLinkStore for SqliteTranslationLinkStore {
 
     async fn list_active(&self) -> Result<Vec<TranslationLink>, PortError> {
         list::active(&self.pool).await
+    }
+
+    async fn list_ready_publications(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<ReadyPublication>, PortError> {
+        ready_publications::list(&self.pool, limit).await
     }
 
     async fn start_run(&self, request: StartTranslationRun) -> Result<TranslationLink, PortError> {

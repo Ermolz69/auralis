@@ -19,6 +19,7 @@ pub struct RuntimeServices {
     pub artifact_finalization: Arc<dyn ports::artifact_finalization::ArtifactFinalizationLookup>,
     pub artifact_store: RuntimeArtifactStore,
     pub storage_uow: RuntimeStorageUnitOfWork,
+    pub translation_links: Arc<dyn ports::translation_links::TranslationLinkStore>,
 }
 
 pub fn build_job_scheduler(

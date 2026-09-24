@@ -1,10 +1,12 @@
 mod publication_intent;
+mod ready_publication;
 mod start_translation_run;
 mod translation_intent;
 mod translation_link;
 mod translation_link_store;
 
 pub use publication_intent::PublicationIntent;
+pub use ready_publication::ReadyPublication;
 pub use start_translation_run::StartTranslationRun;
 pub use translation_intent::TranslationIntent;
 pub use translation_link::TranslationLink;

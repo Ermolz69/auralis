@@ -3,7 +3,7 @@ use super::services::RuntimeServices;
 use adapters_storage::local::artifact_store::LocalArtifactStore;
 use adapters_storage::sqlite::{
     SqliteArtifactIndex, SqliteJobRepository, SqliteOutboxRepository, SqliteProjectRepository,
-    SqliteStorageUnitOfWork,
+    SqliteStorageUnitOfWork, SqliteTranslationLinkStore,
 };
 use ports::repository::JobRepository;
 use std::sync::Arc;
@@ -150,6 +150,7 @@ async fn setup_storage_with_lease(
             artifact_finalization: Arc::new(SqliteArtifactIndex::new(pool.clone())),
             artifact_store: store,
             storage_uow: tx_gateway,
+            translation_links: Arc::new(SqliteTranslationLinkStore::new(pool.clone())),
         },
         outbox_repo,
     ))
