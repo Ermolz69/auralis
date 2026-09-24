@@ -1,1 +1,6 @@
-export { getTranslationComparison, listProjectTranslations } from './api/translationApi';
+export {
+  editTranslationResult,
+  getTranslationComparison,
+  listProjectTranslations,
+  publishTranslationResult,
+} from './api/translationApi';

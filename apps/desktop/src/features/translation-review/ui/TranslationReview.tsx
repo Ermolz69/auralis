@@ -2,10 +2,12 @@ import { useProjectContext } from '@/entities/project';
 import { Button } from '@/shared/ui/button';
 import { formatSubtitleRange } from '@/shared/lib/formatSubtitleRange';
 import { useTranslationReview, COMPARISON_PAGE_SIZE } from '../model/useTranslationReview';
+import { TranslationSegmentEditor } from './TranslationSegmentEditor';
 
 export function TranslationReview() {
   const { project } = useProjectContext();
   const review = useTranslationReview(project?.id ?? null);
+  const page = review.page?.resultId === review.selected?.selectedResultId ? review.page : null;
   const readyLinks = review.links.filter((link) => link.selectedResultId);
 
   return (
@@ -43,13 +45,13 @@ export function TranslationReview() {
             ))}
           </select>
           {review.loadingPage && <p role="status" className="mt-3 text-xs text-muted">Загружаем сравнение…</p>}
-          {review.page && (
+          {page && (
             <>
               <p className="mt-3 text-xs text-muted">
-                {review.page.needsReview ? 'Требует проверки' : 'Проверено'} · {review.page.totalSegments} реплик
+                {page.needsReview ? 'Требует проверки' : 'Проверено'} · {page.totalSegments} реплик
               </p>
               <div className="mt-2 space-y-2">
-                {review.page.segments.map((segment) => (
+                {page.segments.map((segment) => (
                   <div key={segment.id} className="grid gap-2 rounded-sm border border-border p-2 text-xs sm:grid-cols-2">
                     <div>
                       <p className="mb-1 text-subtle">{segment.ordinal + 1} · {formatSubtitleRange(segment.startMs, segment.endMs)} · Оригинал</p>
@@ -58,6 +60,16 @@ export function TranslationReview() {
                     <div>
                       <p className="mb-1 text-subtle">Перевод</p>
                       {segment.translatedLines.map((line, index) => <p key={index} className="whitespace-pre-wrap break-words text-text">{line}</p>)}
+                      {project && review.selected && (
+                        <TranslationSegmentEditor
+                          key={page.resultId}
+                          projectId={project.id}
+                          translationId={review.selected.translationId}
+                          baseResultId={page.resultId}
+                          segment={segment}
+                          onPublished={() => review.refresh()}
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -65,7 +77,7 @@ export function TranslationReview() {
               <div className="mt-3 flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={review.previous} disabled={review.offset === 0 || review.loadingPage}>Назад</Button>
                 <span className="text-xs text-muted">{Math.floor(review.offset / COMPARISON_PAGE_SIZE) + 1}</span>
-                <Button variant="secondary" size="sm" onClick={review.next} disabled={review.offset + review.page.segments.length >= review.page.totalSegments || review.loadingPage}>Далее</Button>
+                <Button variant="secondary" size="sm" onClick={review.next} disabled={review.offset + page.segments.length >= page.totalSegments || review.loadingPage}>Далее</Button>
               </div>
             </>
           )}

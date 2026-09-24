@@ -1,5 +1,10 @@
 import { invoke } from '@/shared/api/tauri';
-import type { TranslationComparisonPage, TranslationLink } from '@/shared/api/contracts/translation';
+import type {
+  EditTranslationResult,
+  TranslationComparisonPage,
+  TranslationLink,
+  TranslationPublication,
+} from '@/shared/api/contracts/translation';
 
 export function listProjectTranslations(projectId: string): Promise<TranslationLink[]> {
   return invoke('list_project_translations_cmd', { projectId });
@@ -19,4 +24,16 @@ export function getTranslationComparison(
     offset,
     limit,
   });
+}
+
+export function editTranslationResult(input: EditTranslationResult): Promise<string> {
+  return invoke('edit_translation_result_cmd', { input });
+}
+
+export function publishTranslationResult(
+  projectId: string,
+  translationId: string,
+  resultId: string,
+): Promise<TranslationPublication> {
+  return invoke('publish_translation_result_cmd', { projectId, translationId, resultId });
 }
