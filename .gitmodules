@@ -1,0 +1,3 @@
+[submodule "modules/auralis-translate"]
+	path = modules/auralis-translate
+	url = ../auralis-translate

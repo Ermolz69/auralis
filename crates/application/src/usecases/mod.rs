@@ -6,5 +6,6 @@ pub mod pipeline;
 pub mod project;
 pub mod system;
 pub mod transcript;
+pub mod translation;
 
 pub mod test_utils;

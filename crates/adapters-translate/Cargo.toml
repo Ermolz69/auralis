@@ -1,0 +1,20 @@
+[package]
+name = "adapters-translate"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+auralis-translation = { path = "../../modules/auralis-translate/crates/auralis-translation" }
+auralis-translation-formats = { path = "../../modules/auralis-translate/crates/auralis-translation-formats" }
+auralis-translation-sqlite = { path = "../../modules/auralis-translate/crates/auralis-translation-sqlite" }
+ports.workspace = true
+async-trait.workspace = true
+tokio = { workspace = true, features = ["rt"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true

@@ -23,6 +23,7 @@ sqlx = { workspace = true }
 adapters-storage.workspace = true
 adapters-ytdlp.workspace = true
 adapters-model.workspace = true
+adapters-translate.workspace = true
 adapters-ffmpeg.workspace = true
 jobs.workspace = true
 tempfile.workspace = true

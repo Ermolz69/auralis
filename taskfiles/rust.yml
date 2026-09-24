@@ -16,6 +16,21 @@ tasks:
     cmds:
       - cargo test --locked -p adapters-storage {{.CLI_ARGS}}
 
+  test:translate:
+    desc: Run the embedded Translate format-adapter regressions
+    cmds:
+      - cargo test --locked -p adapters-translate {{.CLI_ARGS}}
+
+  resolve:translate:
+    desc: Resolve the pinned Translate submodule against the Auralis Cargo workspace
+    cmds:
+      - cargo check --offline -p adapters-translate
+
+  resolve:application:
+    desc: Resolve application integration tests after adding pinned Translate dependencies
+    cmds:
+      - cargo check --offline -p application --tests
+
   test:application:
     desc: Run application usecase and worker regressions
     cmds:

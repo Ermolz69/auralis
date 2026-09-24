@@ -11,6 +11,7 @@
 - [Runtime data layout](./architecture/006-runtime-data.md)
 - [Job runtime and cancellation](./architecture/007-job-runtime.md)
 - [Production storage contract](./storage/production-storage.md)
+- [Translate integration status](./translation/README.md)
 - [Bundled media tools](./media-tools.md)
 - [CI and quality gates](./ci/001-quality-gates.md)
 - [Pinned runner images](./ci/002-runner-images.md)

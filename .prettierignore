@@ -6,6 +6,7 @@ src-tauri/gen/
 crates/**/target/
 apps/desktop/dist/
 vendor/glib-0.18.5/
+modules/auralis-translate/
 
 # generated and lock files
 *.generated.*
