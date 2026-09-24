@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   assertSameContract,
   assertCommandSignatures,
@@ -9,7 +12,19 @@ import {
   extractRustCommandSignatures,
   extractRustEvents,
   extractTypeScriptCommandSignatures,
+  readRustCommandSources,
 } from './check-ipc-contract.mjs';
+
+test('finds commands in nested Rust modules', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'auralis-ipc-'));
+  try {
+    fs.mkdirSync(path.join(directory, 'translation'));
+    fs.writeFileSync(path.join(directory, 'translation', 'compare.rs'), '#[tauri::command]\npub async fn compare_cmd() -> Result<(), Error> {}');
+    assert.deepEqual(extractAnnotatedCommands(readRustCommandSources(directory)), ['compare_cmd']);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('extracts registered, annotated and typed commands', () => {
   assert.deepEqual(

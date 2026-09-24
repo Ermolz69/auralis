@@ -22,20 +22,9 @@ export function languageName(language: string): string {
   return `${name.charAt(0).toLocaleUpperCase('ru-RU')}${name.slice(1)} (${language})`;
 }
 
-export function formatRange(startMs: number, endMs: number): string {
-  return `${formatTimestamp(startMs)} → ${formatTimestamp(endMs)}`;
-}
-
 export function formatJobStatus(status: Job['status']): string {
   if (status === 'completed') return 'Субтитры получены';
   if (status === 'cancelling') return 'Импорт останавливается';
   if (status === 'cancelled') return 'Импорт отменён';
   return 'Ожидание импорта';
-}
-
-function formatTimestamp(value: number): string {
-  const minutes = Math.floor(value / 60_000);
-  const seconds = Math.floor((value % 60_000) / 1000);
-  const milliseconds = value % 1000;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
 }

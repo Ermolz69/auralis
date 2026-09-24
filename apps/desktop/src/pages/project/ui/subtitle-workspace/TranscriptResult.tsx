@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { useTranscript } from '@/entities/transcript';
 import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
-import { formatRange } from './model';
+import { formatSubtitleRange } from '@/shared/lib/formatSubtitleRange';
 import { StatusBox } from './StatusBox';
 
 type Props = {
@@ -55,7 +55,7 @@ export function TranscriptResult({ transcript, isLoading, error, onRefresh }: Pr
         {matches.slice(0, 50).map((segment) => (
           <div key={segment.id} className="flex gap-2 font-mono text-[11px] leading-5 text-muted">
             <span className="text-primary">{segment.index + 1}</span>
-            <span className="text-subtle">{formatRange(segment.startMs, segment.endMs)}</span>
+            <span className="text-subtle">{formatSubtitleRange(segment.startMs, segment.endMs)}</span>
             <span className="min-w-0 break-words text-text">{segment.sourceText}</span>
           </div>
         ))}

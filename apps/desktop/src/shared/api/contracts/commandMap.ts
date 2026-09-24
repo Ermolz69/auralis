@@ -9,7 +9,10 @@ import type { PendingYoutubeImport } from './youtubeImport';
 import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
 import type {
+  BeginTranslationRun,
+  EditTranslationResult,
   TranslationComparisonPage,
+  TranslationFormat,
   TranslationInspection,
   TranslationLink,
   TranslationPublication,
@@ -102,29 +105,15 @@ export interface CommandMap {
     result: string;
   };
   inspect_translation_source_cmd: {
-    args: { projectId: string; sourceArtifactId: string; format: 'srt' | 'vtt' };
+    args: { projectId: string; sourceArtifactId: string; format: TranslationFormat };
     result: TranslationInspection;
   };
   begin_translation_run_cmd: {
-    args: { input: {
-      projectId: string;
-      sourceArtifactId: string;
-      format: 'srt' | 'vtt';
-      sourceLanguage: 'zh';
-      translationId: string;
-      runId: string;
-    } };
+    args: { input: BeginTranslationRun };
     result: TranslationLink;
   };
   edit_translation_result_cmd: {
-    args: { input: {
-      projectId: string;
-      translationId: string;
-      baseResultId: string;
-      resultId: string;
-      segmentId: number;
-      lines: string[];
-    } };
+    args: { input: EditTranslationResult };
     result: string;
   };
   publish_translation_result_cmd: {

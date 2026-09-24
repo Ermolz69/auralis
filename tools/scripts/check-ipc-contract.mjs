@@ -109,10 +109,7 @@ export function assertSameContract(label, rustEntries, typescriptEntries) {
 export function verifyIpcContract(rootDir) {
   const rustEntry = fs.readFileSync(path.join(rootDir, 'src-tauri/src/lib.rs'), 'utf8');
   const commandDirectory = path.join(rootDir, 'src-tauri/src/commands');
-  const commandSources = fs
-    .readdirSync(commandDirectory)
-    .filter((file) => file.endsWith('.rs'))
-    .map((file) => fs.readFileSync(path.join(commandDirectory, file), 'utf8'));
+  const commandSources = readRustCommandSources(commandDirectory);
   const contractSource = fs.readFileSync(
     path.join(rootDir, 'apps/desktop/src/shared/api/contracts/commandMap.ts'),
     'utf8',
@@ -137,6 +134,16 @@ export function verifyIpcContract(rootDir) {
   if (/\.emit\(\s*"/.test([...commandSources, eventPublisher].join('\n'))) {
     throw new Error('Tauri events must use the centralized EVENT_* registry');
   }
+}
+
+export function readRustCommandSources(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return readRustCommandSources(entryPath);
+    return entry.isFile() && entry.name.endsWith('.rs')
+      ? [fs.readFileSync(entryPath, 'utf8')]
+      : [];
+  });
 }
 
 function extractInterfaceBody(source, interfaceName) {

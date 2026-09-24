@@ -1,3 +1,5 @@
+export type TranslationFormat = 'srt' | 'vtt';
+
 export interface TranslationSegment {
   id: number;
   ordinal: number;
@@ -27,8 +29,26 @@ export interface TranslationComparisonPage {
   segments: ComparedTranslationSegment[];
 }
 
+export interface BeginTranslationRun {
+  projectId: string;
+  sourceArtifactId: string;
+  format: TranslationFormat;
+  sourceLanguage: 'zh';
+  translationId: string;
+  runId: string;
+}
+
+export interface EditTranslationResult {
+  projectId: string;
+  translationId: string;
+  baseResultId: string;
+  resultId: string;
+  segmentId: number;
+  lines: string[];
+}
+
 export interface TranslationInspection {
-  format: 'srt' | 'vtt';
+  format: TranslationFormat;
   sourceSha256: string;
   sourceSize: number;
   parserVersion: number;

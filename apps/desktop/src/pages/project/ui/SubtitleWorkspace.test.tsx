@@ -20,6 +20,10 @@ vi.mock('@/entities/transcript', () => ({
   useYoutubeSubtitleTracks: mockUseTracks,
 }));
 
+vi.mock('@/features/translation-review', () => ({
+  TranslationReview: () => null,
+}));
+
 const availableTracks = {
   tracks: [
     {

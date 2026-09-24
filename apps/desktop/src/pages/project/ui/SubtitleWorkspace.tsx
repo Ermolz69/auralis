@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { isActiveJobStatus, useProjectJobs } from '@/entities/job';
 import { useProjectContext } from '@/entities/project';
 import { useTranscript, useYoutubeSubtitleTracks } from '@/entities/transcript';
+import { TranslationReview } from '@/features/translation-review';
 import { filterTracks } from './subtitle-workspace/model';
 import { SubtitleActivityLog } from './subtitle-workspace/SubtitleActivityLog';
 import { SubtitleMethods } from './subtitle-workspace/SubtitleMethods';
@@ -36,6 +37,7 @@ export function SubtitleWorkspace() {
       data-testid="subtitle-workspace"
     >
       <div className="space-y-5">
+        <TranslationReview />
         <SubtitleMethods />
         <SubtitleTrackPicker
           tracks={filterTracks(trackState.tracks, trackQuery)}
