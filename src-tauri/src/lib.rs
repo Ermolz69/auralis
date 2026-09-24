@@ -125,6 +125,7 @@ pub fn run() -> Result<(), AppRunError> {
             commands::project::start_project_mock_pipeline_cmd,
             commands::artifact::list_project_artifacts_cmd,
             commands::artifact::resolve_artifact_path_cmd,
+            commands::translation::inspect_translation_source_cmd,
             commands::job::health_check,
             commands::job::list_jobs_cmd,
             commands::job::list_job_history_page_cmd,

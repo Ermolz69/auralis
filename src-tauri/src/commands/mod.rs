@@ -5,5 +5,6 @@ pub mod media;
 pub mod native_e2e;
 pub mod project;
 pub mod project_avatar;
+pub mod translation;
 pub mod ui_preferences;
 pub mod youtube_import;
