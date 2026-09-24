@@ -26,13 +26,20 @@ impl TranslationResultPort for TranslateResultReader {
         &self,
         source_path: &Path,
         link: &TranslationLink,
+        expected_run_id: Uuid,
         result_id: Uuid,
     ) -> Result<VerifiedTranslationResult, PortError> {
         let database_path = self.database_path.clone();
         let source_path = source_path.to_path_buf();
         let link = link.clone();
         tokio::task::spawn_blocking(move || {
-            read_verified(&database_path, &source_path, &link, result_id)
+            read_verified(
+                &database_path,
+                &source_path,
+                &link,
+                expected_run_id,
+                result_id,
+            )
         })
         .await
         .map_err(|error| PortError::Unexpected {
@@ -45,12 +52,15 @@ fn read_verified(
     database_path: &Path,
     source_path: &Path,
     link: &TranslationLink,
+    expected_run: Uuid,
     result_id: Uuid,
 ) -> Result<VerifiedTranslationResult, PortError> {
-    let expected_run = link.active_run_id.ok_or_else(|| PortError::Conflict {
-        resource: "translation result".into(),
-        message: "project link has no active run".into(),
-    })?;
+    if link
+        .active_run_id
+        .is_some_and(|active| active != expected_run)
+    {
+        return Err(conflict("requested result differs from active project run"));
+    }
     let max_bytes = match link.source_format.as_str() {
         "srt" => SrtParsePolicy::default().max_bytes(),
         "vtt" => VttParsePolicy::default().max_bytes(),

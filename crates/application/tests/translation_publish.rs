@@ -7,14 +7,15 @@ use adapters_storage::{
     },
 };
 use adapters_translate::{
-    FormatInspector, TranslateResultReader, TranslateRunControl, TranslateRunExecutor,
-    TranslateRunRegistrar,
+    FormatInspector, TranslateResultEditor, TranslateResultReader, TranslateRunControl,
+    TranslateRunExecutor, TranslateRunRegistrar,
 };
 use application::usecases::translation::{
-    BeginTranslationRequest, BeginTranslationUseCase, ExecuteTranslationRequest,
-    ExecuteTranslationUseCase, InspectTranslationSourceUseCase, PublishTranslationRequest,
-    PublishTranslationResultUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
-    TranslationRunRequest, TranslationRunUseCase,
+    BeginTranslationRequest, BeginTranslationUseCase, EditTranslationResultRequest,
+    EditTranslationResultUseCase, ExecuteTranslationRequest, ExecuteTranslationUseCase,
+    InspectTranslationSourceUseCase, PublishTranslationRequest, PublishTranslationResultUseCase,
+    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunRequest,
+    TranslationRunUseCase,
 };
 use application::worker::outbox::{OutboxWorker, maintenance::OutboxMaintenanceConfig};
 use domain::job::JobStatus;
@@ -25,7 +26,9 @@ use ports::repository::{JobRepository, ProjectRepository};
 use ports::storage::ArtifactStore;
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_inspection::TranslationSourceFormat;
-use ports::translation_links::{TranslationLinkStore, TranslationPublicationState};
+use ports::translation_links::{
+    StartTranslationRun, TranslationLinkStore, TranslationPublicationState,
+};
 use ports::translation_run_control::TranslationRunPhase;
 use std::error::Error;
 use std::io::{Read, Write};
@@ -174,13 +177,39 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     assert_eq!(completed.phase, TranslationRunPhase::Validated);
     assert_eq!(completed.result_id, Some(result_id));
     assert_eq!(completed.needs_review, Some(true));
-    let expected_output =
-        b"1\n00:00:01,000 --> 00:00:02,000\n\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82.\n";
+    let model_result_id = result_id;
+    let editor = EditTranslationResultUseCase::new(
+        inspector.clone(),
+        links.clone(),
+        Arc::new(TranslateResultEditor::new(translate_path.clone())),
+    );
+    let edited_result_id = Uuid::new_v4();
+    let edit = || EditTranslationResultRequest {
+        project_id: project.id().clone(),
+        translation_id,
+        base_result_id: result_id,
+        result_id: edited_result_id,
+        segment_id: 1,
+        lines: vec!["Здравствуйте.".into()],
+    };
+    assert_eq!(editor.execute(edit()).await?, edited_result_id);
+    assert_eq!(editor.execute(edit()).await?, edited_result_id);
+    assert!(
+        editor
+            .execute(EditTranslationResultRequest {
+                project_id: ProjectId::new(),
+                ..edit()
+            })
+            .await
+            .is_err()
+    );
+    let result_id = edited_result_id;
+    let expected_output = "1\n00:00:01,000 --> 00:00:02,000\nЗдравствуйте.\n".as_bytes();
 
     let publisher = PublishTranslationResultUseCase::new(
-        inspector,
+        inspector.clone(),
         links.clone(),
-        Arc::new(TranslateResultReader::new(translate_path)),
+        Arc::new(TranslateResultReader::new(translate_path.clone())),
         file_store.clone(),
     );
     let absent_result_id = Uuid::new_v4();
@@ -240,9 +269,93 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         .ok_or("missing output artifact")?;
     assert_eq!(output_artifact.state, ArtifactState::Ready);
     let output_path = file_store.resolve_artifact(&output_artifact).await?;
+    assert_eq!(std::fs::read(&output_path)?, expected_output);
+    assert_eq!(std::fs::read(&source_path)?, source);
+    assert!(String::from_utf8(expected_output.to_vec())?.contains("Здравствуйте."));
+
+    let revised_result_id = Uuid::new_v4();
+    assert_eq!(
+        editor
+            .execute(EditTranslationResultRequest {
+                project_id: project.id().clone(),
+                translation_id,
+                base_result_id: edited_result_id,
+                result_id: revised_result_id,
+                segment_id: 1,
+                lines: vec!["Добрый день.".into()],
+            })
+            .await?,
+        revised_result_id
+    );
+    assert!(
+        editor
+            .execute(EditTranslationResultRequest {
+                project_id: project.id().clone(),
+                translation_id,
+                base_result_id: model_result_id,
+                result_id: Uuid::new_v4(),
+                segment_id: 1,
+                lines: vec!["Старая правка.".into()],
+            })
+            .await
+            .is_err()
+    );
+    let revised = publisher
+        .execute(PublishTranslationRequest {
+            project_id: project.id().clone(),
+            translation_id,
+            result_id: revised_result_id,
+        })
+        .await?;
+    assert!(revised.needs_review);
+    assert_eq!(worker.process_pending_messages(10).await?.fetched, 1);
+    let selected = links.get(translation_id).await?.ok_or("missing link")?;
+    assert_eq!(selected.selected_result_id, Some(revised_result_id));
+    let revised_artifact = artifacts
+        .list_by_project_and_kind(project.id(), ArtifactKind::TranslatedTranscript)
+        .await?
+        .into_iter()
+        .find(|artifact| artifact.id == revised.artifact_id)
+        .ok_or("missing revised artifact")?;
+    assert_eq!(revised_artifact.state, ArtifactState::Ready);
+    let revised_path = file_store.resolve_artifact(&revised_artifact).await?;
+    assert!(String::from_utf8(std::fs::read(revised_path)?)?.contains("Добрый день."));
     assert_eq!(std::fs::read(output_path)?, expected_output);
     assert_eq!(std::fs::read(&source_path)?, source);
-    assert!(String::from_utf8(expected_output.to_vec())?.contains("Привет."));
+
+    let stale_result_id = Uuid::new_v4();
+    editor
+        .execute(EditTranslationResultRequest {
+            project_id: project.id().clone(),
+            translation_id,
+            base_result_id: revised_result_id,
+            result_id: stale_result_id,
+            segment_id: 1,
+            lines: vec!["Поздняя правка.".into()],
+        })
+        .await?;
+    publisher
+        .execute(PublishTranslationRequest {
+            project_id: project.id().clone(),
+            translation_id,
+            result_id: stale_result_id,
+        })
+        .await?;
+    let next_run_id = Uuid::new_v4();
+    links
+        .start_run(StartTranslationRun {
+            translation_id,
+            run_id: next_run_id,
+            expected_active_run_id: None,
+            expected_link_revision: selected.revision,
+            updated_at: domain::chrono::Utc::now(),
+        })
+        .await?;
+    assert_eq!(worker.process_pending_messages(10).await?.fetched, 1);
+    let after_stale = links.get(translation_id).await?.ok_or("missing link")?;
+    assert_eq!(after_stale.active_run_id, Some(next_run_id));
+    assert_eq!(after_stale.selected_result_id, Some(revised_result_id));
+    assert_eq!(std::fs::read(&source_path)?, source);
     Ok(())
 }
 

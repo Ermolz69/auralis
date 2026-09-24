@@ -1,5 +1,6 @@
 use super::{
     InspectTranslationSourceRequest, InspectTranslationSourceUseCase, PublishTranslationRequest,
+    linked_result_run,
 };
 use crate::error::{ApplicationError, CleanupReport, CleanupTarget};
 use domain::media::ArtifactKind;
@@ -51,14 +52,14 @@ impl PublishTranslationResultUseCase {
                 message: "Translation belongs to another project".into(),
             });
         }
+        let run_id = linked_result_run::resolve(self.links.as_ref(), &link).await?;
         if let Some(existing) = self
             .links
             .get_publication(request.translation_id, request.result_id)
             .await?
         {
             if existing.source_sha256 != link.source_sha256
-                || (link.active_run_id != Some(existing.run_id)
-                    && link.selected_result_id != Some(request.result_id))
+                || (run_id != existing.run_id && link.selected_result_id != Some(request.result_id))
                 || existing.state == TranslationPublicationState::Failed
             {
                 return Err(ApplicationError::InvalidOperation {
@@ -68,11 +69,6 @@ impl PublishTranslationResultUseCase {
             }
             return Ok(existing);
         }
-        let run_id = link
-            .active_run_id
-            .ok_or_else(|| ApplicationError::InvalidOperation {
-                message: "Translation has no active run to publish".into(),
-            })?;
         let (format, filename_hint) = match link.source_format.as_str() {
             "srt" => (TranslationSourceFormat::Srt, "translated.srt"),
             "vtt" => (TranslationSourceFormat::Vtt, "translated.vtt"),
@@ -97,7 +93,7 @@ impl PublishTranslationResultUseCase {
         }
         let result = self
             .results
-            .verified_result(&source_path, &link, request.result_id)
+            .verified_result(&source_path, &link, run_id, request.result_id)
             .await?;
         if result.result_id != request.result_id || result.run_id != run_id {
             return Err(ApplicationError::InvalidOperation {

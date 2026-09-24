@@ -11,6 +11,7 @@ pub trait TranslationResultPort: Send + Sync {
         &self,
         source_path: &Path,
         link: &TranslationLink,
+        expected_run_id: Uuid,
         result_id: Uuid,
     ) -> Result<VerifiedTranslationResult, PortError>;
 }

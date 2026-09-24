@@ -1,10 +1,13 @@
 mod begin;
 mod begin_request;
+mod edit;
+mod edit_request;
 mod execute;
 mod execute_request;
 mod host_recovery_item;
 mod inspect_source;
 mod inspect_source_request;
+mod linked_result_run;
 mod publish;
 mod publish_request;
 mod reconcile;
@@ -17,6 +20,8 @@ mod start_job;
 
 pub use begin::BeginTranslationUseCase;
 pub use begin_request::BeginTranslationRequest;
+pub use edit::EditTranslationResultUseCase;
+pub use edit_request::EditTranslationResultRequest;
 pub use execute::ExecuteTranslationUseCase;
 pub use execute_request::ExecuteTranslationRequest;
 pub use host_recovery_item::TranslationHostRecoveryItem;

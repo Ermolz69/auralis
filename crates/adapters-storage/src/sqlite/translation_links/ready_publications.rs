@@ -18,7 +18,16 @@ pub(super) async fn list(
          JOIN project_translations l ON l.translation_id = p.translation_id
          WHERE p.state = 'pending' AND a.state = 'ready'
            AND a.kind = 'TranslatedTranscript' AND a.project_id = l.project_id
-           AND l.active_run_id = p.run_id AND l.source_sha256 = p.source_sha256
+           AND (l.active_run_id = p.run_id OR
+                (l.active_run_id IS NULL AND EXISTS (
+                    SELECT 1 FROM translation_publications selected
+                    WHERE selected.translation_id = l.translation_id
+                      AND selected.result_id = l.selected_result_id
+                      AND selected.run_id = p.run_id
+                      AND selected.source_sha256 = l.source_sha256
+                      AND selected.state = 'ready'
+                )))
+           AND l.source_sha256 = p.source_sha256
            AND l.revision = p.expected_link_revision
          ORDER BY p.created_at, p.result_id LIMIT ?",
     )

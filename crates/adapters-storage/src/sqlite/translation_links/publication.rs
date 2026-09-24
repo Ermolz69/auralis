@@ -60,7 +60,28 @@ pub(super) async fn record_in_tx(
         .ok_or_else(|| PortError::NotFound {
             resource: "translation link".into(),
         })?;
-    if link.active_run_id != Some(intent.run_id)
+    let selected_run_matches = if link.active_run_id.is_none() {
+        if let Some(selected_result_id) = link.selected_result_id {
+            let selected_run: Option<String> = sqlx::query_scalar(
+                "SELECT run_id FROM translation_publications
+                 WHERE translation_id = ? AND result_id = ? AND source_sha256 = ? AND state = 'ready'",
+            )
+            .bind(intent.translation_id.to_string())
+            .bind(selected_result_id.to_string())
+            .bind(&link.source_sha256)
+            .fetch_optional(&mut **transaction)
+            .await
+            .map_err(|error| {
+                super::super::helpers::map_sqlite_error("read_selected_translation_run", error)
+            })?;
+            selected_run.as_deref() == Some(intent.run_id.to_string().as_str())
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+    if !(link.active_run_id == Some(intent.run_id) || selected_run_matches)
         || link.source_sha256 != intent.source_sha256
         || link.revision != intent.expected_link_revision
     {

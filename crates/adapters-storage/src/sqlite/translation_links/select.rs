@@ -49,7 +49,31 @@ pub(super) async fn run(
     if state != "pending" && state != "ready" {
         return Err(validation::conflict("publication is not pending or ready"));
     }
-    if link.active_run_id.is_none_or(|id| id.to_string() != run_id)
+    let selected_run_matches = if link.active_run_id.is_none() {
+        if let Some(selected_result_id) = link.selected_result_id {
+            let selected_run: Option<String> = sqlx::query_scalar(
+                "SELECT run_id FROM translation_publications
+                 WHERE translation_id = ? AND result_id = ? AND source_sha256 = ? AND state = 'ready'",
+            )
+            .bind(translation_id.to_string())
+            .bind(selected_result_id.to_string())
+            .bind(&link.source_sha256)
+            .fetch_optional(&mut *transaction)
+            .await
+            .map_err(|error| {
+                super::super::helpers::map_sqlite_error("read_selected_translation_run", error)
+            })?;
+            selected_run.as_deref() == Some(run_id.as_str())
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+    if !(link
+        .active_run_id
+        .is_some_and(|id| id.to_string() == run_id)
+        || selected_run_matches)
         || link.source_sha256 != source_sha256
         || i64::try_from(link.revision).ok() != Some(expected_revision)
     {
@@ -78,14 +102,14 @@ pub(super) async fn run(
         "UPDATE project_translations
          SET selected_result_id = ?, output_artifact_id = ?, active_run_id = NULL,
              revision = revision + 1, updated_at = ?
-         WHERE translation_id = ? AND revision = ? AND active_run_id = ? AND source_sha256 = ?",
+         WHERE translation_id = ? AND revision = ? AND active_run_id IS ? AND source_sha256 = ?",
     )
     .bind(result_id.to_string())
     .bind(&artifact_id)
     .bind(updated_at.to_rfc3339())
     .bind(translation_id.to_string())
     .bind(expected_revision)
-    .bind(&run_id)
+    .bind(link.active_run_id.map(|id| id.to_string()))
     .bind(&source_sha256)
     .execute(&mut *transaction)
     .await

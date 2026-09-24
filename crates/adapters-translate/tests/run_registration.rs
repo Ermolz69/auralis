@@ -266,7 +266,7 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
     assert_eq!(completed.needs_review, Some(true));
     assert!(control.request_pause(&link).await.is_err());
     let rebuilt = TranslateResultReader::new(database_path.clone())
-        .verified_result(&source_path, &link, result_id)
+        .verified_result(&source_path, &link, intent.run_id, result_id)
         .await?;
     assert!(String::from_utf8(rebuilt.output_bytes)?.contains("Привет."));
     assert_eq!(
