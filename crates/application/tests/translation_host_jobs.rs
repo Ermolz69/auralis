@@ -221,9 +221,7 @@ async fn startup_recovery_closes_pending_and_validated_jobs_without_losing_the_r
         .await?;
     let mut running = resumed.clone();
     running.start()?;
-    SqliteJobRepository::new(pool.clone())
-        .save(&running, resumed.revision())
-        .await?;
+    jobs.start(&running, resumed.revision()).await?;
     let validated_recovery = RecoverTranslationHostJobsUseCase::new(
         jobs.clone(),
         Arc::new(FixedRecovery {

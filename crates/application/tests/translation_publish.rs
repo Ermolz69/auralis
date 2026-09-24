@@ -1,8 +1,9 @@
 use adapters_storage::{
     local::{LocalArtifactStore, LocalTempWorkspace},
     sqlite::{
-        SqliteArtifactIndex, SqliteOutboxRepository, SqliteProjectRepository,
-        SqliteStorageUnitOfWork, SqliteTranslationLinkStore, connect_sqlite,
+        SqliteArtifactIndex, SqliteJobRepository, SqliteOutboxRepository, SqliteProjectRepository,
+        SqliteStorageUnitOfWork, SqliteTranslationHostJobStore, SqliteTranslationLinkStore,
+        connect_sqlite,
     },
 };
 use adapters_translate::{
@@ -12,14 +13,17 @@ use adapters_translate::{
 use application::usecases::translation::{
     BeginTranslationRequest, BeginTranslationUseCase, ExecuteTranslationRequest,
     ExecuteTranslationUseCase, InspectTranslationSourceUseCase, PublishTranslationRequest,
-    PublishTranslationResultUseCase, TranslationRunRequest, TranslationRunUseCase,
+    PublishTranslationResultUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
+    TranslationRunRequest, TranslationRunUseCase,
 };
 use application::worker::outbox::{OutboxWorker, maintenance::OutboxMaintenanceConfig};
+use domain::job::JobStatus;
 use domain::media::{ArtifactId, ArtifactKind, ArtifactState};
 use domain::project::{Project, ProjectId};
 use ports::artifact_index::ArtifactIndex;
-use ports::repository::ProjectRepository;
+use ports::repository::{JobRepository, ProjectRepository};
 use ports::storage::ArtifactStore;
+use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_inspection::TranslationSourceFormat;
 use ports::translation_links::{TranslationLinkStore, TranslationPublicationState};
 use ports::translation_run_control::TranslationRunPhase;
@@ -59,6 +63,7 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     let projects = Arc::new(SqliteProjectRepository::new(pool.clone()));
     let artifacts = Arc::new(SqliteArtifactIndex::new(pool.clone()));
     let links = Arc::new(SqliteTranslationLinkStore::new(pool.clone()));
+    let jobs = Arc::new(SqliteTranslationHostJobStore::new(pool.clone()));
     let file_store = Arc::new(LocalArtifactStore::new(directory.path().join("artifacts")));
     let project = projects.create(Project::new("Translation".into())?).await?;
     let source = b"1\n00:00:01,000 --> 00:00:02,000\n\xe4\xbd\xa0\xe5\xa5\xbd\xe3\x80\x82\n";
@@ -128,24 +133,44 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     let listener = TcpListener::bind("127.0.0.1:0")?;
     let endpoint = format!("http://{}/", listener.local_addr()?);
     let server = std::thread::spawn(move || respond_once(listener));
-    let result_id = ExecuteTranslationUseCase::new(
+    let host_job = StartTranslationJobUseCase::new(
+        links.clone(),
+        Arc::new(TranslateRunControl::new(translate_path.clone())),
+        jobs.clone(),
+    )
+    .execute(run_request())
+    .await?;
+    let executor = Arc::new(ExecuteTranslationUseCase::new(
         inspector.clone(),
         links.clone(),
         Arc::new(TranslateRunRegistrar::new(translate_path.clone())),
         Arc::new(TranslateRunExecutor::experimental_unchecked(
             translate_path.clone(),
         )),
-    )
-    .execute(ExecuteTranslationRequest {
-        project_id: project.id().clone(),
-        translation_id,
-        server_url: endpoint,
-    })
-    .await?;
+    ));
+    let result_id = RunTranslationHostJobUseCase::new(links.clone(), jobs.clone(), executor)
+        .execute(
+            ExecuteTranslationRequest {
+                project_id: project.id().clone(),
+                translation_id,
+                server_url: endpoint,
+            },
+            host_job.id(),
+        )
+        .await?;
     server
         .join()
         .map_err(|_| "mock server panicked")?
         .map_err(|error| error.to_string())?;
+    assert!(jobs.active_for_run(run_id).await?.is_none());
+    assert_eq!(
+        SqliteJobRepository::new(pool.clone())
+            .get(host_job.id())
+            .await?
+            .ok_or("missing host job")?
+            .status(),
+        &JobStatus::Completed
+    );
     let completed = run_control.status(run_request()).await?;
     assert_eq!(completed.phase, TranslationRunPhase::Validated);
     assert_eq!(completed.result_id, Some(result_id));

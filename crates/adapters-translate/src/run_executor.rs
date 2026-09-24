@@ -9,6 +9,7 @@ use auralis_translation_formats::srt::SrtParsePolicy;
 use auralis_translation_formats::vtt::VttParsePolicy;
 use auralis_translation_llamacpp::{LlamaCppProvider, ModelProfile, verify_server};
 use auralis_translation_sqlite::{ResultSpec, RunStop, SqliteConfig, TranslateDb};
+use domain::job::JobId;
 use ports::error::PortError;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_links::{TranslationLink, TranslationRunIntent};
@@ -34,6 +35,38 @@ impl TranslateRunExecutor {
             allow_unchecked_profile: true,
         }
     }
+
+    async fn run(
+        &self,
+        source_path: &Path,
+        link: &TranslationLink,
+        intent: &TranslationRunIntent,
+        server_url: &str,
+        job_id: Option<&JobId>,
+    ) -> Result<Uuid, PortError> {
+        let database_path = self.database_path.clone();
+        let source_path = source_path.to_path_buf();
+        let link = link.clone();
+        let intent = intent.clone();
+        let server_url = server_url.to_owned();
+        let job_id = job_id.map(ToString::to_string);
+        let allow_unchecked_profile = self.allow_unchecked_profile;
+        tokio::task::spawn_blocking(move || {
+            execute_run(
+                &database_path,
+                &source_path,
+                &link,
+                &intent,
+                &server_url,
+                allow_unchecked_profile,
+                job_id.as_deref(),
+            )
+        })
+        .await
+        .map_err(|error| PortError::Unexpected {
+            message: error.to_string(),
+        })?
+    }
 }
 
 #[async_trait]
@@ -45,26 +78,19 @@ impl TranslationExecutionPort for TranslateRunExecutor {
         intent: &TranslationRunIntent,
         server_url: &str,
     ) -> Result<Uuid, PortError> {
-        let database_path = self.database_path.clone();
-        let source_path = source_path.to_path_buf();
-        let link = link.clone();
-        let intent = intent.clone();
-        let server_url = server_url.to_owned();
-        let allow_unchecked_profile = self.allow_unchecked_profile;
-        tokio::task::spawn_blocking(move || {
-            execute_run(
-                &database_path,
-                &source_path,
-                &link,
-                &intent,
-                &server_url,
-                allow_unchecked_profile,
-            )
-        })
-        .await
-        .map_err(|error| PortError::Unexpected {
-            message: error.to_string(),
-        })?
+        self.run(source_path, link, intent, server_url, None).await
+    }
+
+    async fn execute_for_host(
+        &self,
+        source_path: &Path,
+        link: &TranslationLink,
+        intent: &TranslationRunIntent,
+        server_url: &str,
+        job_id: &JobId,
+    ) -> Result<Uuid, PortError> {
+        self.run(source_path, link, intent, server_url, Some(job_id))
+            .await
     }
 }
 
@@ -75,6 +101,7 @@ fn execute_run(
     intent: &TranslationRunIntent,
     server_url: &str,
     allow_unchecked_profile: bool,
+    host_job_id: Option<&str>,
 ) -> Result<Uuid, PortError> {
     if link.translation_id != intent.translation_id || link.active_run_id != Some(intent.run_id) {
         return Err(conflict("active link and frozen run intent differ"));
@@ -205,8 +232,8 @@ fn execute_run(
         .run_state(run_id)
         .map_err(|error| storage("read_translate_run_state", error))?
     {
-        RunState::Requested => database.begin_initial_attempt(&run, None),
-        RunState::Paused | RunState::Failed => database.begin_attempt(&run, None),
+        RunState::Requested => database.begin_initial_attempt(&run, host_job_id),
+        RunState::Paused | RunState::Failed => database.begin_attempt(&run, host_job_id),
         _ => return Err(conflict("run state changed before attempt start")),
     }
     .map_err(|error| storage("begin_translate_attempt", error))?;

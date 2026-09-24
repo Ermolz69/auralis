@@ -218,8 +218,9 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
     let endpoint = format!("http://{}/", listener.local_addr()?);
     let server = std::thread::spawn(move || respond_once(listener));
     let executor = TranslateRunExecutor::experimental_unchecked(database_path.clone());
+    let job_id = JobId::new();
     let result_id = executor
-        .execute(&source_path, &link, &intent, &endpoint)
+        .execute_for_host(&source_path, &link, &intent, &endpoint, &job_id)
         .await?;
     server
         .join()
@@ -230,6 +231,12 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
     assert_eq!(database.checkpoints(run_id)?.len(), 1);
     assert_eq!(database.result_for_run(run_id)?.result_id.get(), result_id);
     drop(database);
+    let stored_host: Option<String> = rusqlite::Connection::open(&database_path)?.query_row(
+        "SELECT host_job_id FROM run_attempts WHERE run_id = ?1",
+        [intent.run_id.to_string()],
+        |row| row.get(0),
+    )?;
+    assert_eq!(stored_host.as_deref(), Some(job_id.to_string().as_str()));
     let completed = control.snapshot(&link).await?;
     assert_eq!(completed.phase, TranslationRunPhase::Validated);
     assert_eq!((completed.saved_blocks, completed.total_blocks), (1, 1));

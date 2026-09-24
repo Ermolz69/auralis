@@ -2,6 +2,7 @@ use super::{
     ExecuteTranslationRequest, InspectTranslationSourceRequest, InspectTranslationSourceUseCase,
 };
 use crate::error::ApplicationError;
+use domain::job::JobId;
 use ports::error::PortError;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_inspection::TranslationSourceFormat;
@@ -35,6 +36,22 @@ impl ExecuteTranslationUseCase {
     pub async fn execute(
         &self,
         request: ExecuteTranslationRequest,
+    ) -> Result<Uuid, ApplicationError> {
+        self.execute_inner(request, None).await
+    }
+
+    pub async fn execute_for_host(
+        &self,
+        request: ExecuteTranslationRequest,
+        job_id: &JobId,
+    ) -> Result<Uuid, ApplicationError> {
+        self.execute_inner(request, Some(job_id)).await
+    }
+
+    async fn execute_inner(
+        &self,
+        request: ExecuteTranslationRequest,
+        job_id: Option<&JobId>,
     ) -> Result<Uuid, ApplicationError> {
         let link = self
             .links
@@ -85,9 +102,17 @@ impl ExecuteTranslationUseCase {
         self.registrar
             .ensure_run(&source_path, &link, &intent)
             .await?;
-        self.executor
-            .execute(&source_path, &link, &intent, &request.server_url)
-            .await
-            .map_err(Into::into)
+        match job_id {
+            Some(job_id) => self
+                .executor
+                .execute_for_host(&source_path, &link, &intent, &request.server_url, job_id)
+                .await
+                .map_err(Into::into),
+            None => self
+                .executor
+                .execute(&source_path, &link, &intent, &request.server_url)
+                .await
+                .map_err(Into::into),
+        }
     }
 }

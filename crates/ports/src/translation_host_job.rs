@@ -18,5 +18,7 @@ pub trait TranslationHostJobStore: Send + Sync {
 
     async fn list_active(&self) -> Result<Vec<ActiveTranslationHostJob>, PortError>;
 
+    async fn start(&self, job: &Job, expected_revision: u64) -> Result<(), PortError>;
+
     async fn finish(&self, job: &Job, expected_revision: u64) -> Result<(), PortError>;
 }

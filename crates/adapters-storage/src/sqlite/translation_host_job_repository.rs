@@ -145,6 +145,52 @@ impl TranslationHostJobStore for SqliteTranslationHostJobStore {
             .collect()
     }
 
+    async fn start(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {
+        if job.kind() != &JobKind::Translation
+            || job.stage().is_some()
+            || job.status() != &JobStatus::Running
+            || job.started_at().is_none()
+            || job.finished_at().is_some()
+            || job.revision() != expected_revision.saturating_add(1)
+        {
+            return Err(PortError::InvalidSource {
+                message: "host translation job must have a new running revision".into(),
+            });
+        }
+        let values = job_to_row_values(job)?;
+        let updated = sqlx::query(
+            "UPDATE jobs SET revision = ?, status = ?, progress_json = ?,
+                    updated_at = ?, started_at = ?
+              WHERE id = ? AND revision = ? AND project_id = ? AND kind = ?
+                AND status = 'pending'
+                AND EXISTS (SELECT 1 FROM translation_host_jobs AS host
+                             WHERE host.job_id = jobs.id AND host.ended_at IS NULL)",
+        )
+        .bind(values.revision)
+        .bind(&values.status)
+        .bind(&values.progress_json)
+        .bind(&values.updated_at)
+        .bind(&values.started_at)
+        .bind(&values.id)
+        .bind(
+            i64::try_from(expected_revision).map_err(|_| PortError::InvalidSource {
+                message: "invalid expected host job revision".into(),
+            })?,
+        )
+        .bind(&values.project_id)
+        .bind(&values.kind)
+        .execute(&self.pool)
+        .await
+        .map_err(|error| map_sqlite_error("start_translation_host_job", error))?;
+        if updated.rows_affected() != 1 {
+            return Err(PortError::Conflict {
+                resource: "translation host job".into(),
+                message: "active association or expected pending revision changed".into(),
+            });
+        }
+        Ok(())
+    }
+
     async fn finish(&self, job: &Job, expected_revision: u64) -> Result<(), PortError> {
         if job.kind() != &JobKind::Translation
             || job.stage().is_some()

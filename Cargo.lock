@@ -79,6 +79,7 @@ dependencies = [
  "chrono",
  "domain",
  "ports",
+ "rusqlite",
  "tempfile",
  "tokio",
  "uuid",

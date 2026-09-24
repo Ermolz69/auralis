@@ -93,6 +93,14 @@ async fn job_and_run_association_commit_together_and_reject_concurrent_start()
     assert_eq!(active.len(), 1);
     assert_eq!(active[0].run_id, run_id);
     assert_eq!(active[0].job, resumed);
+    let mut running = resumed.clone();
+    running.start()?;
+    store.start(&running, resumed.revision()).await?;
+    assert!(matches!(
+        store.start(&running, resumed.revision()).await,
+        Err(PortError::Conflict { .. })
+    ));
+    assert_eq!(store.active_for_run(run_id).await?, Some(running));
     let dubbing_recovery = SqliteRecoveryStorage::new(pool.clone())
         .load_snapshot()
         .await?;

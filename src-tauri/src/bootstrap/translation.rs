@@ -6,7 +6,8 @@ use adapters_translate::{
 use application::usecases::translation::{
     BeginTranslationUseCase, ExecuteTranslationUseCase, InspectTranslationSourceUseCase,
     PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
-    RecoverTranslationHostJobsUseCase, StartTranslationJobUseCase, TranslationRunUseCase,
+    RecoverTranslationHostJobsUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
+    TranslationRunUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -16,7 +17,8 @@ use std::sync::Arc;
 pub struct TranslationUseCases {
     pub inspect: Arc<InspectTranslationSourceUseCase>,
     pub begin: BeginTranslationUseCase,
-    pub execute: ExecuteTranslationUseCase,
+    pub execute: Arc<ExecuteTranslationUseCase>,
+    pub run_job: RunTranslationHostJobUseCase,
     pub run: TranslationRunUseCase,
     pub publish: PublishTranslationResultUseCase,
     pub reconcile: ReconcileTranslationRunsUseCase,
@@ -41,15 +43,17 @@ impl TranslationUseCases {
         ));
         let registrar = Arc::new(TranslateRunRegistrar::new(database_path.clone()));
         let control = Arc::new(TranslateRunControl::new(database_path.clone()));
+        let execute = Arc::new(ExecuteTranslationUseCase::new(
+            inspect.clone(),
+            links.clone(),
+            registrar.clone(),
+            Arc::new(TranslateRunExecutor::new(database_path.clone())),
+        ));
         Self {
             inspect: inspect.clone(),
             begin: BeginTranslationUseCase::new(inspect.clone(), links.clone(), registrar.clone()),
-            execute: ExecuteTranslationUseCase::new(
-                inspect.clone(),
-                links.clone(),
-                registrar.clone(),
-                Arc::new(TranslateRunExecutor::new(database_path.clone())),
-            ),
+            execute: execute.clone(),
+            run_job: RunTranslationHostJobUseCase::new(links.clone(), jobs.clone(), execute),
             run: TranslationRunUseCase::new(links.clone(), control.clone()),
             start_job: StartTranslationJobUseCase::new(links.clone(), control, jobs.clone()),
             recover_jobs: RecoverTranslationHostJobsUseCase::new(
