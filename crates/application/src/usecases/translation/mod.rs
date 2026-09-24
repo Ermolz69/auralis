@@ -8,6 +8,8 @@ mod publish;
 mod publish_request;
 mod reconcile;
 mod reconcile_item;
+mod run_control;
+mod run_request;
 
 pub use begin::BeginTranslationUseCase;
 pub use begin_request::BeginTranslationRequest;
@@ -19,3 +21,5 @@ pub use publish::PublishTranslationResultUseCase;
 pub use publish_request::PublishTranslationRequest;
 pub use reconcile::ReconcileTranslationRunsUseCase;
 pub use reconcile_item::TranslationReconcileItem;
+pub use run_control::TranslationRunUseCase;
+pub use run_request::TranslationRunRequest;

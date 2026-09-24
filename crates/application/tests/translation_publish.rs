@@ -6,21 +6,23 @@ use adapters_storage::{
     },
 };
 use adapters_translate::{
-    FormatInspector, TranslateResultReader, TranslateRunExecutor, TranslateRunRegistrar,
+    FormatInspector, TranslateResultReader, TranslateRunControl, TranslateRunExecutor,
+    TranslateRunRegistrar,
 };
 use application::usecases::translation::{
     BeginTranslationRequest, BeginTranslationUseCase, ExecuteTranslationRequest,
     ExecuteTranslationUseCase, InspectTranslationSourceUseCase, PublishTranslationRequest,
-    PublishTranslationResultUseCase,
+    PublishTranslationResultUseCase, TranslationRunRequest, TranslationRunUseCase,
 };
 use application::worker::outbox::{OutboxWorker, maintenance::OutboxMaintenanceConfig};
 use domain::media::{ArtifactId, ArtifactKind, ArtifactState};
-use domain::project::Project;
+use domain::project::{Project, ProjectId};
 use ports::artifact_index::ArtifactIndex;
 use ports::repository::ProjectRepository;
 use ports::storage::ArtifactStore;
 use ports::translation_inspection::TranslationSourceFormat;
 use ports::translation_links::{TranslationLinkStore, TranslationPublicationState};
+use ports::translation_run_control::TranslationRunPhase;
 use std::error::Error;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -100,6 +102,29 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     })
     .await?;
 
+    let run_control = TranslationRunUseCase::new(
+        links.clone(),
+        Arc::new(TranslateRunControl::new(translate_path.clone())),
+    );
+    let run_request = || TranslationRunRequest {
+        project_id: project.id().clone(),
+        translation_id,
+    };
+    assert!(
+        run_control
+            .pause(TranslationRunRequest {
+                project_id: ProjectId::new(),
+                translation_id,
+            })
+            .await
+            .is_err()
+    );
+    run_control.pause(run_request()).await?;
+    assert_eq!(
+        run_control.status(run_request()).await?.phase,
+        TranslationRunPhase::Paused
+    );
+
     let listener = TcpListener::bind("127.0.0.1:0")?;
     let endpoint = format!("http://{}/", listener.local_addr()?);
     let server = std::thread::spawn(move || respond_once(listener));
@@ -121,6 +146,10 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         .join()
         .map_err(|_| "mock server panicked")?
         .map_err(|error| error.to_string())?;
+    let completed = run_control.status(run_request()).await?;
+    assert_eq!(completed.phase, TranslationRunPhase::Validated);
+    assert_eq!(completed.result_id, Some(result_id));
+    assert_eq!(completed.needs_review, Some(true));
     let expected_output =
         b"1\n00:00:01,000 --> 00:00:02,000\n\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82.\n";
 

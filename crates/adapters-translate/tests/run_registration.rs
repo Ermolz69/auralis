@@ -1,14 +1,17 @@
-use adapters_translate::{TranslateResultReader, TranslateRunExecutor, TranslateRunRegistrar};
+use adapters_translate::{
+    TranslateResultReader, TranslateRunControl, TranslateRunExecutor, TranslateRunRegistrar,
+};
 use auralis_translation::{BlockPolicy, RunId, SourceHash, TranslationId};
 use auralis_translation_formats::srt::SrtRunPlan;
 use auralis_translation_formats::vtt::VttRunPlan;
-use auralis_translation_sqlite::{SqliteConfig, TranslateDb};
+use auralis_translation_sqlite::{RunStop, SqliteConfig, TranslateDb};
 use chrono::Utc;
 use domain::media::ArtifactId;
 use domain::project::ProjectId;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_links::{TranslationLink, TranslationRunIntent};
 use ports::translation_result::TranslationResultPort;
+use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPhase};
 use ports::translation_run_registration::TranslationRunRegistrationPort;
 use std::error::Error;
 use std::io::{Read, Write};
@@ -156,6 +159,15 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
     TranslateRunRegistrar::new(database_path.clone())
         .ensure_run(&source_path, &link, &intent)
         .await?;
+    let control = TranslateRunControl::new(database_path.clone());
+    let requested = control.snapshot(&link).await?;
+    assert_eq!(requested.phase, TranslationRunPhase::Requested);
+    assert_eq!((requested.saved_blocks, requested.total_blocks), (0, 1));
+    control.request_pause(&link).await?;
+    assert_eq!(
+        control.snapshot(&link).await?.phase,
+        TranslationRunPhase::Paused
+    );
     let listener = TcpListener::bind("127.0.0.1:0")?;
     let endpoint = format!("http://{}/", listener.local_addr()?);
     let server = std::thread::spawn(move || respond_once(listener));
@@ -172,6 +184,12 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
     assert_eq!(database.checkpoints(run_id)?.len(), 1);
     assert_eq!(database.result_for_run(run_id)?.result_id.get(), result_id);
     drop(database);
+    let completed = control.snapshot(&link).await?;
+    assert_eq!(completed.phase, TranslationRunPhase::Validated);
+    assert_eq!((completed.saved_blocks, completed.total_blocks), (1, 1));
+    assert_eq!(completed.result_id, Some(result_id));
+    assert_eq!(completed.needs_review, Some(true));
+    assert!(control.request_pause(&link).await.is_err());
     let rebuilt = TranslateResultReader::new(database_path.clone())
         .verified_result(&source_path, &link, result_id)
         .await?;
@@ -189,6 +207,39 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
             .is_err()
     );
     assert_eq!(std::fs::read(&source_path)?, source);
+    Ok(())
+}
+
+#[tokio::test]
+async fn running_pause_request_is_visible_without_changing_another_project()
+-> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let source = b"1\n00:00:01,000 --> 00:00:02,000\nhello\n";
+    let source_path = directory.path().join("source.srt");
+    let database_path = directory.path().join("translate.sqlite");
+    std::fs::write(&source_path, source)?;
+    let (link, intent) = records("srt", source);
+    TranslateRunRegistrar::new(database_path.clone())
+        .ensure_run(&source_path, &link, &intent)
+        .await?;
+    let run_id = RunId::new(intent.run_id).ok_or("nil run ID")?;
+    let mut database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    let run = database.run(run_id)?;
+    let attempt = database.begin_initial_attempt(&run, None)?;
+    let control = TranslateRunControl::new(database_path);
+    let mut foreign = link.clone();
+    foreign.project_id = ProjectId::new();
+    assert!(control.request_pause(&foreign).await.is_err());
+    assert!(!control.snapshot(&link).await?.pause_requested);
+    control.request_pause(&link).await?;
+    let running = control.snapshot(&link).await?;
+    assert_eq!(running.phase, TranslationRunPhase::Running);
+    assert!(running.pause_requested);
+    database.stop_attempt(run_id, attempt, RunStop::Paused, "pause acknowledged")?;
+    let paused = control.snapshot(&link).await?;
+    assert_eq!(paused.phase, TranslationRunPhase::Paused);
+    assert!(!paused.pause_requested);
+    assert_eq!(std::fs::read(source_path)?, source);
     Ok(())
 }
 
