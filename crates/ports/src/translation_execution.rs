@@ -1,8 +1,10 @@
+use crate::committed_translation_progress::CommittedTranslationProgress;
 use crate::error::PortError;
 use crate::translation_links::{TranslationLink, TranslationRunIntent};
 use async_trait::async_trait;
 use domain::job::JobId;
 use std::path::Path;
+use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 
 #[async_trait]
@@ -22,6 +24,7 @@ pub trait TranslationExecutionPort: Send + Sync {
         _intent: &TranslationRunIntent,
         _server_url: &str,
         _job_id: &JobId,
+        _progress: UnboundedSender<CommittedTranslationProgress>,
     ) -> Result<Uuid, PortError> {
         Err(PortError::Unsupported {
             message: "host-owned translation execution is unavailable".into(),

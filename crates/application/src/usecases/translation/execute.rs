@@ -3,12 +3,14 @@ use super::{
 };
 use crate::error::ApplicationError;
 use domain::job::JobId;
+use ports::committed_translation_progress::CommittedTranslationProgress;
 use ports::error::PortError;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_inspection::TranslationSourceFormat;
 use ports::translation_links::TranslationLinkStore;
 use ports::translation_run_registration::TranslationRunRegistrationPort;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 
 pub struct ExecuteTranslationUseCase {
@@ -44,14 +46,15 @@ impl ExecuteTranslationUseCase {
         &self,
         request: ExecuteTranslationRequest,
         job_id: &JobId,
+        progress: UnboundedSender<CommittedTranslationProgress>,
     ) -> Result<Uuid, ApplicationError> {
-        self.execute_inner(request, Some(job_id)).await
+        self.execute_inner(request, Some((job_id, progress))).await
     }
 
     async fn execute_inner(
         &self,
         request: ExecuteTranslationRequest,
-        job_id: Option<&JobId>,
+        host: Option<(&JobId, UnboundedSender<CommittedTranslationProgress>)>,
     ) -> Result<Uuid, ApplicationError> {
         let link = self
             .links
@@ -102,10 +105,17 @@ impl ExecuteTranslationUseCase {
         self.registrar
             .ensure_run(&source_path, &link, &intent)
             .await?;
-        match job_id {
-            Some(job_id) => self
+        match host {
+            Some((job_id, progress)) => self
                 .executor
-                .execute_for_host(&source_path, &link, &intent, &request.server_url, job_id)
+                .execute_for_host(
+                    &source_path,
+                    &link,
+                    &intent,
+                    &request.server_url,
+                    job_id,
+                    progress,
+                )
                 .await
                 .map_err(Into::into),
             None => self

@@ -219,9 +219,27 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
     let server = std::thread::spawn(move || respond_once(listener));
     let executor = TranslateRunExecutor::experimental_unchecked(database_path.clone());
     let job_id = JobId::new();
+    let (progress_sender, mut progress_receiver) = tokio::sync::mpsc::unbounded_channel();
     let result_id = executor
-        .execute_for_host(&source_path, &link, &intent, &endpoint, &job_id)
+        .execute_for_host(
+            &source_path,
+            &link,
+            &intent,
+            &endpoint,
+            &job_id,
+            progress_sender,
+        )
         .await?;
+    let reported: Vec<_> = std::iter::from_fn(|| progress_receiver.try_recv().ok())
+        .map(|progress| {
+            (
+                progress.run_id,
+                progress.saved_blocks,
+                progress.total_blocks,
+            )
+        })
+        .collect();
+    assert_eq!(reported, vec![(intent.run_id, 0, 1), (intent.run_id, 1, 1)]);
     server
         .join()
         .map_err(|_| "mock server panicked")?

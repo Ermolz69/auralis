@@ -20,5 +20,7 @@ pub trait TranslationHostJobStore: Send + Sync {
 
     async fn start(&self, job: &Job, expected_revision: u64) -> Result<(), PortError>;
 
+    async fn record_progress(&self, job: &Job, expected_revision: u64) -> Result<(), PortError>;
+
     async fn finish(&self, job: &Job, expected_revision: u64) -> Result<(), PortError>;
 }

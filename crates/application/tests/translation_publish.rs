@@ -163,14 +163,13 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         .map_err(|_| "mock server panicked")?
         .map_err(|error| error.to_string())?;
     assert!(jobs.active_for_run(run_id).await?.is_none());
-    assert_eq!(
-        SqliteJobRepository::new(pool.clone())
-            .get(host_job.id())
-            .await?
-            .ok_or("missing host job")?
-            .status(),
-        &JobStatus::Completed
-    );
+    let completed_job = SqliteJobRepository::new(pool.clone())
+        .get(host_job.id())
+        .await?
+        .ok_or("missing host job")?;
+    assert_eq!(completed_job.status(), &JobStatus::Completed);
+    assert_eq!(completed_job.progress().processed_items, Some(1));
+    assert_eq!(completed_job.progress().total_items, Some(1));
     let completed = run_control.status(run_request()).await?;
     assert_eq!(completed.phase, TranslationRunPhase::Validated);
     assert_eq!(completed.result_id, Some(result_id));
@@ -262,6 +261,7 @@ fn respond_once(listener: TcpListener) -> Result<(), Box<dyn Error + Send + Sync
             Err(error) => return Err(error.into()),
         }
     };
+    stream.set_nonblocking(false)?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
     read_request(&mut stream)?;
     let body = r#"{"choices":[{"message":{"content":"Привет."},"finish_reason":"stop"}]}"#;

@@ -104,14 +104,12 @@ async fn failed_model_request_closes_host_job_without_changing_source() -> Resul
         .await;
     assert!(failed.is_err());
     assert!(jobs.active_for_run(run_id).await?.is_none());
-    assert_eq!(
-        SqliteJobRepository::new(pool)
-            .get(job.id())
-            .await?
-            .ok_or("missing failed job")?
-            .status(),
-        &JobStatus::Failed
-    );
+    let failed_job = SqliteJobRepository::new(pool)
+        .get(job.id())
+        .await?
+        .ok_or("missing failed job")?;
+    assert_eq!(failed_job.status(), &JobStatus::Failed);
+    assert_eq!(failed_job.progress().processed_items, Some(0));
     let link = links.get(translation_id).await?.ok_or("missing link")?;
     assert_eq!(
         control.snapshot(&link).await?.phase,

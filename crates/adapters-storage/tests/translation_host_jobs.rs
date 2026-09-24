@@ -100,7 +100,28 @@ async fn job_and_run_association_commit_together_and_reject_concurrent_start()
         store.start(&running, resumed.revision()).await,
         Err(PortError::Conflict { .. })
     ));
-    assert_eq!(store.active_for_run(run_id).await?, Some(running));
+    assert_eq!(store.active_for_run(run_id).await?, Some(running.clone()));
+    let mut checkpointed = running.clone();
+    checkpointed.report_translation_progress(1, 2)?;
+    store
+        .record_progress(&checkpointed, running.revision())
+        .await?;
+    assert_eq!(
+        store
+            .active_for_run(run_id)
+            .await?
+            .ok_or("missing running job")?
+            .progress()
+            .processed_items,
+        Some(1)
+    );
+    assert!(checkpointed.report_translation_progress(0, 2).is_err());
+    assert!(matches!(
+        store
+            .record_progress(&checkpointed, running.revision())
+            .await,
+        Err(PortError::Conflict { .. })
+    ));
     let dubbing_recovery = SqliteRecoveryStorage::new(pool.clone())
         .load_snapshot()
         .await?;

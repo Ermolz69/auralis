@@ -10,10 +10,12 @@ use auralis_translation_formats::vtt::VttParsePolicy;
 use auralis_translation_llamacpp::{LlamaCppProvider, ModelProfile, verify_server};
 use auralis_translation_sqlite::{ResultSpec, RunStop, SqliteConfig, TranslateDb};
 use domain::job::JobId;
+use ports::committed_translation_progress::CommittedTranslationProgress;
 use ports::error::PortError;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_links::{TranslationLink, TranslationRunIntent};
 use std::path::{Path, PathBuf};
+use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 
 pub struct TranslateRunExecutor {
@@ -43,14 +45,18 @@ impl TranslateRunExecutor {
         intent: &TranslationRunIntent,
         server_url: &str,
         job_id: Option<&JobId>,
+        progress: Option<UnboundedSender<CommittedTranslationProgress>>,
     ) -> Result<Uuid, PortError> {
         let database_path = self.database_path.clone();
         let source_path = source_path.to_path_buf();
         let link = link.clone();
         let intent = intent.clone();
         let server_url = server_url.to_owned();
-        let job_id = job_id.map(ToString::to_string);
-        let allow_unchecked_profile = self.allow_unchecked_profile;
+        let options = RunExecutionOptions {
+            allow_unchecked_profile: self.allow_unchecked_profile,
+            host_job_id: job_id.map(ToString::to_string),
+            progress,
+        };
         tokio::task::spawn_blocking(move || {
             execute_run(
                 &database_path,
@@ -58,8 +64,7 @@ impl TranslateRunExecutor {
                 &link,
                 &intent,
                 &server_url,
-                allow_unchecked_profile,
-                job_id.as_deref(),
+                options,
             )
         })
         .await
@@ -78,7 +83,8 @@ impl TranslationExecutionPort for TranslateRunExecutor {
         intent: &TranslationRunIntent,
         server_url: &str,
     ) -> Result<Uuid, PortError> {
-        self.run(source_path, link, intent, server_url, None).await
+        self.run(source_path, link, intent, server_url, None, None)
+            .await
     }
 
     async fn execute_for_host(
@@ -88,10 +94,24 @@ impl TranslationExecutionPort for TranslateRunExecutor {
         intent: &TranslationRunIntent,
         server_url: &str,
         job_id: &JobId,
+        progress: UnboundedSender<CommittedTranslationProgress>,
     ) -> Result<Uuid, PortError> {
-        self.run(source_path, link, intent, server_url, Some(job_id))
-            .await
+        self.run(
+            source_path,
+            link,
+            intent,
+            server_url,
+            Some(job_id),
+            Some(progress),
+        )
+        .await
     }
+}
+
+struct RunExecutionOptions {
+    allow_unchecked_profile: bool,
+    host_job_id: Option<String>,
+    progress: Option<UnboundedSender<CommittedTranslationProgress>>,
 }
 
 fn execute_run(
@@ -100,8 +120,7 @@ fn execute_run(
     link: &TranslationLink,
     intent: &TranslationRunIntent,
     server_url: &str,
-    allow_unchecked_profile: bool,
-    host_job_id: Option<&str>,
+    options: RunExecutionOptions,
 ) -> Result<Uuid, PortError> {
     if link.translation_id != intent.translation_id || link.active_run_id != Some(intent.run_id) {
         return Err(conflict("active link and frozen run intent differ"));
@@ -121,7 +140,7 @@ fn execute_run(
     }
     let profile =
         ModelProfile::from_json(profile_bytes).map_err(|error| invalid(&error.to_string()))?;
-    if profile.model_file_bytes.is_none() && !allow_unchecked_profile {
+    if profile.model_file_bytes.is_none() && !options.allow_unchecked_profile {
         return Err(PortError::Unsupported {
             message: "Auralis execution requires a checked model profile".into(),
         });
@@ -232,13 +251,18 @@ fn execute_run(
         .run_state(run_id)
         .map_err(|error| storage("read_translate_run_state", error))?
     {
-        RunState::Requested => database.begin_initial_attempt(&run, host_job_id),
-        RunState::Paused | RunState::Failed => database.begin_attempt(&run, host_job_id),
+        RunState::Requested => database.begin_initial_attempt(&run, options.host_job_id.as_deref()),
+        RunState::Paused | RunState::Failed => {
+            database.begin_attempt(&run, options.host_job_id.as_deref())
+        }
         _ => return Err(conflict("run state changed before attempt start")),
     }
     .map_err(|error| storage("begin_translate_attempt", error))?;
+    let mut reporter = ForwardProgress {
+        sender: options.progress,
+    };
     if let Err(error) =
-        plan.execute_with_policy(&provider, &mut database, &mut NoProgress, &control, retry)
+        plan.execute_with_policy(&provider, &mut database, &mut reporter, &control, retry)
     {
         let stop = if matches!(error, PortError::Cancelled) {
             RunStop::Paused
@@ -287,10 +311,20 @@ fn execute_run(
     }
 }
 
-struct NoProgress;
+struct ForwardProgress {
+    sender: Option<UnboundedSender<CommittedTranslationProgress>>,
+}
 
-impl ProgressSink for NoProgress {
-    fn report(&mut self, _progress: RunProgress) {}
+impl ProgressSink for ForwardProgress {
+    fn report(&mut self, progress: RunProgress) {
+        if let Some(sender) = &self.sender {
+            let _ = sender.send(CommittedTranslationProgress {
+                run_id: progress.run_id.get(),
+                saved_blocks: progress.committed_blocks,
+                total_blocks: progress.total_blocks,
+            });
+        }
+    }
 }
 
 fn invalid(message: &str) -> PortError {
