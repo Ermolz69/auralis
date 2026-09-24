@@ -107,6 +107,26 @@ describe('IPC runtime validation', () => {
     ).toThrow(IpcContractError);
   });
 
+  it('requires a result identity for a validated translation run', () => {
+    const snapshot = {
+      runId: '00000000-0000-4000-8000-000000000004',
+      phase: 'validated',
+      pauseRequested: false,
+      savedBlocks: 2,
+      totalBlocks: 2,
+      resultId: '00000000-0000-4000-8000-000000000005',
+      needsReview: true,
+    };
+    expect(parseCommandResult('get_translation_run_status_cmd', snapshot)).toEqual(snapshot);
+    expect(parseCommandResult('pause_translation_run_cmd', null)).toBeNull();
+    expect(() =>
+      parseCommandResult('get_translation_run_status_cmd', {
+        ...snapshot,
+        resultId: null,
+      }),
+    ).toThrow(IpcContractError);
+  });
+
   it('rejects impossible media rates and structurally conflicting transcript segments', () => {
     expect(() =>
       parseCommandResult('probe_local_media_cmd', {

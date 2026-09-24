@@ -8,7 +8,7 @@ import type { ProjectAvatar } from './projectAvatar';
 import type { PendingYoutubeImport } from './youtubeImport';
 import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
-import type { TranslationInspection } from './translation';
+import type { TranslationInspection, TranslationRunSnapshot } from './translation';
 
 export interface CommandMap {
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
@@ -98,6 +98,14 @@ export interface CommandMap {
   inspect_translation_source_cmd: {
     args: { projectId: string; sourceArtifactId: string; format: 'srt' | 'vtt' };
     result: TranslationInspection;
+  };
+  get_translation_run_status_cmd: {
+    args: { projectId: string; translationId: string };
+    result: TranslationRunSnapshot;
+  };
+  pause_translation_run_cmd: {
+    args: { projectId: string; translationId: string };
+    result: null;
   };
 
   list_jobs_cmd: {

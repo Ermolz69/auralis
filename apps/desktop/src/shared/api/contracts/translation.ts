@@ -15,3 +15,15 @@ export interface TranslationInspection {
   parserVersion: number;
   segments: TranslationSegment[];
 }
+
+export type TranslationRunPhase = 'requested' | 'running' | 'paused' | 'failed' | 'validated';
+
+export interface TranslationRunSnapshot {
+  runId: string;
+  phase: TranslationRunPhase;
+  pauseRequested: boolean;
+  savedBlocks: number;
+  totalBlocks: number;
+  resultId: string | null;
+  needsReview: boolean | null;
+}

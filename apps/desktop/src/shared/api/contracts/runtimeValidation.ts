@@ -2,7 +2,10 @@ import type { Artifact } from './artifact';
 import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
 import type { Project } from './project';
-import { validateTranslationInspection } from './translationValidation';
+import {
+  validateTranslationInspection,
+  validateTranslationRunSnapshot,
+} from './translationValidation';
 import { validateMediaMetadata, validateMediaSource } from './mediaValidation';
 import {
   isArrayOf,
@@ -139,6 +142,8 @@ const commandResultValidators = {
   list_project_artifacts_cmd: (value) => isArrayOf(value, validateArtifact),
   resolve_artifact_path_cmd: isString,
   inspect_translation_source_cmd: validateTranslationInspection,
+  get_translation_run_status_cmd: validateTranslationRunSnapshot,
+  pause_translation_run_cmd: isNull,
   list_jobs_cmd: validateJobSnapshot,
   list_job_history_page_cmd: validateJobHistoryPage,
   list_jobs_snapshot_cmd: validateJobSnapshot,

@@ -1,4 +1,4 @@
-import type { TranslationInspection } from './translation';
+import type { TranslationInspection, TranslationRunSnapshot } from './translation';
 import {
   isNonNegativeSafeInteger,
   isNullable,
@@ -46,4 +46,27 @@ export function validateTranslationInspection(value: unknown): value is Translat
         range[1] <= sourceSize,
     );
   });
+}
+
+const runPhases = new Set(['requested', 'running', 'paused', 'failed', 'validated']);
+
+export function validateTranslationRunSnapshot(value: unknown): value is TranslationRunSnapshot {
+  if (
+    !isRecord(value) ||
+    !isString(value.runId) ||
+    !isString(value.phase) ||
+    !runPhases.has(value.phase) ||
+    typeof value.pauseRequested !== 'boolean' ||
+    !isNonNegativeSafeInteger(value.savedBlocks) ||
+    !isNonNegativeSafeInteger(value.totalBlocks) ||
+    value.savedBlocks > value.totalBlocks ||
+    !isNullable(value.resultId, isString) ||
+    !isNullable(value.needsReview, (item) => typeof item === 'boolean')
+  ) {
+    return false;
+  }
+  if (value.phase === 'validated') {
+    return value.resultId !== null && value.needsReview !== null;
+  }
+  return value.resultId === null && value.needsReview === null;
 }
