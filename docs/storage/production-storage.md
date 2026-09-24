@@ -148,5 +148,14 @@ file's extension, and use `bin` only when neither provides a usable extension.
 
 The `adapters-storage::memory` module is retained only as test support. It is a test double for application and adapter tests, not a production backend, and it does not claim SQLite-equivalent transaction, outbox, or crash durability semantics.
 
+## Translation project links
+
+Schema version 6 adds `project_translations` and `translation_publications`. They contain stable external Translate IDs, source and output artifact IDs, source digest, link revision, publication state, and the small review projection. Translation text, checkpoints, and detailed warnings remain in the separate Translate SQLite database.
+
+`TranslationLinkStore::begin` records an active run against a ready `OriginalSubtitle` artifact in the same project. Repeating the same intent returns the existing link; changing its source or run is a conflict. `start_run` conditionally assigns a later run, retains an earlier selected result and artifact, and advances the link revision. `record_publication` requires the active run, source digest, and expected link revision to match and records a pending `TranslatedTranscript` artifact. `select_ready_result` requires that artifact to be ready, then selects the result and artifact together, clears the active run, and advances the link revision in one Auralis transaction. Repeated start and completion calls with the same identity return the stored link. Project deletion cascades the link and publication records.
+
+This is the storage slice of integration. Application orchestration, the host job, managed artifact staging/outbox coupling, Translate `ensure_run` calls, reconciliation, and UI are still required before a project can translate or publish subtitles. The caller must verify Translate's immutable `result_id` and output digest before recording publication; Auralis storage cannot query the separate database inside its transaction.
+The caller must also stop or explicitly supersede an earlier active Translate run before using `start_run` with its ID as the expected active run. The link store enforces identity and revision, but it cannot determine whether a worker in the separate Translate process is still running.
+
 Atomic YouTube import explicitly returns `Unsupported` on the in-memory adapter because it has
 no shared durable artifact/outbox transaction. Its contract tests use the real SQLite adapter.
