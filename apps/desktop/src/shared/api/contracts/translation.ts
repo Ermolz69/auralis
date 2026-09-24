@@ -8,6 +8,25 @@ export interface TranslationSegment {
   textRanges: [number, number][];
 }
 
+export interface ComparedTranslationSegment {
+  id: number;
+  ordinal: number;
+  cueLabel: string | null;
+  startMs: number;
+  endMs: number;
+  sourceLines: string[];
+  translatedLines: string[];
+}
+
+export interface TranslationComparisonPage {
+  resultId: string;
+  runId: string;
+  needsReview: boolean;
+  totalSegments: number;
+  offset: number;
+  segments: ComparedTranslationSegment[];
+}
+
 export interface TranslationInspection {
   format: 'srt' | 'vtt';
   sourceSha256: string;

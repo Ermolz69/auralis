@@ -5,10 +5,10 @@ use adapters_translate::{
 };
 use application::usecases::translation::{
     BeginTranslationUseCase, EditTranslationResultUseCase, ExecuteTranslationUseCase,
-    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase,
-    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
-    RecoverTranslationHostJobsUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
-    TranslationRunUseCase,
+    GetTranslationComparisonUseCase, InspectTranslationSourceUseCase,
+    ListProjectTranslationsUseCase, PublishTranslationResultUseCase,
+    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
+    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -22,6 +22,7 @@ pub(crate) const EXPERIMENTAL_CHECKED_CHINESE_PROFILE: &str = include_str!(
 pub struct TranslationUseCases {
     pub inspect: Arc<InspectTranslationSourceUseCase>,
     pub list: ListProjectTranslationsUseCase,
+    pub comparison: GetTranslationComparisonUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
     pub execute: Arc<ExecuteTranslationUseCase>,
@@ -59,6 +60,11 @@ impl TranslationUseCases {
         Self {
             inspect: inspect.clone(),
             list: ListProjectTranslationsUseCase::new(projects, links.clone()),
+            comparison: GetTranslationComparisonUseCase::new(
+                inspect.clone(),
+                links.clone(),
+                Arc::new(TranslateResultReader::new(database_path.clone())),
+            ),
             begin: BeginTranslationUseCase::new(inspect.clone(), links.clone(), registrar.clone()),
             edit: EditTranslationResultUseCase::new(
                 inspect.clone(),

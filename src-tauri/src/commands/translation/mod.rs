@@ -1,4 +1,5 @@
 pub mod begin;
+pub mod comparison;
 pub mod edit;
 pub mod inspect;
 pub mod list;

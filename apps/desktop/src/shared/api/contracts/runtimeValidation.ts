@@ -3,6 +3,7 @@ import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
 import type { Project } from './project';
 import {
+  validateTranslationComparisonPage,
   validateTranslationInspection,
   validateTranslationLink,
   validateTranslationPublication,
@@ -149,6 +150,7 @@ const commandResultValidators = {
   edit_translation_result_cmd: isUuid,
   publish_translation_result_cmd: validateTranslationPublication,
   list_project_translations_cmd: (value) => isArrayOf(value, validateTranslationLink),
+  get_translation_comparison_cmd: validateTranslationComparisonPage,
   get_translation_run_status_cmd: validateTranslationRunSnapshot,
   pause_translation_run_cmd: isNull,
   list_jobs_cmd: validateJobSnapshot,

@@ -1,5 +1,7 @@
 mod begin;
 mod begin_request;
+mod comparison;
+mod comparison_request;
 mod edit;
 mod edit_request;
 mod execute;
@@ -21,6 +23,8 @@ mod start_job;
 
 pub use begin::BeginTranslationUseCase;
 pub use begin_request::BeginTranslationRequest;
+pub use comparison::GetTranslationComparisonUseCase;
+pub use comparison_request::GetTranslationComparisonRequest;
 pub use edit::EditTranslationResultUseCase;
 pub use edit_request::EditTranslationResultRequest;
 pub use execute::ExecuteTranslationUseCase;

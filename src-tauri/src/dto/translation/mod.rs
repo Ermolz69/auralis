@@ -1,4 +1,6 @@
 mod begin_request;
+mod compared_segment;
+mod comparison_page;
 mod edit_request;
 mod format;
 mod inspection;
@@ -10,6 +12,8 @@ mod segment;
 mod source_language;
 
 pub use begin_request::BeginTranslationRunDto;
+pub use compared_segment::ComparedTranslationSegmentDto;
+pub use comparison_page::TranslationComparisonPageDto;
 pub use edit_request::EditTranslationResultDto;
 pub use format::TranslationFormatDto;
 pub use inspection::TranslationInspectionDto;

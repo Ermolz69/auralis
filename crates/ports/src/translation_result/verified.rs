@@ -1,3 +1,4 @@
+use super::ComparedTranslationSegment;
 use uuid::Uuid;
 
 pub struct VerifiedTranslationResult {
@@ -6,4 +7,5 @@ pub struct VerifiedTranslationResult {
     pub output_sha256: String,
     pub output_bytes: Vec<u8>,
     pub needs_review: bool,
+    pub segments: Vec<ComparedTranslationSegment>,
 }

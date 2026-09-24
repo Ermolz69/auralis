@@ -181,6 +181,34 @@ describe('IPC runtime validation', () => {
     ).toThrow(IpcContractError);
   });
 
+  it('validates bounded source and translated comparison pages', () => {
+    const page = {
+      resultId: '00000000-0000-4000-8000-000000000031',
+      runId: '00000000-0000-4000-8000-000000000032',
+      needsReview: true,
+      totalSegments: 1,
+      offset: 0,
+      segments: [{
+        id: 1,
+        ordinal: 0,
+        cueLabel: null,
+        startMs: 1000,
+        endMs: 2000,
+        sourceLines: ['你好。'],
+        translatedLines: ['Здравствуйте.'],
+      }],
+    };
+    expect(parseCommandResult('get_translation_comparison_cmd', page)).toEqual(page);
+    expect(() => parseCommandResult('get_translation_comparison_cmd', {
+      ...page,
+      segments: [{ ...page.segments[0], translatedLines: [] }],
+    })).toThrow(IpcContractError);
+    expect(() => parseCommandResult('get_translation_comparison_cmd', {
+      ...page,
+      segments: Array(101).fill(page.segments[0]),
+    })).toThrow(IpcContractError);
+  });
+
   it('rejects impossible media rates and structurally conflicting transcript segments', () => {
     expect(() =>
       parseCommandResult('probe_local_media_cmd', {

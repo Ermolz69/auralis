@@ -13,6 +13,7 @@ use adapters_translate::{
 use application::usecases::translation::{
     BeginTranslationRequest, BeginTranslationUseCase, EditTranslationResultRequest,
     EditTranslationResultUseCase, ExecuteTranslationRequest, ExecuteTranslationUseCase,
+    GetTranslationComparisonRequest, GetTranslationComparisonUseCase,
     InspectTranslationSourceUseCase, PublishTranslationRequest, PublishTranslationResultUseCase,
     RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunRequest,
     TranslationRunUseCase,
@@ -205,6 +206,45 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     );
     let result_id = edited_result_id;
     let expected_output = "1\n00:00:01,000 --> 00:00:02,000\nЗдравствуйте.\n".as_bytes();
+    let comparison = GetTranslationComparisonUseCase::new(
+        inspector.clone(),
+        links.clone(),
+        Arc::new(TranslateResultReader::new(translate_path.clone())),
+    );
+    let compare = |result_id, offset, limit| GetTranslationComparisonRequest {
+        project_id: project.id().clone(),
+        translation_id,
+        result_id,
+        offset,
+        limit,
+    };
+    let page = comparison.execute(compare(result_id, 0, 1)).await?;
+    assert_eq!(page.total_segments, 1);
+    assert_eq!(page.segments[0].source_lines, ["你好。"]);
+    assert_eq!(page.segments[0].translated_lines, ["Здравствуйте."]);
+    assert!(page.needs_review);
+    assert!(
+        comparison
+            .execute(compare(result_id, 0, 101))
+            .await
+            .is_err()
+    );
+    assert!(
+        comparison
+            .execute(compare(result_id, 1, 1))
+            .await?
+            .segments
+            .is_empty()
+    );
+    assert!(
+        comparison
+            .execute(GetTranslationComparisonRequest {
+                project_id: ProjectId::new(),
+                ..compare(result_id, 0, 1)
+            })
+            .await
+            .is_err()
+    );
 
     let publisher = PublishTranslationResultUseCase::new(
         inspector.clone(),
@@ -355,6 +395,11 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     let after_stale = links.get(translation_id).await?.ok_or("missing link")?;
     assert_eq!(after_stale.active_run_id, Some(next_run_id));
     assert_eq!(after_stale.selected_result_id, Some(revised_result_id));
+    let older_page = comparison.execute(compare(result_id, 0, 1)).await?;
+    assert_eq!(older_page.run_id, run_id);
+    assert_eq!(older_page.segments[0].translated_lines, ["Здравствуйте."]);
+    let latest_page = comparison.execute(compare(revised_result_id, 0, 1)).await?;
+    assert_eq!(latest_page.segments[0].translated_lines, ["Добрый день."]);
     assert_eq!(std::fs::read(&source_path)?, source);
     Ok(())
 }

@@ -6,7 +6,10 @@ use auralis_translation_formats::vtt::{VttDocument, VttParsePolicy};
 use auralis_translation_sqlite::{SqliteConfig, TranslateDb};
 use ports::error::PortError;
 use ports::translation_links::TranslationLink;
-use ports::translation_result::{TranslationResultPort, VerifiedTranslationResult};
+use ports::translation_result::{
+    ComparedTranslationSegment, MAX_COMPARISON_PAGE_SIZE, TranslationComparisonPage,
+    TranslationResultPort, VerifiedTranslationResult,
+};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -46,6 +49,41 @@ impl TranslationResultPort for TranslateResultReader {
             message: error.to_string(),
         })?
     }
+
+    async fn comparison_page(
+        &self,
+        source_path: &Path,
+        link: &TranslationLink,
+        expected_run_id: Uuid,
+        result_id: Uuid,
+        offset: u32,
+        limit: u32,
+    ) -> Result<TranslationComparisonPage, PortError> {
+        if !(1..=MAX_COMPARISON_PAGE_SIZE).contains(&limit) {
+            return Err(invalid(
+                "comparison page size is outside the supported range",
+            ));
+        }
+        let verified = self
+            .verified_result(source_path, link, expected_run_id, result_id)
+            .await?;
+        let total_segments = u32::try_from(verified.segments.len())
+            .map_err(|_| invalid("translation has too many segments to compare"))?;
+        let segments = verified
+            .segments
+            .into_iter()
+            .skip(offset as usize)
+            .take(limit as usize)
+            .collect();
+        Ok(TranslationComparisonPage {
+            result_id: verified.result_id,
+            run_id: verified.run_id,
+            needs_review: verified.needs_review,
+            total_segments,
+            offset,
+            segments,
+        })
+    }
 }
 
 fn read_verified(
@@ -55,12 +93,6 @@ fn read_verified(
     expected_run: Uuid,
     result_id: Uuid,
 ) -> Result<VerifiedTranslationResult, PortError> {
-    if link
-        .active_run_id
-        .is_some_and(|active| active != expected_run)
-    {
-        return Err(conflict("requested result differs from active project run"));
-    }
     let max_bytes = match link.source_format.as_str() {
         "srt" => SrtParsePolicy::default().max_bytes(),
         "vtt" => VttParsePolicy::default().max_bytes(),
@@ -106,7 +138,7 @@ fn read_verified(
         || result.source_hash != source_hash
     {
         return Err(conflict(
-            "result does not belong to the active source and run",
+            "result does not belong to the linked source and requested run",
         ));
     }
     let replacements = result
@@ -132,12 +164,39 @@ fn read_verified(
             "reconstructed result digest differs from stored result",
         ));
     }
+    let sources = database
+        .segments(translation_id)
+        .map_err(|error| storage("read_translate_segments", error))?;
+    if sources.len() != result.selected.len() {
+        return Err(conflict(
+            "result selection differs from stored source segments",
+        ));
+    }
+    let segments = sources
+        .into_iter()
+        .zip(result.selected)
+        .map(|(source, translated)| {
+            if source.id != translated.id || source.source_lines.len() != translated.lines.len() {
+                return Err(conflict("result segment differs from source mapping"));
+            }
+            Ok(ComparedTranslationSegment {
+                id: source.id.get(),
+                ordinal: source.ordinal,
+                cue_label: source.cue_label,
+                start_ms: source.start_ms,
+                end_ms: source.end_ms,
+                source_lines: source.source_lines,
+                translated_lines: translated.lines,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(VerifiedTranslationResult {
         result_id: result_id.get(),
         run_id: run_id.get(),
         output_sha256,
         output_bytes,
         needs_review: result.review_state == ReviewState::NeedsReview,
+        segments,
     })
 }
 

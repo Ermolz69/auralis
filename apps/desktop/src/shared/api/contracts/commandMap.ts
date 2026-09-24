@@ -9,6 +9,7 @@ import type { PendingYoutubeImport } from './youtubeImport';
 import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
 import type {
+  TranslationComparisonPage,
   TranslationInspection,
   TranslationLink,
   TranslationPublication,
@@ -133,6 +134,10 @@ export interface CommandMap {
   list_project_translations_cmd: {
     args: { projectId: string };
     result: TranslationLink[];
+  };
+  get_translation_comparison_cmd: {
+    args: { projectId: string; translationId: string; resultId: string; offset: number; limit: number };
+    result: TranslationComparisonPage;
   };
   get_translation_run_status_cmd: {
     args: { projectId: string; translationId: string };
