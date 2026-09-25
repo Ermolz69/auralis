@@ -24,6 +24,9 @@ pub(super) async fn record_in_tx(
     validation::uuid(intent.result_id, "result ID")?;
     validation::uuid(intent.run_id, "run ID")?;
     validation::hash(&intent.source_sha256)?;
+    if intent.result_revision == 0 || intent.result_revision > i32::MAX as u32 {
+        return Err(validation::conflict("invalid result revision"));
+    }
     if intent.expected_link_revision == 0
         || intent.expected_link_revision >= validation::MAX_LINK_REVISION
     {
@@ -31,8 +34,8 @@ pub(super) async fn record_in_tx(
     }
     let expected_revision = i64::try_from(intent.expected_link_revision)
         .map_err(|_| validation::conflict("invalid expected link revision"))?;
-    let existing: Option<(String, String, String, i64, i64)> = sqlx::query_as(
-        "SELECT run_id, artifact_id, source_sha256, expected_link_revision, needs_review
+    let existing: Option<(String, String, String, i64, i64, i64)> = sqlx::query_as(
+        "SELECT run_id, artifact_id, source_sha256, expected_link_revision, needs_review, result_revision
          FROM translation_publications WHERE translation_id = ? AND result_id = ?",
     )
     .bind(intent.translation_id.to_string())
@@ -42,12 +45,15 @@ pub(super) async fn record_in_tx(
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("read_translation_publication", error)
     })?;
-    if let Some((run_id, artifact_id, source_sha256, revision, needs_review)) = existing {
+    if let Some((run_id, artifact_id, source_sha256, revision, needs_review, result_revision)) =
+        existing
+    {
         if run_id == intent.run_id.to_string()
             && artifact_id == intent.artifact_id.to_string()
             && source_sha256 == intent.source_sha256
             && revision == expected_revision
             && needs_review == i64::from(intent.needs_review)
+            && result_revision == i64::from(intent.result_revision)
         {
             return Ok(());
         }
@@ -89,6 +95,26 @@ pub(super) async fn record_in_tx(
             "run, source, or link revision changed",
         ));
     }
+    let newer_exists: i64 = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM translation_publications
+         WHERE translation_id = ? AND run_id = ? AND source_sha256 = ?
+           AND expected_link_revision = ? AND result_revision > ?)",
+    )
+    .bind(intent.translation_id.to_string())
+    .bind(intent.run_id.to_string())
+    .bind(&intent.source_sha256)
+    .bind(expected_revision)
+    .bind(i64::from(intent.result_revision))
+    .fetch_one(&mut **transaction)
+    .await
+    .map_err(|error| {
+        super::super::helpers::map_sqlite_error("check_newer_translation_result", error)
+    })?;
+    if newer_exists != 0 {
+        return Err(validation::conflict(
+            "a newer result is already staged for publication",
+        ));
+    }
     let artifact: Option<(String, String, String)> =
         sqlx::query_as("SELECT project_id, kind, state FROM artifacts WHERE id = ?")
             .bind(intent.artifact_id.to_string())
@@ -113,8 +139,8 @@ pub(super) async fn record_in_tx(
     sqlx::query(
         "INSERT INTO translation_publications (
             translation_id, result_id, run_id, artifact_id, source_sha256,
-            expected_link_revision, state, needs_review, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)",
+            expected_link_revision, state, needs_review, created_at, updated_at, result_revision
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)",
     )
     .bind(intent.translation_id.to_string())
     .bind(intent.result_id.to_string())
@@ -125,6 +151,7 @@ pub(super) async fn record_in_tx(
     .bind(i64::from(intent.needs_review))
     .bind(intent.created_at.to_rfc3339())
     .bind(intent.created_at.to_rfc3339())
+    .bind(i64::from(intent.result_revision))
     .execute(&mut **transaction)
     .await
     .map_err(|error| {

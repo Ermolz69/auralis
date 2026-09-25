@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub struct PublicationIntent {
     pub translation_id: Uuid,
     pub result_id: Uuid,
+    pub result_revision: u32,
     pub run_id: Uuid,
     pub artifact_id: ArtifactId,
     pub source_sha256: String,

@@ -144,6 +144,7 @@ impl PublishTranslationResultUseCase {
         let intent = PublicationIntent {
             translation_id: request.translation_id,
             result_id: request.result_id,
+            result_revision: result.result_revision,
             run_id,
             artifact_id: staged.artifact.id.clone(),
             source_sha256: link.source_sha256,

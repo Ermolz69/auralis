@@ -151,6 +151,8 @@ The `adapters-storage::memory` module is retained only as test support. It is a 
 
 ## Translation project links
 
+Schema version 9 adds `translation_publications.result_revision`, copied from the immutable Translate result. Publication and selection prefer the highest staged revision for the same translation, run, source digest, and expected link revision. An older ready artifact remains unselected while a newer revision is pending or failed; the failed publication needs attention. Version-8 publication rows migrate with revision 1. This ordering is enforced both in the outbox candidate query and the conditional selection transaction.
+
 Schema version 6 adds `project_translations` and `translation_publications`. They contain stable external Translate IDs, source and output artifact IDs, source digest, link revision, publication state, and the small review projection. Translation text, checkpoints, and detailed warnings remain in the separate Translate SQLite database.
 
 `TranslationLinkStore` can read a link by ID, list the links of one project in creation order, and list all links with an active run in update order for startup reconciliation. The active list includes paused or failed Translate runs because Auralis keeps their `active_run_id` until a ready artifact is selected. These reads return only Auralis link metadata; run progress and translated text are fetched from Translate by the integration layer.

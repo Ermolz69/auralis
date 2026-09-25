@@ -274,8 +274,17 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         translation_id,
         result_id,
     };
+    let model_pending = publisher
+        .execute(PublishTranslationRequest {
+            project_id: project.id().clone(),
+            translation_id,
+            result_id: model_result_id,
+        })
+        .await?;
+    assert_eq!(model_pending.result_revision, 1);
     let pending = publisher.execute(request()).await?;
     assert_eq!(pending.state, TranslationPublicationState::Pending);
+    assert_eq!(pending.result_revision, 2);
     assert!(pending.needs_review);
     let repeated = publisher.execute(request()).await?;
     assert_eq!(pending.artifact_id, repeated.artifact_id);
@@ -291,9 +300,17 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         OutboxMaintenanceConfig::try_default()?,
     )
     .with_translations(links.clone());
-    assert_eq!(worker.process_pending_messages(10).await?.fetched, 1);
+    assert_eq!(worker.process_pending_messages(10).await?.fetched, 2);
     let selected = links.get(translation_id).await?.ok_or("missing link")?;
     assert_eq!(selected.selected_result_id, Some(result_id));
+    assert_eq!(
+        links
+            .get_publication(translation_id, model_result_id)
+            .await?
+            .ok_or("missing model publication")?
+            .state,
+        TranslationPublicationState::Pending
+    );
     assert_eq!(
         selected.output_artifact_id,
         Some(pending.artifact_id.clone())
@@ -348,6 +365,7 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         })
         .await?;
     assert!(revised.needs_review);
+    assert_eq!(revised.result_revision, 3);
     assert_eq!(worker.process_pending_messages(10).await?.fetched, 1);
     let selected = links.get(translation_id).await?.ok_or("missing link")?;
     assert_eq!(selected.selected_result_id, Some(revised_result_id));

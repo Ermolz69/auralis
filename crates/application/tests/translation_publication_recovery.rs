@@ -91,6 +91,7 @@ async fn selects_ready_translation_after_finalization_and_after_restart_gap() {
                 PublicationIntent {
                     translation_id,
                     result_id,
+                    result_revision: 1,
                     run_id,
                     artifact_id: artifact_id.clone(),
                     source_sha256,

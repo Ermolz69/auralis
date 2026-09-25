@@ -8,6 +8,7 @@ use uuid::Uuid;
 struct StoredPublication {
     translation_id: String,
     result_id: String,
+    result_revision: i64,
     run_id: String,
     artifact_id: String,
     source_sha256: String,
@@ -22,7 +23,7 @@ pub(super) async fn load(
     result_id: Uuid,
 ) -> Result<Option<TranslationPublicationRecord>, PortError> {
     sqlx::query_as::<_, StoredPublication>(
-        "SELECT translation_id, result_id, run_id, artifact_id, source_sha256,
+        "SELECT translation_id, result_id, result_revision, run_id, artifact_id, source_sha256,
             expected_link_revision, needs_review, state
          FROM translation_publications WHERE translation_id = ? AND result_id = ?",
     )
@@ -86,6 +87,10 @@ impl StoredPublication {
             translation_id: Uuid::parse_str(&self.translation_id)
                 .map_err(|_| invalid("translation_id"))?,
             result_id: Uuid::parse_str(&self.result_id).map_err(|_| invalid("result_id"))?,
+            result_revision: u32::try_from(self.result_revision)
+                .ok()
+                .filter(|value| *value > 0)
+                .ok_or_else(|| invalid("result_revision"))?,
             run_id: Uuid::parse_str(&self.run_id).map_err(|_| invalid("run_id"))?,
             artifact_id: ArtifactId(
                 Uuid::parse_str(&self.artifact_id).map_err(|_| invalid("artifact_id"))?,

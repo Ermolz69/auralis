@@ -58,6 +58,7 @@ async fn artifact_publication_and_outbox_commit_together_and_retry() {
     let publication = PublicationIntent {
         translation_id: intent.translation_id,
         result_id: Uuid::new_v4(),
+        result_revision: 1,
         run_id: intent.run_id,
         artifact_id: artifact_id.clone(),
         source_sha256: intent.source_sha256.clone(),
@@ -180,4 +181,105 @@ async fn artifact_publication_and_outbox_commit_together_and_retry() {
         .commit_staged_publication(publication, staged(&project_id, &artifact_id))
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn newer_edit_wins_when_both_publications_are_waiting_for_finalization() {
+    let directory = tempfile::tempdir().unwrap();
+    let pool = connect_sqlite(directory.path().join("auralis.sqlite"))
+        .await
+        .unwrap();
+    let project_id = ProjectId::new();
+    let source_id = ArtifactId::new();
+    sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'Test', 'Draft', 'now', 'now')")
+        .bind(project_id.to_string()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO artifacts (id, project_id, kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'OriginalSubtitle', 'source.srt', 'ready', 'now', 'now')")
+        .bind(source_id.to_string()).bind(project_id.to_string()).execute(&pool).await.unwrap();
+    let intent = TranslationIntent {
+        translation_id: Uuid::new_v4(),
+        project_id: project_id.clone(),
+        source_artifact_id: source_id,
+        source_sha256: "a".repeat(64),
+        source_format: "srt".into(),
+        source_language: "zh".into(),
+        target_language: "ru".into(),
+        run_id: Uuid::new_v4(),
+        created_at: Utc::now(),
+    };
+    let store = SqliteTranslationLinkStore::new(pool.clone());
+    store.begin(intent.clone()).await.unwrap();
+    let first_artifact = ArtifactId::new();
+    let first = PublicationIntent {
+        translation_id: intent.translation_id,
+        result_id: Uuid::new_v4(),
+        result_revision: 1,
+        run_id: intent.run_id,
+        artifact_id: first_artifact.clone(),
+        source_sha256: intent.source_sha256.clone(),
+        expected_link_revision: 1,
+        needs_review: true,
+        created_at: Utc::now(),
+    };
+    store
+        .commit_staged_publication(first.clone(), staged(&project_id, &first_artifact))
+        .await
+        .unwrap();
+    let edited_artifact = ArtifactId::new();
+    let edited = PublicationIntent {
+        result_id: Uuid::new_v4(),
+        result_revision: 2,
+        artifact_id: edited_artifact.clone(),
+        ..first.clone()
+    };
+    store
+        .commit_staged_publication(edited.clone(), staged(&project_id, &edited_artifact))
+        .await
+        .unwrap();
+
+    sqlx::query("UPDATE artifacts SET state = 'ready', ready_at = 'now' WHERE id IN (?, ?)")
+        .bind(first_artifact.to_string())
+        .bind(edited_artifact.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(store.list_ready_publications(10).await.unwrap().len(), 1);
+    assert_eq!(
+        store.list_ready_publications(10).await.unwrap()[0].result_id,
+        edited.result_id
+    );
+    assert!(matches!(
+        store
+            .select_ready_result(intent.translation_id, first.result_id, Utc::now())
+            .await,
+        Err(PortError::Conflict { .. })
+    ));
+    sqlx::query("UPDATE translation_publications SET state = 'failed' WHERE result_id = ?")
+        .bind(edited.result_id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(store.list_ready_publications(10).await.unwrap().is_empty());
+    sqlx::query("UPDATE translation_publications SET state = 'pending' WHERE result_id = ?")
+        .bind(edited.result_id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let selected = store
+        .select_ready_result(intent.translation_id, edited.result_id, Utc::now())
+        .await
+        .unwrap();
+    assert_eq!(selected.selected_result_id, Some(edited.result_id));
+    assert_eq!(selected.output_artifact_id, Some(edited_artifact));
+    let first_stored = store
+        .get_publication(intent.translation_id, first.result_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(first_stored.result_revision, 1);
+    let edited_stored = store
+        .get_publication(intent.translation_id, edited.result_id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(edited_stored.result_revision, 2);
 }

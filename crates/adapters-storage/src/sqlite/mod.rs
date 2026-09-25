@@ -17,6 +17,7 @@ pub mod translation_host_job_repository;
 mod translation_host_jobs_migration;
 pub mod translation_links;
 mod translation_links_migration;
+mod translation_publication_revisions_migration;
 mod translation_run_intents_migration;
 pub mod ui_preferences;
 mod ui_preferences_migration;
@@ -45,6 +46,8 @@ mod project_revision_migration_tests;
 mod translation_host_jobs_migration_tests;
 #[cfg(test)]
 mod translation_links_migration_tests;
+#[cfg(test)]
+mod translation_publication_revisions_migration_tests;
 #[cfg(test)]
 mod translation_run_intents_migration_tests;
 pub mod youtube_import_journal;

@@ -29,6 +29,15 @@ pub(super) async fn list(
                 )))
            AND l.source_sha256 = p.source_sha256
            AND l.revision = p.expected_link_revision
+           AND NOT EXISTS (
+               SELECT 1 FROM translation_publications newer
+               WHERE newer.translation_id = p.translation_id
+                 AND newer.run_id = p.run_id
+                 AND newer.source_sha256 = p.source_sha256
+                 AND newer.expected_link_revision = p.expected_link_revision
+                 AND (newer.result_revision > p.result_revision OR
+                      (newer.result_revision = p.result_revision AND newer.rowid > p.rowid))
+           )
          ORDER BY p.created_at, p.result_id LIMIT ?",
     )
     .bind(limit)

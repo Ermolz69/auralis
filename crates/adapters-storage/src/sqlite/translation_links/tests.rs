@@ -218,6 +218,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
     let publication = PublicationIntent {
         translation_id: request.translation_id,
         result_id: Uuid::new_v4(),
+        result_revision: 1,
         run_id: request.run_id,
         artifact_id: output_id.clone(),
         source_sha256: request.source_sha256.clone(),

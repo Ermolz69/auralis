@@ -193,6 +193,7 @@ fn read_verified(
     Ok(VerifiedTranslationResult {
         result_id: result_id.get(),
         run_id: run_id.get(),
+        result_revision: result.revision,
         output_sha256,
         output_bytes,
         needs_review: result.review_state == ReviewState::NeedsReview,

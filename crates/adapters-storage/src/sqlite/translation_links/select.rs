@@ -81,6 +81,31 @@ pub(super) async fn run(
             "publication no longer matches active run and link revision",
         ));
     }
+    let superseded: i64 = sqlx::query_scalar(
+        "SELECT EXISTS(
+            SELECT 1 FROM translation_publications current
+            JOIN translation_publications newer
+              ON newer.translation_id = current.translation_id
+             AND newer.run_id = current.run_id
+             AND newer.source_sha256 = current.source_sha256
+             AND newer.expected_link_revision = current.expected_link_revision
+             AND (newer.result_revision > current.result_revision OR
+                  (newer.result_revision = current.result_revision AND newer.rowid > current.rowid))
+            WHERE current.translation_id = ? AND current.result_id = ?
+        )",
+    )
+    .bind(translation_id.to_string())
+    .bind(result_id.to_string())
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(|error| {
+        super::super::helpers::map_sqlite_error("check_translation_result_precedence", error)
+    })?;
+    if superseded != 0 {
+        return Err(validation::conflict(
+            "a newer result is staged for publication",
+        ));
+    }
     let artifact: Option<(String, String, String)> =
         sqlx::query_as("SELECT project_id, kind, state FROM artifacts WHERE id = ?")
             .bind(&artifact_id)

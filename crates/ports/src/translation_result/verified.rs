@@ -4,6 +4,7 @@ use uuid::Uuid;
 pub struct VerifiedTranslationResult {
     pub result_id: Uuid,
     pub run_id: Uuid,
+    pub result_revision: u32,
     pub output_sha256: String,
     pub output_bytes: Vec<u8>,
     pub needs_review: bool,

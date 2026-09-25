@@ -30,6 +30,7 @@ CREATE TABLE translation_publications (
     needs_review INTEGER NOT NULL CHECK (needs_review IN (0, 1)),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    result_revision INTEGER NOT NULL DEFAULT 1 CHECK (result_revision BETWEEN 1 AND 2147483647),
     PRIMARY KEY (translation_id, result_id)
 );
 
