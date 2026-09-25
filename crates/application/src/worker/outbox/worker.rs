@@ -5,6 +5,7 @@ use ports::events::AppEventPublisher;
 use ports::repository::OutboxRepository;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
+use ports::translation_cleanup::TranslationCleanupPort;
 use ports::translation_links::TranslationLinkStore;
 use ports::workspace::TempWorkspacePort;
 
@@ -50,6 +51,7 @@ where
             uow,
             event_publisher,
             workspace_port,
+            translation_cleanup: None,
         };
 
         Self {
@@ -71,6 +73,11 @@ where
 
     pub fn with_translations(mut self, translations: Arc<dyn TranslationLinkStore>) -> Self {
         self.translations = Some(translations);
+        self
+    }
+
+    pub fn with_translation_cleanup(mut self, cleanup: Arc<dyn TranslationCleanupPort>) -> Self {
+        self.handler.translation_cleanup = Some(cleanup);
         self
     }
 
@@ -207,7 +214,12 @@ where
                             // but we record that an error was handled correctly by storage.
                             // We will increment retry_scheduled as an approximation, or both.
                             // If attempts >= 4 previously, it's dead, else retry_scheduled.
-                            if message.attempts >= 4 {
+                            if message.attempts >= 4
+                                && !matches!(
+                                    message.payload,
+                                    domain::outbox::OutboxPayload::DeleteProjectTranslation { .. }
+                                )
+                            {
                                 report.dead += 1;
                                 super::attempt::completed(
                                     &message,

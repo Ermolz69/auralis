@@ -272,6 +272,8 @@ pub(super) async fn delete_project(
     });
     save_outbox_message(tx, &del_msg).await?;
 
+    super::project_translation_cleanup::enqueue(tx, project_id).await?;
+
     super::super::youtube_import_journal::discard_in_transaction(tx, project_id, None).await?;
 
     // 7. Delete project (cascade constraints will delete jobs and artifacts)

@@ -26,6 +26,7 @@ pub fn spawn_outbox_worker(
     services: &RuntimeServices,
     event_publisher: Arc<dyn ports::events::AppEventPublisher>,
     workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
+    translate_database: std::path::PathBuf,
     config: OutboxMaintenanceConfig,
 ) -> OutboxWorkerHandle {
     let worker = OutboxWorker::new(
@@ -38,7 +39,10 @@ pub fn spawn_outbox_worker(
         config,
     )
     .with_imports(services.youtube_imports.clone())
-    .with_translations(services.translation_links.clone());
+    .with_translations(services.translation_links.clone())
+    .with_translation_cleanup(Arc::new(adapters_translate::TranslateProjectCleanup::new(
+        translate_database,
+    )));
     let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
     let worker_task = tauri::async_runtime::handle()
         .inner()

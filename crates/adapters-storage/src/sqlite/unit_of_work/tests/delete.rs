@@ -182,3 +182,77 @@ async fn test_project_delete_injected_failure_rolls_back() {
             .unwrap();
     assert_eq!(old_msg_status, "pending");
 }
+
+#[tokio::test]
+async fn translation_cleanup_intent_commits_atomically_with_project_deletion() {
+    let pool = setup_db().await;
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
+    let project_id = ProjectId::new();
+    let source_id = ArtifactId::new();
+    let translation_id = uuid::Uuid::new_v4();
+    sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'P', 'draft', 'now', 'now')")
+        .bind(project_id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO artifacts (id, project_id, kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'OriginalSubtitle', 'source.srt', 'ready', 'now', 'now')")
+        .bind(source_id.to_string())
+        .bind(project_id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO project_translations (translation_id, project_id, source_artifact_id, source_sha256, source_format, source_language, target_language, active_run_id, created_at, updated_at) VALUES (?, ?, ?, ?, 'srt', 'zh', 'ru', ?, 'now', 'now')")
+        .bind(translation_id.to_string())
+        .bind(project_id.to_string())
+        .bind(source_id.to_string())
+        .bind("a".repeat(64))
+        .bind(uuid::Uuid::new_v4().to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("CREATE TRIGGER fail_translation_cleanup BEFORE INSERT ON outbox_messages WHEN NEW.kind = 'delete_project_translation' BEGIN SELECT RAISE(ABORT, 'injected cleanup failure'); END")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        uow.commit_project_delete(CommitProjectDelete {
+            project_id: project_id.clone()
+        })
+        .await
+        .is_err()
+    );
+    let existing: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM project_translations WHERE translation_id = ?")
+            .bind(translation_id.to_string())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(existing, 1);
+    sqlx::query("DROP TRIGGER fail_translation_cleanup")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    uow.commit_project_delete(CommitProjectDelete {
+        project_id: project_id.clone(),
+    })
+    .await
+    .unwrap();
+    let payload: String = sqlx::query_scalar(
+        "SELECT payload_json FROM outbox_messages WHERE kind = 'delete_project_translation'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    match serde_json::from_str::<OutboxPayload>(&payload).unwrap() {
+        OutboxPayload::DeleteProjectTranslation {
+            project_id: stored_project,
+            translation_id: stored_translation,
+        } => {
+            assert_eq!(stored_project, project_id);
+            assert_eq!(stored_translation, translation_id);
+        }
+        other => panic!("unexpected cleanup payload: {other:?}"),
+    }
+}

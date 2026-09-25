@@ -3,6 +3,7 @@ use ports::artifact_finalization::{ArtifactFinalizationLookup, FinalizationMetad
 use ports::events::AppEventPublisher;
 use ports::storage::ArtifactStore;
 use ports::transaction::StorageUnitOfWork;
+use ports::translation_cleanup::TranslationCleanupPort;
 use ports::workspace::TempWorkspacePort;
 use std::sync::Arc;
 
@@ -19,6 +20,7 @@ where
     pub uow: U,
     pub event_publisher: Arc<dyn AppEventPublisher>,
     pub workspace_port: Arc<dyn TempWorkspacePort>,
+    pub translation_cleanup: Option<Arc<dyn TranslationCleanupPort>>,
 }
 
 impl<S, I, U> PayloadHandler<S, I, U>
@@ -99,6 +101,19 @@ where
             }
             OutboxPayload::DeleteProjectArtifactDir { project_id } => {
                 self.artifact_store.delete_project_dir(project_id).await?;
+            }
+            OutboxPayload::DeleteProjectTranslation {
+                project_id,
+                translation_id,
+            } => {
+                let cleanup = self.translation_cleanup.as_ref().ok_or_else(|| {
+                    ports::error::PortError::Unexpected {
+                        message: "Translate project cleanup is unavailable".into(),
+                    }
+                })?;
+                cleanup
+                    .delete_project_translation(project_id, *translation_id)
+                    .await?;
             }
             OutboxPayload::DeleteWorkspaceAllocation { workspace_key } => {
                 if let Err(e) = self.workspace_port.delete_allocation(workspace_key).await {

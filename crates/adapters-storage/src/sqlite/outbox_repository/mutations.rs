@@ -78,10 +78,12 @@ impl SqliteOutboxRepository {
                 locked_by = NULL,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
                 status = CASE 
+                    WHEN kind = 'delete_project_translation' THEN 'failed'
                     WHEN attempts + 1 >= 5 THEN 'dead'
                     ELSE 'failed'
                 END,
                 next_attempt_at = CASE 
+                    WHEN kind = 'delete_project_translation' THEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+' || CAST(CAST(1 AS INTEGER) << MIN(attempts + 1, 6) AS TEXT) || ' minutes')
                     WHEN attempts + 1 >= 5 THEN next_attempt_at
                     ELSE strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+' || CAST(CAST(1 AS INTEGER) << (attempts + 1) AS TEXT) || ' minutes')
                 END

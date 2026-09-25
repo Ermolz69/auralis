@@ -15,6 +15,7 @@ pub(crate) async fn save_outbox_message(
         OutboxPayload::FinalizeStagedArtifact { .. } => "finalize_staged_artifact",
         OutboxPayload::DeleteStorageKey { .. } => "delete_storage_key",
         OutboxPayload::DeleteProjectArtifactDir { .. } => "delete_project_artifact_dir",
+        OutboxPayload::DeleteProjectTranslation { .. } => "delete_project_translation",
         OutboxPayload::DeleteWorkspaceAllocation { .. } => "delete_workspace_allocation",
         OutboxPayload::HandleTerminalJobState { .. } => "handle_terminal_job_state",
     };

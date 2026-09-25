@@ -151,6 +151,7 @@ async fn assert_download_cleanup(extension: &'static str) {
         uow,
         event_publisher: Arc::new(UnusedEventPublisher),
         workspace_port: workspace,
+        translation_cleanup: None,
     };
     replay
         .process_payload(&cleanup.id, &cleanup.payload)

@@ -18,6 +18,7 @@ pub(super) fn completed(
         OutboxPayload::FinalizeStagedArtifact { .. } => "finalize_artifact",
         OutboxPayload::DeleteStorageKey { .. } => "delete_storage_key",
         OutboxPayload::DeleteProjectArtifactDir { .. } => "delete_project_directory",
+        OutboxPayload::DeleteProjectTranslation { .. } => "delete_project_translation",
         OutboxPayload::DeleteWorkspaceAllocation { .. } => "delete_workspace",
         OutboxPayload::HandleTerminalJobState { .. } => "terminalize_job",
     };

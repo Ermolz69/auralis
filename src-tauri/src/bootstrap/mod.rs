@@ -150,6 +150,7 @@ pub fn setup(
         &services,
         Arc::new(publisher.clone()),
         temp_workspace,
+        app_paths.translate_database(),
         outbox_config,
     );
     app.manage(crate::state::ManagedOutboxWorker(std::sync::Mutex::new(

@@ -65,6 +65,10 @@ pub enum OutboxPayload {
     DeleteProjectArtifactDir {
         project_id: ProjectId,
     },
+    DeleteProjectTranslation {
+        project_id: ProjectId,
+        translation_id: Uuid,
+    },
     #[serde(alias = "delete_workspace_file")]
     DeleteWorkspaceAllocation {
         workspace_key: crate::outbox::WorkspaceKey,
@@ -84,6 +88,9 @@ impl OutboxPayload {
             }
             OutboxPayload::DeleteStorageKey { .. } => (None, None),
             OutboxPayload::DeleteProjectArtifactDir { project_id } => {
+                (Some("project".to_string()), Some(project_id.to_string()))
+            }
+            OutboxPayload::DeleteProjectTranslation { project_id, .. } => {
                 (Some("project".to_string()), Some(project_id.to_string()))
             }
             OutboxPayload::DeleteWorkspaceAllocation { .. } => (None, None),
