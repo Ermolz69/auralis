@@ -8,8 +8,10 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { loadManifest, resolveTarget } from '../media-tools/manifest.mjs';
+import { verifyTranslationResult } from './verify-translation.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
+const TRANSLATION_RESULT_TIMEOUT_MS = 600_000;
 const POLL_INTERVAL_MS = 100;
 
 export async function runNativeE2e(rootDir) {
@@ -18,8 +20,10 @@ export async function runNativeE2e(rootDir) {
   const dataRoot = path.join(testRoot, 'app-data');
   const fixtureRoot = path.join(testRoot, 'fixture');
   const sourcePath = path.join(fixtureRoot, 'source.mp4');
+  const subtitlePath = path.join(fixtureRoot, 'source.srt');
   const frontendBuildRoot = path.join(rootDir, 'apps', 'desktop', 'dist-native-e2e');
   const runId = 'isolated-run';
+  const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
   let app;
   let fixtureServer;
   let failure;
@@ -29,11 +33,22 @@ export async function runNativeE2e(rootDir) {
     await fsp.mkdir(fixtureRoot, { recursive: true });
     prepareMediaTools(rootDir);
     generateVideo(rootDir, sourcePath);
+    if (translationEnabled) {
+      await prepareTranslationFixture(dataRoot, subtitlePath);
+    }
     fixtureServer = await startFixtureServer(sourcePath);
-    buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId);
+    buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
+      translationEnabled,
+      subtitlePath,
+    });
 
     app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
-    const result = await waitForResult(path.join(dataRoot, 'auralis.sqlite'), runId, app);
+    const result = await waitForResult(
+      path.join(dataRoot, 'auralis.sqlite'),
+      runId,
+      app,
+      translationEnabled ? TRANSLATION_RESULT_TIMEOUT_MS : RESULT_TIMEOUT_MS,
+    );
     await verifyResult({
       dataRoot,
       sourcePath,
@@ -41,6 +56,9 @@ export async function runNativeE2e(rootDir) {
       ytdlpRequestCount: fixtureServer.requestCount,
       ...result,
     });
+    if (translationEnabled) {
+      await verifyTranslationResult(dataRoot, subtitlePath, runId);
+    }
   } catch (error) {
     const logs = app ? formatProcessLogs(app) : '';
     const checkpoint = await readBootstrapCheckpoint(dataRoot);
@@ -95,6 +113,29 @@ export async function runNativeE2e(rootDir) {
   }
 
   if (failure) throw failure;
+}
+
+async function prepareTranslationFixture(dataRoot, subtitlePath) {
+  const executable = process.env.AURALIS_TEST_LLAMA_SERVER;
+  const modelFile = process.env.AURALIS_TEST_GGUF;
+  if (!executable || !modelFile || !path.isAbsolute(executable) || !path.isAbsolute(modelFile)) {
+    throw new Error('Translation native E2E requires absolute AURALIS_TEST_LLAMA_SERVER and AURALIS_TEST_GGUF paths');
+  }
+  for (const asset of [executable, modelFile]) {
+    if (!(await fsp.stat(asset)).isFile()) throw new Error(`Translation asset is not a file: ${asset}`);
+  }
+  await fsp.writeFile(subtitlePath, '1\n00:00:01,000 --> 00:00:02,000\n你好。\n');
+  await fsp.writeFile(
+    path.join(dataRoot, 'translation-runtime.json'),
+    JSON.stringify({
+      executable,
+      model_file: modelFile,
+      context_tokens: 2048,
+      gpu_layers: 99,
+      startup_timeout_seconds: 120,
+      readiness_interval_milliseconds: 250,
+    }),
+  );
 }
 
 function assertSupportedPlatform() {
@@ -206,7 +247,7 @@ async function startFixtureServer(sourcePath) {
   };
 }
 
-function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId) {
+function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, translation) {
   const env = {
     ...process.env,
     AURALIS_NATIVE_E2E: '1',
@@ -214,6 +255,8 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId) {
     AURALIS_NATIVE_E2E_MEDIA_PATH: sourcePath,
     AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
     AURALIS_NATIVE_E2E_RUN_ID: runId,
+    AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_SUBTITLE_PATH: translation.subtitlePath,
   };
   run(
     process.execPath,
@@ -261,8 +304,8 @@ function launchTestApplication(rootDir, dataRoot, ytdlpUrl) {
   return output;
 }
 
-async function waitForResult(databasePath, runId, app) {
-  const deadline = Date.now() + RESULT_TIMEOUT_MS;
+async function waitForResult(databasePath, runId, app, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
   const completedTitle = `native-e2e-complete:${runId}`;
   const failedTitle = `native-e2e-failed:${runId}`;
 
@@ -277,7 +320,7 @@ async function waitForResult(databasePath, runId, app) {
     if (result) return result;
     await delay(POLL_INTERVAL_MS);
   }
-  throw new Error(`Timed out after ${RESULT_TIMEOUT_MS} ms waiting for the native E2E result`);
+  throw new Error(`Timed out after ${timeoutMs} ms waiting for the native E2E result`);
 }
 
 function tryReadResult(databasePath, completedTitle, failedTitle) {
@@ -321,7 +364,7 @@ function tryReadResult(databasePath, completedTitle, failedTitle) {
       .all(project.id);
     const outbox = database
       .prepare(
-        'SELECT kind, payload_json, status, attempts, last_error, aggregate_id FROM outbox_messages ORDER BY created_at',
+        'SELECT kind, payload_json, status, attempts, last_error, aggregate_id FROM outbox_messages ORDER BY rowid LIMIT 4',
       )
       .all();
     const pendingYoutubeImports = database.prepare('SELECT COUNT(*) AS count FROM youtube_imports').get();
@@ -601,7 +644,9 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
   runNativeE2e(rootDir)
     .then(() =>
       process.stdout.write(
-        'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
+        process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
+          ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
+          : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
       ),
     )
     .catch((error) => {

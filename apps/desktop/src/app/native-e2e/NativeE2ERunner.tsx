@@ -9,6 +9,7 @@ import {
 } from '@/entities/project';
 import type { Artifact } from '@/shared/api/contracts';
 import { invoke } from '@/shared/api/tauri';
+import { runTranslationScenario } from './runTranslationScenario';
 
 const READY_TIMEOUT_MS = 20_000;
 const POLL_INTERVAL_MS = 50;
@@ -103,6 +104,10 @@ async function runNativeScenario() {
       youtubeProject.revision,
     );
     await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'ytdlp-project-ready' });
+
+    if (__NATIVE_E2E_TRANSLATION__) {
+      await runTranslationScenario(runId, __NATIVE_E2E_SUBTITLE_PATH__);
+    }
 
     const latestProject = await invoke('get_project_cmd', { projectId: project.id });
     await renameProject(project.id, `native-e2e-complete:${runId}`, latestProject.revision);

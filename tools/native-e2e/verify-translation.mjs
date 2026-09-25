@@ -1,0 +1,88 @@
+import crypto from 'node:crypto';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+
+export async function verifyTranslationResult(dataRoot, sourcePath, runId) {
+  const host = new DatabaseSync(path.join(dataRoot, 'auralis.sqlite'), { readOnly: true });
+  const translate = new DatabaseSync(path.join(dataRoot, 'auralis-translate.sqlite'), {
+    readOnly: true,
+  });
+  try {
+    const project = host
+      .prepare('SELECT id FROM projects WHERE title = ?')
+      .get(`native-e2e-translation-complete:${runId}`);
+    assert(project, 'Native translation project did not complete');
+    const link = host
+      .prepare('SELECT * FROM project_translations WHERE project_id = ?')
+      .get(project.id);
+    assert(link, 'Native translation project has no link');
+    assert(link.active_run_id === null, 'Completed native translation kept an active run');
+    assert(link.selected_result_id && link.output_artifact_id, 'Native result is not selected');
+    const publication = host
+      .prepare('SELECT * FROM translation_publications WHERE translation_id = ? AND result_id = ?')
+      .get(link.translation_id, link.selected_result_id);
+    assert(publication?.state === 'ready', 'Native result publication is not ready');
+    assert(publication.needs_review === 1, 'Native result lost the review flag');
+    const original = host.prepare('SELECT * FROM artifacts WHERE id = ?').get(link.source_artifact_id);
+    const output = host.prepare('SELECT * FROM artifacts WHERE id = ?').get(link.output_artifact_id);
+    assert(original?.kind === 'OriginalSubtitle' && original.state === 'ready', 'Original artifact is not ready');
+    assert(output?.kind === 'TranslatedTranscript' && output.state === 'ready', 'Translated artifact is not ready');
+    assert(original.project_id === project.id && output.project_id === project.id, 'Artifact project ownership differs');
+    assert(original.id !== output.id && original.location_value !== output.location_value, 'Translated file replaced the original');
+
+    const job = host
+      .prepare("SELECT id, status FROM jobs WHERE project_id = ? AND kind = 'translation'")
+      .get(project.id);
+    assert(job?.status === 'completed', 'Native translation host job did not complete');
+    const hostAttempt = host
+      .prepare('SELECT run_id, ended_at FROM translation_host_jobs WHERE job_id = ?')
+      .get(job.id);
+    assert(hostAttempt?.run_id === publication.run_id && hostAttempt.ended_at, 'Native host attempt was not closed');
+
+    const sourceRecord = translate
+      .prepare('SELECT source_sha256 FROM translations WHERE translation_id = ?')
+      .get(link.translation_id);
+    const run = translate.prepare('SELECT state FROM runs WHERE run_id = ?').get(publication.run_id);
+    const result = translate
+      .prepare('SELECT * FROM results WHERE result_id = ?')
+      .get(publication.result_id);
+    assert(run?.state === 'validated', 'Translate run did not validate');
+    assert(result?.run_id === publication.run_id, 'Selected result belongs to another run');
+    assert(result.revision === publication.result_revision, 'Result revision differs across databases');
+    assert(result.review_state === 'needs_review', 'Translate result lost review state');
+
+    const sourceBytes = await fsp.readFile(sourcePath);
+    const originalBytes = await fsp.readFile(artifactPath(dataRoot, original.location_value));
+    const outputBytes = await fsp.readFile(artifactPath(dataRoot, output.location_value));
+    assert(sourceBytes.equals(originalBytes), 'Managed original differs from the external subtitle');
+    assert(sha256(sourceBytes) === link.source_sha256, 'Auralis source hash differs');
+    assert(sha256(sourceBytes) === sourceRecord?.source_sha256, 'Translate source hash differs');
+    assert(sha256(outputBytes) === result.output_sha256, 'Published output differs from Translate result');
+    assert(!outputBytes.equals(sourceBytes), 'Native translation output equals its Chinese source');
+    assert(outputBytes.toString('utf8').includes('00:00:01,000 --> 00:00:02,000'), 'Output lost the cue timing');
+
+    const finalized = host
+      .prepare("SELECT COUNT(*) AS count FROM outbox_messages WHERE aggregate_id = ? AND kind = 'finalize_staged_artifact' AND status = 'done'")
+      .get(project.id);
+    assert(Number(finalized.count) === 2, 'Original and output finalization were not both acknowledged');
+  } finally {
+    translate.close();
+    host.close();
+  }
+}
+
+function artifactPath(dataRoot, storageKey) {
+  const root = path.resolve(dataRoot, 'projects');
+  const resolved = path.resolve(root, ...storageKey.split('/'));
+  assert(resolved.startsWith(`${root}${path.sep}`), 'Translation artifact escaped the managed root');
+  return resolved;
+}
+
+function sha256(bytes) {
+  return crypto.createHash('sha256').update(bytes).digest('hex');
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}

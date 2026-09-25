@@ -19,11 +19,18 @@ const nativeE2e = process.env.AURALIS_NATIVE_E2E === '1';
 const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH : '';
 const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
 const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL : '';
+const nativeE2eTranslation = nativeE2e && process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
+const nativeE2eSubtitlePath = nativeE2eTranslation
+  ? process.env.AURALIS_NATIVE_E2E_SUBTITLE_PATH
+  : '';
 
 if (nativeE2e && (!nativeE2eMediaPath || !nativeE2eRunId || !nativeE2eYtdlpUrl)) {
   throw new Error(
     'AURALIS_NATIVE_E2E_MEDIA_PATH, AURALIS_NATIVE_E2E_RUN_ID and AURALIS_NATIVE_E2E_YTDLP_URL are required for native E2E builds',
   );
+}
+if (nativeE2eTranslation && !nativeE2eSubtitlePath) {
+  throw new Error('AURALIS_NATIVE_E2E_SUBTITLE_PATH is required for translation E2E builds');
 }
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
@@ -37,6 +44,8 @@ export default defineConfig({
     __NATIVE_E2E_MEDIA_PATH__: JSON.stringify(nativeE2eMediaPath ?? ''),
     __NATIVE_E2E_RUN_ID__: JSON.stringify(nativeE2eRunId ?? ''),
     __NATIVE_E2E_YTDLP_URL__: JSON.stringify(nativeE2eYtdlpUrl ?? ''),
+    __NATIVE_E2E_TRANSLATION__: JSON.stringify(nativeE2eTranslation),
+    __NATIVE_E2E_SUBTITLE_PATH__: JSON.stringify(nativeE2eSubtitlePath ?? ''),
   },
   plugins: [react(), tailwindcss(), bundleReport()],
   server: { port: 5173, strictPort: true },

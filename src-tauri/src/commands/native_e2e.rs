@@ -13,6 +13,9 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "project-cancelled",
     "ytdlp-import-returned",
     "ytdlp-project-ready",
+    "translation-source-ready",
+    "translation-run-ready",
+    "translation-result-ready",
 ];
 
 #[command]
