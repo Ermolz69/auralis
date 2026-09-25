@@ -44,8 +44,20 @@ export function SubtitleWorkspace() {
       <div className="space-y-5">
         <TranslationReview refreshRevision={readyResultsRevision} />
         <SubtitleMethods />
-        {project && <TranslationSourceImport key={project.id} projectId={project.id} onTranslationPrepared={() => setTranslationRevision((value) => value + 1)} />}
-        {project && <TranslationRunControl key={`${project.id}:${translationRevision}`} projectId={project.id} onReadyResultsChanged={refreshReadyResults} />}
+        {project && (
+          <TranslationSourceImport
+            key={project.id}
+            projectId={project.id}
+            onTranslationPrepared={() => setTranslationRevision((value) => value + 1)}
+          />
+        )}
+        {project && (
+          <TranslationRunControl
+            key={`${project.id}:${translationRevision}`}
+            projectId={project.id}
+            onReadyResultsChanged={refreshReadyResults}
+          />
+        )}
         <SubtitleTrackPicker
           tracks={filterTracks(trackState.tracks, trackQuery)}
           selectedTrack={selectedTrack}

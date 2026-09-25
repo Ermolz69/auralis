@@ -59,7 +59,12 @@ describe('TranslationRunControl', () => {
     render(<TranslationRunControl projectId={projectId} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Пауза' }));
     await waitFor(() => expect(pauseTranslationRun).toHaveBeenCalledWith(projectId, translationId));
-    getTranslationRunStatus.mockResolvedValue({ ...requested, phase: 'running', pauseRequested: true, savedBlocks: 1 });
+    getTranslationRunStatus.mockResolvedValue({
+      ...requested,
+      phase: 'running',
+      pauseRequested: true,
+      savedBlocks: 1,
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Обновить перевод' }));
     expect(await screen.findByText(/Запрошена пауза/)).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'Пауза' })).toBeNull();
@@ -67,19 +72,34 @@ describe('TranslationRunControl', () => {
 
   it('can retry publication of a validated result', async () => {
     const resultId = '00000000-0000-4000-8000-000000000004';
-    getTranslationRunStatus.mockResolvedValue({ ...requested, phase: 'validated', resultId, savedBlocks: 2 });
+    getTranslationRunStatus.mockResolvedValue({
+      ...requested,
+      phase: 'validated',
+      resultId,
+      savedBlocks: 2,
+    });
     render(<TranslationRunControl projectId={projectId} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Прикрепить результат' }));
-    await waitFor(() => expect(publishTranslationResult).toHaveBeenCalledWith(projectId, translationId, resultId));
+    await waitFor(() =>
+      expect(publishTranslationResult).toHaveBeenCalledWith(projectId, translationId, resultId),
+    );
   });
 
   it('announces a newly ready result once so comparison can refresh', async () => {
     const onReadyResultsChanged = vi.fn();
     const resultId = '00000000-0000-4000-8000-000000000004';
-    render(<TranslationRunControl projectId={projectId} onReadyResultsChanged={onReadyResultsChanged} />);
+    render(
+      <TranslationRunControl projectId={projectId} onReadyResultsChanged={onReadyResultsChanged} />,
+    );
     await screen.findByRole('button', { name: 'Начать перевод' });
     expect(onReadyResultsChanged).not.toHaveBeenCalled();
-    listProjectTranslations.mockResolvedValue([{ ...link, selectedResultId: resultId, outputArtifactId: '00000000-0000-4000-8000-000000000005' }]);
+    listProjectTranslations.mockResolvedValue([
+      {
+        ...link,
+        selectedResultId: resultId,
+        outputArtifactId: '00000000-0000-4000-8000-000000000005',
+      },
+    ]);
     fireEvent.click(screen.getByRole('button', { name: 'Обновить перевод' }));
     await waitFor(() => expect(onReadyResultsChanged).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole('button', { name: 'Обновить перевод' }));
@@ -88,10 +108,16 @@ describe('TranslationRunControl', () => {
   });
 
   it('shows a missing runtime error without losing the prepared run', async () => {
-    startTranslationRun.mockRejectedValue({ code: 'NOT_FOUND', message: 'Translation model runtime is not installed' });
+    startTranslationRun.mockRejectedValue({
+      code: 'NOT_FOUND',
+      message: 'Translation model runtime is not installed',
+    });
     render(<TranslationRunControl projectId={projectId} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Начать перевод' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Translation model runtime is not installed');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Translation model runtime is not installed',
+    );
     expect(screen.getByRole('button', { name: 'Начать перевод' })).not.toBeNull();
   });
 });

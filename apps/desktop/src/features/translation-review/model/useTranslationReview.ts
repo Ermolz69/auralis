@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import {
-  getTranslationComparison,
-  listProjectTranslations,
-} from '@/entities/translation';
-import type { TranslationComparisonPage, TranslationLink } from '@/shared/api/contracts/translation';
+import { getTranslationComparison, listProjectTranslations } from '@/entities/translation';
+import type {
+  TranslationComparisonPage,
+  TranslationLink,
+} from '@/shared/api/contracts/translation';
 
 export const COMPARISON_PAGE_SIZE = 25;
 
@@ -22,21 +22,25 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
     let current = true;
     setLoadingLinks(true);
     setError(null);
-    void listProjectTranslations(projectId).then((found) => {
-      if (!current) return;
-      setLinks(found);
-      setSelectedTranslationId((selected) =>
-        found.some((link) => link.translationId === selected && link.selectedResultId)
-          ? selected
-          : found.find((link) => link.selectedResultId)?.translationId ?? null,
-      );
-      setLoadingLinks(false);
-    }).catch((reason: unknown) => {
-      if (!current) return;
-      setError(reason instanceof Error ? reason.message : 'Не удалось загрузить переводы');
-      setLoadingLinks(false);
-    });
-    return () => { current = false; };
+    void listProjectTranslations(projectId)
+      .then((found) => {
+        if (!current) return;
+        setLinks(found);
+        setSelectedTranslationId((selected) =>
+          found.some((link) => link.translationId === selected && link.selectedResultId)
+            ? selected
+            : (found.find((link) => link.selectedResultId)?.translationId ?? null),
+        );
+        setLoadingLinks(false);
+      })
+      .catch((reason: unknown) => {
+        if (!current) return;
+        setError(reason instanceof Error ? reason.message : 'Не удалось загрузить переводы');
+        setLoadingLinks(false);
+      });
+    return () => {
+      current = false;
+    };
   }, [projectId, revision, refreshRevision]);
 
   const selected = links.find((link) => link.translationId === selectedTranslationId) ?? null;
@@ -55,16 +59,20 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
       selectedResultId,
       offset,
       COMPARISON_PAGE_SIZE,
-    ).then((found) => {
-      if (!current) return;
-      setPage(found);
-      setLoadingPage(false);
-    }).catch((reason: unknown) => {
-      if (!current) return;
-      setError(reason instanceof Error ? reason.message : 'Не удалось загрузить сравнение');
-      setLoadingPage(false);
-    });
-    return () => { current = false; };
+    )
+      .then((found) => {
+        if (!current) return;
+        setPage(found);
+        setLoadingPage(false);
+      })
+      .catch((reason: unknown) => {
+        if (!current) return;
+        setError(reason instanceof Error ? reason.message : 'Не удалось загрузить сравнение');
+        setLoadingPage(false);
+      });
+    return () => {
+      current = false;
+    };
   }, [projectId, selectedTranslationId, selectedResultId, offset]);
 
   return {

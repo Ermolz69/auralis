@@ -148,7 +148,9 @@ const commandResultValidators = {
   resolve_artifact_path_cmd: isString,
   inspect_translation_source_cmd: validateTranslationInspection,
   import_translation_source_cmd: (value) =>
-    validateArtifact(value) && value.kind === 'originalSubtitle' && value.state === 'pendingFinalize',
+    validateArtifact(value) &&
+    value.kind === 'originalSubtitle' &&
+    value.state === 'pendingFinalize',
   begin_translation_run_cmd: validateTranslationLink,
   start_translation_run_cmd: validateTranslationStart,
   edit_translation_result_cmd: isUuid,

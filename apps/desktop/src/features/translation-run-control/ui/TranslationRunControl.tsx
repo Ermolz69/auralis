@@ -39,10 +39,15 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
     const poll = async () => {
       try {
         const current = await listProjectTranslations(projectId);
-        const statuses = await Promise.all(current.map(async (link) => {
-          if (!link.activeRunId) return null;
-          return [link.translationId, await getTranslationRunStatus(projectId, link.translationId)] as const;
-        }));
+        const statuses = await Promise.all(
+          current.map(async (link) => {
+            if (!link.activeRunId) return null;
+            return [
+              link.translationId,
+              await getTranslationRunStatus(projectId, link.translationId),
+            ] as const;
+          }),
+        );
         if (active) {
           const currentReadyResults = current
             .filter((link) => link.selectedResultId && link.outputArtifactId)
@@ -110,35 +115,76 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
   if (links.length === 0 && !error) return null;
 
   return (
-    <section className="rounded-md border border-border bg-surface p-4" aria-label="Перевод субтитров">
+    <section
+      className="rounded-md border border-border bg-surface p-4"
+      aria-label="Перевод субтитров"
+    >
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-text">Перевод субтитров</h2>
-        <Button variant="ghost" size="sm" onClick={() => { setError(null); setRevision((value) => value + 1); }}>Обновить перевод</Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setError(null);
+            setRevision((value) => value + 1);
+          }}
+        >
+          Обновить перевод
+        </Button>
       </div>
-      {error && <p role="alert" className="mt-2 text-xs text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-danger">
+          {error}
+        </p>
+      )}
       <ul className="mt-3 space-y-2 text-xs text-text">
         {links.map((link) => {
           const snapshot = snapshots[link.translationId];
           const canStart = snapshot && ['requested', 'paused', 'failed'].includes(snapshot.phase);
           const canPause = snapshot?.phase === 'running' && !snapshot.pauseRequested;
-          const unpublishedResultId = snapshot?.phase === 'validated'
-            && snapshot.resultId !== link.selectedResultId ? snapshot.resultId : null;
+          const unpublishedResultId =
+            snapshot?.phase === 'validated' && snapshot.resultId !== link.selectedResultId
+              ? snapshot.resultId
+              : null;
           return (
-            <li key={link.translationId} className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-border px-2 py-1.5">
+            <li
+              key={link.translationId}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-border px-2 py-1.5"
+            >
               <span className="font-mono">{link.translationId.slice(0, 8)}</span>
               <span>
-                {snapshot ? `${PHASE_LABELS[snapshot.phase]}: ${snapshot.savedBlocks}/${snapshot.totalBlocks}` : 'Состояние загружается'}
+                {snapshot
+                  ? `${PHASE_LABELS[snapshot.phase]}: ${snapshot.savedBlocks}/${snapshot.totalBlocks}`
+                  : 'Состояние загружается'}
                 {snapshot?.pauseRequested ? ' · Запрошена пауза' : ''}
                 {link.selectedResultId ? ' · Результат прикреплён' : ''}
               </span>
               {canStart && (
-                <Button size="sm" variant="secondary" onClick={() => void start(link.translationId)} loading={busyId === link.translationId}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void start(link.translationId)}
+                  loading={busyId === link.translationId}
+                >
                   {snapshot.phase === 'requested' ? 'Начать перевод' : 'Продолжить перевод'}
                 </Button>
               )}
-              {canPause && <Button size="sm" variant="secondary" onClick={() => void pause(link.translationId)}>Пауза</Button>}
+              {canPause && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void pause(link.translationId)}
+                >
+                  Пауза
+                </Button>
+              )}
               {unpublishedResultId && (
-                <Button size="sm" variant="secondary" onClick={() => void publish(link.translationId, unpublishedResultId)} loading={busyId === link.translationId}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void publish(link.translationId, unpublishedResultId)}
+                  loading={busyId === link.translationId}
+                >
                   Прикрепить результат
                 </Button>
               )}

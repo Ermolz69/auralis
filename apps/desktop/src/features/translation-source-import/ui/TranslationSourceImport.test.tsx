@@ -45,9 +45,13 @@ describe('TranslationSourceImport', () => {
     render(<TranslationSourceImport projectId={projectId} />);
     await screen.findByText('Исходников пока нет.');
     fireEvent.click(screen.getByRole('button', { name: 'Импортировать SRT/VTT' }));
-    await waitFor(() => expect(importTranslationSource).toHaveBeenCalledWith(
-      projectId, 'C:/subtitles/source.SRT', 'srt',
-    ));
+    await waitFor(() =>
+      expect(importTranslationSource).toHaveBeenCalledWith(
+        projectId,
+        'C:/subtitles/source.SRT',
+        'srt',
+      ),
+    );
     expect(await screen.findByText('Сохраняется…')).not.toBeNull();
     expect(open).toHaveBeenCalledWith({
       multiple: false,
@@ -61,16 +65,25 @@ describe('TranslationSourceImport', () => {
     await screen.findByText('Исходников пока нет.');
     fireEvent.click(screen.getByRole('button', { name: 'Импортировать SRT/VTT' }));
     await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Импортировать SRT/VTT' }).hasAttribute('disabled')).toBe(false));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Импортировать SRT/VTT' }).hasAttribute('disabled'),
+      ).toBe(false),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Импортировать SRT/VTT' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Выберите файл SRT или VTT');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Выберите файл SRT или VTT',
+    );
     expect(importTranslationSource).not.toHaveBeenCalled();
   });
 
   it('prepares a Chinese run once a managed original is ready', async () => {
     listOriginalSubtitles.mockReset().mockResolvedValue([{ ...artifact, state: 'ready' }]);
     let sequence = 0;
-    vi.stubGlobal('crypto', { randomUUID: () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}` });
+    vi.stubGlobal('crypto', {
+      randomUUID: () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}`,
+    });
     const link = {
       translationId: '00000000-0000-4000-8000-000000000001',
       sourceArtifactId: artifact.id,
@@ -79,15 +92,19 @@ describe('TranslationSourceImport', () => {
     listProjectTranslations.mockReset().mockResolvedValueOnce([]).mockResolvedValue([link]);
     beginTranslationRun.mockResolvedValue(link);
     render(<TranslationSourceImport projectId={projectId} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Подготовить перевод с китайского' }));
-    await waitFor(() => expect(beginTranslationRun).toHaveBeenCalledWith({
-      projectId,
-      sourceArtifactId: artifact.id,
-      format: 'srt',
-      sourceLanguage: 'zh',
-      translationId: '00000000-0000-4000-8000-000000000001',
-      runId: '00000000-0000-4000-8000-000000000002',
-    }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Подготовить перевод с китайского' }),
+    );
+    await waitFor(() =>
+      expect(beginTranslationRun).toHaveBeenCalledWith({
+        projectId,
+        sourceArtifactId: artifact.id,
+        format: 'srt',
+        sourceLanguage: 'zh',
+        translationId: '00000000-0000-4000-8000-000000000001',
+        runId: '00000000-0000-4000-8000-000000000002',
+      }),
+    );
     expect(await screen.findByText('Перевод подготовлен')).not.toBeNull();
   });
 });

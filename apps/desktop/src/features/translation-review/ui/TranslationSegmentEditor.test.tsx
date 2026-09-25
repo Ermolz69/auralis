@@ -47,7 +47,10 @@ describe('TranslationSegmentEditor', () => {
       target: { value: 'Здравствуйте.' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить новую версию' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Publication unavailable');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'Publication unavailable',
+    );
     expect(editTranslationResult).toHaveBeenCalledWith({
       projectId: 'project-1',
       translationId: 'translation-1',
@@ -61,8 +64,12 @@ describe('TranslationSegmentEditor', () => {
     expect(editTranslationResult).toHaveBeenCalledTimes(1);
     expect(publishTranslationResult).toHaveBeenCalledTimes(2);
     expect(publishTranslationResult).toHaveBeenLastCalledWith(
-      'project-1', 'translation-1', '00000000-0000-4000-8000-000000000010',
+      'project-1',
+      'translation-1',
+      '00000000-0000-4000-8000-000000000010',
     );
-    expect(screen.getByRole('textbox', { name: 'Строка перевода 1' }).hasAttribute('disabled')).toBe(true);
+    expect(
+      screen.getByRole('textbox', { name: 'Строка перевода 1' }).hasAttribute('disabled'),
+    ).toBe(true);
   });
 });

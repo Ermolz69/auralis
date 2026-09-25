@@ -119,10 +119,12 @@ describe('IPC runtime validation', () => {
       readyAt: null,
     };
     expect(parseCommandResult('import_translation_source_cmd', artifact)).toEqual(artifact);
-    expect(() => parseCommandResult('import_translation_source_cmd', {
-      ...artifact,
-      kind: 'translatedTranscript',
-    })).toThrow(IpcContractError);
+    expect(() =>
+      parseCommandResult('import_translation_source_cmd', {
+        ...artifact,
+        kind: 'translatedTranscript',
+      }),
+    ).toThrow(IpcContractError);
   });
 
   it('accepts only an admitted background translation start', () => {
@@ -132,10 +134,12 @@ describe('IPC runtime validation', () => {
       state: 'accepted',
     };
     expect(parseCommandResult('start_translation_run_cmd', start)).toEqual(start);
-    expect(() => parseCommandResult('start_translation_run_cmd', {
-      ...start,
-      state: 'ready',
-    })).toThrow(IpcContractError);
+    expect(() =>
+      parseCommandResult('start_translation_run_cmd', {
+        ...start,
+        state: 'ready',
+      }),
+    ).toThrow(IpcContractError);
   });
 
   it('requires a result identity for a validated translation run', () => {
@@ -177,14 +181,10 @@ describe('IPC runtime validation', () => {
     expect(parseCommandResult('list_project_translations_cmd', [link])).toEqual([link]);
     expect(parseCommandResult('begin_translation_run_cmd', link)).toEqual(link);
     expect(() =>
-      parseCommandResult('list_project_translations_cmd', [
-        { ...link, outputArtifactId: null },
-      ]),
+      parseCommandResult('list_project_translations_cmd', [{ ...link, outputArtifactId: null }]),
     ).toThrow(IpcContractError);
     expect(() =>
-      parseCommandResult('list_project_translations_cmd', [
-        { ...link, sourceLanguage: 'fr' },
-      ]),
+      parseCommandResult('list_project_translations_cmd', [{ ...link, sourceLanguage: 'fr' }]),
     ).toThrow(IpcContractError);
   });
 
@@ -219,25 +219,31 @@ describe('IPC runtime validation', () => {
       needsReview: true,
       totalSegments: 1,
       offset: 0,
-      segments: [{
-        id: 1,
-        ordinal: 0,
-        cueLabel: null,
-        startMs: 1000,
-        endMs: 2000,
-        sourceLines: ['你好。'],
-        translatedLines: ['Здравствуйте.'],
-      }],
+      segments: [
+        {
+          id: 1,
+          ordinal: 0,
+          cueLabel: null,
+          startMs: 1000,
+          endMs: 2000,
+          sourceLines: ['你好。'],
+          translatedLines: ['Здравствуйте.'],
+        },
+      ],
     };
     expect(parseCommandResult('get_translation_comparison_cmd', page)).toEqual(page);
-    expect(() => parseCommandResult('get_translation_comparison_cmd', {
-      ...page,
-      segments: [{ ...page.segments[0], translatedLines: [] }],
-    })).toThrow(IpcContractError);
-    expect(() => parseCommandResult('get_translation_comparison_cmd', {
-      ...page,
-      segments: Array(101).fill(page.segments[0]),
-    })).toThrow(IpcContractError);
+    expect(() =>
+      parseCommandResult('get_translation_comparison_cmd', {
+        ...page,
+        segments: [{ ...page.segments[0], translatedLines: [] }],
+      }),
+    ).toThrow(IpcContractError);
+    expect(() =>
+      parseCommandResult('get_translation_comparison_cmd', {
+        ...page,
+        segments: Array(101).fill(page.segments[0]),
+      }),
+    ).toThrow(IpcContractError);
   });
 
   it('rejects impossible media rates and structurally conflicting transcript segments', () => {

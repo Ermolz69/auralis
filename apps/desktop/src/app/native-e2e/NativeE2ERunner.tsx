@@ -130,9 +130,9 @@ async function runNativeScenario() {
   } catch (error) {
     console.error('Native E2E scenario failed', error);
     const failureReason = error instanceof Error ? error.message : String(error);
-    await invoke('native_e2e_checkpoint_cmd', { checkpoint: `scenario-failed:${failureReason}` }).catch(
-      () => undefined,
-    );
+    await invoke('native_e2e_checkpoint_cmd', {
+      checkpoint: `scenario-failed:${failureReason}`,
+    }).catch(() => undefined);
     if (projectIds[0]) {
       const projectId = projectIds[0];
       await invoke('get_project_cmd', { projectId })

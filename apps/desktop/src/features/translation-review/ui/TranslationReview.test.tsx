@@ -37,22 +37,32 @@ afterEach(() => cleanup());
 beforeEach(() => {
   vi.clearAllMocks();
   listProjectTranslations.mockResolvedValue([link]);
-  getTranslationComparison.mockImplementation(async (_projectId, _translationId, requestedResultId, offset) => ({
-    resultId: requestedResultId,
-    runId: '00000000-0000-4000-8000-000000000006',
-    needsReview: true,
-    totalSegments: 26,
-    offset,
-    segments: [{
-      id: offset + 1,
-      ordinal: offset,
-      cueLabel: null,
-      startMs: 1000,
-      endMs: 2000,
-      sourceLines: [offset ? 'Второй исходник' : '你好。'],
-      translatedLines: [offset ? 'Второй перевод' : requestedResultId === resultId ? 'Здравствуйте.' : 'Новый перевод.'],
-    }],
-  }));
+  getTranslationComparison.mockImplementation(
+    async (_projectId, _translationId, requestedResultId, offset) => ({
+      resultId: requestedResultId,
+      runId: '00000000-0000-4000-8000-000000000006',
+      needsReview: true,
+      totalSegments: 26,
+      offset,
+      segments: [
+        {
+          id: offset + 1,
+          ordinal: offset,
+          cueLabel: null,
+          startMs: 1000,
+          endMs: 2000,
+          sourceLines: [offset ? 'Второй исходник' : '你好。'],
+          translatedLines: [
+            offset
+              ? 'Второй перевод'
+              : requestedResultId === resultId
+                ? 'Здравствуйте.'
+                : 'Новый перевод.',
+          ],
+        },
+      ],
+    }),
+  );
 });
 
 describe('TranslationReview', () => {
@@ -61,10 +71,22 @@ describe('TranslationReview', () => {
     expect(await screen.findByText('Здравствуйте.')).not.toBeNull();
     expect(screen.getByText('你好。')).not.toBeNull();
     expect(screen.getByText(/Требует проверки/)).not.toBeNull();
-    expect(getTranslationComparison).toHaveBeenCalledWith(projectId, translationId, resultId, 0, 25);
+    expect(getTranslationComparison).toHaveBeenCalledWith(
+      projectId,
+      translationId,
+      resultId,
+      0,
+      25,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Далее' }));
     expect(await screen.findByText('Второй перевод')).not.toBeNull();
-    expect(getTranslationComparison).toHaveBeenCalledWith(projectId, translationId, resultId, 25, 25);
+    expect(getTranslationComparison).toHaveBeenCalledWith(
+      projectId,
+      translationId,
+      resultId,
+      25,
+      25,
+    );
     expect(screen.getByRole('button', { name: 'Далее' }).hasAttribute('disabled')).toBe(true);
   });
 
@@ -80,9 +102,19 @@ describe('TranslationReview', () => {
     const nextResultId = '00000000-0000-4000-8000-000000000007';
     const { rerender } = render(<TranslationReview />);
     await screen.findByText('Здравствуйте.');
-    listProjectTranslations.mockResolvedValue([{ ...link, selectedResultId: nextResultId, revision: 3 }]);
+    listProjectTranslations.mockResolvedValue([
+      { ...link, selectedResultId: nextResultId, revision: 3 },
+    ]);
     rerender(<TranslationReview refreshRevision={1} />);
-    await waitFor(() => expect(getTranslationComparison).toHaveBeenCalledWith(projectId, translationId, nextResultId, 0, 25));
+    await waitFor(() =>
+      expect(getTranslationComparison).toHaveBeenCalledWith(
+        projectId,
+        translationId,
+        nextResultId,
+        0,
+        25,
+      ),
+    );
     expect(await screen.findByText('Новый перевод.')).not.toBeNull();
     expect(screen.queryByText('Здравствуйте.')).toBeNull();
   });

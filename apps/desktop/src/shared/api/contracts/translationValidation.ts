@@ -18,10 +18,14 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (value: unknown): value is string => isString(value) && uuid.test(value);
 
 export function validateTranslationStart(value: unknown): value is TranslationStart {
-  return isRecord(value) && isUuid(value.jobId) && isUuid(value.runId) && value.state === 'accepted';
+  return (
+    isRecord(value) && isUuid(value.jobId) && isUuid(value.runId) && value.state === 'accepted'
+  );
 }
 
-export function validateTranslationComparisonPage(value: unknown): value is TranslationComparisonPage {
+export function validateTranslationComparisonPage(
+  value: unknown,
+): value is TranslationComparisonPage {
   if (
     !isRecord(value) ||
     !isUuid(value.resultId) ||
@@ -35,21 +39,22 @@ export function validateTranslationComparisonPage(value: unknown): value is Tran
   ) {
     return false;
   }
-  return value.segments.every((segment) =>
-    isRecord(segment) &&
-    isNonNegativeSafeInteger(segment.id) &&
-    segment.id > 0 &&
-    isNonNegativeSafeInteger(segment.ordinal) &&
-    isNullable(segment.cueLabel, isString) &&
-    isNonNegativeSafeInteger(segment.startMs) &&
-    isNonNegativeSafeInteger(segment.endMs) &&
-    segment.endMs >= segment.startMs &&
-    Array.isArray(segment.sourceLines) &&
-    Array.isArray(segment.translatedLines) &&
-    segment.sourceLines.length > 0 &&
-    segment.sourceLines.length === segment.translatedLines.length &&
-    segment.sourceLines.every(isString) &&
-    segment.translatedLines.every(isString),
+  return value.segments.every(
+    (segment) =>
+      isRecord(segment) &&
+      isNonNegativeSafeInteger(segment.id) &&
+      segment.id > 0 &&
+      isNonNegativeSafeInteger(segment.ordinal) &&
+      isNullable(segment.cueLabel, isString) &&
+      isNonNegativeSafeInteger(segment.startMs) &&
+      isNonNegativeSafeInteger(segment.endMs) &&
+      segment.endMs >= segment.startMs &&
+      Array.isArray(segment.sourceLines) &&
+      Array.isArray(segment.translatedLines) &&
+      segment.sourceLines.length > 0 &&
+      segment.sourceLines.length === segment.translatedLines.length &&
+      segment.sourceLines.every(isString) &&
+      segment.translatedLines.every(isString),
   );
 }
 

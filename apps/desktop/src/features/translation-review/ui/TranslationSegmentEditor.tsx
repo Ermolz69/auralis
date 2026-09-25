@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { editTranslationResult, publishTranslationResult } from '@/entities/translation';
-import type { ComparedTranslationSegment, TranslationPublication } from '@/shared/api/contracts/translation';
+import type {
+  ComparedTranslationSegment,
+  TranslationPublication,
+} from '@/shared/api/contracts/translation';
 import { Button } from '@/shared/ui/button';
 
 type EditAttempt = {
@@ -46,7 +49,8 @@ export function TranslationSegmentEditor({
           segmentId: segment.id,
           lines: current.lines,
         });
-        if (savedId !== current.resultId) throw new Error('Сохранённая версия не совпадает с запросом');
+        if (savedId !== current.resultId)
+          throw new Error('Сохранённая версия не совпадает с запросом');
         setAttempt({ ...current, edited: true });
       }
       const published = await publishTranslationResult(projectId, translationId, current.resultId);
@@ -60,7 +64,11 @@ export function TranslationSegmentEditor({
   };
 
   if (!open) {
-    return <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>Исправить перевод</Button>;
+    return (
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+        Исправить перевод
+      </Button>
+    );
   }
 
   return (
@@ -71,13 +79,21 @@ export function TranslationSegmentEditor({
           <input
             type="text"
             value={line}
-            onChange={(event) => setLines((current) => current.map((value, item) => item === index ? event.target.value : value))}
+            onChange={(event) =>
+              setLines((current) =>
+                current.map((value, item) => (item === index ? event.target.value : value)),
+              )
+            }
             disabled={Boolean(attempt) || saving || Boolean(publication)}
             className="mt-1 w-full rounded-sm border border-border bg-canvas px-2 py-1.5 text-xs text-text"
           />
         </label>
       ))}
-      {error && <p role="alert" className="text-xs text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
       {publication && (
         <p role="status" className="text-xs text-muted">
           {publication.state === 'ready'
@@ -87,10 +103,19 @@ export function TranslationSegmentEditor({
       )}
       {!publication && (
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => void save()} loading={saving} disabled={lines.some((line) => !line.trim())}>
+          <Button
+            size="sm"
+            onClick={() => void save()}
+            loading={saving}
+            disabled={lines.some((line) => !line.trim())}
+          >
             {attempt ? 'Повторить сохранение' : 'Сохранить новую версию'}
           </Button>
-          {!attempt && <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Отмена</Button>}
+          {!attempt && (
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              Отмена
+            </Button>
+          )}
         </div>
       )}
     </div>

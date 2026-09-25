@@ -134,7 +134,13 @@ export interface CommandMap {
     result: TranslationLink[];
   };
   get_translation_comparison_cmd: {
-    args: { projectId: string; translationId: string; resultId: string; offset: number; limit: number };
+    args: {
+      projectId: string;
+      translationId: string;
+      resultId: string;
+      offset: number;
+      limit: number;
+    };
     result: TranslationComparisonPage;
   };
   get_translation_run_status_cmd: {
