@@ -10,8 +10,9 @@ use application::usecases::translation::{
     GetTranslationComparisonUseCase, ImportTranslationSourceUseCase,
     InspectTranslationSourceUseCase, ListProjectTranslationsUseCase,
     PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
-    RecoverTranslationHostJobsUseCase, RunManagedTranslationUseCase, RunTranslationHostJobUseCase,
-    StartTranslationJobUseCase, TranslationRunUseCase,
+    RecoverTranslationHostJobsUseCase, RecoverTranslationPublicationsUseCase,
+    RunManagedTranslationUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
+    TranslationRunUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -40,6 +41,7 @@ pub struct TranslationUseCases {
     pub reconcile: ReconcileTranslationRunsUseCase,
     pub start_job: StartTranslationJobUseCase,
     pub recover_jobs: RecoverTranslationHostJobsUseCase,
+    pub recover_publications: RecoverTranslationPublicationsUseCase,
 }
 
 impl TranslationUseCases {
@@ -106,6 +108,11 @@ impl TranslationUseCases {
             recover_jobs: RecoverTranslationHostJobsUseCase::new(
                 jobs,
                 Arc::new(TranslateRunRecovery::new(database_path.clone())),
+            ),
+            recover_publications: RecoverTranslationPublicationsUseCase::new(
+                links.clone(),
+                control.clone(),
+                publish.clone(),
             ),
             publish,
             reconcile: ReconcileTranslationRunsUseCase::new(inspect, links, registrar),

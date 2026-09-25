@@ -85,6 +85,15 @@ pub fn setup(
             );
         }
     }
+    for item in tauri::async_runtime::block_on(translations.recover_publications.execute())? {
+        if let Err(error) = item.outcome {
+            tracing::warn!(
+                translation_id = %item.translation_id,
+                error = %error,
+                "translation result publication recovery needs attention"
+            );
+        }
+    }
     app.manage(Arc::new(translations));
     record_native_e2e_checkpoint("translations-ready");
 

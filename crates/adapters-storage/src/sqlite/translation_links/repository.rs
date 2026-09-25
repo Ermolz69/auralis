@@ -50,6 +50,14 @@ impl TranslationLinkStore for SqliteTranslationLinkStore {
         publication_row::load(&self.pool, translation_id, result_id).await
     }
 
+    async fn has_publication_for_run(
+        &self,
+        translation_id: Uuid,
+        run_id: Uuid,
+    ) -> Result<bool, PortError> {
+        publication_row::exists_for_run(&self.pool, translation_id, run_id).await
+    }
+
     async fn get(&self, translation_id: Uuid) -> Result<Option<TranslationLink>, PortError> {
         row::load(&self.pool, translation_id).await
     }
