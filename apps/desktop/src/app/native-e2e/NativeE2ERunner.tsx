@@ -4,12 +4,13 @@ import { importLocalMedia } from '@/entities/media';
 import {
   createProject,
   createProjectFromYoutube,
+  listProjects,
   renameProject,
   startProjectMockPipeline,
 } from '@/entities/project';
 import type { Artifact } from '@/shared/api/contracts';
 import { invoke } from '@/shared/api/tauri';
-import { runTranslationScenario } from './runTranslationScenario';
+import { resumeTranslationScenario, runTranslationScenario } from './runTranslationScenario';
 
 const READY_TIMEOUT_MS = 20_000;
 const POLL_INTERVAL_MS = 50;
@@ -31,6 +32,21 @@ async function runNativeScenario() {
   let unlisten: (() => void) | undefined;
 
   try {
+    if (__NATIVE_E2E_TRANSLATION_CRASH__) {
+      const originalProject = (await listProjects()).find(
+        (item) => item.title === `native-e2e-running:${runId}`,
+      );
+      if (originalProject) {
+        projectIds.push(originalProject.id);
+        if (await resumeTranslationScenario(runId)) {
+          const latest = await invoke('get_project_cmd', { projectId: originalProject.id });
+          await renameProject(originalProject.id, `native-e2e-complete:${runId}`, latest.revision);
+          return;
+        }
+        projectIds.pop();
+      }
+    }
+
     await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'react-started' });
     const project = await createProject(`native-e2e-running:${runId}`);
     projectIds.push(project.id);

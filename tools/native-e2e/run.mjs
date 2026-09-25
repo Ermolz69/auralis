@@ -24,9 +24,13 @@ export async function runNativeE2e(rootDir) {
   const frontendBuildRoot = path.join(rootDir, 'apps', 'desktop', 'dist-native-e2e');
   const runId = 'isolated-run';
   const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
+  const translationCrashEnabled =
+    translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
   let app;
   let fixtureServer;
   let failure;
+  let interrupted;
+  let baselineModelPids;
 
   try {
     await fsp.mkdir(dataRoot, { recursive: true });
@@ -34,15 +38,23 @@ export async function runNativeE2e(rootDir) {
     prepareMediaTools(rootDir);
     generateVideo(rootDir, sourcePath);
     if (translationEnabled) {
-      await prepareTranslationFixture(dataRoot, subtitlePath);
+      await prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled);
     }
     fixtureServer = await startFixtureServer(sourcePath);
     buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
       translationEnabled,
+      translationCrashEnabled,
       subtitlePath,
     });
 
+    if (translationCrashEnabled) baselineModelPids = listModelProcessIds();
     app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+    if (translationCrashEnabled) {
+      interrupted = await waitForTranslationCheckpoint(dataRoot, runId, app);
+      await crashNativeProcess(app.child, baselineModelPids);
+      verifyInterruptedTranslation(dataRoot, runId, interrupted);
+      app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+    }
     const result = await waitForResult(
       path.join(dataRoot, 'auralis.sqlite'),
       runId,
@@ -57,7 +69,7 @@ export async function runNativeE2e(rootDir) {
       ...result,
     });
     if (translationEnabled) {
-      await verifyTranslationResult(dataRoot, subtitlePath, runId);
+      await verifyTranslationResult(dataRoot, subtitlePath, runId, interrupted);
     }
   } catch (error) {
     const logs = app ? formatProcessLogs(app) : '';
@@ -115,7 +127,7 @@ export async function runNativeE2e(rootDir) {
   if (failure) throw failure;
 }
 
-async function prepareTranslationFixture(dataRoot, subtitlePath) {
+async function prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled) {
   const executable = process.env.AURALIS_TEST_LLAMA_SERVER;
   const modelFile = process.env.AURALIS_TEST_GGUF;
   if (!executable || !modelFile || !path.isAbsolute(executable) || !path.isAbsolute(modelFile)) {
@@ -124,7 +136,9 @@ async function prepareTranslationFixture(dataRoot, subtitlePath) {
   for (const asset of [executable, modelFile]) {
     if (!(await fsp.stat(asset)).isFile()) throw new Error(`Translation asset is not a file: ${asset}`);
   }
-  await fsp.writeFile(subtitlePath, '1\n00:00:01,000 --> 00:00:02,000\n你好。\n');
+  const firstCue = '1\n00:00:01,000 --> 00:00:02,000\n你好。\n';
+  const secondCue = '2\n00:00:03,000 --> 00:00:04,000\n再见。\n';
+  await fsp.writeFile(subtitlePath, translationCrashEnabled ? `${firstCue}\n${secondCue}` : firstCue);
   await fsp.writeFile(
     path.join(dataRoot, 'translation-runtime.json'),
     JSON.stringify({
@@ -256,6 +270,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
     AURALIS_NATIVE_E2E_RUN_ID: runId,
     AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_TRANSLATION_CRASH: translation.translationCrashEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_SUBTITLE_PATH: translation.subtitlePath,
   };
   run(
@@ -302,6 +317,105 @@ function launchTestApplication(rootDir, dataRoot, ytdlpUrl) {
   child.stdout.on('data', (chunk) => (output.stdout = appendLog(output.stdout, chunk)));
   child.stderr.on('data', (chunk) => (output.stderr = appendLog(output.stderr, chunk)));
   return output;
+}
+
+async function waitForTranslationCheckpoint(dataRoot, runId, app) {
+  const deadline = Date.now() + TRANSLATION_RESULT_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (app.child.exitCode !== null || app.child.signalCode !== null) {
+      throw new Error(`Native application exited before its first translation checkpoint: ${app.child.exitCode}`);
+    }
+    const interrupted = readTranslationCheckpoint(dataRoot, runId);
+    if (interrupted?.savedBlocks === 1 && interrupted.runState === 'running') {
+      return interrupted;
+    }
+    if (interrupted?.savedBlocks > 1 || interrupted?.runState === 'validated') {
+      throw new Error('Native translation completed before the process-kill boundary');
+    }
+    await delay(POLL_INTERVAL_MS);
+  }
+  throw new Error('Timed out waiting for a committed native translation checkpoint');
+}
+
+function readTranslationCheckpoint(dataRoot, runId) {
+  const hostPath = path.join(dataRoot, 'auralis.sqlite');
+  const translatePath = path.join(dataRoot, 'auralis-translate.sqlite');
+  if (!fs.existsSync(hostPath) || !fs.existsSync(translatePath)) return null;
+  let host;
+  let translate;
+  try {
+    host = new DatabaseSync(hostPath, { readOnly: true });
+    translate = new DatabaseSync(translatePath, { readOnly: true });
+    const link = host
+      .prepare('SELECT pt.translation_id, pt.active_run_id FROM project_translations pt JOIN projects p ON p.id = pt.project_id WHERE p.title = ?')
+      .get(`native-e2e-translation-running:${runId}`);
+    if (!link?.active_run_id) return null;
+    const run = translate
+      .prepare('SELECT state FROM runs WHERE run_id = ?')
+      .get(link.active_run_id);
+    const checkpoint = translate
+      .prepare('SELECT COUNT(*) AS count FROM block_checkpoints WHERE run_id = ?')
+      .get(link.active_run_id);
+    const firstBlock = translate
+      .prepare('SELECT input_fingerprint, accepted_json, committed_at FROM block_checkpoints WHERE run_id = ? AND block_index = 0')
+      .get(link.active_run_id);
+    return {
+      translationId: link.translation_id,
+      runId: link.active_run_id,
+      runState: run?.state,
+      savedBlocks: Number(checkpoint.count),
+      firstBlock,
+    };
+  } catch (error) {
+    const message = String(error);
+    if (message.includes('locked') || message.includes('busy') || message.includes('no such table')) {
+      return null;
+    }
+    throw error;
+  } finally {
+    translate?.close();
+    host?.close();
+  }
+}
+
+async function crashNativeProcess(child, baselineModelPids) {
+  assert(child.exitCode === null && child.signalCode === null, 'Native desktop exited before crash injection');
+  const managedModelPids = [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
+  assert(managedModelPids.length > 0, 'Native desktop has no managed model process to interrupt');
+  const exited = new Promise((resolve) => child.once('exit', resolve));
+  assert(child.kill('SIGKILL'), 'Could not terminate the native desktop process');
+  await Promise.race([exited, delay(10_000)]);
+  assert(child.exitCode !== null || child.signalCode !== null, 'Native desktop process survived the crash injection');
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const active = listModelProcessIds();
+    if (managedModelPids.every((pid) => !active.has(pid))) return;
+    await delay(100);
+  }
+  throw new Error(`Managed model process survived native desktop termination: ${managedModelPids.join(', ')}`);
+}
+
+function listModelProcessIds() {
+  const result = childProcess.spawnSync(
+    'tasklist.exe',
+    ['/FI', 'IMAGENAME eq llama-server.exe', '/FO', 'CSV', '/NH'],
+    { encoding: 'utf8', windowsHide: true },
+  );
+  assert(result.status === 0, `Could not list model processes: ${result.stderr?.trim()}`);
+  return new Set(
+    [...result.stdout.matchAll(/"llama-server\.exe","(\d+)"/gi)].map((match) => Number(match[1])),
+  );
+}
+
+function verifyInterruptedTranslation(dataRoot, runId, expected) {
+  const actual = readTranslationCheckpoint(dataRoot, runId);
+  assert(actual?.translationId === expected.translationId, 'Crash changed the project translation link');
+  assert(actual.runId === expected.runId, 'Crash changed the unfinished project run');
+  assert(actual.savedBlocks === 1 && actual.runState === 'running', 'Crash lost the committed checkpoint');
+  assert(
+    JSON.stringify(actual.firstBlock) === JSON.stringify(expected.firstBlock),
+    'Crash changed the committed first block',
+  );
 }
 
 async function waitForResult(databasePath, runId, app, timeoutMs) {
@@ -644,7 +758,9 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
   runNativeE2e(rootDir)
     .then(() =>
       process.stdout.write(
-        process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
+        process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
+          ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
           ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
           : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
       ),

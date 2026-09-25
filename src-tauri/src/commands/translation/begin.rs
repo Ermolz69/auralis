@@ -23,7 +23,7 @@ pub async fn begin_translation_run_cmd(
                 source_language: input.source_language.as_str().into(),
                 translation_id: parse_translation_id(&input.translation_id)?,
                 run_id: parse_translation_id(&input.run_id)?,
-                profile_manifest_json: EXPERIMENTAL_CHECKED_CHINESE_PROFILE.into(),
+                profile_manifest_json: profile_manifest_json()?,
                 created_at: domain::chrono::Utc::now(),
             })
             .await
@@ -31,4 +31,17 @@ pub async fn begin_translation_run_cmd(
         Ok(link.into())
     })
     .await
+}
+
+fn profile_manifest_json() -> Result<String, CommandError> {
+    #[cfg(feature = "native-e2e")]
+    if std::env::var("AURALIS_NATIVE_E2E_TRANSLATION_CRASH").as_deref() == Ok("1") {
+        let mut profile: serde_json::Value =
+            serde_json::from_str(EXPERIMENTAL_CHECKED_CHINESE_PROFILE)
+                .map_err(|_| CommandError::Internal("Invalid native E2E model profile".into()))?;
+        profile["target_segments_per_block"] = serde_json::json!(1);
+        return Ok(profile.to_string());
+    }
+
+    Ok(EXPERIMENTAL_CHECKED_CHINESE_PROFILE.into())
 }

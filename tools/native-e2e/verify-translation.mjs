@@ -3,7 +3,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export async function verifyTranslationResult(dataRoot, sourcePath, runId) {
+export async function verifyTranslationResult(dataRoot, sourcePath, runId, interrupted = null) {
   const host = new DatabaseSync(path.join(dataRoot, 'auralis.sqlite'), { readOnly: true });
   const translate = new DatabaseSync(path.join(dataRoot, 'auralis-translate.sqlite'), {
     readOnly: true,
@@ -32,7 +32,7 @@ export async function verifyTranslationResult(dataRoot, sourcePath, runId) {
     assert(original.id !== output.id && original.location_value !== output.location_value, 'Translated file replaced the original');
 
     const job = host
-      .prepare("SELECT id, status FROM jobs WHERE project_id = ? AND kind = 'translation'")
+      .prepare("SELECT id, status FROM jobs WHERE project_id = ? AND kind = 'translation' AND status = 'completed'")
       .get(project.id);
     assert(job?.status === 'completed', 'Native translation host job did not complete');
     const hostAttempt = host
@@ -51,6 +51,27 @@ export async function verifyTranslationResult(dataRoot, sourcePath, runId) {
     assert(result?.run_id === publication.run_id, 'Selected result belongs to another run');
     assert(result.revision === publication.result_revision, 'Result revision differs across databases');
     assert(result.review_state === 'needs_review', 'Translate result lost review state');
+    if (interrupted) {
+      const checkpoints = translate
+        .prepare('SELECT COUNT(*) AS count FROM block_checkpoints WHERE run_id = ?')
+        .get(publication.run_id);
+      const attempts = translate
+        .prepare('SELECT COUNT(*) AS count FROM run_attempts WHERE run_id = ?')
+        .get(publication.run_id);
+      const jobs = host
+        .prepare("SELECT COUNT(*) AS count FROM jobs WHERE project_id = ? AND kind = 'translation'")
+        .get(project.id);
+      assert(Number(checkpoints.count) === 2, 'Recovered run did not retain both blocks');
+      assert(Number(attempts.count) === 2, 'Recovered run did not use a second Translate attempt');
+      assert(Number(jobs.count) === 2, 'Recovered run did not create a second host job');
+      const firstBlock = translate
+        .prepare('SELECT input_fingerprint, accepted_json, committed_at FROM block_checkpoints WHERE run_id = ? AND block_index = 0')
+        .get(publication.run_id);
+      assert(
+        JSON.stringify(firstBlock) === JSON.stringify(interrupted.firstBlock),
+        'Resume replaced the first committed block',
+      );
+    }
 
     const sourceBytes = await fsp.readFile(sourcePath);
     const originalBytes = await fsp.readFile(artifactPath(dataRoot, original.location_value));
@@ -61,6 +82,9 @@ export async function verifyTranslationResult(dataRoot, sourcePath, runId) {
     assert(sha256(outputBytes) === result.output_sha256, 'Published output differs from Translate result');
     assert(!outputBytes.equals(sourceBytes), 'Native translation output equals its Chinese source');
     assert(outputBytes.toString('utf8').includes('00:00:01,000 --> 00:00:02,000'), 'Output lost the cue timing');
+    if (interrupted) {
+      assert(outputBytes.toString('utf8').includes('00:00:03,000 --> 00:00:04,000'), 'Recovered output lost the second cue timing');
+    }
 
     const finalized = host
       .prepare("SELECT COUNT(*) AS count FROM outbox_messages WHERE aggregate_id = ? AND kind = 'finalize_staged_artifact' AND status = 'done'")

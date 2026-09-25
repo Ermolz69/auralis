@@ -20,6 +20,8 @@ const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH
 const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
 const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL : '';
 const nativeE2eTranslation = nativeE2e && process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
+const nativeE2eTranslationCrash =
+  nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
 const nativeE2eSubtitlePath = nativeE2eTranslation
   ? process.env.AURALIS_NATIVE_E2E_SUBTITLE_PATH
   : '';
@@ -46,6 +48,7 @@ export default defineConfig({
     __NATIVE_E2E_YTDLP_URL__: JSON.stringify(nativeE2eYtdlpUrl ?? ''),
     __NATIVE_E2E_TRANSLATION__: JSON.stringify(nativeE2eTranslation),
     __NATIVE_E2E_SUBTITLE_PATH__: JSON.stringify(nativeE2eSubtitlePath ?? ''),
+    __NATIVE_E2E_TRANSLATION_CRASH__: JSON.stringify(nativeE2eTranslationCrash),
   },
   plugins: [react(), tailwindcss(), bundleReport()],
   server: { port: 5173, strictPort: true },

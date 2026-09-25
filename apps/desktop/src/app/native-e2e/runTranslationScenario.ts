@@ -1,4 +1,4 @@
-import { createProject, renameProject } from '@/entities/project';
+import { createProject, listProjects, renameProject } from '@/entities/project';
 import {
   beginTranslationRun,
   getTranslationComparison,
@@ -35,31 +35,59 @@ export async function runTranslationScenario(runId: string, sourcePath: string):
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-run-ready' });
 
   const publication = await startTranslationRun(project.id, translationId);
+  await finishTranslationScenario(runId, project.id, translationId, translationRunId, publication);
+}
+
+export async function resumeTranslationScenario(runId: string): Promise<boolean> {
+  const project = (await listProjects()).find(
+    (item) => item.title === `native-e2e-translation-running:${runId}`,
+  );
+  if (!project) return false;
+  const links = await listProjectTranslations(project.id);
+  if (links.length !== 1 || !links[0].activeRunId) {
+    throw new Error('Native translation crash recovery lost the active project run');
+  }
+  const link = links[0];
+  const activeRunId = link.activeRunId;
+  if (!activeRunId) throw new Error('Native translation crash recovery lost its run ID');
+  const publication = await startTranslationRun(project.id, link.translationId);
+  await finishTranslationScenario(runId, project.id, link.translationId, activeRunId, publication);
+  return true;
+}
+
+async function finishTranslationScenario(
+  runId: string,
+  projectId: string,
+  translationId: string,
+  translationRunId: string,
+  publication: Awaited<ReturnType<typeof startTranslationRun>>,
+): Promise<void> {
   if (publication.runId !== translationRunId || !publication.needsReview) {
     throw new Error('Native translation returned the wrong run or review state');
   }
-  const ready = await waitForSelection(project.id, translationId, publication.resultId);
+  const ready = await waitForSelection(projectId, translationId, publication.resultId);
   if (ready.outputArtifactId !== publication.artifactId) {
     throw new Error('Native translation selected a different output artifact');
   }
   const comparison = await getTranslationComparison(
-    project.id,
+    projectId,
     translationId,
     publication.resultId,
     0,
     10,
   );
+  const expectedSegments = __NATIVE_E2E_TRANSLATION_CRASH__ ? 2 : 1;
   if (
-    comparison.totalSegments !== 1 ||
-    comparison.segments.length !== 1 ||
+    comparison.totalSegments !== expectedSegments ||
+    comparison.segments.length !== expectedSegments ||
     comparison.segments[0].sourceLines[0] !== '你好。' ||
-    !comparison.segments[0].translatedLines[0]?.trim()
+    comparison.segments.some((segment) => !segment.translatedLines[0]?.trim())
   ) {
     throw new Error('Native translation comparison lost its source or result mapping');
   }
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-result-ready' });
-  const latest = await invoke('get_project_cmd', { projectId: project.id });
-  await renameProject(project.id, `native-e2e-translation-complete:${runId}`, latest.revision);
+  const latest = await invoke('get_project_cmd', { projectId });
+  await renameProject(projectId, `native-e2e-translation-complete:${runId}`, latest.revision);
 }
 
 async function waitForOriginal(projectId: string, artifactId: string): Promise<void> {
