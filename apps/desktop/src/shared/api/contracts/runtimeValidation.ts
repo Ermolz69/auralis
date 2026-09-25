@@ -149,6 +149,7 @@ const commandResultValidators = {
   import_translation_source_cmd: (value) =>
     validateArtifact(value) && value.kind === 'originalSubtitle' && value.state === 'pendingFinalize',
   begin_translation_run_cmd: validateTranslationLink,
+  start_translation_run_cmd: validateTranslationPublication,
   edit_translation_result_cmd: isUuid,
   publish_translation_result_cmd: validateTranslationPublication,
   list_project_translations_cmd: (value) => isArrayOf(value, validateTranslationLink),

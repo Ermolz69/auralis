@@ -3,6 +3,7 @@ use tauri::Manager;
 
 const DATABASE_FILE_NAME: &str = "auralis.sqlite";
 const TRANSLATE_DATABASE_FILE_NAME: &str = "auralis-translate.sqlite";
+const TRANSLATION_RUNTIME_CONFIG_FILE_NAME: &str = "translation-runtime.json";
 const PROJECTS_DIRECTORY_NAME: &str = "projects";
 const LOGS_DIRECTORY_NAME: &str = "logs";
 const CACHE_DIRECTORY_NAME: &str = "cache";
@@ -51,6 +52,10 @@ impl AppPaths {
 
     pub fn translate_database(&self) -> PathBuf {
         self.root.join(TRANSLATE_DATABASE_FILE_NAME)
+    }
+
+    pub fn translation_runtime_config(&self) -> PathBuf {
+        self.root.join(TRANSLATION_RUNTIME_CONFIG_FILE_NAME)
     }
 
     pub fn projects(&self) -> PathBuf {

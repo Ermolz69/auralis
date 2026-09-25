@@ -10,9 +10,9 @@ import type { Artifact } from '@/shared/api/contracts/artifact';
 import type { TranslationFormat, TranslationLink } from '@/shared/api/contracts/translation';
 import { Button } from '@/shared/ui/button';
 
-type Props = { projectId: string };
+type Props = { projectId: string; onTranslationPrepared?: () => void };
 
-export function TranslationSourceImport({ projectId }: Props) {
+export function TranslationSourceImport({ projectId, onTranslationPrepared }: Props) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,6 +89,7 @@ export function TranslationSourceImport({ projectId }: Props) {
         ? existing
         : [...existing, link]);
       setRevision((value) => value + 1);
+      onTranslationPrepared?.();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Не удалось подготовить перевод');
     } finally {
@@ -135,7 +136,6 @@ export function TranslationSourceImport({ projectId }: Props) {
           })}
         </ul>
       )}
-      {links.length > 0 && <p className="mt-2 text-xs text-muted">Запуск модели и продолжение перевода будут доступны после подключения управляемого runtime.</p>}
     </section>
   );
 }

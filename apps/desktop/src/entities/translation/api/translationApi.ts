@@ -7,10 +7,29 @@ import type {
   TranslationFormat,
   TranslationLink,
   TranslationPublication,
+  TranslationRunSnapshot,
 } from '@/shared/api/contracts/translation';
 
 export function beginTranslationRun(input: BeginTranslationRun): Promise<TranslationLink> {
   return invoke('begin_translation_run_cmd', { input });
+}
+
+export function startTranslationRun(
+  projectId: string,
+  translationId: string,
+): Promise<TranslationPublication> {
+  return invoke('start_translation_run_cmd', { projectId, translationId });
+}
+
+export function getTranslationRunStatus(
+  projectId: string,
+  translationId: string,
+): Promise<TranslationRunSnapshot> {
+  return invoke('get_translation_run_status_cmd', { projectId, translationId });
+}
+
+export function pauseTranslationRun(projectId: string, translationId: string): Promise<null> {
+  return invoke('pause_translation_run_cmd', { projectId, translationId });
 }
 
 export function importTranslationSource(

@@ -20,6 +20,7 @@ mod reconcile_item;
 mod recover_host_jobs;
 mod run_control;
 mod run_host_job;
+mod run_managed;
 mod run_request;
 mod start_job;
 
@@ -44,5 +45,6 @@ pub use reconcile_item::TranslationReconcileItem;
 pub use recover_host_jobs::RecoverTranslationHostJobsUseCase;
 pub use run_control::TranslationRunUseCase;
 pub use run_host_job::RunTranslationHostJobUseCase;
+pub use run_managed::RunManagedTranslationUseCase;
 pub use run_request::TranslationRunRequest;
 pub use start_job::StartTranslationJobUseCase;

@@ -14,6 +14,7 @@ use ports::translation_links::{
 use ports::translation_result::TranslationResultPort;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct PublishTranslationResultUseCase {
     inspector: Arc<InspectTranslationSourceUseCase>,
     links: Arc<dyn TranslationLinkStore>,

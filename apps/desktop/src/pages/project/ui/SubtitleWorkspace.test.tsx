@@ -28,6 +28,10 @@ vi.mock('@/features/translation-source-import', () => ({
   TranslationSourceImport: () => null,
 }));
 
+vi.mock('@/features/translation-run-control', () => ({
+  TranslationRunControl: () => null,
+}));
+
 const availableTracks = {
   tracks: [
     {

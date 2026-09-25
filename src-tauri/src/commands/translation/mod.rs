@@ -6,6 +6,7 @@ pub mod inspect;
 pub mod list;
 pub mod pause;
 pub mod publish;
+pub mod start;
 pub mod status;
 
 pub(super) fn parse_translation_id(

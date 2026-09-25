@@ -13,6 +13,7 @@ use uuid::Uuid;
 const FAILURE_CODE: &str = "TRANSLATION_EXECUTION_FAILED";
 const FAILURE_MESSAGE: &str = "Translation attempt failed; inspect run diagnostics";
 
+#[derive(Clone)]
 pub struct RunTranslationHostJobUseCase {
     links: Arc<dyn TranslationLinkStore>,
     jobs: Arc<dyn TranslationHostJobStore>,

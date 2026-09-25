@@ -128,6 +128,7 @@ pub fn run() -> Result<(), AppRunError> {
             commands::translation::inspect::inspect_translation_source_cmd,
             commands::translation::import_source::import_translation_source_cmd,
             commands::translation::begin::begin_translation_run_cmd,
+            commands::translation::start::start_translation_run_cmd,
             commands::translation::edit::edit_translation_result_cmd,
             commands::translation::list::list_project_translations_cmd,
             commands::translation::comparison::get_translation_comparison_cmd,

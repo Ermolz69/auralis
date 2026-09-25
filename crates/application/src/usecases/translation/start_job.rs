@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 const JOB_TITLE: &str = "Translate subtitles";
 
+#[derive(Clone)]
 pub struct StartTranslationJobUseCase {
     links: Arc<dyn TranslationLinkStore>,
     control: Arc<dyn TranslationRunControlPort>,

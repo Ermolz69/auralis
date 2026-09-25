@@ -3,6 +3,7 @@ import { isActiveJobStatus, useProjectJobs } from '@/entities/job';
 import { useProjectContext } from '@/entities/project';
 import { useTranscript, useYoutubeSubtitleTracks } from '@/entities/transcript';
 import { TranslationReview } from '@/features/translation-review';
+import { TranslationRunControl } from '@/features/translation-run-control';
 import { TranslationSourceImport } from '@/features/translation-source-import';
 import { filterTracks } from './subtitle-workspace/model';
 import { SubtitleActivityLog } from './subtitle-workspace/SubtitleActivityLog';
@@ -17,6 +18,7 @@ export function SubtitleWorkspace() {
   const trackState = useYoutubeSubtitleTracks(project?.id ?? null);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [trackQuery, setTrackQuery] = useState('');
+  const [translationRevision, setTranslationRevision] = useState(0);
 
   useEffect(() => {
     setSelectedTrackId((current) => {
@@ -40,7 +42,8 @@ export function SubtitleWorkspace() {
       <div className="space-y-5">
         <TranslationReview />
         <SubtitleMethods />
-        {project && <TranslationSourceImport key={project.id} projectId={project.id} />}
+        {project && <TranslationSourceImport key={project.id} projectId={project.id} onTranslationPrepared={() => setTranslationRevision((value) => value + 1)} />}
+        {project && <TranslationRunControl key={`${project.id}:${translationRevision}`} projectId={project.id} />}
         <SubtitleTrackPicker
           tracks={filterTracks(trackState.tracks, trackQuery)}
           selectedTrack={selectedTrack}

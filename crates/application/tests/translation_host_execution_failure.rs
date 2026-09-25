@@ -6,20 +6,25 @@ use adapters_storage::{
     },
 };
 use adapters_translate::{
-    FormatInspector, TranslateRunControl, TranslateRunExecutor, TranslateRunRegistrar,
+    FormatInspector, TranslateResultReader, TranslateRunControl, TranslateRunExecutor,
+    TranslateRunRegistrar,
 };
 use application::usecases::translation::{
     BeginTranslationRequest, BeginTranslationUseCase, ExecuteTranslationRequest,
-    ExecuteTranslationUseCase, InspectTranslationSourceUseCase, RunTranslationHostJobUseCase,
-    StartTranslationJobUseCase, TranslationRunRequest,
+    ExecuteTranslationUseCase, InspectTranslationSourceUseCase, PublishTranslationResultUseCase,
+    RunManagedTranslationUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
+    TranslationRunRequest,
 };
+use async_trait::async_trait;
 use domain::job::JobStatus;
 use domain::media::ArtifactId;
 use domain::project::Project;
+use ports::error::PortError;
 use ports::repository::{JobRepository, ProjectRepository};
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_inspection::TranslationSourceFormat;
-use ports::translation_links::TranslationLinkStore;
+use ports::translation_links::{TranslationLinkStore, TranslationRunIntent};
+use ports::translation_model_runtime::{TranslationModelLease, TranslationModelRuntimePort};
 use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPhase};
 use std::error::Error;
 use std::sync::Arc;
@@ -29,6 +34,20 @@ const PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.experimental.json"
 );
 const SOURCE: &[u8] = b"1\n00:00:01,000 --> 00:00:02,000\n\xe4\xbd\xa0\xe5\xa5\xbd\xe3\x80\x82\n";
+
+struct UnavailableRuntime;
+
+#[async_trait]
+impl TranslationModelRuntimePort for UnavailableRuntime {
+    async fn acquire(
+        &self,
+        _: &TranslationRunIntent,
+    ) -> Result<Box<dyn TranslationModelLease>, PortError> {
+        Err(PortError::Busy {
+            message: "model slot unavailable".into(),
+        })
+    }
+}
 
 #[tokio::test]
 async fn failed_model_request_closes_host_job_without_changing_source() -> Result<(), Box<dyn Error>>
@@ -57,7 +76,7 @@ async fn failed_model_request_closes_host_job_without_changing_source() -> Resul
     let inspector = Arc::new(InspectTranslationSourceUseCase::new(
         projects,
         artifacts,
-        files,
+        files.clone(),
         Arc::new(FormatInspector),
     ));
     let links = Arc::new(SqliteTranslationLinkStore::new(pool.clone()));
@@ -83,15 +102,36 @@ async fn failed_model_request_closes_host_job_without_changing_source() -> Resul
         project_id: project.id().clone(),
         translation_id,
     };
+    let executor = Arc::new(ExecuteTranslationUseCase::new(
+        inspector.clone(),
+        links.clone(),
+        registrar.clone(),
+        Arc::new(TranslateRunExecutor::experimental_unchecked(
+            translate_path.clone(),
+        )),
+    ));
+    let managed = RunManagedTranslationUseCase::new(
+        links.clone(),
+        Arc::new(UnavailableRuntime),
+        control.clone(),
+        StartTranslationJobUseCase::new(links.clone(), control.clone(), jobs.clone()),
+        RunTranslationHostJobUseCase::new(links.clone(), jobs.clone(), executor.clone()),
+        PublishTranslationResultUseCase::new(
+            inspector,
+            links.clone(),
+            Arc::new(TranslateResultReader::new(translate_path)),
+            files,
+        ),
+    );
+    assert!(managed.execute(request.clone()).await.is_err());
+    assert!(jobs.active_for_run(run_id).await?.is_none());
+    let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM jobs")
+        .fetch_one(&pool)
+        .await?;
+    assert_eq!(job_count, 0);
     let job = StartTranslationJobUseCase::new(links.clone(), control.clone(), jobs.clone())
         .execute(request)
         .await?;
-    let executor = Arc::new(ExecuteTranslationUseCase::new(
-        inspector,
-        links.clone(),
-        registrar,
-        Arc::new(TranslateRunExecutor::experimental_unchecked(translate_path)),
-    ));
     let failed = RunTranslationHostJobUseCase::new(links.clone(), jobs.clone(), executor)
         .execute(
             ExecuteTranslationRequest {

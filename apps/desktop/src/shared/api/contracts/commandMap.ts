@@ -116,6 +116,10 @@ export interface CommandMap {
     args: { input: BeginTranslationRun };
     result: TranslationLink;
   };
+  start_translation_run_cmd: {
+    args: { projectId: string; translationId: string };
+    result: TranslationPublication;
+  };
   edit_translation_result_cmd: {
     args: { input: EditTranslationResult };
     result: string;

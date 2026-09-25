@@ -6,6 +6,7 @@ pub mod paths;
 pub mod services;
 pub mod storage;
 pub mod translation;
+mod translation_runtime;
 pub mod usecases;
 pub mod workers;
 
@@ -53,7 +54,7 @@ pub fn setup(
     let (services, outbox_repo) = storage::setup_storage(&app_paths, storage_lease)?;
     record_native_e2e_checkpoint("storage-ready");
 
-    let translations = translation::TranslationUseCases::new(
+    let mut translations = translation::TranslationUseCases::new(
         services.project_repo.clone(),
         services.artifact_index.clone(),
         services.artifact_store.clone(),
@@ -62,6 +63,9 @@ pub fn setup(
         services.translation_host_jobs.clone(),
         app_paths.translate_database(),
     );
+    if let Some(runtime) = translation_runtime::load(&app_paths)? {
+        translations.attach_runtime(services.translation_links.clone(), runtime);
+    }
     for item in tauri::async_runtime::block_on(translations.reconcile.execute())? {
         if let Err(error) = item.outcome {
             tracing::warn!(

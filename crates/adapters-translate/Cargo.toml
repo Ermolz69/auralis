@@ -12,9 +12,13 @@ auralis-translation-sqlite = { path = "../../modules/auralis-translate/crates/au
 ports.workspace = true
 domain.workspace = true
 async-trait.workspace = true
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["process", "rt", "sync", "time"] }
 chrono.workspace = true
 uuid.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+process-wrap = { workspace = true, features = ["tokio1", "job-object", "kill-on-drop", "creation-flags"] }
+windows = { workspace = true, features = ["Win32_System_Threading"] }
 
 [dev-dependencies]
 rusqlite = "0.39"

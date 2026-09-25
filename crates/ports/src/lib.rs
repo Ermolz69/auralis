@@ -25,6 +25,7 @@ pub mod translation_execution;
 pub mod translation_host_job;
 pub mod translation_inspection;
 pub mod translation_links;
+pub mod translation_model_runtime;
 pub mod translation_result;
 pub mod translation_result_edit;
 pub mod translation_run_control;

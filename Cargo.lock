@@ -79,10 +79,12 @@ dependencies = [
  "chrono",
  "domain",
  "ports",
+ "process-wrap",
  "rusqlite",
  "tempfile",
  "tokio",
  "uuid",
+ "windows 0.62.2",
 ]
 
 [[package]]
