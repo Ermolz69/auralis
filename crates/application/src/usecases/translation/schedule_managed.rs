@@ -4,6 +4,7 @@ use super::{
 };
 use crate::error::ApplicationError;
 use domain::job::Job;
+use ports::error::PortError;
 use ports::job_runtime_control::JobRuntimeControlPort;
 use ports::translation_host_job::TranslationHostJobStore;
 use std::sync::Arc;
@@ -35,6 +36,9 @@ impl ScheduleManagedTranslationUseCase {
         &self,
         request: TranslationRunRequest,
     ) -> Result<(Job, Uuid), ApplicationError> {
+        if let Some(active) = self.managed.active_running_job(&request).await? {
+            return Ok(active);
+        }
         let admitted = self.managed.admit(request.clone()).await?;
         let job = admitted.job().clone();
         let job_id = job.id().clone();
@@ -44,6 +48,13 @@ impl ScheduleManagedTranslationUseCase {
             .reserve(job_id.clone(), request.project_id.clone())
             .await
         {
+            // Another scheduler may own this reservation; its shared host job must stay active.
+            if matches!(&error, PortError::Conflict { .. })
+                && let Some(active) = self.jobs.active_for_run(run_id).await?
+                && active.id() == &job_id
+            {
+                return Ok((active, run_id));
+            }
             return Err(self.compensate(run_id, &job_id, error.to_string()).await);
         }
         let (task, release) = managed_worker::spawn(

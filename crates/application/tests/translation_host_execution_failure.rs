@@ -213,6 +213,27 @@ async fn failed_model_request_closes_host_job_without_changing_source() -> Resul
         jobs.clone(),
         TranslationRunUseCase::new(links, control),
     );
+    manager
+        .reserve(retry.id().clone(), project.id().clone())
+        .await?;
+    let (duplicate, duplicate_run_id) = scheduler
+        .execute(TranslationRunRequest {
+            project_id: project.id().clone(),
+            translation_id,
+        })
+        .await?;
+    assert_eq!(duplicate.id(), retry.id());
+    assert_eq!(duplicate_run_id, run_id);
+    assert_eq!(jobs.active_for_run(run_id).await?, Some(retry.clone()));
+    assert_eq!(
+        SqliteJobRepository::new(pool.clone())
+            .get(retry.id())
+            .await?
+            .ok_or("missing reserved job")?
+            .status(),
+        &JobStatus::Pending
+    );
+    manager.rollback_runtime_start(retry.id()).await?;
     let (scheduled, scheduled_run_id) = scheduler
         .execute(TranslationRunRequest {
             project_id: project.id().clone(),

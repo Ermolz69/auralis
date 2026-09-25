@@ -1,9 +1,9 @@
 use super::TranslationRunRequest;
 use crate::error::ApplicationError;
-use domain::job::{Job, JobKind};
+use domain::job::{Job, JobKind, JobStatus};
 use ports::error::PortError;
 use ports::translation_host_job::TranslationHostJobStore;
-use ports::translation_links::TranslationLinkStore;
+use ports::translation_links::{TranslationLink, TranslationLinkStore};
 use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPhase};
 use std::sync::Arc;
 
@@ -30,33 +30,7 @@ impl StartTranslationJobUseCase {
     }
 
     pub async fn execute(&self, request: TranslationRunRequest) -> Result<Job, ApplicationError> {
-        let link = self
-            .links
-            .get(request.translation_id)
-            .await?
-            .ok_or_else(|| PortError::NotFound {
-                resource: "translation link".into(),
-            })?;
-        if link.project_id != request.project_id {
-            return Err(ApplicationError::InvalidOperation {
-                message: "Translation belongs to another project".into(),
-            });
-        }
-        let run_id = link
-            .active_run_id
-            .ok_or_else(|| ApplicationError::InvalidOperation {
-                message: "Translation has no active run".into(),
-            })?;
-        let intent = self.links.run_intent(run_id).await?.ok_or_else(|| {
-            ApplicationError::InvalidOperation {
-                message: "Active translation has no frozen run intent".into(),
-            }
-        })?;
-        if intent.translation_id != link.translation_id {
-            return Err(ApplicationError::InvalidOperation {
-                message: "Frozen run belongs to another translation".into(),
-            });
-        }
+        let (link, run_id) = self.checked_run(&request).await?;
         let snapshot = self.control.snapshot(&link).await?;
         if snapshot.run_id != run_id {
             return Err(ApplicationError::InvalidOperation {
@@ -91,5 +65,52 @@ impl StartTranslationJobUseCase {
             }
             Err(error) => Err(error.into()),
         }
+    }
+
+    pub async fn active_running(
+        &self,
+        request: &TranslationRunRequest,
+    ) -> Result<Option<(Job, uuid::Uuid)>, ApplicationError> {
+        let (_, run_id) = self.checked_run(request).await?;
+        Ok(self
+            .jobs
+            .active_for_run(run_id)
+            .await?
+            .filter(|job| job.status() == &JobStatus::Running)
+            .map(|job| (job, run_id)))
+    }
+
+    async fn checked_run(
+        &self,
+        request: &TranslationRunRequest,
+    ) -> Result<(TranslationLink, uuid::Uuid), ApplicationError> {
+        let link = self
+            .links
+            .get(request.translation_id)
+            .await?
+            .ok_or_else(|| PortError::NotFound {
+                resource: "translation link".into(),
+            })?;
+        if link.project_id != request.project_id {
+            return Err(ApplicationError::InvalidOperation {
+                message: "Translation belongs to another project".into(),
+            });
+        }
+        let run_id = link
+            .active_run_id
+            .ok_or_else(|| ApplicationError::InvalidOperation {
+                message: "Translation has no active run".into(),
+            })?;
+        let intent = self.links.run_intent(run_id).await?.ok_or_else(|| {
+            ApplicationError::InvalidOperation {
+                message: "Active translation has no frozen run intent".into(),
+            }
+        })?;
+        if intent.translation_id != link.translation_id {
+            return Err(ApplicationError::InvalidOperation {
+                message: "Frozen run belongs to another translation".into(),
+            });
+        }
+        Ok((link, run_id))
     }
 }

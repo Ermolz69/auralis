@@ -3,11 +3,13 @@ use super::{
     StartTranslationJobUseCase, TranslationRunRequest,
 };
 use crate::error::ApplicationError;
+use domain::job::Job;
 use ports::error::PortError;
 use ports::translation_links::{TranslationLinkStore, TranslationPublicationRecord};
 use ports::translation_model_runtime::TranslationModelRuntimePort;
 use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPhase};
 use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct RunManagedTranslationUseCase {
@@ -43,6 +45,13 @@ impl RunManagedTranslationUseCase {
         request: TranslationRunRequest,
     ) -> Result<TranslationPublicationRecord, ApplicationError> {
         self.admit(request).await?.execute().await
+    }
+
+    pub async fn active_running_job(
+        &self,
+        request: &TranslationRunRequest,
+    ) -> Result<Option<(Job, Uuid)>, ApplicationError> {
+        self.start_job.active_running(request).await
     }
 
     pub async fn admit(

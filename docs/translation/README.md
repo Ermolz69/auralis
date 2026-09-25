@@ -16,6 +16,8 @@ The embedded HTTP adapter enables reqwest's rustls provider explicitly. A full w
 
 The background scheduler evidence at `modules/auralis-translate/eval/experiments/2026-09-25-background-job-scheduler.md` records the accepted IPC response, attached shared worker, native checked-model completion, and checkpoint-preserving desktop restart. The command's admission still verifies and starts the local model before responding; the inference and publication continue in the attached worker. Event-driven progress, model installation, and the language-quality gates remain open.
 
+Repeated start requests reuse a running host job without acquiring another model lease. If two schedulers race while the job is pending, the runtime reservation admits one worker; a competing reservation returns that same still-active job and never compensates or closes it. A non-conflict reservation failure still closes the pending job for recovery. Application tests cover concurrent SQLite job creation and the duplicate-reservation boundary. Native multi-process admission remains unverified.
+
 ## Managed runtime setup for the current development build
 
 Place `translation-runtime.json` beside `auralis.sqlite` in the Auralis application data directory. The file is optional so the rest of Auralis starts without installed model assets. Both paths must be absolute and point to an installed `llama-server` executable and the GGUF named by the frozen checked profile. Example for a local Windows development installation:

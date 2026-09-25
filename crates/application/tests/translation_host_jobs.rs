@@ -189,6 +189,26 @@ async fn starting_twice_returns_one_project_scoped_pending_job() -> Result<(), B
 }
 
 #[tokio::test]
+async fn concurrent_starts_share_one_host_job() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let pool = connect_sqlite(directory.path().join("auralis.sqlite")).await?;
+    let (project_id, translation_id, run_id) = seed_run(&pool).await?;
+    let first = use_case(&pool, run_id, TranslationRunPhase::Requested);
+    let second = use_case(&pool, run_id, TranslationRunPhase::Requested);
+    let request = || TranslationRunRequest {
+        project_id: project_id.clone(),
+        translation_id,
+    };
+    let (first, second) = tokio::join!(first.execute(request()), second.execute(request()));
+    assert_eq!(first?.id(), second?.id());
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM translation_host_jobs")
+        .fetch_one(&pool)
+        .await?;
+    assert_eq!(count, 1);
+    Ok(())
+}
+
+#[tokio::test]
 async fn running_or_validated_translate_run_cannot_create_a_new_job() -> Result<(), Box<dyn Error>>
 {
     let directory = tempfile::tempdir()?;
@@ -260,6 +280,15 @@ async fn startup_recovery_closes_pending_and_validated_jobs_without_losing_the_r
     let mut running = resumed.clone();
     running.start()?;
     jobs.start(&running, resumed.revision()).await?;
+    let active = use_case(&pool, run_id, TranslationRunPhase::Running)
+        .active_running(&TranslationRunRequest {
+            project_id: running.project_id().clone(),
+            translation_id,
+        })
+        .await?
+        .ok_or("missing running host job")?;
+    assert_eq!(active.0.id(), resumed.id());
+    assert_eq!(active.1, run_id);
     let validated_recovery = RecoverTranslationHostJobsUseCase::new(
         jobs.clone(),
         Arc::new(FixedRecovery {

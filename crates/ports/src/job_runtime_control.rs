@@ -115,6 +115,7 @@ pub struct RuntimeShutdownReport {
 
 #[async_trait::async_trait]
 pub trait JobRuntimeControlPort: Send + Sync {
+    /// A conflict means this job ID already has a reservation or attached task.
     async fn reserve(&self, job_id: JobId, project_id: ProjectId) -> Result<(), PortError>;
 
     async fn attach_task(&self, job_id: JobId, task: RuntimeTask) -> Result<(), AttachTaskError>;
