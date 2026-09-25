@@ -28,6 +28,8 @@ Repeated start requests reuse a running host job without acquiring another model
 
 ## Managed runtime setup for the current development build
 
+The pinned Translate submodule now includes an experimental `task cli -- install-offline ...` command and a versioned Windows x64 CPU release manifest at `modules/auralis-translate/models/releases/`. It can verify locally supplied upstream files, preserve notices, and publish a versioned package directory. The [package boundary](../../modules/auralis-translate/docs/architecture/007-model-installation.md) and [real local install record](../../modules/auralis-translate/eval/experiments/2026-09-25-offline-cpu-install.md) describe its evidence. Auralis does not yet choose that package, write the runtime configuration, or install it from the UI. Clean offline machine verification remains open.
+
 Place `translation-runtime.json` beside `auralis.sqlite` in the Auralis application data directory. The file is optional so the rest of Auralis starts without installed model assets. Both paths must be absolute and point to an installed `llama-server` executable and the GGUF named by the frozen checked profile. Example for a local Windows development installation:
 
 ```json
