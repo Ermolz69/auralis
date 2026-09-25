@@ -23,8 +23,44 @@ use ports::translation_links::TranslationLinkStore;
 use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPhase};
 use sqlx::SqlitePool;
 use std::error::Error;
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
+
+const CRASH_DB_ENV: &str = "AURALIS_TRANSLATION_CRASH_DB";
+const CRASH_RUN_ENV: &str = "AURALIS_TRANSLATION_CRASH_RUN";
+const CRASH_JOB_ENV: &str = "AURALIS_TRANSLATION_CRASH_JOB";
+const CRASH_MARKER_ENV: &str = "AURALIS_TRANSLATION_CRASH_MARKER";
+const CRASH_MARKER_TIMEOUT: Duration = Duration::from_secs(20);
+
+struct WorkerChild(Child);
+
+impl Drop for WorkerChild {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+#[tokio::test]
+async fn killed_translation_worker_child() -> Result<(), Box<dyn Error>> {
+    let Some(database_path) = std::env::var_os(CRASH_DB_ENV) else {
+        return Ok(());
+    };
+    let run_id = RunId::parse(&std::env::var(CRASH_RUN_ENV)?)?;
+    let job_id = std::env::var(CRASH_JOB_ENV)?;
+    let marker = PathBuf::from(std::env::var_os(CRASH_MARKER_ENV).ok_or("missing marker")?);
+    let mut database = TranslateDb::open(&PathBuf::from(database_path), SqliteConfig::default())?;
+    let run = database.run(run_id)?;
+    database.begin_attempt(&run, Some(&job_id))?;
+    database.commit_checkpoint(&checkpoint(run_id, 0, "Первый блок.")?)?;
+    std::fs::write(marker, b"committed")?;
+    loop {
+        tokio::time::sleep(Duration::from_secs(60)).await;
+    }
+}
 
 async fn seed_link(pool: &SqlitePool) -> Result<(ProjectId, Uuid, Uuid), Box<dyn Error>> {
     let project = SqliteProjectRepository::new(pool.clone())
@@ -81,7 +117,7 @@ fn checkpoint(
 }
 
 #[tokio::test]
-async fn restart_reconciles_host_and_translate_databases_without_losing_checkpoint()
+async fn killed_worker_reconciles_host_and_translate_databases_without_losing_checkpoint()
 -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let host_path = directory.path().join("auralis.sqlite");
@@ -131,10 +167,33 @@ async fn restart_reconciles_host_and_translate_databases_without_losing_checkpoi
     let mut running = pending.clone();
     running.start()?;
     jobs.start(&running, pending.revision()).await?;
-    translate.begin_attempt(&run, Some(&pending.id().to_string()))?;
-    translate.commit_checkpoint(&checkpoint(run_id, 0, "Первый блок.")?)?;
     drop(translate);
     pool.close().await;
+
+    let marker = directory.path().join("committed.marker");
+    let mut child = WorkerChild(
+        Command::new(std::env::current_exe()?)
+            .args(["--exact", "killed_translation_worker_child", "--nocapture"])
+            .env(CRASH_DB_ENV, &translate_path)
+            .env(CRASH_RUN_ENV, run_uuid.to_string())
+            .env(CRASH_JOB_ENV, pending.id().to_string())
+            .env(CRASH_MARKER_ENV, &marker)
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit())
+            .spawn()?,
+    );
+    let started = Instant::now();
+    while !marker.exists() {
+        if child.0.try_wait()?.is_some() {
+            return Err("worker exited before checkpoint commit".into());
+        }
+        if started.elapsed() > CRASH_MARKER_TIMEOUT {
+            return Err("worker checkpoint timed out".into());
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    child.0.kill()?;
+    assert!(!child.0.wait()?.success());
 
     let restarted_pool = connect_sqlite(&host_path).await?;
     let restarted_jobs = Arc::new(SqliteTranslationHostJobStore::new(restarted_pool.clone()));
