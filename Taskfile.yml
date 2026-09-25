@@ -87,6 +87,14 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:vtt:
+    desc: Run native Tauri strict-WebVTT translation acceptance with an installed checked llama.cpp model
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_VTT: '1'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   desktop:e2e:native:translation:crash:
     desc: Kill and restart native Tauri translation after one durable checked-model checkpoint
     env:

@@ -3,7 +3,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export async function verifyTranslationResult(dataRoot, sourcePath, runId, interrupted = null) {
+export async function verifyTranslationResult(dataRoot, sourcePath, runId, interrupted = null, format = 'srt') {
   const host = new DatabaseSync(path.join(dataRoot, 'auralis.sqlite'), { readOnly: true });
   const translate = new DatabaseSync(path.join(dataRoot, 'auralis-translate.sqlite'), {
     readOnly: true,
@@ -40,9 +40,11 @@ export async function verifyTranslationResult(dataRoot, sourcePath, runId, inter
       .get(job.id);
     assert(hostAttempt?.run_id === publication.run_id && hostAttempt.ended_at, 'Native host attempt was not closed');
 
+    assert(link.source_format === format, 'Auralis source format differs from the requested format');
     const sourceRecord = translate
-      .prepare('SELECT source_sha256 FROM translations WHERE translation_id = ?')
+      .prepare('SELECT source_sha256, source_format FROM translations WHERE translation_id = ?')
       .get(link.translation_id);
+    assert(sourceRecord?.source_format === format, 'Translate source format differs from Auralis');
     const run = translate.prepare('SELECT state FROM runs WHERE run_id = ?').get(publication.run_id);
     const result = translate
       .prepare('SELECT * FROM results WHERE result_id = ?')
@@ -85,7 +87,14 @@ export async function verifyTranslationResult(dataRoot, sourcePath, runId, inter
     assert(sha256(sourceBytes) === sourceRecord?.source_sha256, 'Translate source hash differs');
     assert(sha256(outputBytes) === result.output_sha256, 'Published output differs from Translate result');
     assert(!outputBytes.equals(sourceBytes), 'Native translation output equals its Chinese source');
-    assert(outputBytes.toString('utf8').includes('00:00:01,000 --> 00:00:02,000'), 'Output lost the cue timing');
+    if (format === 'vtt') {
+      const protectedPrefix = 'WEBVTT\r\n\r\nNOTE provenance\r\nnative fixture\r\n\r\n00:00:01.000 --> 00:00:02.000\r\n';
+      assert(sourceBytes.toString('utf8').startsWith(protectedPrefix), 'Native WebVTT fixture changed');
+      assert(outputBytes.toString('utf8').startsWith(protectedPrefix), 'Output changed protected WebVTT bytes');
+      assert(outputBytes.toString('utf8').endsWith('\r\n'), 'Output lost the WebVTT terminal CRLF');
+    } else {
+      assert(outputBytes.toString('utf8').includes('00:00:01,000 --> 00:00:02,000'), 'Output lost the cue timing');
+    }
     if (interrupted) {
       assert(outputBytes.toString('utf8').includes('00:00:03,000 --> 00:00:04,000'), 'Recovered output lost the second cue timing');
     }

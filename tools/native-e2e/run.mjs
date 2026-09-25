@@ -19,20 +19,25 @@ const POLL_INTERVAL_MS = 100;
 
 export async function runNativeE2e(rootDir) {
   assertSupportedPlatform();
-  const testRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-native-e2e-'));
-  const dataRoot = path.join(testRoot, 'app-data');
-  const fixtureRoot = path.join(testRoot, 'fixture');
-  const sourcePath = path.join(fixtureRoot, 'source.mp4');
-  const subtitlePath = path.join(fixtureRoot, 'source.srt');
-  const frontendBuildRoot = path.join(rootDir, 'apps', 'desktop', 'dist-native-e2e');
-  const runId = 'isolated-run';
   const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
+  const translationVttEnabled =
+    translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1';
   const translationCrashEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
   const translationResultGapEnabled =
     translationCrashEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1';
   const translationDeleteEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
+  if (translationVttEnabled && (translationCrashEnabled || translationDeleteEnabled)) {
+    throw new Error('Native WebVTT acceptance does not combine with crash or deletion modes');
+  }
+  const testRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-native-e2e-'));
+  const dataRoot = path.join(testRoot, 'app-data');
+  const fixtureRoot = path.join(testRoot, 'fixture');
+  const sourcePath = path.join(fixtureRoot, 'source.mp4');
+  const subtitlePath = path.join(fixtureRoot, translationVttEnabled ? 'source.vtt' : 'source.srt');
+  const frontendBuildRoot = path.join(rootDir, 'apps', 'desktop', 'dist-native-e2e');
+  const runId = 'isolated-run';
   const secondOwnerEnabled = process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1';
   const resultCommitMarker = path.join(dataRoot, 'native-result-committed.txt');
   let app;
@@ -48,7 +53,12 @@ export async function runNativeE2e(rootDir) {
     prepareMediaTools(rootDir);
     generateVideo(rootDir, sourcePath);
     if (translationEnabled) {
-      await prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled || translationDeleteEnabled);
+      await prepareTranslationFixture(
+        dataRoot,
+        subtitlePath,
+        translationCrashEnabled || translationDeleteEnabled,
+        translationVttEnabled,
+      );
       subtitleDigest = await sha256(subtitlePath);
     }
     fixtureServer = await startFixtureServer(sourcePath);
@@ -56,6 +66,7 @@ export async function runNativeE2e(rootDir) {
       translationEnabled,
       translationCrashEnabled,
       translationDeleteEnabled,
+      translationVttEnabled,
       subtitlePath,
     });
 
@@ -112,7 +123,13 @@ export async function runNativeE2e(rootDir) {
       ...result,
     });
     if (translationEnabled && !translationDeleteEnabled) {
-      await verifyTranslationResult(dataRoot, subtitlePath, runId, interrupted);
+      await verifyTranslationResult(
+        dataRoot,
+        subtitlePath,
+        runId,
+        interrupted,
+        translationVttEnabled ? 'vtt' : 'srt',
+      );
     }
   } catch (error) {
     const logs = app ? formatProcessLogs(app) : '';
@@ -170,7 +187,7 @@ export async function runNativeE2e(rootDir) {
   if (failure) throw failure;
 }
 
-async function prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled) {
+async function prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled, translationVttEnabled) {
   const executable = process.env.AURALIS_TEST_LLAMA_SERVER;
   const modelFile = process.env.AURALIS_TEST_GGUF;
   if (!executable || !modelFile || !path.isAbsolute(executable) || !path.isAbsolute(modelFile)) {
@@ -181,7 +198,11 @@ async function prepareTranslationFixture(dataRoot, subtitlePath, translationCras
   }
   const firstCue = '1\n00:00:01,000 --> 00:00:02,000\n你好。\n';
   const secondCue = '2\n00:00:03,000 --> 00:00:04,000\n再见。\n';
-  await fsp.writeFile(subtitlePath, translationCrashEnabled ? `${firstCue}\n${secondCue}` : firstCue);
+  const vttSource = 'WEBVTT\r\n\r\nNOTE provenance\r\nnative fixture\r\n\r\n00:00:01.000 --> 00:00:02.000\r\n你好。\r\n';
+  await fsp.writeFile(
+    subtitlePath,
+    translationVttEnabled ? vttSource : translationCrashEnabled ? `${firstCue}\n${secondCue}` : firstCue,
+  );
   await fsp.writeFile(
     path.join(dataRoot, 'translation-runtime.json'),
     JSON.stringify({
@@ -313,6 +334,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
     AURALIS_NATIVE_E2E_RUN_ID: runId,
     AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_TRANSLATION_VTT: translation.translationVttEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_CRASH: translation.translationCrashEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_DELETE: translation.translationDeleteEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_SUBTITLE_PATH: translation.subtitlePath,
@@ -833,6 +855,8 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
           ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
           ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1'
+          ? 'Native Tauri WebVTT E2E passed: checked local translation preserved the separate source, protected spans, and both databases; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
           ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
           : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',

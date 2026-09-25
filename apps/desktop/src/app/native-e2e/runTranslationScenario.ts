@@ -17,7 +17,8 @@ const POLL_INTERVAL_MS = 100;
 
 export async function runTranslationScenario(runId: string, sourcePath: string): Promise<void> {
   const project = await createProject(`native-e2e-translation-running:${runId}`);
-  const source = await importTranslationSource(project.id, sourcePath, 'srt');
+  const format = __NATIVE_E2E_TRANSLATION_VTT__ ? 'vtt' : 'srt';
+  const source = await importTranslationSource(project.id, sourcePath, format);
   await waitForOriginal(project.id, source.id);
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-source-ready' });
 
@@ -26,7 +27,7 @@ export async function runTranslationScenario(runId: string, sourcePath: string):
   const link = await beginTranslationRun({
     projectId: project.id,
     sourceArtifactId: source.id,
-    format: 'srt',
+    format,
     sourceLanguage: 'zh',
     translationId,
     runId: translationRunId,
@@ -92,7 +93,8 @@ async function finishTranslationScenario(
     throw new Error('Native translation returned the wrong admitted run');
   }
   const ready = await waitForSelection(projectId, translationId);
-  if (!ready.selectedResultId || !ready.outputArtifactId) throw new Error('Native translation selection is incomplete');
+  if (!ready.selectedResultId || !ready.outputArtifactId)
+    throw new Error('Native translation selection is incomplete');
   const comparison = await getTranslationComparison(
     projectId,
     translationId,
@@ -119,7 +121,9 @@ async function finishTranslationScenario(
 async function waitForOriginal(projectId: string, artifactId: string): Promise<void> {
   const deadline = Date.now() + ARTIFACT_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const original = (await listOriginalSubtitles(projectId)).find((item) => item.id === artifactId);
+    const original = (await listOriginalSubtitles(projectId)).find(
+      (item) => item.id === artifactId,
+    );
     if (original?.state === 'ready') return;
     await delay(POLL_INTERVAL_MS);
   }
@@ -134,7 +138,8 @@ async function waitForRunningAttempt(projectId: string, translationId: string): 
     if (status.phase === 'validated') {
       throw new Error('Translation finished before the project-deletion boundary');
     }
-    if (status.phase === 'failed') throw new Error('Translation failed before the project-deletion boundary');
+    if (status.phase === 'failed')
+      throw new Error('Translation failed before the project-deletion boundary');
     await delay(POLL_INTERVAL_MS);
   }
   throw new Error('Timed out waiting for a running translation before deletion');
