@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getTranslationRunStatus,
   listProjectTranslations,
@@ -23,14 +23,15 @@ function failureMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : toCommandError(reason).message;
 }
 
-type Props = { projectId: string };
+type Props = { projectId: string; onReadyResultsChanged?: () => void };
 
-export function TranslationRunControl({ projectId }: Props) {
+export function TranslationRunControl({ projectId, onReadyResultsChanged }: Props) {
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [snapshots, setSnapshots] = useState<Record<string, TranslationRunSnapshot>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const readyResults = useRef('');
 
   useEffect(() => {
     let active = true;
@@ -43,6 +44,15 @@ export function TranslationRunControl({ projectId }: Props) {
           return [link.translationId, await getTranslationRunStatus(projectId, link.translationId)] as const;
         }));
         if (active) {
+          const currentReadyResults = current
+            .filter((link) => link.selectedResultId && link.outputArtifactId)
+            .map((link) => `${link.translationId}:${link.selectedResultId}`)
+            .sort()
+            .join('|');
+          if (readyResults.current !== currentReadyResults) {
+            onReadyResultsChanged?.();
+          }
+          readyResults.current = currentReadyResults;
           setLinks(current);
           setSnapshots(Object.fromEntries(statuses.filter((item) => item !== null)));
         }
@@ -57,7 +67,7 @@ export function TranslationRunControl({ projectId }: Props) {
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [projectId, revision]);
+  }, [projectId, revision, onReadyResultsChanged]);
 
   const start = async (translationId: string) => {
     if (busyId) return;

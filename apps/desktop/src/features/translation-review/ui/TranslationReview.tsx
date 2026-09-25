@@ -4,9 +4,9 @@ import { formatSubtitleRange } from '@/shared/lib/formatSubtitleRange';
 import { useTranslationReview, COMPARISON_PAGE_SIZE } from '../model/useTranslationReview';
 import { TranslationSegmentEditor } from './TranslationSegmentEditor';
 
-export function TranslationReview() {
+export function TranslationReview({ refreshRevision = 0 }: { refreshRevision?: number }) {
   const { project } = useProjectContext();
-  const review = useTranslationReview(project?.id ?? null);
+  const review = useTranslationReview(project?.id ?? null, refreshRevision);
   const page = review.page?.resultId === review.selected?.selectedResultId ? review.page : null;
   const readyLinks = review.links.filter((link) => link.selectedResultId);
 

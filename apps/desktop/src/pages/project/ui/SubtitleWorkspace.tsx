@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isActiveJobStatus, useProjectJobs } from '@/entities/job';
 import { useProjectContext } from '@/entities/project';
 import { useTranscript, useYoutubeSubtitleTracks } from '@/entities/transcript';
@@ -19,6 +19,8 @@ export function SubtitleWorkspace() {
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [trackQuery, setTrackQuery] = useState('');
   const [translationRevision, setTranslationRevision] = useState(0);
+  const [readyResultsRevision, setReadyResultsRevision] = useState(0);
+  const refreshReadyResults = useCallback(() => setReadyResultsRevision((value) => value + 1), []);
 
   useEffect(() => {
     setSelectedTrackId((current) => {
@@ -40,10 +42,10 @@ export function SubtitleWorkspace() {
       data-testid="subtitle-workspace"
     >
       <div className="space-y-5">
-        <TranslationReview />
+        <TranslationReview refreshRevision={readyResultsRevision} />
         <SubtitleMethods />
         {project && <TranslationSourceImport key={project.id} projectId={project.id} onTranslationPrepared={() => setTranslationRevision((value) => value + 1)} />}
-        {project && <TranslationRunControl key={`${project.id}:${translationRevision}`} projectId={project.id} />}
+        {project && <TranslationRunControl key={`${project.id}:${translationRevision}`} projectId={project.id} onReadyResultsChanged={refreshReadyResults} />}
         <SubtitleTrackPicker
           tracks={filterTracks(trackState.tracks, trackQuery)}
           selectedTrack={selectedTrack}

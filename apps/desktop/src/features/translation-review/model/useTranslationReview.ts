@@ -7,7 +7,7 @@ import type { TranslationComparisonPage, TranslationLink } from '@/shared/api/co
 
 export const COMPARISON_PAGE_SIZE = 25;
 
-export function useTranslationReview(projectId: string | null) {
+export function useTranslationReview(projectId: string | null, refreshRevision = 0) {
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [selectedTranslationId, setSelectedTranslationId] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
@@ -37,7 +37,7 @@ export function useTranslationReview(projectId: string | null) {
       setLoadingLinks(false);
     });
     return () => { current = false; };
-  }, [projectId, revision]);
+  }, [projectId, revision, refreshRevision]);
 
   const selected = links.find((link) => link.translationId === selectedTranslationId) ?? null;
   const selectedResultId = selected?.selectedResultId ?? null;

@@ -73,6 +73,20 @@ describe('TranslationRunControl', () => {
     await waitFor(() => expect(publishTranslationResult).toHaveBeenCalledWith(projectId, translationId, resultId));
   });
 
+  it('announces a newly ready result once so comparison can refresh', async () => {
+    const onReadyResultsChanged = vi.fn();
+    const resultId = '00000000-0000-4000-8000-000000000004';
+    render(<TranslationRunControl projectId={projectId} onReadyResultsChanged={onReadyResultsChanged} />);
+    await screen.findByRole('button', { name: 'Начать перевод' });
+    expect(onReadyResultsChanged).not.toHaveBeenCalled();
+    listProjectTranslations.mockResolvedValue([{ ...link, selectedResultId: resultId, outputArtifactId: '00000000-0000-4000-8000-000000000005' }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить перевод' }));
+    await waitFor(() => expect(onReadyResultsChanged).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить перевод' }));
+    await waitFor(() => expect(listProjectTranslations).toHaveBeenCalledTimes(3));
+    expect(onReadyResultsChanged).toHaveBeenCalledTimes(1);
+  });
+
   it('shows a missing runtime error without losing the prepared run', async () => {
     startTranslationRun.mockRejectedValue({ code: 'NOT_FOUND', message: 'Translation model runtime is not installed' });
     render(<TranslationRunControl projectId={projectId} />);

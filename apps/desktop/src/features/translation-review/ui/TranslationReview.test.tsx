@@ -37,8 +37,8 @@ afterEach(() => cleanup());
 beforeEach(() => {
   vi.clearAllMocks();
   listProjectTranslations.mockResolvedValue([link]);
-  getTranslationComparison.mockImplementation(async (_projectId, _translationId, _resultId, offset) => ({
-    resultId,
+  getTranslationComparison.mockImplementation(async (_projectId, _translationId, requestedResultId, offset) => ({
+    resultId: requestedResultId,
     runId: '00000000-0000-4000-8000-000000000006',
     needsReview: true,
     totalSegments: 26,
@@ -50,7 +50,7 @@ beforeEach(() => {
       startMs: 1000,
       endMs: 2000,
       sourceLines: [offset ? 'Второй исходник' : '你好。'],
-      translatedLines: [offset ? 'Второй перевод' : 'Здравствуйте.'],
+      translatedLines: [offset ? 'Второй перевод' : requestedResultId === resultId ? 'Здравствуйте.' : 'Новый перевод.'],
     }],
   }));
 });
@@ -74,5 +74,16 @@ describe('TranslationReview', () => {
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Original changed');
     expect(screen.queryByText('Здравствуйте.')).toBeNull();
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  });
+
+  it('loads the newly selected result after publication refresh', async () => {
+    const nextResultId = '00000000-0000-4000-8000-000000000007';
+    const { rerender } = render(<TranslationReview />);
+    await screen.findByText('Здравствуйте.');
+    listProjectTranslations.mockResolvedValue([{ ...link, selectedResultId: nextResultId, revision: 3 }]);
+    rerender(<TranslationReview refreshRevision={1} />);
+    await waitFor(() => expect(getTranslationComparison).toHaveBeenCalledWith(projectId, translationId, nextResultId, 0, 25));
+    expect(await screen.findByText('Новый перевод.')).not.toBeNull();
+    expect(screen.queryByText('Здравствуйте.')).toBeNull();
   });
 });
