@@ -95,6 +95,15 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:result-gap:
+    desc: Kill native Tauri after Translate result commit, then recover the missing Auralis publication
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_CRASH: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP: '1'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   check:frontend:
     desc: Run the complete frontend test, browser, build, and architecture gate
     cmds:

@@ -8,6 +8,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { loadManifest, resolveTarget } from '../media-tools/manifest.mjs';
+import { waitForResultCommitGap, verifyResultCommitGap } from './result-gap.mjs';
 import { verifyTranslationResult } from './verify-translation.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
@@ -26,6 +27,9 @@ export async function runNativeE2e(rootDir) {
   const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
   const translationCrashEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
+  const translationResultGapEnabled =
+    translationCrashEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1';
+  const resultCommitMarker = path.join(dataRoot, 'native-result-committed.txt');
   let app;
   let fixtureServer;
   let failure;
@@ -48,11 +52,33 @@ export async function runNativeE2e(rootDir) {
     });
 
     if (translationCrashEnabled) baselineModelPids = listModelProcessIds();
-    app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+    app = launchTestApplication(
+      rootDir,
+      dataRoot,
+      fixtureServer.url,
+      translationResultGapEnabled ? resultCommitMarker : null,
+    );
     if (translationCrashEnabled) {
-      interrupted = await waitForTranslationCheckpoint(dataRoot, runId, app, baselineModelPids);
-      await crashNativeProcess(app.child, baselineModelPids, interrupted.managedModelPids);
-      verifyInterruptedTranslation(dataRoot, runId, interrupted);
+      if (translationResultGapEnabled) {
+        interrupted = await waitForResultCommitGap(
+          dataRoot,
+          resultCommitMarker,
+          runId,
+          app,
+          TRANSLATION_RESULT_TIMEOUT_MS,
+          POLL_INTERVAL_MS,
+        );
+        assert(
+          [...listModelProcessIds()].every((pid) => baselineModelPids.has(pid)),
+          'Managed model remained alive after Translate result commit',
+        );
+        await killNativeProcess(app.child);
+        verifyResultCommitGap(dataRoot, runId, interrupted);
+      } else {
+        interrupted = await waitForTranslationCheckpoint(dataRoot, runId, app, baselineModelPids);
+        await crashNativeProcess(app.child, baselineModelPids, interrupted.managedModelPids);
+        verifyInterruptedTranslation(dataRoot, runId, interrupted);
+      }
       app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
     }
     const result = await waitForResult(
@@ -291,7 +317,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
   );
 }
 
-function launchTestApplication(rootDir, dataRoot, ytdlpUrl) {
+function launchTestApplication(rootDir, dataRoot, ytdlpUrl, resultCommitMarker = null) {
   const targetDir = path.resolve(rootDir, process.env.CARGO_TARGET_DIR ?? 'target');
   const executable = path.join(targetDir, 'debug', 'auralis-app.exe');
   if (!fs.existsSync(executable))
@@ -303,6 +329,9 @@ function launchTestApplication(rootDir, dataRoot, ytdlpUrl) {
       ...process.env,
       AURALIS_NATIVE_E2E_DATA_DIR: dataRoot,
       AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
+      ...(resultCommitMarker
+        ? { AURALIS_NATIVE_E2E_RESULT_COMMITTED_PATH: resultCommitMarker }
+        : {}),
       AURALIS_OBSERVABILITY_ENABLED: 'false',
       // Some CI hosts already run inside an OS sandbox, which makes WebView2's
       // nested sandbox crash before navigation. This applies only to the E2E
@@ -331,7 +360,7 @@ async function waitForTranslationCheckpoint(dataRoot, runId, app, baselineModelP
       managedModelPids = [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
     }
     if (interrupted?.savedBlocks === 1 && interrupted.runState === 'running') {
-      return { ...interrupted, managedModelPids };
+      return { kind: 'checkpoint', ...interrupted, managedModelPids };
     }
     if (interrupted?.savedBlocks > 1 || interrupted?.runState === 'validated') {
       throw new Error('Native translation completed before the process-kill boundary');
@@ -388,10 +417,7 @@ async function crashNativeProcess(child, baselineModelPids, knownModelPids = [])
     ? knownModelPids
     : [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
   assert(managedModelPids.length > 0, 'Native desktop has no managed model process to interrupt');
-  const exited = new Promise((resolve) => child.once('exit', resolve));
-  assert(child.kill('SIGKILL'), 'Could not terminate the native desktop process');
-  await Promise.race([exited, delay(10_000)]);
-  assert(child.exitCode !== null || child.signalCode !== null, 'Native desktop process survived the crash injection');
+  await killNativeProcess(child);
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const active = listModelProcessIds();
@@ -399,6 +425,13 @@ async function crashNativeProcess(child, baselineModelPids, knownModelPids = [])
     await delay(100);
   }
   throw new Error(`Managed model process survived native desktop termination: ${managedModelPids.join(', ')}`);
+}
+
+async function killNativeProcess(child) {
+  const exited = new Promise((resolve) => child.once('exit', resolve));
+  assert(child.kill('SIGKILL'), 'Could not terminate the native desktop process');
+  await Promise.race([exited, delay(10_000)]);
+  assert(child.exitCode !== null || child.signalCode !== null, 'Native desktop process survived the crash injection');
 }
 
 function listModelProcessIds() {
@@ -767,7 +800,9 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
   runNativeE2e(rootDir)
     .then(() =>
       process.stdout.write(
-        process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
+        process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
+          ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
           ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
           ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'

@@ -62,8 +62,12 @@ export async function verifyTranslationResult(dataRoot, sourcePath, runId, inter
         .prepare("SELECT COUNT(*) AS count FROM jobs WHERE project_id = ? AND kind = 'translation'")
         .get(project.id);
       assert(Number(checkpoints.count) === 2, 'Recovered run did not retain both blocks');
-      assert(Number(attempts.count) === 2, 'Recovered run did not use a second Translate attempt');
-      assert(Number(jobs.count) === 2, 'Recovered run did not create a second host job');
+      const expectedAttempts = interrupted.kind === 'result-commit' ? 1 : 2;
+      assert(Number(attempts.count) === expectedAttempts, 'Recovered run has the wrong Translate attempt count');
+      assert(Number(jobs.count) === expectedAttempts, 'Recovered run has the wrong host job count');
+      if (interrupted.kind === 'result-commit') {
+        assert(result.result_id === interrupted.resultId, 'Recovery selected a different Translate result');
+      }
       const firstBlock = translate
         .prepare('SELECT input_fingerprint, accepted_json, committed_at FROM block_checkpoints WHERE run_id = ? AND block_index = 0')
         .get(publication.run_id);

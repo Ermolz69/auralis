@@ -57,6 +57,8 @@ impl ManagedTranslationAttempt {
             )
             .await?;
         drop(self.lease);
+        #[cfg(feature = "native-e2e")]
+        super::native_e2e_result_gap::hold_if_requested(self.run_id, result_id).await?;
         self.publish
             .execute(PublishTranslationRequest {
                 project_id: self.request.project_id,

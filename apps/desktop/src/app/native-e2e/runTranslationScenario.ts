@@ -2,6 +2,7 @@ import { createProject, listProjects, renameProject } from '@/entities/project';
 import {
   beginTranslationRun,
   getTranslationComparison,
+  getTranslationRunStatus,
   importTranslationSource,
   listOriginalSubtitles,
   listProjectTranslations,
@@ -44,14 +45,31 @@ export async function resumeTranslationScenario(runId: string): Promise<boolean>
   );
   if (!project) return false;
   const links = await listProjectTranslations(project.id);
-  if (links.length !== 1 || !links[0].activeRunId) {
-    throw new Error('Native translation crash recovery lost the active project run');
+  if (links.length !== 1) {
+    throw new Error('Native translation crash recovery lost the project link');
   }
   const link = links[0];
-  const activeRunId = link.activeRunId;
-  if (!activeRunId) throw new Error('Native translation crash recovery lost its run ID');
-  const start = await startTranslationRun(project.id, link.translationId);
-  await finishTranslationScenario(runId, project.id, link.translationId, activeRunId, start);
+  let translationRunId: string;
+  let start: Awaited<ReturnType<typeof startTranslationRun>> | null = null;
+  if (link.activeRunId) {
+    translationRunId = link.activeRunId;
+    const status = await getTranslationRunStatus(project.id, link.translationId);
+    if (status.phase !== 'validated') {
+      start = await startTranslationRun(project.id, link.translationId);
+    }
+  } else if (link.selectedResultId) {
+    const page = await getTranslationComparison(
+      project.id,
+      link.translationId,
+      link.selectedResultId,
+      0,
+      1,
+    );
+    translationRunId = page.runId;
+  } else {
+    throw new Error('Native translation crash recovery lost its run and result IDs');
+  }
+  await finishTranslationScenario(runId, project.id, link.translationId, translationRunId, start);
   return true;
 }
 
@@ -60,9 +78,9 @@ async function finishTranslationScenario(
   projectId: string,
   translationId: string,
   translationRunId: string,
-  start: Awaited<ReturnType<typeof startTranslationRun>>,
+  start: Awaited<ReturnType<typeof startTranslationRun>> | null,
 ): Promise<void> {
-  if (start.runId !== translationRunId || start.state !== 'accepted') {
+  if (start && (start.runId !== translationRunId || start.state !== 'accepted')) {
     throw new Error('Native translation returned the wrong admitted run');
   }
   const ready = await waitForSelection(projectId, translationId);

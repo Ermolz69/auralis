@@ -6,7 +6,7 @@ authors.workspace = true
 edition.workspace = true
 
 [features]
-native-e2e = ["adapters-ytdlp/native-e2e"]
+native-e2e = ["adapters-ytdlp/native-e2e", "application/native-e2e"]
 
 [build-dependencies]
 tauri-build = { workspace = true, features = [] }
