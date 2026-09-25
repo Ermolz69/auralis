@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { loadManifest, resolveTarget } from '../media-tools/manifest.mjs';
 import { waitForResultCommitGap, verifyResultCommitGap } from './result-gap.mjs';
+import { verifySecondOwnerRejected } from './second-owner.mjs';
 import { verifyTranslationResult } from './verify-translation.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
@@ -29,6 +30,7 @@ export async function runNativeE2e(rootDir) {
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
   const translationResultGapEnabled =
     translationCrashEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1';
+  const secondOwnerEnabled = process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1';
   const resultCommitMarker = path.join(dataRoot, 'native-result-committed.txt');
   let app;
   let fixtureServer;
@@ -58,6 +60,11 @@ export async function runNativeE2e(rootDir) {
       fixtureServer.url,
       translationResultGapEnabled ? resultCommitMarker : null,
     );
+    if (secondOwnerEnabled) {
+      await verifySecondOwnerRejected(dataRoot, app, () =>
+        launchTestApplication(rootDir, dataRoot, fixtureServer.url),
+      );
+    }
     if (translationCrashEnabled) {
       if (translationResultGapEnabled) {
         interrupted = await waitForResultCommitGap(
@@ -800,7 +807,9 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
   runNativeE2e(rootDir)
     .then(() =>
       process.stdout.write(
-        process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
+        process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1'
+          ? 'Native Tauri single-owner E2E passed: a second process was rejected before storage setup, while the first completed its workflow; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
           ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
           ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
