@@ -96,7 +96,10 @@ export async function verifyTranslationResult(dataRoot, sourcePath, runId, inter
       assert(outputBytes.toString('utf8').includes('00:00:01,000 --> 00:00:02,000'), 'Output lost the cue timing');
     }
     if (interrupted) {
-      assert(outputBytes.toString('utf8').includes('00:00:03,000 --> 00:00:04,000'), 'Recovered output lost the second cue timing');
+      const secondTiming = format === 'vtt'
+        ? '00:00:03.000 --> 00:00:04.000'
+        : '00:00:03,000 --> 00:00:04,000';
+      assert(outputBytes.toString('utf8').includes(secondTiming), 'Recovered output lost the second cue timing');
     }
 
     const finalized = host

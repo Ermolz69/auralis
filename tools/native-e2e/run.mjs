@@ -28,8 +28,8 @@ export async function runNativeE2e(rootDir) {
     translationCrashEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1';
   const translationDeleteEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
-  if (translationVttEnabled && (translationCrashEnabled || translationDeleteEnabled)) {
-    throw new Error('Native WebVTT acceptance does not combine with crash or deletion modes');
+  if (translationVttEnabled && (translationResultGapEnabled || translationDeleteEnabled)) {
+    throw new Error('Native WebVTT acceptance does not combine with result-gap or deletion modes');
   }
   const testRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-native-e2e-'));
   const dataRoot = path.join(testRoot, 'app-data');
@@ -198,7 +198,10 @@ async function prepareTranslationFixture(dataRoot, subtitlePath, translationCras
   }
   const firstCue = '1\n00:00:01,000 --> 00:00:02,000\n你好。\n';
   const secondCue = '2\n00:00:03,000 --> 00:00:04,000\n再见。\n';
-  const vttSource = 'WEBVTT\r\n\r\nNOTE provenance\r\nnative fixture\r\n\r\n00:00:01.000 --> 00:00:02.000\r\n你好。\r\n';
+  const vttHeader = 'WEBVTT\r\n\r\nNOTE provenance\r\nnative fixture\r\n\r\n';
+  const vttFirstCue = '00:00:01.000 --> 00:00:02.000\r\n你好。\r\n';
+  const vttSecondCue = '\r\n00:00:03.000 --> 00:00:04.000\r\n再见。\r\n';
+  const vttSource = `${vttHeader}${vttFirstCue}${translationCrashEnabled ? vttSecondCue : ''}`;
   await fsp.writeFile(
     subtitlePath,
     translationVttEnabled ? vttSource : translationCrashEnabled ? `${firstCue}\n${secondCue}` : firstCue,
@@ -853,6 +856,9 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
           ? 'Native Tauri deletion E2E passed: active checked-model translation stopped and both databases removed the project state; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
           ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1' &&
+              process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
+          ? 'Native Tauri WebVTT crash E2E passed: first checkpoint survived desktop termination and the resumed run published a separate copy; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
           ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1'
