@@ -1,14 +1,17 @@
-use crate::state::{RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository};
+use crate::state::{
+    RuntimeArtifactIndex, RuntimeArtifactStore, RuntimeProjectRepository, RuntimeStorageUnitOfWork,
+};
 use adapters_translate::{
     FormatInspector, TranslateResultEditor, TranslateResultReader, TranslateRunControl,
     TranslateRunExecutor, TranslateRunRecovery, TranslateRunRegistrar,
 };
 use application::usecases::translation::{
     BeginTranslationUseCase, EditTranslationResultUseCase, ExecuteTranslationUseCase,
-    GetTranslationComparisonUseCase, InspectTranslationSourceUseCase,
-    ListProjectTranslationsUseCase, PublishTranslationResultUseCase,
-    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
-    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunUseCase,
+    GetTranslationComparisonUseCase, ImportTranslationSourceUseCase,
+    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase,
+    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
+    RecoverTranslationHostJobsUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
+    TranslationRunUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -21,6 +24,7 @@ pub(crate) const EXPERIMENTAL_CHECKED_CHINESE_PROFILE: &str = include_str!(
 
 pub struct TranslationUseCases {
     pub inspect: Arc<InspectTranslationSourceUseCase>,
+    pub import_source: ImportTranslationSourceUseCase,
     pub list: ListProjectTranslationsUseCase,
     pub comparison: GetTranslationComparisonUseCase,
     pub begin: BeginTranslationUseCase,
@@ -39,6 +43,7 @@ impl TranslationUseCases {
         projects: RuntimeProjectRepository,
         artifacts: RuntimeArtifactIndex,
         artifact_store: RuntimeArtifactStore,
+        storage_uow: RuntimeStorageUnitOfWork,
         links: Arc<dyn TranslationLinkStore>,
         jobs: Arc<dyn TranslationHostJobStore>,
         database_path: PathBuf,
@@ -49,6 +54,12 @@ impl TranslationUseCases {
             artifact_store.clone(),
             Arc::new(FormatInspector),
         ));
+        let import_source = ImportTranslationSourceUseCase::new(
+            projects.clone(),
+            artifact_store.clone(),
+            storage_uow,
+            Arc::new(FormatInspector),
+        );
         let registrar = Arc::new(TranslateRunRegistrar::new(database_path.clone()));
         let control = Arc::new(TranslateRunControl::new(database_path.clone()));
         let execute = Arc::new(ExecuteTranslationUseCase::new(
@@ -59,6 +70,7 @@ impl TranslationUseCases {
         ));
         Self {
             inspect: inspect.clone(),
+            import_source,
             list: ListProjectTranslationsUseCase::new(projects, links.clone()),
             comparison: GetTranslationComparisonUseCase::new(
                 inspect.clone(),

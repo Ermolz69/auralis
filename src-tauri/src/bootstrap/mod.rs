@@ -57,6 +57,7 @@ pub fn setup(
         services.project_repo.clone(),
         services.artifact_index.clone(),
         services.artifact_store.clone(),
+        services.storage_uow.clone(),
         services.translation_links.clone(),
         services.translation_host_jobs.clone(),
         app_paths.translate_database(),

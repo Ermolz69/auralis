@@ -108,6 +108,10 @@ export interface CommandMap {
     args: { projectId: string; sourceArtifactId: string; format: TranslationFormat };
     result: TranslationInspection;
   };
+  import_translation_source_cmd: {
+    args: { projectId: string; path: string; format: TranslationFormat };
+    result: Artifact;
+  };
   begin_translation_run_cmd: {
     args: { input: BeginTranslationRun };
     result: TranslationLink;

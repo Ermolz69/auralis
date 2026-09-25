@@ -1,6 +1,7 @@
 pub mod begin;
 pub mod comparison;
 pub mod edit;
+pub mod import_source;
 pub mod inspect;
 pub mod list;
 pub mod pause;

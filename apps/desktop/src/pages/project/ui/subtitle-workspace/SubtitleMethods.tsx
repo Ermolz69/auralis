@@ -7,7 +7,7 @@ const methods = [
     status: 'Активно',
     active: true,
   },
-  { title: 'Импорт SRT', description: 'Импорт готового файла пока не подключён', status: 'Скоро' },
+  { title: 'Импорт SRT/VTT', description: 'Загрузка готового файла в проект', status: 'Активно', active: true },
   {
     title: 'Speech-to-Text',
     description: 'Распознавание речи пока не подключено',

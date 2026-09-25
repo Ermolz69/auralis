@@ -107,6 +107,24 @@ describe('IPC runtime validation', () => {
     ).toThrow(IpcContractError);
   });
 
+  it('accepts only a pending managed original from subtitle import', () => {
+    const artifact = {
+      id: '00000000-0000-4000-8000-000000000041',
+      kind: 'originalSubtitle',
+      location: { kind: 'storageKey', value: 'project/original.srt' },
+      sizeBytes: 40,
+      state: 'pendingFinalize',
+      createdAt: '2026-09-25T00:00:00Z',
+      updatedAt: '2026-09-25T00:00:00Z',
+      readyAt: null,
+    };
+    expect(parseCommandResult('import_translation_source_cmd', artifact)).toEqual(artifact);
+    expect(() => parseCommandResult('import_translation_source_cmd', {
+      ...artifact,
+      kind: 'translatedTranscript',
+    })).toThrow(IpcContractError);
+  });
+
   it('requires a result identity for a validated translation run', () => {
     const snapshot = {
       runId: '00000000-0000-4000-8000-000000000004',

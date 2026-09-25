@@ -24,6 +24,10 @@ vi.mock('@/features/translation-review', () => ({
   TranslationReview: () => null,
 }));
 
+vi.mock('@/features/translation-source-import', () => ({
+  TranslationSourceImport: () => null,
+}));
+
 const availableTracks = {
   tracks: [
     {
@@ -118,8 +122,8 @@ describe('SubtitleWorkspace', () => {
   it('labels acquisition methods as active or upcoming and keeps track selection accessible', () => {
     render(<SubtitleWorkspace />);
 
-    expect(screen.getByText('Активно')).not.toBeNull();
-    expect(screen.getAllByText('Скоро')).toHaveLength(2);
+    expect(screen.getAllByText('Активно')).toHaveLength(2);
+    expect(screen.getAllByText('Скоро')).toHaveLength(1);
     expect(screen.getByRole('radiogroup')).not.toBeNull();
     expect(screen.getAllByRole('radio')).toHaveLength(2);
   });

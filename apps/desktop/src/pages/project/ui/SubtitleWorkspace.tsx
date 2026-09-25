@@ -3,6 +3,7 @@ import { isActiveJobStatus, useProjectJobs } from '@/entities/job';
 import { useProjectContext } from '@/entities/project';
 import { useTranscript, useYoutubeSubtitleTracks } from '@/entities/transcript';
 import { TranslationReview } from '@/features/translation-review';
+import { TranslationSourceImport } from '@/features/translation-source-import';
 import { filterTracks } from './subtitle-workspace/model';
 import { SubtitleActivityLog } from './subtitle-workspace/SubtitleActivityLog';
 import { SubtitleMethods } from './subtitle-workspace/SubtitleMethods';
@@ -39,6 +40,7 @@ export function SubtitleWorkspace() {
       <div className="space-y-5">
         <TranslationReview />
         <SubtitleMethods />
+        {project && <TranslationSourceImport key={project.id} projectId={project.id} />}
         <SubtitleTrackPicker
           tracks={filterTracks(trackState.tracks, trackQuery)}
           selectedTrack={selectedTrack}

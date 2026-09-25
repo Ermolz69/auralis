@@ -146,6 +146,8 @@ const commandResultValidators = {
   list_project_artifacts_cmd: (value) => isArrayOf(value, validateArtifact),
   resolve_artifact_path_cmd: isString,
   inspect_translation_source_cmd: validateTranslationInspection,
+  import_translation_source_cmd: (value) =>
+    validateArtifact(value) && value.kind === 'originalSubtitle' && value.state === 'pendingFinalize',
   begin_translation_run_cmd: validateTranslationLink,
   edit_translation_result_cmd: isUuid,
   publish_translation_result_cmd: validateTranslationPublication,

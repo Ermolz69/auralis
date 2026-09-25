@@ -1,10 +1,29 @@
 import { invoke } from '@/shared/api/tauri';
+import type { Artifact } from '@/shared/api/contracts/artifact';
 import type {
+  BeginTranslationRun,
   EditTranslationResult,
   TranslationComparisonPage,
+  TranslationFormat,
   TranslationLink,
   TranslationPublication,
 } from '@/shared/api/contracts/translation';
+
+export function beginTranslationRun(input: BeginTranslationRun): Promise<TranslationLink> {
+  return invoke('begin_translation_run_cmd', { input });
+}
+
+export function importTranslationSource(
+  projectId: string,
+  path: string,
+  format: TranslationFormat,
+): Promise<Artifact> {
+  return invoke('import_translation_source_cmd', { projectId, path, format });
+}
+
+export function listOriginalSubtitles(projectId: string): Promise<Artifact[]> {
+  return invoke('list_project_artifacts_cmd', { projectId, kind: 'originalSubtitle' });
+}
 
 export function listProjectTranslations(projectId: string): Promise<TranslationLink[]> {
   return invoke('list_project_translations_cmd', { projectId });
