@@ -22,6 +22,8 @@ const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL :
 const nativeE2eTranslation = nativeE2e && process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
 const nativeE2eTranslationCrash =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
+const nativeE2eTranslationDelete =
+  nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
 const nativeE2eSubtitlePath = nativeE2eTranslation
   ? process.env.AURALIS_NATIVE_E2E_SUBTITLE_PATH
   : '';
@@ -49,6 +51,7 @@ export default defineConfig({
     __NATIVE_E2E_TRANSLATION__: JSON.stringify(nativeE2eTranslation),
     __NATIVE_E2E_SUBTITLE_PATH__: JSON.stringify(nativeE2eSubtitlePath ?? ''),
     __NATIVE_E2E_TRANSLATION_CRASH__: JSON.stringify(nativeE2eTranslationCrash),
+    __NATIVE_E2E_TRANSLATION_DELETE__: JSON.stringify(nativeE2eTranslationDelete),
   },
   plugins: [react(), tailwindcss(), bundleReport()],
   server: { port: 5173, strictPort: true },

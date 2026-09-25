@@ -68,7 +68,7 @@ Inspection is exposed through a read-only Tauri command and typed frontend IPC, 
 
 ## Project deletion
 
-Project deletion commits a `delete_project_translation` outbox intent for every linked translation in the same Auralis transaction that removes the project. The outbox adapter invokes Translate SQLite cleanup, which deletes translation-owned state and records a tombstone against late registration. Failed cleanup remains retryable even after five attempts, with a capped delay. The local two-database test covers temporary Translate unavailability and eventual cleanup. Deletion during active native inference still needs a process-level race test.
+Project deletion commits a `delete_project_translation` outbox intent for every linked translation in the same Auralis transaction that removes the project. The outbox adapter invokes Translate SQLite cleanup, which deletes translation-owned state and records a tombstone against late registration. Failed cleanup remains retryable even after five attempts, with a capped delay. The local two-database test covers temporary Translate unavailability and eventual cleanup. A native Tauri running-attempt test, recorded in the pinned submodule at `modules/auralis-translate/eval/experiments/2026-09-25-native-project-deletion.md`, verifies model-process termination, outbox cleanup, removal of project-owned records and managed files, and preservation of the external original. Other deletion interleavings remain open.
 
 ## Startup publication recovery
 

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { loadManifest, resolveTarget } from '../media-tools/manifest.mjs';
 import { waitForResultCommitGap, verifyResultCommitGap } from './result-gap.mjs';
 import { verifySecondOwnerRejected } from './second-owner.mjs';
+import { verifyTranslationDeletion } from './verify-translation-deletion.mjs';
 import { verifyTranslationResult } from './verify-translation.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
@@ -30,6 +31,8 @@ export async function runNativeE2e(rootDir) {
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
   const translationResultGapEnabled =
     translationCrashEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1';
+  const translationDeleteEnabled =
+    translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
   const secondOwnerEnabled = process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1';
   const resultCommitMarker = path.join(dataRoot, 'native-result-committed.txt');
   let app;
@@ -37,6 +40,7 @@ export async function runNativeE2e(rootDir) {
   let failure;
   let interrupted;
   let baselineModelPids;
+  let subtitleDigest;
 
   try {
     await fsp.mkdir(dataRoot, { recursive: true });
@@ -44,16 +48,18 @@ export async function runNativeE2e(rootDir) {
     prepareMediaTools(rootDir);
     generateVideo(rootDir, sourcePath);
     if (translationEnabled) {
-      await prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled);
+      await prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled || translationDeleteEnabled);
+      subtitleDigest = await sha256(subtitlePath);
     }
     fixtureServer = await startFixtureServer(sourcePath);
     buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
       translationEnabled,
       translationCrashEnabled,
+      translationDeleteEnabled,
       subtitlePath,
     });
 
-    if (translationCrashEnabled) baselineModelPids = listModelProcessIds();
+    if (translationCrashEnabled || translationDeleteEnabled) baselineModelPids = listModelProcessIds();
     app = launchTestApplication(
       rootDir,
       dataRoot,
@@ -94,14 +100,18 @@ export async function runNativeE2e(rootDir) {
       app,
       translationEnabled ? TRANSLATION_RESULT_TIMEOUT_MS : RESULT_TIMEOUT_MS,
     );
+    const deletedTranslationProjectId = translationDeleteEnabled
+      ? await verifyTranslationDeletion(dataRoot, subtitlePath, subtitleDigest, baselineModelPids, listModelProcessIds)
+      : null;
     await verifyResult({
       dataRoot,
       sourcePath,
       ytdlpUrl: fixtureServer.url,
       ytdlpRequestCount: fixtureServer.requestCount,
+      deletedTranslationProjectId,
       ...result,
     });
-    if (translationEnabled) {
+    if (translationEnabled && !translationDeleteEnabled) {
       await verifyTranslationResult(dataRoot, subtitlePath, runId, interrupted);
     }
   } catch (error) {
@@ -304,6 +314,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_RUN_ID: runId,
     AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_CRASH: translation.translationCrashEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_TRANSLATION_DELETE: translation.translationDeleteEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_SUBTITLE_PATH: translation.subtitlePath,
   };
   run(
@@ -573,10 +584,17 @@ async function verifyResult({
   project,
   artifacts,
   jobs,
-  outbox,
+  outbox: allOutbox,
+  deletedTranslationProjectId,
   youtubeProject,
   youtubeArtifacts,
 }) {
+  const outbox = deletedTranslationProjectId
+    ? allOutbox.filter((record) =>
+        record.aggregate_id !== deletedTranslationProjectId &&
+        !['delete_storage_key', 'delete_project_artifact_dir', 'delete_project_translation'].includes(record.kind),
+      )
+    : allOutbox;
   assert(project.status === 'Cancelled', `Unexpected project status: ${project.status}`);
   assert(project.revision >= 5, `Expected project revision >= 5, got ${project.revision}`);
 
@@ -809,6 +827,8 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
       process.stdout.write(
         process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1'
           ? 'Native Tauri single-owner E2E passed: a second process was rejected before storage setup, while the first completed its workflow; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1'
+          ? 'Native Tauri deletion E2E passed: active checked-model translation stopped and both databases removed the project state; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
           ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'

@@ -16,6 +16,8 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "translation-source-ready",
     "translation-run-ready",
     "translation-result-ready",
+    "translation-delete-requested",
+    "translation-project-deleted",
 ];
 
 #[command]
@@ -27,7 +29,11 @@ pub async fn native_e2e_checkpoint_cmd(
     crate::observability::command::observe("native_e2e_checkpoint_cmd", async {
         #[cfg(feature = "native-e2e")]
         {
-            if !ALLOWED_CHECKPOINTS.contains(&checkpoint.as_str()) {
+            let diagnostic = checkpoint.starts_with("scenario-failed:")
+                && checkpoint.len() <= 256
+                && !checkpoint.contains('\n')
+                && !checkpoint.contains('\r');
+            if !ALLOWED_CHECKPOINTS.contains(&checkpoint.as_str()) && !diagnostic {
                 return Err(CommandError::Validation(
                     "Unknown native E2E checkpoint".to_string(),
                 ));

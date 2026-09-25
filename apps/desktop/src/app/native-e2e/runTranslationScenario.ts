@@ -1,4 +1,4 @@
-import { createProject, listProjects, renameProject } from '@/entities/project';
+import { createProject, deleteProject, listProjects, renameProject } from '@/entities/project';
 import {
   beginTranslationRun,
   getTranslationComparison,
@@ -12,6 +12,7 @@ import { invoke } from '@/shared/api/tauri';
 
 const ARTIFACT_TIMEOUT_MS = 20_000;
 const PUBLICATION_TIMEOUT_MS = 180_000;
+const ACTIVE_ATTEMPT_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 100;
 
 export async function runTranslationScenario(runId: string, sourcePath: string): Promise<void> {
@@ -36,6 +37,13 @@ export async function runTranslationScenario(runId: string, sourcePath: string):
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-run-ready' });
 
   const start = await startTranslationRun(project.id, translationId);
+  if (__NATIVE_E2E_TRANSLATION_DELETE__) {
+    await waitForRunningAttempt(project.id, translationId);
+    await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-delete-requested' });
+    await deleteProject(project.id);
+    await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-project-deleted' });
+    return;
+  }
   await finishTranslationScenario(runId, project.id, translationId, translationRunId, start);
 }
 
@@ -116,6 +124,20 @@ async function waitForOriginal(projectId: string, artifactId: string): Promise<v
     await delay(POLL_INTERVAL_MS);
   }
   throw new Error('Native original subtitle did not become ready');
+}
+
+async function waitForRunningAttempt(projectId: string, translationId: string): Promise<void> {
+  const deadline = Date.now() + ACTIVE_ATTEMPT_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const status = await getTranslationRunStatus(projectId, translationId);
+    if (status.phase === 'running' && status.savedBlocks < status.totalBlocks) return;
+    if (status.phase === 'validated') {
+      throw new Error('Translation finished before the project-deletion boundary');
+    }
+    if (status.phase === 'failed') throw new Error('Translation failed before the project-deletion boundary');
+    await delay(POLL_INTERVAL_MS);
+  }
+  throw new Error('Timed out waiting for a running translation before deletion');
 }
 
 async function waitForSelection(projectId: string, translationId: string) {

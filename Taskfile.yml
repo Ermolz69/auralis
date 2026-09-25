@@ -104,6 +104,14 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:delete:
+    desc: Delete a native translation project during a checked-model attempt
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_DELETE: '1'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   desktop:e2e:native:single-owner:
     desc: Reject a second native Tauri process targeting the first process's data root
     env:
