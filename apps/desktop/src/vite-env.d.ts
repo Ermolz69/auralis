@@ -10,3 +10,4 @@ declare const __NATIVE_E2E_TRANSLATION_VTT__: boolean;
 declare const __NATIVE_E2E_SUBTITLE_PATH__: string;
 declare const __NATIVE_E2E_TRANSLATION_CRASH__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_DELETE__: boolean;
+declare const __NATIVE_E2E_TRANSLATION_PACKAGE__: boolean;

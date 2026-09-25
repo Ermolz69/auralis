@@ -18,7 +18,9 @@ import {
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (value: unknown): value is string => isString(value) && uuid.test(value);
 
-export function validateTranslationPackageStatus(value: unknown): value is TranslationPackageStatus {
+export function validateTranslationPackageStatus(
+  value: unknown,
+): value is TranslationPackageStatus {
   return (
     isRecord(value) &&
     value.schemaVersion === 1 &&

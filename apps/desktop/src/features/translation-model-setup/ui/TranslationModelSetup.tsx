@@ -58,16 +58,19 @@ export function TranslationModelSetup() {
   };
 
   return (
-    <section className="rounded-md border border-border bg-surface p-4" aria-label="Модель перевода">
+    <section
+      className="rounded-md border border-border bg-surface p-4"
+      aria-label="Модель перевода"
+    >
       <h2 className="text-sm font-semibold text-text">Модель перевода</h2>
       <p className="mt-1 text-xs text-muted">
         {status && !status.supported
           ? 'Этот экспериментальный пакет поддерживает только Windows x64.'
           : status?.selected
-          ? 'Локальная модель выбрана. Перед запуском её файлы будут проверены.'
-          : status?.installed
-            ? 'Пакет установлен. Выберите его для новых переводов.'
-            : 'Для локального перевода установите проверенный пакет модели и llama.cpp.'}
+            ? 'Локальная модель выбрана. Перед запуском её файлы будут проверены.'
+            : status?.installed
+              ? 'Пакет установлен. Выберите его для новых переводов.'
+              : 'Для локального перевода установите проверенный пакет модели и llama.cpp.'}
       </p>
       {status?.supported && !status.installed && (
         <p className="mt-1 text-xs text-muted">
@@ -81,12 +84,22 @@ export function TranslationModelSetup() {
         </p>
       )}
       {status?.supported && !status.installed && (
-        <Button className="mt-3" size="sm" onClick={() => void install()} loading={busy === 'install'}>
+        <Button
+          className="mt-3"
+          size="sm"
+          onClick={() => void install()}
+          loading={busy === 'install'}
+        >
           {busy === 'install' ? 'Загрузка и проверка…' : 'Скачать и установить'}
         </Button>
       )}
       {status?.supported && status.installed && !status.selected && (
-        <Button className="mt-3" size="sm" onClick={() => void select()} loading={busy === 'select'}>
+        <Button
+          className="mt-3"
+          size="sm"
+          onClick={() => void select()}
+          loading={busy === 'select'}
+        >
           Выбрать модель
         </Button>
       )}

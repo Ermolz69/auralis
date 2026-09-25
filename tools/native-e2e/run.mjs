@@ -8,6 +8,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { loadManifest, resolveTarget } from '../media-tools/manifest.mjs';
+import { seedPackageCache, verifyInstalledPackage, waitForPackageSelection } from './package-install.mjs';
 import { waitForResultCommitGap, verifyResultCommitGap } from './result-gap.mjs';
 import { verifySecondOwnerRejected } from './second-owner.mjs';
 import { verifyTranslationDeletion } from './verify-translation-deletion.mjs';
@@ -28,8 +29,13 @@ export async function runNativeE2e(rootDir) {
     translationCrashEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1';
   const translationDeleteEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
+  const translationPackageEnabled =
+    translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1';
   if (translationVttEnabled && (translationResultGapEnabled || translationDeleteEnabled)) {
     throw new Error('Native WebVTT acceptance does not combine with result-gap or deletion modes');
+  }
+  if (translationPackageEnabled && (translationVttEnabled || translationCrashEnabled || translationDeleteEnabled)) {
+    throw new Error('Native package acceptance runs as a standalone translation mode');
   }
   const testRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-native-e2e-'));
   const dataRoot = path.join(testRoot, 'app-data');
@@ -46,6 +52,7 @@ export async function runNativeE2e(rootDir) {
   let interrupted;
   let baselineModelPids;
   let subtitleDigest;
+  let packageRelease;
 
   try {
     await fsp.mkdir(dataRoot, { recursive: true });
@@ -58,8 +65,16 @@ export async function runNativeE2e(rootDir) {
         subtitlePath,
         translationCrashEnabled || translationDeleteEnabled,
         translationVttEnabled,
+        translationPackageEnabled,
       );
       subtitleDigest = await sha256(subtitlePath);
+      if (translationPackageEnabled) {
+        packageRelease = await seedPackageCache(
+          rootDir,
+          dataRoot,
+          process.env.AURALIS_TEST_PACKAGE_ASSET_DIR,
+        );
+      }
     }
     fixtureServer = await startFixtureServer(sourcePath);
     buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
@@ -67,6 +82,7 @@ export async function runNativeE2e(rootDir) {
       translationCrashEnabled,
       translationDeleteEnabled,
       translationVttEnabled,
+      translationPackageEnabled,
       subtitlePath,
     });
 
@@ -77,6 +93,12 @@ export async function runNativeE2e(rootDir) {
       fixtureServer.url,
       translationResultGapEnabled ? resultCommitMarker : null,
     );
+    if (translationPackageEnabled) {
+      await waitForPackageSelection(dataRoot, app);
+      await terminate(app.child);
+      await verifyInstalledPackage(dataRoot, packageRelease);
+      app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+    }
     if (secondOwnerEnabled) {
       await verifySecondOwnerRejected(dataRoot, app, () =>
         launchTestApplication(rootDir, dataRoot, fixtureServer.url),
@@ -109,7 +131,11 @@ export async function runNativeE2e(rootDir) {
       path.join(dataRoot, 'auralis.sqlite'),
       runId,
       app,
-      translationEnabled ? TRANSLATION_RESULT_TIMEOUT_MS : RESULT_TIMEOUT_MS,
+      translationPackageEnabled
+        ? TRANSLATION_RESULT_TIMEOUT_MS * 2
+        : translationEnabled
+          ? TRANSLATION_RESULT_TIMEOUT_MS
+          : RESULT_TIMEOUT_MS,
     );
     const deletedTranslationProjectId = translationDeleteEnabled
       ? await verifyTranslationDeletion(dataRoot, subtitlePath, subtitleDigest, baselineModelPids, listModelProcessIds)
@@ -187,15 +213,7 @@ export async function runNativeE2e(rootDir) {
   if (failure) throw failure;
 }
 
-async function prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled, translationVttEnabled) {
-  const executable = process.env.AURALIS_TEST_LLAMA_SERVER;
-  const modelFile = process.env.AURALIS_TEST_GGUF;
-  if (!executable || !modelFile || !path.isAbsolute(executable) || !path.isAbsolute(modelFile)) {
-    throw new Error('Translation native E2E requires absolute AURALIS_TEST_LLAMA_SERVER and AURALIS_TEST_GGUF paths');
-  }
-  for (const asset of [executable, modelFile]) {
-    if (!(await fsp.stat(asset)).isFile()) throw new Error(`Translation asset is not a file: ${asset}`);
-  }
+async function prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled, translationVttEnabled, translationPackageEnabled) {
   const firstCue = '1\n00:00:01,000 --> 00:00:02,000\n你好。\n';
   const secondCue = '2\n00:00:03,000 --> 00:00:04,000\n再见。\n';
   const vttHeader = 'WEBVTT\r\n\r\nNOTE provenance\r\nnative fixture\r\n\r\n';
@@ -206,6 +224,15 @@ async function prepareTranslationFixture(dataRoot, subtitlePath, translationCras
     subtitlePath,
     translationVttEnabled ? vttSource : translationCrashEnabled ? `${firstCue}\n${secondCue}` : firstCue,
   );
+  if (translationPackageEnabled) return;
+  const executable = process.env.AURALIS_TEST_LLAMA_SERVER;
+  const modelFile = process.env.AURALIS_TEST_GGUF;
+  if (!executable || !modelFile || !path.isAbsolute(executable) || !path.isAbsolute(modelFile)) {
+    throw new Error('Translation native E2E requires absolute AURALIS_TEST_LLAMA_SERVER and AURALIS_TEST_GGUF paths');
+  }
+  for (const asset of [executable, modelFile]) {
+    if (!(await fsp.stat(asset)).isFile()) throw new Error(`Translation asset is not a file: ${asset}`);
+  }
   await fsp.writeFile(
     path.join(dataRoot, 'translation-runtime.json'),
     JSON.stringify({
@@ -338,6 +365,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_RUN_ID: runId,
     AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_VTT: translation.translationVttEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE: translation.translationPackageEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_CRASH: translation.translationCrashEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_DELETE: translation.translationDeleteEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_SUBTITLE_PATH: translation.subtitlePath,
@@ -861,6 +889,8 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
           ? 'Native Tauri WebVTT crash E2E passed: first checkpoint survived desktop termination and the resumed run published a separate copy; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
           ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1'
+          ? 'Native Tauri package E2E passed: React installed and selected the pinned CPU package, desktop restart restored it, and a real subtitle translation published a separate output; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1'
           ? 'Native Tauri WebVTT E2E passed: checked local translation preserved the separate source, protected spans, and both databases; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'

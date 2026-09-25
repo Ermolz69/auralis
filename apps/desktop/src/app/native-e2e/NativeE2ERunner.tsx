@@ -10,6 +10,8 @@ import {
 } from '@/entities/project';
 import type { Artifact } from '@/shared/api/contracts';
 import { invoke } from '@/shared/api/tauri';
+import { TranslationModelSetup } from '@/features/translation-model-setup';
+import { prepareTranslationPackage } from './prepareTranslationPackage';
 import { resumeTranslationScenario, runTranslationScenario } from './runTranslationScenario';
 
 const READY_TIMEOUT_MS = 20_000;
@@ -23,7 +25,7 @@ export function NativeE2ERunner() {
     void runNativeScenario();
   }, []);
 
-  return null;
+  return __NATIVE_E2E_TRANSLATION_PACKAGE__ ? <TranslationModelSetup /> : null;
 }
 
 async function runNativeScenario() {
@@ -32,6 +34,13 @@ async function runNativeScenario() {
   let unlisten: (() => void) | undefined;
 
   try {
+    if (__NATIVE_E2E_TRANSLATION_PACKAGE__) {
+      const installedNow = await prepareTranslationPackage();
+      if (installedNow) {
+        await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-package-selected' });
+        return;
+      }
+    }
     if (__NATIVE_E2E_TRANSLATION_CRASH__) {
       const originalProject = (await listProjects()).find(
         (item) => item.title === `native-e2e-running:${runId}`,

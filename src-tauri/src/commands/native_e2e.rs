@@ -18,6 +18,7 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "translation-result-ready",
     "translation-delete-requested",
     "translation-project-deleted",
+    "translation-package-selected",
 ];
 
 #[command]
