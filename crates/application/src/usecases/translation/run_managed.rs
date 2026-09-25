@@ -1,6 +1,6 @@
 use super::{
-    ExecuteTranslationRequest, PublishTranslationRequest, PublishTranslationResultUseCase,
-    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunRequest,
+    ManagedTranslationAttempt, PublishTranslationResultUseCase, RunTranslationHostJobUseCase,
+    StartTranslationJobUseCase, TranslationRunRequest,
 };
 use crate::error::ApplicationError;
 use ports::error::PortError;
@@ -9,6 +9,7 @@ use ports::translation_model_runtime::TranslationModelRuntimePort;
 use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPhase};
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct RunManagedTranslationUseCase {
     links: Arc<dyn TranslationLinkStore>,
     runtime: Arc<dyn TranslationModelRuntimePort>,
@@ -41,6 +42,13 @@ impl RunManagedTranslationUseCase {
         &self,
         request: TranslationRunRequest,
     ) -> Result<TranslationPublicationRecord, ApplicationError> {
+        self.admit(request).await?.execute().await
+    }
+
+    pub async fn admit(
+        &self,
+        request: TranslationRunRequest,
+    ) -> Result<ManagedTranslationAttempt, ApplicationError> {
         let link = self
             .links
             .get(request.translation_id)
@@ -90,24 +98,13 @@ impl RunManagedTranslationUseCase {
                 translation_id: request.translation_id,
             })
             .await?;
-        let result_id = self
-            .run_job
-            .execute(
-                ExecuteTranslationRequest {
-                    project_id: request.project_id.clone(),
-                    translation_id: request.translation_id,
-                    server_url: lease.server_url().into(),
-                },
-                job.id(),
-            )
-            .await?;
-        drop(lease);
-        self.publish
-            .execute(PublishTranslationRequest {
-                project_id: request.project_id,
-                translation_id: request.translation_id,
-                result_id,
-            })
-            .await
+        Ok(ManagedTranslationAttempt::new(
+            request,
+            run_id,
+            job,
+            lease,
+            self.run_job.clone(),
+            self.publish.clone(),
+        ))
     }
 }

@@ -50,8 +50,8 @@ export async function runNativeE2e(rootDir) {
     if (translationCrashEnabled) baselineModelPids = listModelProcessIds();
     app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
     if (translationCrashEnabled) {
-      interrupted = await waitForTranslationCheckpoint(dataRoot, runId, app);
-      await crashNativeProcess(app.child, baselineModelPids);
+      interrupted = await waitForTranslationCheckpoint(dataRoot, runId, app, baselineModelPids);
+      await crashNativeProcess(app.child, baselineModelPids, interrupted.managedModelPids);
       verifyInterruptedTranslation(dataRoot, runId, interrupted);
       app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
     }
@@ -319,15 +319,19 @@ function launchTestApplication(rootDir, dataRoot, ytdlpUrl) {
   return output;
 }
 
-async function waitForTranslationCheckpoint(dataRoot, runId, app) {
+async function waitForTranslationCheckpoint(dataRoot, runId, app, baselineModelPids) {
   const deadline = Date.now() + TRANSLATION_RESULT_TIMEOUT_MS;
+  let managedModelPids = [];
   while (Date.now() < deadline) {
     if (app.child.exitCode !== null || app.child.signalCode !== null) {
       throw new Error(`Native application exited before its first translation checkpoint: ${app.child.exitCode}`);
     }
     const interrupted = readTranslationCheckpoint(dataRoot, runId);
+    if (interrupted?.runState === 'running' && managedModelPids.length === 0) {
+      managedModelPids = [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
+    }
     if (interrupted?.savedBlocks === 1 && interrupted.runState === 'running') {
-      return interrupted;
+      return { ...interrupted, managedModelPids };
     }
     if (interrupted?.savedBlocks > 1 || interrupted?.runState === 'validated') {
       throw new Error('Native translation completed before the process-kill boundary');
@@ -378,9 +382,11 @@ function readTranslationCheckpoint(dataRoot, runId) {
   }
 }
 
-async function crashNativeProcess(child, baselineModelPids) {
+async function crashNativeProcess(child, baselineModelPids, knownModelPids = []) {
   assert(child.exitCode === null && child.signalCode === null, 'Native desktop exited before crash injection');
-  const managedModelPids = [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
+  const managedModelPids = knownModelPids.length > 0
+    ? knownModelPids
+    : [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
   assert(managedModelPids.length > 0, 'Native desktop has no managed model process to interrupt');
   const exited = new Promise((resolve) => child.once('exit', resolve));
   assert(child.kill('SIGKILL'), 'Could not terminate the native desktop process');
@@ -411,7 +417,10 @@ function verifyInterruptedTranslation(dataRoot, runId, expected) {
   const actual = readTranslationCheckpoint(dataRoot, runId);
   assert(actual?.translationId === expected.translationId, 'Crash changed the project translation link');
   assert(actual.runId === expected.runId, 'Crash changed the unfinished project run');
-  assert(actual.savedBlocks === 1 && actual.runState === 'running', 'Crash lost the committed checkpoint');
+  assert(
+    actual.savedBlocks === 1 && actual.runState === 'running',
+    `Crash boundary changed: expected one running checkpoint, observed ${actual.savedBlocks} and ${actual.runState}`,
+  );
   assert(
     JSON.stringify(actual.firstBlock) === JSON.stringify(expected.firstBlock),
     'Crash changed the committed first block',

@@ -5,6 +5,7 @@ use ports::translation_links::{TranslationLink, TranslationLinkStore};
 use ports::translation_run_control::{TranslationRunControlPort, TranslationRunSnapshot};
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct TranslationRunUseCase {
     links: Arc<dyn TranslationLinkStore>,
     control: Arc<dyn TranslationRunControlPort>,

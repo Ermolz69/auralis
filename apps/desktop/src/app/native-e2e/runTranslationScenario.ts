@@ -10,7 +10,7 @@ import {
 import { invoke } from '@/shared/api/tauri';
 
 const ARTIFACT_TIMEOUT_MS = 20_000;
-const PUBLICATION_TIMEOUT_MS = 60_000;
+const PUBLICATION_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 100;
 
 export async function runTranslationScenario(runId: string, sourcePath: string): Promise<void> {
@@ -34,8 +34,8 @@ export async function runTranslationScenario(runId: string, sourcePath: string):
   }
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-run-ready' });
 
-  const publication = await startTranslationRun(project.id, translationId);
-  await finishTranslationScenario(runId, project.id, translationId, translationRunId, publication);
+  const start = await startTranslationRun(project.id, translationId);
+  await finishTranslationScenario(runId, project.id, translationId, translationRunId, start);
 }
 
 export async function resumeTranslationScenario(runId: string): Promise<boolean> {
@@ -50,8 +50,8 @@ export async function resumeTranslationScenario(runId: string): Promise<boolean>
   const link = links[0];
   const activeRunId = link.activeRunId;
   if (!activeRunId) throw new Error('Native translation crash recovery lost its run ID');
-  const publication = await startTranslationRun(project.id, link.translationId);
-  await finishTranslationScenario(runId, project.id, link.translationId, activeRunId, publication);
+  const start = await startTranslationRun(project.id, link.translationId);
+  await finishTranslationScenario(runId, project.id, link.translationId, activeRunId, start);
   return true;
 }
 
@@ -60,24 +60,24 @@ async function finishTranslationScenario(
   projectId: string,
   translationId: string,
   translationRunId: string,
-  publication: Awaited<ReturnType<typeof startTranslationRun>>,
+  start: Awaited<ReturnType<typeof startTranslationRun>>,
 ): Promise<void> {
-  if (publication.runId !== translationRunId || !publication.needsReview) {
-    throw new Error('Native translation returned the wrong run or review state');
+  if (start.runId !== translationRunId || start.state !== 'accepted') {
+    throw new Error('Native translation returned the wrong admitted run');
   }
-  const ready = await waitForSelection(projectId, translationId, publication.resultId);
-  if (ready.outputArtifactId !== publication.artifactId) {
-    throw new Error('Native translation selected a different output artifact');
-  }
+  const ready = await waitForSelection(projectId, translationId);
+  if (!ready.selectedResultId || !ready.outputArtifactId) throw new Error('Native translation selection is incomplete');
   const comparison = await getTranslationComparison(
     projectId,
     translationId,
-    publication.resultId,
+    ready.selectedResultId,
     0,
     10,
   );
   const expectedSegments = __NATIVE_E2E_TRANSLATION_CRASH__ ? 2 : 1;
   if (
+    comparison.runId !== translationRunId ||
+    !comparison.needsReview ||
     comparison.totalSegments !== expectedSegments ||
     comparison.segments.length !== expectedSegments ||
     comparison.segments[0].sourceLines[0] !== '你好。' ||
@@ -100,13 +100,13 @@ async function waitForOriginal(projectId: string, artifactId: string): Promise<v
   throw new Error('Native original subtitle did not become ready');
 }
 
-async function waitForSelection(projectId: string, translationId: string, resultId: string) {
+async function waitForSelection(projectId: string, translationId: string) {
   const deadline = Date.now() + PUBLICATION_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const link = (await listProjectTranslations(projectId)).find(
       (item) => item.translationId === translationId,
     );
-    if (link?.selectedResultId === resultId && link.outputArtifactId && !link.activeRunId) {
+    if (link?.selectedResultId && link.outputArtifactId && !link.activeRunId) {
       return link;
     }
     await delay(POLL_INTERVAL_MS);

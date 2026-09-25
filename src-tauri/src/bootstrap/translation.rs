@@ -27,6 +27,7 @@ pub(crate) const EXPERIMENTAL_CHECKED_CHINESE_PROFILE: &str = include_str!(
 
 pub struct TranslationUseCases {
     control: Arc<dyn TranslationRunControlPort>,
+    pub jobs: Arc<dyn TranslationHostJobStore>,
     pub inspect: Arc<InspectTranslationSourceUseCase>,
     pub import_source: ImportTranslationSourceUseCase,
     pub list: ListProjectTranslationsUseCase,
@@ -86,6 +87,7 @@ impl TranslationUseCases {
         );
         Self {
             control: control.clone(),
+            jobs: jobs.clone(),
             inspect: inspect.clone(),
             import_source,
             list: ListProjectTranslationsUseCase::new(projects, links.clone()),

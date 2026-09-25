@@ -17,6 +17,7 @@ import type {
   TranslationLink,
   TranslationPublication,
   TranslationRunSnapshot,
+  TranslationStart,
 } from './translation';
 
 export interface CommandMap {
@@ -118,7 +119,7 @@ export interface CommandMap {
   };
   start_translation_run_cmd: {
     args: { projectId: string; translationId: string };
-    result: TranslationPublication;
+    result: TranslationStart;
   };
   edit_translation_result_cmd: {
     args: { input: EditTranslationResult };

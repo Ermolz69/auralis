@@ -125,6 +125,19 @@ describe('IPC runtime validation', () => {
     })).toThrow(IpcContractError);
   });
 
+  it('accepts only an admitted background translation start', () => {
+    const start = {
+      jobId: '00000000-0000-4000-8000-000000000044',
+      runId: '00000000-0000-4000-8000-000000000045',
+      state: 'accepted',
+    };
+    expect(parseCommandResult('start_translation_run_cmd', start)).toEqual(start);
+    expect(() => parseCommandResult('start_translation_run_cmd', {
+      ...start,
+      state: 'ready',
+    })).toThrow(IpcContractError);
+  });
+
   it('requires a result identity for a validated translation run', () => {
     const snapshot = {
       runId: '00000000-0000-4000-8000-000000000004',

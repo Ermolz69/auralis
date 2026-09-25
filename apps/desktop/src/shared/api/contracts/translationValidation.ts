@@ -4,6 +4,7 @@ import type {
   TranslationLink,
   TranslationPublication,
   TranslationRunSnapshot,
+  TranslationStart,
 } from './translation';
 import {
   isNonNegativeSafeInteger,
@@ -15,6 +16,10 @@ import {
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (value: unknown): value is string => isString(value) && uuid.test(value);
+
+export function validateTranslationStart(value: unknown): value is TranslationStart {
+  return isRecord(value) && isUuid(value.jobId) && isUuid(value.runId) && value.state === 'accepted';
+}
 
 export function validateTranslationComparisonPage(value: unknown): value is TranslationComparisonPage {
   if (

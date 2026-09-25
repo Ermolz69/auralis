@@ -8,6 +8,7 @@ import type {
   TranslationLink,
   TranslationPublication,
   TranslationRunSnapshot,
+  TranslationStart,
 } from '@/shared/api/contracts/translation';
 
 export function beginTranslationRun(input: BeginTranslationRun): Promise<TranslationLink> {
@@ -17,7 +18,7 @@ export function beginTranslationRun(input: BeginTranslationRun): Promise<Transla
 export function startTranslationRun(
   projectId: string,
   translationId: string,
-): Promise<TranslationPublication> {
+): Promise<TranslationStart> {
   return invoke('start_translation_run_cmd', { projectId, translationId });
 }
 

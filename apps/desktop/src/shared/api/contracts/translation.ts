@@ -81,6 +81,12 @@ export interface TranslationPublication {
   state: 'pending' | 'ready' | 'failed';
 }
 
+export interface TranslationStart {
+  jobId: string;
+  runId: string;
+  state: 'accepted';
+}
+
 export type TranslationRunPhase = 'requested' | 'running' | 'paused' | 'failed' | 'validated';
 
 export interface TranslationRunSnapshot {
