@@ -23,17 +23,13 @@ pub trait TranslationLinkStore: Send + Sync {
         translation_id: Uuid,
         result_id: Uuid,
     ) -> Result<Option<TranslationPublicationRecord>, PortError>;
-    async fn has_publication_for_run(
-        &self,
-        translation_id: Uuid,
-        run_id: Uuid,
-    ) -> Result<bool, PortError>;
     async fn get(&self, translation_id: Uuid) -> Result<Option<TranslationLink>, PortError>;
     async fn list_by_project(
         &self,
         project_id: &ProjectId,
     ) -> Result<Vec<TranslationLink>, PortError>;
     async fn list_active(&self) -> Result<Vec<TranslationLink>, PortError>;
+    async fn list_recoverable(&self) -> Result<Vec<TranslationLink>, PortError>;
     async fn list_ready_publications(
         &self,
         limit: usize,

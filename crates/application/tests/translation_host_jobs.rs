@@ -74,6 +74,14 @@ impl TranslationRunControlPort for FixedRunControl {
         })
     }
 
+    async fn snapshot_for_run(
+        &self,
+        link: &TranslationLink,
+        _run_id: Uuid,
+    ) -> Result<TranslationRunSnapshot, PortError> {
+        self.snapshot(link).await
+    }
+
     async fn request_pause(&self, _link: &TranslationLink) -> Result<(), PortError> {
         Ok(())
     }

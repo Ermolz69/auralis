@@ -7,6 +7,7 @@ use ports::translation_run_control::{
     TranslationRunControlPort, TranslationRunPhase, TranslationRunSnapshot,
 };
 use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 pub struct TranslateRunControl {
     database_path: PathBuf,
@@ -21,9 +22,20 @@ impl TranslateRunControl {
 #[async_trait]
 impl TranslationRunControlPort for TranslateRunControl {
     async fn snapshot(&self, link: &TranslationLink) -> Result<TranslationRunSnapshot, PortError> {
+        let run_id = link
+            .active_run_id
+            .ok_or_else(|| conflict("translation has no active run"))?;
+        self.snapshot_for_run(link, run_id).await
+    }
+
+    async fn snapshot_for_run(
+        &self,
+        link: &TranslationLink,
+        run_id: Uuid,
+    ) -> Result<TranslationRunSnapshot, PortError> {
         let database_path = self.database_path.clone();
         let link = link.clone();
-        tokio::task::spawn_blocking(move || snapshot(&database_path, &link))
+        tokio::task::spawn_blocking(move || snapshot(&database_path, &link, run_id))
             .await
             .map_err(|error| PortError::Unexpected {
                 message: error.to_string(),
@@ -34,7 +46,10 @@ impl TranslationRunControlPort for TranslateRunControl {
         let database_path = self.database_path.clone();
         let link = link.clone();
         tokio::task::spawn_blocking(move || {
-            let (database, run_id, _) = open_run(&database_path, &link)?;
+            let active_run_id = link
+                .active_run_id
+                .ok_or_else(|| conflict("translation has no active run"))?;
+            let (database, run_id, _) = open_run(&database_path, &link, active_run_id)?;
             database
                 .request_pause(run_id)
                 .map_err(|error| database_error("request_translation_pause", error))
@@ -49,8 +64,9 @@ impl TranslationRunControlPort for TranslateRunControl {
 fn snapshot(
     database_path: &Path,
     link: &TranslationLink,
+    requested_run_id: Uuid,
 ) -> Result<TranslationRunSnapshot, PortError> {
-    let (database, run_id, run) = open_run(database_path, link)?;
+    let (database, run_id, run) = open_run(database_path, link, requested_run_id)?;
     let state = database
         .run_state(run_id)
         .map_err(|error| database_error("read_translation_run_state", error))?;
@@ -94,13 +110,11 @@ fn snapshot(
 fn open_run(
     database_path: &Path,
     link: &TranslationLink,
+    requested_run_id: Uuid,
 ) -> Result<(TranslateDb, RunId, RunSpec), PortError> {
     let translation_id =
         TranslationId::new(link.translation_id).ok_or_else(|| conflict("translation ID is nil"))?;
-    let run_id = link
-        .active_run_id
-        .and_then(RunId::new)
-        .ok_or_else(|| conflict("translation has no active run"))?;
+    let run_id = RunId::new(requested_run_id).ok_or_else(|| conflict("run ID is nil"))?;
     if !database_path.is_file() {
         return Err(PortError::NotFound {
             resource: "Translate database".into(),

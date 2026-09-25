@@ -38,24 +38,6 @@ pub(super) async fn load(
     .transpose()
 }
 
-pub(super) async fn exists_for_run(
-    pool: &SqlitePool,
-    translation_id: Uuid,
-    run_id: Uuid,
-) -> Result<bool, PortError> {
-    let exists: i64 = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM translation_publications WHERE translation_id = ? AND run_id = ?)",
-    )
-    .bind(translation_id.to_string())
-    .bind(run_id.to_string())
-    .fetch_one(pool)
-    .await
-    .map_err(|error| {
-        super::super::helpers::map_sqlite_error("check_translation_run_publication", error)
-    })?;
-    Ok(exists != 0)
-}
-
 impl StoredPublication {
     fn decode(self) -> Result<TranslationPublicationRecord, PortError> {
         let invalid = |field: &str| PortError::InvalidStoredData {

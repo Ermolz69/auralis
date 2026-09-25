@@ -287,6 +287,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
     assert_eq!(selected.active_run_id, None);
     assert_eq!(selected.revision, 2);
     assert!(store.list_active().await.unwrap().is_empty());
+    assert_eq!(store.list_recoverable().await.unwrap().len(), 1);
     assert_eq!(
         store
             .select_ready_result(

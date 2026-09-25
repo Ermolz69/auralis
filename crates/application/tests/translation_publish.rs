@@ -15,8 +15,8 @@ use application::usecases::translation::{
     EditTranslationResultUseCase, ExecuteTranslationRequest, ExecuteTranslationUseCase,
     GetTranslationComparisonRequest, GetTranslationComparisonUseCase,
     InspectTranslationSourceUseCase, PublishTranslationRequest, PublishTranslationResultUseCase,
-    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunRequest,
-    TranslationRunUseCase,
+    RecoverTranslationPublicationsUseCase, RunTranslationHostJobUseCase,
+    StartTranslationJobUseCase, TranslationRunRequest, TranslationRunUseCase,
 };
 use application::worker::outbox::{OutboxWorker, maintenance::OutboxMaintenanceConfig};
 use domain::job::JobStatus;
@@ -282,7 +282,18 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         })
         .await?;
     assert_eq!(model_pending.result_revision, 1);
-    let pending = publisher.execute(request()).await?;
+    let recovery = RecoverTranslationPublicationsUseCase::new(
+        links.clone(),
+        Arc::new(TranslateRunControl::new(translate_path.clone())),
+        publisher.clone(),
+    );
+    let outcomes = recovery.execute().await?;
+    assert_eq!(outcomes.len(), 1);
+    assert!(outcomes[0].outcome.is_ok());
+    let pending = links
+        .get_publication(translation_id, result_id)
+        .await?
+        .ok_or("missing recovered edit publication")?;
     assert_eq!(pending.state, TranslationPublicationState::Pending);
     assert_eq!(pending.result_revision, 2);
     assert!(pending.needs_review);
@@ -381,12 +392,37 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     assert_eq!(std::fs::read(output_path)?, expected_output);
     assert_eq!(std::fs::read(&source_path)?, source);
 
-    let stale_result_id = Uuid::new_v4();
+    let recovered_result_id = Uuid::new_v4();
     editor
         .execute(EditTranslationResultRequest {
             project_id: project.id().clone(),
             translation_id,
             base_result_id: revised_result_id,
+            result_id: recovered_result_id,
+            segment_id: 1,
+            lines: vec!["После перезапуска.".into()],
+        })
+        .await?;
+    let outcomes = recovery.execute().await?;
+    assert_eq!(outcomes.len(), 1);
+    assert!(outcomes[0].outcome.is_ok());
+    let recovered = links
+        .get_publication(translation_id, recovered_result_id)
+        .await?
+        .ok_or("missing recovered selected-run edit")?;
+    assert_eq!(recovered.result_revision, 4);
+    assert_eq!(recovered.state, TranslationPublicationState::Pending);
+    assert_eq!(worker.process_pending_messages(10).await?.fetched, 1);
+    let selected = links.get(translation_id).await?.ok_or("missing link")?;
+    assert_eq!(selected.selected_result_id, Some(recovered_result_id));
+    assert_eq!(std::fs::read(&source_path)?, source);
+
+    let stale_result_id = Uuid::new_v4();
+    editor
+        .execute(EditTranslationResultRequest {
+            project_id: project.id().clone(),
+            translation_id,
+            base_result_id: recovered_result_id,
             result_id: stale_result_id,
             segment_id: 1,
             lines: vec!["Поздняя правка.".into()],
@@ -412,12 +448,19 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     assert_eq!(worker.process_pending_messages(10).await?.fetched, 1);
     let after_stale = links.get(translation_id).await?.ok_or("missing link")?;
     assert_eq!(after_stale.active_run_id, Some(next_run_id));
-    assert_eq!(after_stale.selected_result_id, Some(revised_result_id));
+    assert_eq!(after_stale.selected_result_id, Some(recovered_result_id));
     let older_page = comparison.execute(compare(result_id, 0, 1)).await?;
     assert_eq!(older_page.run_id, run_id);
     assert_eq!(older_page.segments[0].translated_lines, ["Здравствуйте."]);
     let latest_page = comparison.execute(compare(revised_result_id, 0, 1)).await?;
     assert_eq!(latest_page.segments[0].translated_lines, ["Добрый день."]);
+    let recovered_page = comparison
+        .execute(compare(recovered_result_id, 0, 1))
+        .await?;
+    assert_eq!(
+        recovered_page.segments[0].translated_lines,
+        ["После перезапуска."]
+    );
     assert_eq!(std::fs::read(&source_path)?, source);
     Ok(())
 }
