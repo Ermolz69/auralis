@@ -1,5 +1,14 @@
 export type TranslationFormat = 'srt' | 'vtt';
 
+export interface TranslationPackageStatus {
+  schemaVersion: 1;
+  releaseId: string;
+  backend: string;
+  supported: boolean;
+  installed: boolean;
+  selected: boolean;
+}
+
 export interface TranslationSegment {
   id: number;
   ordinal: number;

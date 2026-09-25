@@ -4,6 +4,9 @@ use tauri::Manager;
 const DATABASE_FILE_NAME: &str = "auralis.sqlite";
 const TRANSLATE_DATABASE_FILE_NAME: &str = "auralis-translate.sqlite";
 const TRANSLATION_RUNTIME_CONFIG_FILE_NAME: &str = "translation-runtime.json";
+const TRANSLATION_PACKAGES_DIRECTORY_NAME: &str = "translation-packages";
+const TRANSLATION_DOWNLOAD_CACHE_DIRECTORY_NAME: &str = "translation-downloads";
+const TRANSLATION_PACKAGE_SELECTION_FILE_NAME: &str = "translation-package-selection.json";
 const PROJECTS_DIRECTORY_NAME: &str = "projects";
 const LOGS_DIRECTORY_NAME: &str = "logs";
 const CACHE_DIRECTORY_NAME: &str = "cache";
@@ -56,6 +59,20 @@ impl AppPaths {
 
     pub fn translation_runtime_config(&self) -> PathBuf {
         self.root.join(TRANSLATION_RUNTIME_CONFIG_FILE_NAME)
+    }
+
+    pub fn translation_packages(&self) -> PathBuf {
+        self.root.join(TRANSLATION_PACKAGES_DIRECTORY_NAME)
+    }
+
+    pub fn translation_download_cache(&self) -> PathBuf {
+        self.root
+            .join(CACHE_DIRECTORY_NAME)
+            .join(TRANSLATION_DOWNLOAD_CACHE_DIRECTORY_NAME)
+    }
+
+    pub fn translation_package_selection(&self) -> PathBuf {
+        self.root.join(TRANSLATION_PACKAGE_SELECTION_FILE_NAME)
     }
 
     pub fn projects(&self) -> PathBuf {
@@ -136,6 +153,18 @@ mod tests {
 
         assert_eq!(paths.logs(), root.join("logs"));
         assert_eq!(paths.workspaces(), root.join("cache").join("workspaces"));
+        assert_eq!(
+            paths.translation_packages(),
+            root.join("translation-packages")
+        );
+        assert_eq!(
+            paths.translation_download_cache(),
+            root.join("cache").join("translation-downloads")
+        );
+        assert_eq!(
+            paths.translation_package_selection(),
+            root.join("translation-package-selection.json")
+        );
     }
 
     #[test]

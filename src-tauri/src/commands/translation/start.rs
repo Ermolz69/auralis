@@ -1,4 +1,5 @@
 use super::parse_translation_id;
+use crate::bootstrap::selected_translation_runtime::SelectedTranslationRuntime;
 use crate::bootstrap::translation::TranslationUseCases;
 use crate::dto::error::{CommandError, parse_project_id};
 use crate::dto::translation::TranslationStartDto;
@@ -16,14 +17,16 @@ pub async fn start_translation_run_cmd(
     project_id: String,
     translation_id: String,
     usecases: State<'_, Arc<TranslationUseCases>>,
+    selected_runtime: State<'_, SelectedTranslationRuntime>,
     runtime: State<'_, ManagedJobRuntime>,
 ) -> Result<TranslationStartDto, CommandError> {
     crate::observability::command::observe("start_translation_run_cmd", async {
-        let managed = usecases.managed.as_ref().ok_or_else(|| {
+        let selected = selected_runtime.read().await;
+        let runtime_port = selected.as_ref().ok_or_else(|| {
             CommandError::NotFound("Translation model runtime is not installed".into())
         })?;
         let scheduler = ScheduleManagedTranslationUseCase::new(
-            managed.clone(),
+            usecases.managed_for_runtime(runtime_port.clone()),
             runtime.0.clone(),
             usecases.jobs.clone(),
             usecases.run.clone(),

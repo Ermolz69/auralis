@@ -6,6 +6,7 @@ import type {
   TranslationComparisonPage,
   TranslationFormat,
   TranslationLink,
+  TranslationPackageStatus,
   TranslationPublication,
   TranslationRunSnapshot,
   TranslationStart,
@@ -20,6 +21,21 @@ export function startTranslationRun(
   translationId: string,
 ): Promise<TranslationStart> {
   return invoke('start_translation_run_cmd', { projectId, translationId });
+}
+
+export function getTranslationPackageStatus(): Promise<TranslationPackageStatus> {
+  return invoke('get_translation_package_status_cmd');
+}
+
+export function installTranslationPackage(): Promise<TranslationPackageStatus> {
+  return invoke('install_translation_package_cmd');
+}
+
+export function selectTranslationPackage(
+  releaseId: string,
+  backend: string,
+): Promise<TranslationPackageStatus> {
+  return invoke('select_translation_package_cmd', { releaseId, backend });
 }
 
 export function getTranslationRunStatus(

@@ -142,6 +142,21 @@ describe('IPC runtime validation', () => {
     ).toThrow(IpcContractError);
   });
 
+  it('rejects a selected model package without an installed package', () => {
+    const installed = {
+      schemaVersion: 1,
+      releaseId: 'hy-mt2-1-8b-q4-windows-x64-cpu-b10977',
+      backend: 'cpu',
+      supported: true,
+      installed: true,
+      selected: true,
+    };
+    expect(parseCommandResult('get_translation_package_status_cmd', installed)).toEqual(installed);
+    expect(() =>
+      parseCommandResult('select_translation_package_cmd', { ...installed, installed: false }),
+    ).toThrow(IpcContractError);
+  });
+
   it('requires a result identity for a validated translation run', () => {
     const snapshot = {
       runId: '00000000-0000-4000-8000-000000000004',

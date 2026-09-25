@@ -15,6 +15,7 @@ import type {
   TranslationFormat,
   TranslationInspection,
   TranslationLink,
+  TranslationPackageStatus,
   TranslationPublication,
   TranslationRunSnapshot,
   TranslationStart,
@@ -120,6 +121,18 @@ export interface CommandMap {
   start_translation_run_cmd: {
     args: { projectId: string; translationId: string };
     result: TranslationStart;
+  };
+  get_translation_package_status_cmd: {
+    args: undefined;
+    result: TranslationPackageStatus;
+  };
+  install_translation_package_cmd: {
+    args: undefined;
+    result: TranslationPackageStatus;
+  };
+  select_translation_package_cmd: {
+    args: { releaseId: string; backend: string };
+    result: TranslationPackageStatus;
   };
   edit_translation_result_cmd: {
     args: { input: EditTranslationResult };

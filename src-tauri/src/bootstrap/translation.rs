@@ -36,13 +36,13 @@ pub struct TranslationUseCases {
     pub edit: EditTranslationResultUseCase,
     pub execute: Arc<ExecuteTranslationUseCase>,
     pub run_job: RunTranslationHostJobUseCase,
-    pub managed: Option<RunManagedTranslationUseCase>,
     pub run: TranslationRunUseCase,
     pub publish: PublishTranslationResultUseCase,
     pub reconcile: ReconcileTranslationRunsUseCase,
     pub start_job: StartTranslationJobUseCase,
     pub recover_jobs: RecoverTranslationHostJobsUseCase,
     pub recover_publications: RecoverTranslationPublicationsUseCase,
+    links: Arc<dyn TranslationLinkStore>,
 }
 
 impl TranslationUseCases {
@@ -104,7 +104,6 @@ impl TranslationUseCases {
             ),
             execute: execute.clone(),
             run_job,
-            managed: None,
             run: TranslationRunUseCase::new(links.clone(), control.clone()),
             start_job,
             recover_jobs: RecoverTranslationHostJobsUseCase::new(
@@ -117,22 +116,22 @@ impl TranslationUseCases {
                 publish.clone(),
             ),
             publish,
-            reconcile: ReconcileTranslationRunsUseCase::new(inspect, links, registrar),
+            reconcile: ReconcileTranslationRunsUseCase::new(inspect, links.clone(), registrar),
+            links,
         }
     }
 
-    pub fn attach_runtime(
-        &mut self,
-        links: Arc<dyn TranslationLinkStore>,
+    pub fn managed_for_runtime(
+        &self,
         runtime: Arc<dyn TranslationModelRuntimePort>,
-    ) {
-        self.managed = Some(RunManagedTranslationUseCase::new(
-            links,
+    ) -> RunManagedTranslationUseCase {
+        RunManagedTranslationUseCase::new(
+            self.links.clone(),
             runtime,
             self.control.clone(),
             self.start_job.clone(),
             self.run_job.clone(),
             self.publish.clone(),
-        ));
+        )
     }
 }

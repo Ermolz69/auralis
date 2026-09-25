@@ -2,6 +2,7 @@ import type {
   TranslationComparisonPage,
   TranslationInspection,
   TranslationLink,
+  TranslationPackageStatus,
   TranslationPublication,
   TranslationRunSnapshot,
   TranslationStart,
@@ -16,6 +17,21 @@ import {
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (value: unknown): value is string => isString(value) && uuid.test(value);
+
+export function validateTranslationPackageStatus(value: unknown): value is TranslationPackageStatus {
+  return (
+    isRecord(value) &&
+    value.schemaVersion === 1 &&
+    isString(value.releaseId) &&
+    value.releaseId.length > 0 &&
+    isString(value.backend) &&
+    value.backend.length > 0 &&
+    typeof value.supported === 'boolean' &&
+    typeof value.installed === 'boolean' &&
+    typeof value.selected === 'boolean' &&
+    (!value.selected || value.installed)
+  );
+}
 
 export function validateTranslationStart(value: unknown): value is TranslationStart {
   return (

@@ -3,6 +3,7 @@ pub mod media_tools;
 #[cfg(feature = "native-e2e")]
 pub mod native_e2e_subtitle_source;
 pub mod paths;
+pub mod selected_translation_runtime;
 pub mod services;
 pub mod storage;
 pub mod translation;
@@ -54,7 +55,7 @@ pub fn setup(
     let (services, outbox_repo) = storage::setup_storage(&app_paths, storage_lease)?;
     record_native_e2e_checkpoint("storage-ready");
 
-    let mut translations = translation::TranslationUseCases::new(
+    let translations = translation::TranslationUseCases::new(
         services.project_repo.clone(),
         services.artifact_index.clone(),
         services.artifact_store.clone(),
@@ -63,9 +64,21 @@ pub fn setup(
         services.translation_host_jobs.clone(),
         app_paths.translate_database(),
     );
-    if let Some(runtime) = translation_runtime::load(&app_paths)? {
-        translations.attach_runtime(services.translation_links.clone(), runtime);
-    }
+    let packages = Arc::new(adapters_translate::TranslationPackageService::new(
+        app_paths.translation_packages(),
+        app_paths.translation_download_cache(),
+        app_paths.translation_package_selection(),
+    ));
+    let initial_runtime = match packages.selected_runtime() {
+        Ok(Some(runtime)) => Some(runtime),
+        Ok(None) => translation_runtime::load(&app_paths)?,
+        Err(error) => {
+            tracing::warn!(error = %error, "selected translation package needs attention");
+            None
+        }
+    };
+    app.manage(selected_translation_runtime::SelectedTranslationRuntime::new(initial_runtime));
+    app.manage(packages);
     for item in tauri::async_runtime::block_on(translations.reconcile.execute())? {
         if let Err(error) = item.outcome {
             tracing::warn!(

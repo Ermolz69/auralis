@@ -24,6 +24,10 @@ vi.mock('@/features/translation-review', () => ({
   TranslationReview: () => null,
 }));
 
+vi.mock('@/features/translation-model-setup', () => ({
+  TranslationModelSetup: () => null,
+}));
+
 vi.mock('@/features/translation-source-import', () => ({
   TranslationSourceImport: () => null,
 }));
