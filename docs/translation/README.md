@@ -280,6 +280,41 @@ The test does not slow down, block or replace model preparation.
 the native test modules, weights and evaluation data; its 16 emitted frontend
 files passed delivery checks. Initial-hash native cancellation, repeated pause
 during resume, full command interleavings, packaging and language gates remain
-open. The post-admission worker preflight can still display the retained paused
-phase; coherent event-driven UI progress remains work. This is one development
+open. The accepted-worker status correction below addresses the retained paused
+display interval; event-driven UI progress remains work. This is one development
 machine observation, not a latency SLA. Development and the submodule stay local.
+
+## Accepted host work and preparation status
+
+`GetTranslationRunStatusUseCase` reads the existing project-scoped Translate
+snapshot and the exact run's active host association. It validates host ownership
+and exposes a required nullable `activeHostJobId` in the desktop DTO. Errors are
+propagated; core Translate phases, SQLite and the CLI protocol are unchanged.
+The panel keeps preparation visible after acceptance, retains Pause, disables
+another Start/Continue, and restores that view after remount. The accepted job/run
+identity bridges a delayed first status refresh. Updates still use polling.
+
+`task rs:test:application -- --test translation_run_status` passed two real
+two-database tests; the full `task rs:test:application` default suite passed.
+`task fe:test:components -- src/features/translation-run-control/ui/TranslationRunControl.test.tsx`
+passed nine cases, and `task fe:test:unit -- src/shared/api/contracts/runtimeValidation.test.ts`
+passed fifteen cases. `task rs:clippy`, `task fe:typecheck`, `task fe:lint`,
+`task q:ipc-contract`, `task q:fsd-boundaries`, `task q:file-size`,
+`task q:duplicate-code` and `task fe:build` passed. Production delivery checks
+again exclude weights, evaluation data and native test modules.
+
+The enhanced `task desktop:e2e:native:translation:preparation-pause` passed twice.
+The final repeat rebuilt after the accepted-ID handoff correction and observed
+209 ms preparation acknowledgement, zero partial/admitted records, child absence
+at verification, restored worker-preflight controls, one completed resumed job
+and one closed attempt, and the unchanged original/separate ready output.
+Evidence and exact identities are recorded at
+`modules/auralis-translate/eval/experiments/2026-09-26-host-execution-status.md`;
+the contract is in `docs/architecture/012-host-execution-status.md` there.
+
+Initial-hash native cancellation, a Pause click during worker preflight, repeated
+resume/pause, concurrent commands, clean installation and language quality remain
+open. The admission-completion guard can also mask `CleanupFailed` after a newer
+control change; the polling-cancellation path preserves it. This code-review
+finding needs a deterministic public-use-case regression and correction. It is
+not an observed Windows cleanup failure. Work and commits remain local.

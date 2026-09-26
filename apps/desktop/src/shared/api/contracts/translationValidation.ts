@@ -167,7 +167,8 @@ export function validateTranslationRunSnapshot(value: unknown): value is Transla
     !isNonNegativeSafeInteger(value.totalBlocks) ||
     value.savedBlocks > value.totalBlocks ||
     !isNullable(value.resultId, isString) ||
-    !isNullable(value.needsReview, (item) => typeof item === 'boolean')
+    !isNullable(value.needsReview, (item) => typeof item === 'boolean') ||
+    !isNullable(value.activeHostJobId, isUuid)
   ) {
     return false;
   }

@@ -75,6 +75,12 @@ export async function releaseVerifiedPreparationPause(
 }
 
 export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
+  assert(
+    fs
+      .readFileSync(path.join(dataRoot, 'native-e2e-bootstrap.txt'), 'utf8')
+      .includes('translation-worker-preflight-visible\n'),
+    'Native panel did not restore accepted worker preparation after remount',
+  );
   const deadline = Date.now() + 10_000;
   while ([...listPids()].some((pid) => !snapshot.baselinePids.has(pid))) {
     assert(Date.now() < deadline, 'Resumed model child was not released');
@@ -113,6 +119,7 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
         closed_attempts: attempts.length,
         output_sha256: result.output_sha256,
         child_absent_at_pause_verification: true,
+        worker_preflight_ui_restored: true,
       })}\n`,
     );
   } finally {

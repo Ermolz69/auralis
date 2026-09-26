@@ -166,6 +166,7 @@ describe('IPC runtime validation', () => {
       totalBlocks: 2,
       resultId: '00000000-0000-4000-8000-000000000005',
       needsReview: true,
+      activeHostJobId: null,
     };
     expect(parseCommandResult('get_translation_run_status_cmd', snapshot)).toEqual(snapshot);
     expect(parseCommandResult('pause_translation_run_cmd', null)).toBeNull();
@@ -175,6 +176,34 @@ describe('IPC runtime validation', () => {
         resultId: null,
       }),
     ).toThrow(IpcContractError);
+  });
+
+  it('requires a nullable typed host job identity on translation status', () => {
+    const snapshot = {
+      runId: '00000000-0000-4000-8000-000000000004',
+      phase: 'paused',
+      pauseRequested: false,
+      savedBlocks: 0,
+      totalBlocks: 2,
+      resultId: null,
+      needsReview: null,
+      activeHostJobId: null,
+    };
+    expect(parseCommandResult('get_translation_run_status_cmd', snapshot)).toEqual(snapshot);
+    expect(
+      parseCommandResult('get_translation_run_status_cmd', {
+        ...snapshot,
+        activeHostJobId: '00000000-0000-4000-8000-000000000006',
+      }),
+    ).toHaveProperty('activeHostJobId', '00000000-0000-4000-8000-000000000006');
+    for (const activeHostJobId of [undefined, '', 'not-a-job-id', 12, false]) {
+      expect(() =>
+        parseCommandResult('get_translation_run_status_cmd', {
+          ...snapshot,
+          activeHostJobId,
+        }),
+      ).toThrow(IpcContractError);
+    }
   });
 
   it('validates project translation links and paired result artifacts', () => {

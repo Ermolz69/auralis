@@ -81,7 +81,15 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
     setStartingId(translationId);
     setError(null);
     try {
-      await startTranslationRun(projectId, translationId);
+      const accepted = await startTranslationRun(projectId, translationId);
+      setSnapshots((current) => {
+        const previous = current[translationId];
+        if (!previous || previous.runId !== accepted.runId) return current;
+        return {
+          ...current,
+          [translationId]: { ...previous, activeHostJobId: accepted.jobId },
+        };
+      });
     } catch (reason) {
       if (toCommandError(reason).code !== 'CANCELLED') setError(failureMessage(reason));
     } finally {
@@ -143,8 +151,13 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
       <ul className="mt-3 space-y-2 text-xs text-text">
         {links.map((link) => {
           const snapshot = snapshots[link.translationId];
-          const canStart = snapshot && ['requested', 'paused', 'failed'].includes(snapshot.phase);
-          const preparing = startingId === link.translationId;
+          const preparing =
+            startingId === link.translationId ||
+            (Boolean(snapshot?.activeHostJobId) &&
+              snapshot &&
+              ['requested', 'paused', 'failed'].includes(snapshot.phase));
+          const canStart =
+            snapshot && !preparing && ['requested', 'paused', 'failed'].includes(snapshot.phase);
           const canPause =
             snapshot && (snapshot.phase === 'running' || preparing) && !snapshot.pauseRequested;
           const unpublishedResultId =

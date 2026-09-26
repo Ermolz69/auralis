@@ -32,6 +32,7 @@ const requested = {
   totalBlocks: 2,
   resultId: null,
   needsReview: null,
+  activeHostJobId: null,
 };
 
 afterEach(() => cleanup());
@@ -39,12 +40,94 @@ beforeEach(() => {
   vi.clearAllMocks();
   listProjectTranslations.mockResolvedValue([link]);
   getTranslationRunStatus.mockResolvedValue(requested);
-  startTranslationRun.mockResolvedValue({ state: 'pending' });
+  startTranslationRun.mockResolvedValue({
+    state: 'accepted',
+    runId: link.activeRunId,
+    jobId: '00000000-0000-4000-8000-000000000006',
+  });
   pauseTranslationRun.mockResolvedValue(null);
   publishTranslationResult.mockResolvedValue({ state: 'pending' });
 });
 
 describe('TranslationRunControl', () => {
+  it('keeps accepted preparation visible while the first refreshed status is delayed', async () => {
+    let releaseStatus: (value: unknown) => void = () => {
+      throw new Error('No status read');
+    };
+    const pendingStatus = new Promise((resolve) => {
+      releaseStatus = resolve;
+    });
+    getTranslationRunStatus
+      .mockResolvedValueOnce(requested)
+      .mockImplementation(() => pendingStatus);
+    render(<TranslationRunControl projectId={projectId} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Начать перевод' }));
+    await waitFor(() => expect(getTranslationRunStatus).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('Подготовка модели: 0/2')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Пауза' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Начать перевод' })).toBeNull();
+    releaseStatus({ ...requested, phase: 'running', savedBlocks: 1 });
+    expect(await screen.findByText('Переводится: 1/2')).not.toBeNull();
+  });
+
+  it('restores preparation from an accepted host job and allows pause before a Translate attempt', async () => {
+    for (const phase of ['requested', 'paused'] as const) {
+      getTranslationRunStatus.mockResolvedValue({
+        ...requested,
+        phase,
+        activeHostJobId: '00000000-0000-4000-8000-000000000006',
+      });
+      const view = render(<TranslationRunControl projectId={projectId} />);
+      expect(await screen.findByText('Подготовка модели: 0/2')).not.toBeNull();
+      expect(
+        screen.queryByRole('button', { name: /Начать перевод|Продолжить перевод/ }),
+      ).toBeNull();
+      view.unmount();
+      render(<TranslationRunControl projectId={projectId} />);
+      expect(await screen.findByText('Подготовка модели: 0/2')).not.toBeNull();
+      getTranslationRunStatus.mockResolvedValue({ ...requested, phase: 'paused' });
+      fireEvent.click(screen.getByRole('button', { name: 'Пауза' }));
+      expect(await screen.findByText('На паузе: 0/2')).not.toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Продолжить перевод' }).hasAttribute('disabled'),
+      ).toBe(false);
+      expect(startTranslationRun).not.toHaveBeenCalled();
+      cleanup();
+    }
+  });
+
+  it('keeps preparation visible after accepting start or resume until the worker begins its attempt', async () => {
+    for (const phase of ['requested', 'paused'] as const) {
+      getTranslationRunStatus.mockResolvedValue({ ...requested, phase });
+      startTranslationRun.mockImplementationOnce(async () => {
+        getTranslationRunStatus.mockResolvedValue({
+          ...requested,
+          phase,
+          activeHostJobId: '00000000-0000-4000-8000-000000000006',
+        });
+        return {
+          state: 'accepted',
+          runId: link.activeRunId,
+          jobId: '00000000-0000-4000-8000-000000000006',
+        };
+      });
+      render(<TranslationRunControl projectId={projectId} />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: phase === 'requested' ? 'Начать перевод' : 'Продолжить перевод',
+        }),
+      );
+      await waitFor(() => expect(getTranslationRunStatus).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('Подготовка модели: 0/2')).not.toBeNull();
+      expect(screen.getByRole('button', { name: 'Пауза' })).not.toBeNull();
+      getTranslationRunStatus.mockResolvedValue({ ...requested, phase: 'running', savedBlocks: 1 });
+      fireEvent.click(screen.getByRole('button', { name: 'Обновить перевод' }));
+      expect(await screen.findByText('Переводится: 1/2')).not.toBeNull();
+      cleanup();
+      vi.clearAllMocks();
+    }
+  });
+
   it('allows pause during initial preparation and paused-run resume without reporting cancellation as an error', async () => {
     for (const phase of ['requested', 'paused'] as const) {
       let rejectStart: (reason: unknown) => void = () => {

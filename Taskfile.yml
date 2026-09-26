@@ -127,7 +127,7 @@ tasks:
       - node tools/native-e2e/run.mjs
 
   desktop:e2e:native:translation:preparation-pause:
-    desc: Pause actual native preparation controls after child startup, verify zero attempts and child release, then resume
+    desc: Pause native preparation, verify zero attempts and child release, then restore worker preflight controls and resume
     env:
       AURALIS_NATIVE_E2E_TRANSLATION: '1'
       AURALIS_NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE: '1'

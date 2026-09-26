@@ -16,7 +16,7 @@ export async function pausePreparationScenario(
 ): Promise<void> {
   const container = document.createElement('div');
   document.body.append(container);
-  const root = createRoot(container);
+  let root = createRoot(container);
   root.render(<TranslationRunControl projectId={projectId} />);
   try {
     (await waitForButton(container, 'Начать перевод')).click();
@@ -61,6 +61,17 @@ export async function pausePreparationScenario(
     await waitForTitle(projectId, `native-e2e-preparation-resume:${scenarioId}`);
     (await waitForButton(container, 'Продолжить перевод')).click();
     await waitFor(container, () => container.textContent?.includes('Подготовка модели'));
+    await waitForWorkerPreflight(projectId, translationId);
+    root.unmount();
+    root = createRoot(container);
+    root.render(<TranslationRunControl projectId={projectId} />);
+    await waitFor(container, () => container.textContent?.includes('Подготовка модели'));
+    if (!findButton(container, 'Пауза') || findButton(container, 'Продолжить перевод')) {
+      throw new Error('Remounted preflight controls lost pause or exposed duplicate resume');
+    }
+    await invoke('native_e2e_checkpoint_cmd', {
+      checkpoint: 'translation-worker-preflight-visible',
+    });
     await waitFor(container, () => !container.textContent?.includes('Подготовка модели'));
     await waitForResumedAttempt(container, projectId, translationId);
   } finally {
@@ -121,6 +132,19 @@ async function waitForResumedAttempt(
     await delay();
   }
   throw new Error('Fresh preparation resume did not reach its guarded attempt');
+}
+
+async function waitForWorkerPreflight(projectId: string, translationId: string): Promise<void> {
+  const deadline = Date.now() + PREPARATION_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const status = await getTranslationRunStatus(projectId, translationId);
+    if (status.activeHostJobId && status.phase === 'paused' && !status.pauseRequested) return;
+    if (status.phase !== 'paused') {
+      throw new Error('Native resume missed the accepted worker-preflight boundary');
+    }
+    await delay();
+  }
+  throw new Error('Native resume did not expose its active preflight host job');
 }
 
 function delay(): Promise<void> {

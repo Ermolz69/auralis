@@ -1,5 +1,5 @@
 use super::run_phase::TranslationRunPhaseDto;
-use ports::translation_run_control::TranslationRunSnapshot;
+use application::usecases::translation::TranslationRunStatus;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -12,10 +12,12 @@ pub struct TranslationRunSnapshotDto {
     pub total_blocks: usize,
     pub result_id: Option<String>,
     pub needs_review: Option<bool>,
+    pub active_host_job_id: Option<String>,
 }
 
-impl From<TranslationRunSnapshot> for TranslationRunSnapshotDto {
-    fn from(value: TranslationRunSnapshot) -> Self {
+impl From<TranslationRunStatus> for TranslationRunSnapshotDto {
+    fn from(status: TranslationRunStatus) -> Self {
+        let value = status.snapshot;
         Self {
             run_id: value.run_id.to_string(),
             phase: value.phase.into(),
@@ -24,6 +26,7 @@ impl From<TranslationRunSnapshot> for TranslationRunSnapshotDto {
             total_blocks: value.total_blocks,
             result_id: value.result_id.map(|id| id.to_string()),
             needs_review: value.needs_review,
+            active_host_job_id: status.active_host_job_id.map(|id| id.to_string()),
         }
     }
 }

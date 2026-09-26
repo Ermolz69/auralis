@@ -106,4 +106,5 @@ export interface TranslationRunSnapshot {
   totalBlocks: number;
   resultId: string | null;
   needsReview: boolean | null;
+  activeHostJobId: string | null;
 }

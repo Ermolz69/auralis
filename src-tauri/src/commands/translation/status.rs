@@ -16,8 +16,8 @@ pub async fn get_translation_run_status_cmd(
 ) -> Result<TranslationRunSnapshotDto, CommandError> {
     crate::observability::command::observe("get_translation_run_status_cmd", async {
         let snapshot = usecases
-            .run
-            .status(TranslationRunRequest {
+            .status
+            .execute(TranslationRunRequest {
                 project_id: parse_project_id(&project_id)?,
                 translation_id: parse_translation_id(&translation_id)?,
             })

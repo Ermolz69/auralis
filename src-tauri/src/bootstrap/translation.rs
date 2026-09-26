@@ -7,12 +7,12 @@ use adapters_translate::{
 };
 use application::usecases::translation::{
     BeginTranslationUseCase, EditTranslationResultUseCase, ExecuteTranslationUseCase,
-    GetTranslationComparisonUseCase, ImportTranslationSourceUseCase,
-    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase,
-    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
-    RecoverTranslationHostJobsUseCase, RecoverTranslationPublicationsUseCase,
-    RunManagedTranslationUseCase, RunTranslationHostJobUseCase, StartTranslationJobUseCase,
-    TranslationRunUseCase,
+    GetTranslationComparisonUseCase, GetTranslationRunStatusUseCase,
+    ImportTranslationSourceUseCase, InspectTranslationSourceUseCase,
+    ListProjectTranslationsUseCase, PublishTranslationResultUseCase,
+    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
+    RecoverTranslationPublicationsUseCase, RunManagedTranslationUseCase,
+    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -37,6 +37,7 @@ pub struct TranslationUseCases {
     pub execute: Arc<ExecuteTranslationUseCase>,
     pub run_job: RunTranslationHostJobUseCase,
     pub run: TranslationRunUseCase,
+    pub status: GetTranslationRunStatusUseCase,
     pub publish: PublishTranslationResultUseCase,
     pub reconcile: ReconcileTranslationRunsUseCase,
     pub start_job: StartTranslationJobUseCase,
@@ -105,6 +106,10 @@ impl TranslationUseCases {
             execute: execute.clone(),
             run_job,
             run: TranslationRunUseCase::new(links.clone(), control.clone()),
+            status: GetTranslationRunStatusUseCase::new(
+                TranslationRunUseCase::new(links.clone(), control.clone()),
+                jobs.clone(),
+            ),
             start_job,
             recover_jobs: RecoverTranslationHostJobsUseCase::new(
                 jobs,
