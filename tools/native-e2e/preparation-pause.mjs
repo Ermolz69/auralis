@@ -5,6 +5,12 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
+  readHashRecords,
+  observedOpenHash,
+  interruptedHash,
+  verifyFreshHashes,
+} from './hash-observation.mjs';
+import {
   readPreparationSnapshot,
   releasePreparationGate,
   verifyEmptyPreparation,
@@ -20,10 +26,12 @@ export async function releaseVerifiedPreparationPause(
   baselinePids,
   listPids,
   sourceSha256,
+  { initialHashBytes } = {},
 ) {
   const deadline = Date.now() + TIMEOUT_MS;
   let preparing;
   let managedPids;
+  let hashStarted;
   while (Date.now() < deadline) {
     assertDesktopAlive(app);
     const trace = fs.existsSync(path.join(dataRoot, 'native-e2e-bootstrap.txt'))
@@ -32,21 +40,30 @@ export async function releaseVerifiedPreparationPause(
     preparing = readPreparationSnapshot(dataRoot, `native-e2e-translation-running:${scenarioId}`);
     if (preparing && trace.includes('translation-preparation-started\n')) {
       managedPids = [...listPids()].filter((pid) => !baselinePids.has(pid));
-      if (managedPids.length) {
+      if (initialHashBytes) {
+        hashStarted = observedOpenHash(readHashRecords(dataRoot), initialHashBytes);
+        if (!hashStarted) {
+          await delay(POLL_MS);
+          continue;
+        }
+        assert.equal(managedPids.length, 0, 'Initial hashing already started a model child');
+      } else if (managedPids.length) {
         assert.equal(managedPids.length, 1, 'Preparation started multiple model children');
         assertModelParent(managedPids[0], app.child.pid);
-        verifyEmptyPreparation(preparing, 'requested', sourceSha256);
-        releasePreparationGate(
-          dataRoot,
-          preparing,
-          `native-e2e-preparation-pause-now:${scenarioId}`,
-        );
-        break;
+      } else {
+        await delay(POLL_MS);
+        continue;
       }
+      verifyEmptyPreparation(preparing, 'requested', sourceSha256);
+      releasePreparationGate(dataRoot, preparing, `native-e2e-preparation-pause-now:${scenarioId}`);
+      break;
     }
     await delay(POLL_MS);
   }
-  assert(managedPids?.length, 'No owned model child was observed before preparation pause');
+  assert(
+    initialHashBytes ? hashStarted : managedPids?.length,
+    'Requested preparation boundary was not observed',
+  );
   const pauseDeadline = Date.now() + TIMEOUT_MS;
   while (Date.now() < pauseDeadline) {
     assertDesktopAlive(app);
@@ -58,6 +75,7 @@ export async function releaseVerifiedPreparationPause(
       verifyEmptyPreparation(paused, 'paused', sourceSha256);
       assert.equal(paused.run.run_id, preparing.run.run_id);
       assert.equal(paused.link.translation_id, preparing.link.translation_id);
+      assert.equal(paused.run.control_revision, preparing.run.control_revision + 1);
       const acknowledgementMs = Number(paused.project.title.split(':').at(-1));
       assert(
         Number.isInteger(acknowledgementMs) && acknowledgementMs > 0 && acknowledgementMs <= 10_000,
@@ -66,8 +84,22 @@ export async function releaseVerifiedPreparationPause(
         [...listPids()].every((pid) => baselinePids.has(pid)),
         'Model survived preparation acknowledgment',
       );
+      const hashFinished = hashStarted
+        ? interruptedHash(readHashRecords(dataRoot), hashStarted)
+        : null;
+      if (hashStarted && !hashFinished) {
+        await delay(POLL_MS);
+        continue;
+      }
       releasePreparationGate(dataRoot, paused, `native-e2e-preparation-resume:${scenarioId}`);
-      return { preparing, paused, managedPids, acknowledgementMs, baselinePids };
+      return {
+        preparing,
+        paused,
+        managedPids,
+        acknowledgementMs,
+        baselinePids,
+        ...(hashStarted ? { initialHash: { started: hashStarted, finished: hashFinished } } : {}),
+      };
     }
     await delay(POLL_MS);
   }
@@ -121,11 +153,16 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
     }
     const result = translate.prepare('SELECT * FROM results WHERE run_id = ?').get(runId);
     assert(result);
+    const freshHashes = snapshot.initialHash
+      ? verifyFreshHashes(readHashRecords(dataRoot), snapshot.initialHash)
+      : null;
     process.stdout.write(
       `${JSON.stringify({
-        scenario: snapshot.workerPause
-          ? 'native_worker_preflight_pause'
-          : 'native_preparation_pause',
+        scenario: snapshot.initialHash
+          ? 'native_initial_hash_pause'
+          : snapshot.workerPause
+            ? 'native_worker_preflight_pause'
+            : 'native_preparation_pause',
         format: snapshot.paused.link.source_format,
         run_id: runId,
         translation_id: snapshot.paused.link.translation_id,
@@ -139,6 +176,9 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
         child_absent_at_pause_verification: true,
         worker_preflight_ui_restored: true,
         ...(snapshot.workerPause ? { worker_preflight_pause: snapshot.workerPause } : {}),
+        ...(snapshot.initialHash
+          ? { interrupted_initial_hash: snapshot.initialHash, completed_fresh_hashes: freshHashes }
+          : {}),
       })}\n`,
     );
   } finally {

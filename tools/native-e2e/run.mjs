@@ -38,6 +38,14 @@ export async function runNativeE2e(rootDir) {
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE === '1';
   const translationWorkerPreflightPauseEnabled =
     process.env.AURALIS_NATIVE_E2E_TRANSLATION_WORKER_PREFLIGHT_PAUSE === '1';
+  const translationInitialHashPauseEnabled =
+    process.env.AURALIS_NATIVE_E2E_TRANSLATION_INITIAL_HASH_PAUSE === '1';
+  if (
+    translationInitialHashPauseEnabled &&
+    (!translationPreparationPauseEnabled || translationWorkerPreflightPauseEnabled)
+  ) {
+    throw new Error('Initial hash pause requires a separate preparation-pause invocation');
+  }
   if (translationWorkerPreflightPauseEnabled && !translationPreparationPauseEnabled) {
     throw new Error('Worker preflight pause requires the preparation-pause mode');
   }
@@ -170,6 +178,9 @@ export async function runNativeE2e(rootDir) {
         baselineModelPids,
         listModelProcessIds,
         subtitleDigest,
+        translationInitialHashPauseEnabled
+          ? { initialHashBytes: fs.statSync(process.env.AURALIS_TEST_GGUF).size }
+          : {},
       );
     }
     if (translationWorkerPreflightPauseEnabled) {
@@ -516,6 +527,9 @@ function launchTestApplication(rootDir, dataRoot, ytdlpUrl, resultCommitMarker =
     cwd: rootDir,
     env: {
       ...process.env,
+      ...(process.env.AURALIS_NATIVE_E2E_TRANSLATION_INITIAL_HASH_PAUSE === '1'
+        ? { RUST_LOG: 'warn,auralis_translation_llamacpp::model_hash=info' }
+        : {}),
       AURALIS_NATIVE_E2E_DATA_DIR: dataRoot,
       AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
       ...(resultCommitMarker
@@ -1033,28 +1047,30 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
       process.stdout.write(
         process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1'
           ? 'Native Tauri single-owner E2E passed: a second process was rejected before storage setup, while the first completed its workflow; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_WORKER_PREFLIGHT_PAUSE === '1'
-            ? 'Native worker preflight pause E2E passed: actual controls stopped initial admission and accepted host preflight without a Translate attempt, released both children, and resumed the same run to a separate ready result; sandbox cleaned.\n'
-            : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE === '1'
-              ? 'Native preparation pause E2E passed: actual controls paused before any job/attempt, released the observed model child and resumed the same run to a separate ready result; sandbox cleaned.\n'
-              : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PAUSE === '1'
-                ? 'Native Tauri pause E2E passed: retained checkpoint and active run, cancelled host job, released managed child and resumed in the same desktop; sandbox cleaned.\n'
-                : process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1'
-                  ? 'Native Tauri deletion E2E passed: active checked-model translation stopped and both databases removed the project state; sandbox cleaned.\n'
-                  : process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
-                    ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
-                    : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1' &&
-                        process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
-                      ? 'Native Tauri WebVTT crash E2E passed: first checkpoint survived desktop termination and the resumed run published a separate copy; sandbox cleaned.\n'
-                      : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
-                        ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
-                        : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1'
-                          ? 'Native Tauri package E2E passed: React installed and selected the pinned CPU package, desktop restart restored it, and a real subtitle translation published a separate output; sandbox cleaned.\n'
-                          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1'
-                            ? 'Native Tauri WebVTT E2E passed: checked local translation preserved the separate source, protected spans, and both databases; sandbox cleaned.\n'
-                            : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
-                              ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
-                              : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_INITIAL_HASH_PAUSE === '1'
+            ? 'Native initial hash pause E2E passed: actual controls stopped an observed incomplete model hash before any child/job/attempt, then freshly verified and resumed the same run to a separate ready result; sandbox cleaned.\n'
+            : process.env.AURALIS_NATIVE_E2E_TRANSLATION_WORKER_PREFLIGHT_PAUSE === '1'
+              ? 'Native worker preflight pause E2E passed: actual controls stopped initial admission and accepted host preflight without a Translate attempt, released both children, and resumed the same run to a separate ready result; sandbox cleaned.\n'
+              : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE === '1'
+                ? 'Native preparation pause E2E passed: actual controls paused before any job/attempt, released the observed model child and resumed the same run to a separate ready result; sandbox cleaned.\n'
+                : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PAUSE === '1'
+                  ? 'Native Tauri pause E2E passed: retained checkpoint and active run, cancelled host job, released managed child and resumed in the same desktop; sandbox cleaned.\n'
+                  : process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1'
+                    ? 'Native Tauri deletion E2E passed: active checked-model translation stopped and both databases removed the project state; sandbox cleaned.\n'
+                    : process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
+                      ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
+                      : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1' &&
+                          process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
+                        ? 'Native Tauri WebVTT crash E2E passed: first checkpoint survived desktop termination and the resumed run published a separate copy; sandbox cleaned.\n'
+                        : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
+                          ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
+                          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1'
+                            ? 'Native Tauri package E2E passed: React installed and selected the pinned CPU package, desktop restart restored it, and a real subtitle translation published a separate output; sandbox cleaned.\n'
+                            : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1'
+                              ? 'Native Tauri WebVTT E2E passed: checked local translation preserved the separate source, protected spans, and both databases; sandbox cleaned.\n'
+                              : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
+                                ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
+                                : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
       ),
     )
     .catch((error) => {

@@ -66,7 +66,7 @@ The older `translation-runtime.json` beside `auralis.sqlite` remains a developme
 
 `ram_cache_mib` bounds llama.cpp's transient cross-request RAM cache to 0–512 MiB; omitted values default to 0. Both development and installed-package runtimes pass that value explicitly and use one generation slot. This preserves older configuration files and does not alter durable Translate checkpoints. The cache budget does not bound total RAM or VRAM. The policy and the observed growth that prompted it are recorded in `modules/auralis-translate/docs/architecture/008-managed-runtime-memory.md`; the local long-file task measures the explicit setting separately from its upstream-default baseline.
 
-The UI polls committed progress every three seconds and distinguishes `pause_requested` from `paused`. A pause waits for the current model request to return. The manual configuration file remains a development contract; the selected package marker takes precedence. Opt-in managed-process tests have passed through both real SQLite files, including a worker kill after one committed block, child-process cleanup, same-run resume, and output finalization using the checked local model. Native Tauri invocation and one committed-checkpoint desktop crash/restart have passed. Native installation, selection, restart, and one-cue CPU translation now pass; clean-machine packaging, bilingual review, and progress events remain open.
+The UI polls committed progress every three seconds and distinguishes `pause_requested` from `paused`. A pause interrupts the active request or cooperative preparation and is acknowledged only after cleanup; retained checkpoints remain valid. The manual configuration file remains a development contract; the selected package marker takes precedence. Opt-in managed-process tests have passed through both real SQLite files, including a worker kill after one committed block, child-process cleanup, same-run resume, and output finalization using the checked local model. Native Tauri invocation and one committed-checkpoint desktop crash/restart have passed. Native installation, selection, restart, and one-cue CPU translation now pass; clean-machine packaging, bilingual review, and progress events remain open.
 
 ## Implemented boundary
 
@@ -240,8 +240,8 @@ model after this guard change: separate SRT/WebVTT outputs and identical offline
 export. Evidence and retained identities are recorded at
 `modules/auralis-translate/eval/experiments/2026-09-26-attempt-admission-guard.md`.
 The guard is now combined with cooperative preparation control described below.
-Initial-hash native preparation evidence, admission command races, fresh package
-audit, clean Windows installation and bilingual quality remain open.
+Initial-hash native evidence is recorded below. Admission command races, fresh
+package audit, clean Windows installation and bilingual quality remain open.
 
 ## Cooperative preparation cancellation
 
@@ -292,9 +292,9 @@ The test does not slow down, block or replace model preparation.
 `task q:fsd-boundaries`, `task q:ipc-contract`, `task q:file-size`,
 `task q:duplicate-code` and `task fe:build` passed. The production build excludes
 the native test modules, weights and evaluation data; its 16 emitted frontend
-files passed delivery checks. Initial-hash native cancellation, repeated pause
-during resume, full command interleavings, packaging and language gates remain
-open. The accepted-worker status correction below addresses the retained paused
+files passed delivery checks. The later initial-hash and accepted-worker scenarios
+below extend preparation evidence. Full command interleavings, packaging and
+language gates remain open. The accepted-worker status correction below addresses the retained paused
 display interval; event-driven UI progress remains work. This is one development
 machine observation, not a latency SLA. Development and the submodule stay local.
 
@@ -326,12 +326,12 @@ Evidence and exact identities are recorded at
 `modules/auralis-translate/eval/experiments/2026-09-26-host-execution-status.md`;
 the contract is in `docs/architecture/012-host-execution-status.md` there.
 
-Initial-hash native cancellation, a Pause click during worker preflight, repeated
-resume/pause, concurrent commands, clean installation and language quality remain
-open. The admission-completion guard can also mask `CleanupFailed` after a newer
-control change; the polling-cancellation path preserves it. This code-review
-finding needs a deterministic public-use-case regression and correction. It is
-not an observed Windows cleanup failure. Work and commits remain local.
+The later initial-hash and worker-preflight records cover those named pause
+boundaries. Additional repeated/concurrent commands, clean installation and
+language quality remain open. The subsequent admission-completion correction
+below addresses masking of `CleanupFailed` after a newer control change through
+a deterministic public-use-case regression. Actual Windows cleanup failure still
+needs its own evidence. Work and commits remain local.
 
 ## Admission-completion cleanup precedence
 
@@ -401,7 +401,44 @@ native test modules, weights or evaluation payloads. Source changes are confined
 to native-only tooling/build flags/checkpoints; no product Rust or UI behavior
 changes in this scenario slice.
 
-Initial-hash native cancellation, additional repeated/concurrent commands,
-deletion/publication interleavings, Windows cleanup failure, clean installation
+Additional repeated/concurrent commands, deletion/publication interleavings,
+Windows cleanup failure, clean installation
 and bilingual quality remain open. These individual debug-build observations
 do not establish latency or hardware SLAs. Work remains local.
+
+## Native initial model-hash pause
+
+`task desktop:e2e:native:translation:initial-hash-pause` passed with Translate
+`6373bd0` and the named native observer. The adapter emits sparse structured
+diagnostics after actual model bytes are hashed. The observer requires an open,
+partial operation, zero jobs/associations/attempts/checkpoints/results/publications/
+output artifacts and no new model PID before releasing the actual panel's Pause.
+It then requires the same failed partial operation, a single control-revision
+increment and a retained paused run before Continue.
+
+The final invocation stops after 3,604,480 of 1,133,080,448 GGUF bytes. UI Pause
+acknowledgment is 52 ms with all seven counts zero. Resume performs three new full
+checks, restores accepted-worker preparation after panel remount and completes
+one closed host job/Translate attempt on the same run to a ready separate
+`needs_review` output. Both original digests, final child release, both databases,
+outbox publication and sandbox/native-build cleanup pass.
+
+Two earlier invocations failed because inherited `RUST_LOG=warn` suppressed the
+required records; the observer refused to release Pause without evidence. The
+final harness assigns `warn,auralis_translation_llamacpp::model_hash=info` directly
+to the test application child only in this mode. Installed settings are unchanged.
+These counters are not durable translation progress, model attestation or language
+quality evidence. The test neither blocks nor slows down hashing.
+
+`task desktop:e2e:native:preparation:check` passed sixteen verifier tests.
+`task rust:clippy`, `task quality:file-size`, `task quality:duplicate-code` and
+`task fe:build` passed; the production frontend's sixteen files exclude native test
+modules, weights and evaluation payloads. `task rust:test:translate` passed fifteen
+adapter tests with two asset-dependent checks left opt-in/ignored. Exact observations, identities and scope
+are in `modules/auralis-translate/eval/experiments/2026-09-26-native-initial-hash-pause.md`.
+
+This closes the named initial-hash interruption boundary. Concurrent/repeated
+commands, deletion/publication interleavings, actual Windows cleanup failure,
+clean installation and bilingual review remain open. One debug-build 52 ms
+observation does not establish an acknowledgment SLA or close S7/G7. Development
+and the independent submodule remain local; public publication is deferred.

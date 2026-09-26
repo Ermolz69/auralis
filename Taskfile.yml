@@ -143,10 +143,19 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:initial-hash-pause:
+    desc: Pause native preparation during an observed incomplete real model hash, verify zero admitted records, then freshly verify and resume
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_INITIAL_HASH_PAUSE: '1'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   desktop:e2e:native:preparation:check:
     desc: Verify native preparation boundaries reject partial work, missing counts, stale identity and invalid host ownership
     cmds:
-      - node --test tools/native-e2e/preparation-snapshot.test.mjs tools/native-e2e/worker-preflight-snapshot.test.mjs
+      - node --test tools/native-e2e/preparation-snapshot.test.mjs tools/native-e2e/worker-preflight-snapshot.test.mjs tools/native-e2e/hash-observation.test.mjs
 
   desktop:e2e:native:translation:vtt:pause:
     desc: Pause and resume native strict-WebVTT translation with a checked model and exact checkpoint retention
