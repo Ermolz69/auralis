@@ -1,5 +1,19 @@
 export type TranslationFormat = 'srt' | 'vtt';
 
+export interface TranslationHistoryEntry {
+  resultId: string;
+  resultRevision: number;
+  runId: string;
+  artifactId: string;
+  needsReview: boolean;
+}
+
+export interface TranslationHistoryPage {
+  link: TranslationLink;
+  entries: TranslationHistoryEntry[];
+  nextCursor: string | null;
+}
+
 export interface TranslationPackageStatus {
   schemaVersion: 1;
   releaseId: string;

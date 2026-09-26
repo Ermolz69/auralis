@@ -13,6 +13,7 @@ import { invoke } from '@/shared/api/tauri';
 import { TranslationModelSetup } from '@/features/translation-model-setup';
 import { prepareTranslationPackage } from './prepareTranslationPackage';
 import { resumeTranslationScenario, runTranslationScenario } from './runTranslationScenario';
+import { reopenTranslationHistory } from './reopenTranslationHistory';
 
 const READY_TIMEOUT_MS = 20_000;
 const POLL_INTERVAL_MS = 50;
@@ -34,6 +35,7 @@ async function runNativeScenario() {
   let unlisten: (() => void) | undefined;
 
   try {
+    if (__NATIVE_E2E_TRANSLATION_HISTORY__ && (await reopenTranslationHistory(runId))) return;
     if (__NATIVE_E2E_TRANSLATION_PACKAGE__) {
       const installedNow = await prepareTranslationPackage();
       if (installedNow) {

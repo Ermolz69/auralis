@@ -1,6 +1,6 @@
 use super::{
-    begin, list, publication_row, ready_publications, row, run_intent, select, staged_publication,
-    start_run,
+    begin, history, list, publication_row, ready_publications, row, run_intent, select,
+    select_history, staged_publication, start_run,
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -8,8 +8,9 @@ use domain::project::ProjectId;
 use ports::error::PortError;
 use ports::storage::StagedArtifact;
 use ports::translation_links::{
-    PublicationIntent, ReadyPublication, StartTranslationRun, TranslationIntent, TranslationLink,
-    TranslationLinkStore, TranslationPublicationRecord, TranslationRunIntent,
+    PublicationIntent, ReadyPublication, SelectTranslationHistoryResult, StartTranslationRun,
+    TranslationHistoryPage, TranslationIntent, TranslationLink, TranslationLinkStore,
+    TranslationPublicationRecord, TranslationRunIntent,
 };
 use sqlx::SqlitePool;
 use uuid::Uuid;
@@ -26,6 +27,29 @@ impl SqliteTranslationLinkStore {
 
 #[async_trait]
 impl TranslationLinkStore for SqliteTranslationLinkStore {
+    async fn list_ready_history(
+        &self,
+        project_id: &ProjectId,
+        translation_id: Uuid,
+        before_result_id: Option<Uuid>,
+        limit: u32,
+    ) -> Result<TranslationHistoryPage, PortError> {
+        history::list(
+            &self.pool,
+            project_id,
+            translation_id,
+            before_result_id,
+            limit,
+        )
+        .await
+    }
+
+    async fn select_historical_result(
+        &self,
+        request: SelectTranslationHistoryResult,
+    ) -> Result<TranslationLink, PortError> {
+        select_history::run(&self.pool, request).await
+    }
     async fn begin(&self, intent: TranslationIntent) -> Result<TranslationLink, PortError> {
         begin::run(&self.pool, &intent, None).await
     }

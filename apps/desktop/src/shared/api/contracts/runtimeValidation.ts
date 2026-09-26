@@ -13,6 +13,7 @@ import {
   isUuid,
 } from './translationValidation';
 import { validateMediaMetadata, validateMediaSource } from './mediaValidation';
+import { validateTranslationHistoryPage } from './translationHistoryValidation';
 import {
   isArrayOf,
   isBoolean,
@@ -162,6 +163,8 @@ const commandResultValidators = {
   list_project_translations_cmd: (value) => isArrayOf(value, validateTranslationLink),
   get_translation_comparison_cmd: validateTranslationComparisonPage,
   get_translation_run_status_cmd: validateTranslationRunSnapshot,
+  list_translation_history_cmd: validateTranslationHistoryPage,
+  select_translation_result_cmd: validateTranslationLink,
   pause_translation_run_cmd: isNull,
   list_jobs_cmd: validateJobSnapshot,
   list_job_history_page_cmd: validateJobHistoryPage,

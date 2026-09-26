@@ -32,7 +32,7 @@ impl LocalArtifactStore {
 
 #[async_trait]
 impl ArtifactStore for LocalArtifactStore {
-    async fn verify_staging_digest(
+    async fn verify_storage_digest(
         &self,
         key: &str,
         size: u64,

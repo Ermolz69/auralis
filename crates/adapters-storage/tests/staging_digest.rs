@@ -23,7 +23,7 @@ async fn staging_digest_detects_same_size_corruption() -> Result<(), Box<dyn Err
     let sha256 = format!("{:x}", Sha256::digest(bytes));
     assert!(
         store
-            .verify_staging_digest(&staged.staging_key, staged.size_bytes, &sha256)
+            .verify_storage_digest(&staged.staging_key, staged.size_bytes, &sha256)
             .await?
     );
     let staged_path = store.resolve_storage_key(&staged.staging_key)?;
@@ -32,7 +32,7 @@ async fn staging_digest_detects_same_size_corruption() -> Result<(), Box<dyn Err
     std::fs::write(&staged_path, changed)?;
     assert!(
         !store
-            .verify_staging_digest(&staged.staging_key, staged.size_bytes, &sha256)
+            .verify_storage_digest(&staged.staging_key, staged.size_bytes, &sha256)
             .await?
     );
     assert_eq!(std::fs::read(source)?, bytes);

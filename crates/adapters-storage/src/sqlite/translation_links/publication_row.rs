@@ -5,7 +5,7 @@ use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
 #[derive(FromRow)]
-struct StoredPublication {
+pub(super) struct StoredPublication {
     translation_id: String,
     result_id: String,
     result_revision: i64,
@@ -39,7 +39,7 @@ pub(super) async fn load(
 }
 
 impl StoredPublication {
-    fn decode(self) -> Result<TranslationPublicationRecord, PortError> {
+    pub(super) fn decode(self) -> Result<TranslationPublicationRecord, PortError> {
         let invalid = |field: &str| PortError::InvalidStoredData {
             entity_type: "TranslationPublication".into(),
             entity_id: format!("{}:{}", self.translation_id, self.result_id),

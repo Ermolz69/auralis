@@ -107,6 +107,14 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:history:
+    desc: Edit a checked-model result, preview and select history through native controls, then reopen it
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_HISTORY: '1'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   desktop:e2e:native:translation:package:
     desc: Install and select the pinned CPU package in native React, restart Auralis, and translate a subtitle
     requires:

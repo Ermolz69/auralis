@@ -1,4 +1,5 @@
 mod begin;
+mod history;
 mod list;
 mod publication;
 mod publication_row;
@@ -7,6 +8,7 @@ mod repository;
 mod row;
 mod run_intent;
 mod select;
+mod select_history;
 mod staged_publication;
 mod start_run;
 mod validation;

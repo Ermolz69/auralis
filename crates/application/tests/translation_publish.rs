@@ -6,6 +6,8 @@ use adapters_storage::{
         connect_sqlite,
     },
 };
+#[path = "support/translation_history_checks.rs"]
+mod translation_history_checks;
 use adapters_translate::{
     FormatInspector, TranslateResultEditor, TranslateResultReader, TranslateRunControl,
     TranslateRunExecutor, TranslateRunRegistrar,
@@ -16,7 +18,8 @@ use application::usecases::translation::{
     GetTranslationComparisonRequest, GetTranslationComparisonUseCase,
     InspectTranslationSourceUseCase, PublishTranslationRequest, PublishTranslationResultUseCase,
     RecoverTranslationPublicationsUseCase, RunTranslationHostJobUseCase,
-    StartTranslationJobUseCase, TranslationRunRequest, TranslationRunUseCase,
+    SelectTranslationResultRequest, SelectTranslationResultUseCase, StartTranslationJobUseCase,
+    TranslationRunRequest, TranslationRunUseCase,
 };
 use application::worker::outbox::{OutboxWorker, maintenance::OutboxMaintenanceConfig};
 use domain::job::JobStatus;
@@ -390,8 +393,25 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     assert_eq!(revised_artifact.state, ArtifactState::Ready);
     let revised_path = file_store.resolve_artifact(&revised_artifact).await?;
     assert!(String::from_utf8(std::fs::read(revised_path)?)?.contains("Добрый день."));
-    assert_eq!(std::fs::read(output_path)?, expected_output);
+    assert_eq!(std::fs::read(&output_path)?, expected_output);
     assert_eq!(std::fs::read(&source_path)?, source);
+
+    translation_history_checks::TranslationHistoryChecks {
+        inspector: inspector.clone(),
+        links: links.clone(),
+        artifacts: artifacts.clone(),
+        files: file_store.clone(),
+        host_path: directory.path().join("auralis.sqlite"),
+        translate_path: translate_path.clone(),
+        source_path: source_path.clone(),
+        output_path: output_path.clone(),
+        project_id: project.id().clone(),
+        translation_id,
+        older_result_id: edited_result_id,
+        latest_result_id: revised_result_id,
+    }
+    .verify()
+    .await?;
 
     let recovered_result_id = Uuid::new_v4();
     editor
@@ -463,6 +483,22 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
         ["После перезапуска."]
     );
     assert_eq!(std::fs::read(&source_path)?, source);
+    let chosen = SelectTranslationResultUseCase::new(
+        inspector,
+        links.clone(),
+        Arc::new(TranslateResultReader::new(translate_path)),
+        artifacts,
+        file_store,
+    )
+    .execute(SelectTranslationResultRequest {
+        project_id: project.id().clone(),
+        translation_id,
+        result_id: edited_result_id,
+        expected_link_revision: after_stale.revision,
+    })
+    .await?;
+    assert_eq!(chosen.active_run_id, Some(next_run_id));
+    assert_eq!(chosen.selected_result_id, Some(edited_result_id));
     Ok(())
 }
 

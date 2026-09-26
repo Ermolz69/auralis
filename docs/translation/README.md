@@ -506,5 +506,40 @@ panel notification, immutable source, separate output, both databases and sandbo
 cleanup. The evidence record is
 `modules/auralis-translate/eval/experiments/2026-09-26-committed-progress-events.md`.
 The native test keeps fallback polling enabled; timer tests establish event-caused
-refresh before a polling tick. Historical revision selection, richer preparation
-and diagnostic projections, race and release gates remain open.
+refresh before a polling tick. At that event slice historical selection was pending;
+the later evidence below covers its named UI path. Richer preparation and
+diagnostic projections, race and release gates remain open.
+
+## Ready result history and explicit selection
+
+History lists only ready publication/artifact pairs for the project's immutable
+source, ordered by original publication insertion with bounded result-ID cursors.
+The UI separates comparison preview from explicit attachment. The selection use
+case verifies the source/frozen run, reconstructed result metadata and existing
+managed output size/digest before a short host transaction. That transaction
+checks ownership/readiness, expected revision and current pending publication;
+it preserves the active run and leaves automatic publication precedence intact.
+`verify_storage_digest` replaces the staging-specific name for the shared managed
+key check. Content ownership remains in Translate SQLite.
+
+`task rust:test:storage -- --test translation_history` passes six real SQLite
+tests including concurrent user choices and selection versus staging. The extended
+`task rust:test:application -- --test translation_publish` passes both real
+databases, corrupt/missing original/output rejection and retained selection after
+reopening and recovery. Eight review/editor component tests and five history
+API/contract tests pass. TypeScript, lint, FSD/IPC/file-size/duplicate checks,
+denied-warning Rust Clippy and production frontend delivery checks pass.
+
+`task desktop:e2e:native:translation:history` passes the checked-model one-cue
+Windows/CUDA path: actual React manual edit creates a second ready output; history
+preview keeps the edit attached; explicit selection attaches the model result;
+desktop restart renders that older choice. Both output hashes and link revision 4
+remain unchanged, one model attempt exists, and sandbox/native-build cleanup passes.
+The original remains byte-identical. Exact identities and scope are recorded in
+`modules/auralis-translate/eval/experiments/2026-09-26-result-history-selection.md`;
+the contract is `modules/auralis-translate/docs/architecture/014-result-history-selection.md`.
+
+Older-base branch edits, fuller review/diagnostic interaction, extra command races,
+actual Windows cleanup failure and language/clean-install gates remain open.
+Development is local only. No public publication or model acquisition occurs in
+this slice, and model/test payloads remain excluded from production delivery.

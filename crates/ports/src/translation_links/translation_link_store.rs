@@ -1,6 +1,7 @@
 use super::{
-    PublicationIntent, ReadyPublication, StartTranslationRun, TranslationIntent, TranslationLink,
-    TranslationPublicationRecord, TranslationRunIntent,
+    PublicationIntent, ReadyPublication, SelectTranslationHistoryResult, StartTranslationRun,
+    TranslationHistoryPage, TranslationIntent, TranslationLink, TranslationPublicationRecord,
+    TranslationRunIntent,
 };
 use crate::error::PortError;
 use crate::storage::StagedArtifact;
@@ -11,6 +12,17 @@ use uuid::Uuid;
 
 #[async_trait]
 pub trait TranslationLinkStore: Send + Sync {
+    async fn list_ready_history(
+        &self,
+        project_id: &ProjectId,
+        translation_id: Uuid,
+        before_result_id: Option<Uuid>,
+        limit: u32,
+    ) -> Result<TranslationHistoryPage, PortError>;
+    async fn select_historical_result(
+        &self,
+        request: SelectTranslationHistoryResult,
+    ) -> Result<TranslationLink, PortError>;
     async fn begin(&self, intent: TranslationIntent) -> Result<TranslationLink, PortError>;
     async fn begin_with_run_intent(
         &self,

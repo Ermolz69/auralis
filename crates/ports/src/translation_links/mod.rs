@@ -8,6 +8,8 @@ mod translation_intent;
 mod translation_link;
 mod translation_link_store;
 
+pub use history_page::{MAX_TRANSLATION_HISTORY_PAGE_SIZE, TranslationHistoryPage};
+pub use history_selection::SelectTranslationHistoryResult;
 pub use publication_intent::PublicationIntent;
 pub use publication_record::TranslationPublicationRecord;
 pub use publication_state::TranslationPublicationState;
@@ -17,3 +19,5 @@ pub use start_translation_run::StartTranslationRun;
 pub use translation_intent::TranslationIntent;
 pub use translation_link::TranslationLink;
 pub use translation_link_store::TranslationLinkStore;
+mod history_page;
+mod history_selection;

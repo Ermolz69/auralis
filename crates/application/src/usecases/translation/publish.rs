@@ -122,7 +122,7 @@ impl PublishTranslationResultUseCase {
         let staging_key = staged.staging_key.clone();
         match self
             .artifacts
-            .verify_staging_digest(&staging_key, staged.size_bytes, &result.output_sha256)
+            .verify_storage_digest(&staging_key, staged.size_bytes, &result.output_sha256)
             .await
         {
             Ok(true) => {}

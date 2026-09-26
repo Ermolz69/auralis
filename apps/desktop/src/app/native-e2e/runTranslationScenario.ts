@@ -12,6 +12,7 @@ import { invoke } from '@/shared/api/tauri';
 import { pauseTranslationScenario } from './pauseTranslationScenario';
 import { pausePreparationScenario } from './pausePreparationScenario';
 import { translationEventsScenario } from './translationEventsScenario';
+import { translationHistoryScenario } from './translationHistoryScenario';
 
 const ARTIFACT_TIMEOUT_MS = 20_000;
 const PUBLICATION_TIMEOUT_MS = 180_000;
@@ -137,6 +138,8 @@ async function finishTranslationScenario(
     throw new Error('Native translation comparison lost its source or result mapping');
   }
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-result-ready' });
+  if (__NATIVE_E2E_TRANSLATION_HISTORY__)
+    await translationHistoryScenario(projectId, translationId, ready.selectedResultId);
   const latest = await invoke('get_project_cmd', { projectId });
   await renameProject(projectId, `native-e2e-translation-complete:${runId}`, latest.revision);
 }

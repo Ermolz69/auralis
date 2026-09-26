@@ -10,6 +10,7 @@ export const COMPARISON_PAGE_SIZE = 25;
 export function useTranslationReview(projectId: string | null, refreshRevision = 0) {
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [selectedTranslationId, setSelectedTranslationId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ translationId: string; resultId: string } | null>(null);
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<TranslationComparisonPage | null>(null);
   const [loadingLinks, setLoadingLinks] = useState(false);
@@ -18,7 +19,19 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    if (!projectId) return;
+    setLinks([]);
+    setSelectedTranslationId(null);
+    setPreview(null);
+    setOffset(0);
+    setPage(null);
+    setError(null);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId) {
+      setLoadingLinks(false);
+      return;
+    }
     let current = true;
     setLoadingLinks(true);
     setError(null);
@@ -43,10 +56,18 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
     };
   }, [projectId, revision, refreshRevision]);
 
-  const selected = links.find((link) => link.translationId === selectedTranslationId) ?? null;
-  const selectedResultId = selected?.selectedResultId ?? null;
+  const projectLinks = links.filter((link) => link.projectId === projectId);
+  const selected =
+    projectLinks.find((link) => link.translationId === selectedTranslationId) ?? null;
+  const verifiedTranslationId = selected?.translationId ?? null;
+  const selectedResultId =
+    preview?.translationId === selectedTranslationId
+      ? preview.resultId
+      : (selected?.selectedResultId ?? null);
   useEffect(() => {
-    if (!projectId || !selectedTranslationId || !selectedResultId) {
+    if (!projectId || !verifiedTranslationId || !selectedTranslationId || !selectedResultId) {
+      setPage(null);
+      setLoadingPage(false);
       return;
     }
     let current = true;
@@ -73,12 +94,20 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
     return () => {
       current = false;
     };
-  }, [projectId, selectedTranslationId, selectedResultId, offset]);
+  }, [projectId, verifiedTranslationId, selectedTranslationId, selectedResultId, offset]);
 
   return {
-    links,
+    links: projectLinks,
     selectedTranslationId,
     selected,
+    previewResultId: selectedResultId,
+    historyRevision: revision + refreshRevision,
+    preview: (resultId: string) => {
+      if (!selectedTranslationId) return;
+      setPreview({ translationId: selectedTranslationId, resultId });
+      setOffset(0);
+      setPage(null);
+    },
     offset,
     page,
     loadingLinks,
@@ -87,6 +116,7 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
     refresh: () => setRevision((value) => value + 1),
     select: (translationId: string) => {
       setSelectedTranslationId(translationId);
+      setPreview(null);
       setOffset(0);
       setPage(null);
     },

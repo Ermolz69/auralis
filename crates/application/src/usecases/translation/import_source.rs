@@ -69,7 +69,7 @@ impl ImportTranslationSourceUseCase {
         let commit = async {
             if !self
                 .artifacts
-                .verify_staging_digest(
+                .verify_storage_digest(
                     &staging_key,
                     inspection.source_size,
                     &inspection.source_sha256,

@@ -12,6 +12,7 @@ import type {
   BeginTranslationRun,
   EditTranslationResult,
   TranslationComparisonPage,
+  TranslationHistoryPage,
   TranslationFormat,
   TranslationInspection,
   TranslationLink,
@@ -159,6 +160,24 @@ export interface CommandMap {
   get_translation_run_status_cmd: {
     args: { projectId: string; translationId: string };
     result: TranslationRunSnapshot;
+  };
+  list_translation_history_cmd: {
+    args: {
+      projectId: string;
+      translationId: string;
+      beforeResultId?: string | null;
+      limit: number;
+    };
+    result: TranslationHistoryPage;
+  };
+  select_translation_result_cmd: {
+    args: {
+      projectId: string;
+      translationId: string;
+      resultId: string;
+      expectedLinkRevision: number;
+    };
+    result: TranslationLink;
   };
   pause_translation_run_cmd: {
     args: { projectId: string; translationId: string };

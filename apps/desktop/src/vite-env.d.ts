@@ -16,3 +16,4 @@ declare const __NATIVE_E2E_TRANSLATION_START_RACE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_DELETE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_PACKAGE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_EVENTS__: boolean;
+declare const __NATIVE_E2E_TRANSLATION_HISTORY__: boolean;

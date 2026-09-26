@@ -1,6 +1,7 @@
 pub mod begin;
 pub mod comparison;
 pub mod edit;
+pub mod history;
 pub mod import_source;
 pub mod inspect;
 pub mod list;
@@ -11,6 +12,7 @@ pub mod package_select;
 pub mod package_status;
 pub mod pause;
 pub mod publish;
+pub mod select_result;
 pub mod start;
 pub mod status;
 

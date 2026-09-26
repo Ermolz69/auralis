@@ -2,21 +2,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TranslationReview } from './TranslationReview';
+import { TranslationReviewPanel } from './TranslationReviewPanel';
 
 const listProjectTranslations = vi.hoisted(() => vi.fn());
 const getTranslationComparison = vi.hoisted(() => vi.fn());
+const listTranslationHistory = vi.hoisted(() => vi.fn());
+const selectTranslationResult = vi.hoisted(() => vi.fn());
 
 vi.mock('@/entities/project', () => ({
   useProjectContext: () => ({ project: { id: '00000000-0000-4000-8000-000000000001' } }),
 }));
-vi.mock('@/entities/translation/api/translationApi', () => ({
+vi.mock('@/entities/translation', () => ({
   listProjectTranslations,
   getTranslationComparison,
+  listTranslationHistory,
+  selectTranslationResult,
 }));
 
 const projectId = '00000000-0000-4000-8000-000000000001';
 const translationId = '00000000-0000-4000-8000-000000000002';
 const resultId = '00000000-0000-4000-8000-000000000003';
+const olderResultId = '00000000-0000-4000-8000-000000000007';
 const link = {
   translationId,
   projectId,
@@ -32,11 +38,24 @@ const link = {
   createdAt: '2026-09-25T00:00:00Z',
   updatedAt: '2026-09-25T00:01:00Z',
 };
+const historyEntries = [resultId, olderResultId].map((id, index) => ({
+  resultId: id,
+  resultRevision: 2 - index,
+  runId: '00000000-0000-4000-8000-000000000006',
+  artifactId: link.outputArtifactId,
+  needsReview: true,
+}));
 
 afterEach(() => cleanup());
 beforeEach(() => {
   vi.clearAllMocks();
   listProjectTranslations.mockResolvedValue([link]);
+  listTranslationHistory.mockResolvedValue({ link, entries: historyEntries, nextCursor: null });
+  selectTranslationResult.mockResolvedValue({
+    ...link,
+    selectedResultId: olderResultId,
+    revision: 3,
+  });
   getTranslationComparison.mockImplementation(
     async (_projectId, _translationId, requestedResultId, offset) => ({
       resultId: requestedResultId,
@@ -70,7 +89,7 @@ describe('TranslationReview', () => {
     render(<TranslationReview />);
     expect(await screen.findByText('Здравствуйте.')).not.toBeNull();
     expect(screen.getByText('你好。')).not.toBeNull();
-    expect(screen.getByText(/Требует проверки/)).not.toBeNull();
+    expect(screen.getByText('Требует проверки · 26 реплик')).not.toBeNull();
     expect(getTranslationComparison).toHaveBeenCalledWith(
       projectId,
       translationId,
@@ -117,5 +136,131 @@ describe('TranslationReview', () => {
     );
     expect(await screen.findByText('Новый перевод.')).not.toBeNull();
     expect(screen.queryByText('Здравствуйте.')).toBeNull();
+  });
+
+  it('previews history without attachment, then explicitly selects at the observed revision', async () => {
+    render(<TranslationReview />);
+    await screen.findByText('Здравствуйте.');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Версия для сравнения' }).hasAttribute('disabled'),
+      ).toBe(false),
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: 'Версия для сравнения' }), {
+      target: { value: olderResultId },
+    });
+    await screen.findByText('Новый перевод.');
+    expect(screen.queryByText('Здравствуйте.')).toBeNull();
+    expect(selectTranslationResult).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Исправить перевод' })).toBeNull();
+    const chosen = { ...link, selectedResultId: olderResultId, revision: 3 };
+    listProjectTranslations.mockResolvedValue([chosen]);
+    listTranslationHistory.mockResolvedValue({
+      link: chosen,
+      entries: historyEntries,
+      nextCursor: null,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Использовать эту версию' }));
+    await waitFor(() =>
+      expect(selectTranslationResult).toHaveBeenCalledWith(
+        projectId,
+        translationId,
+        olderResultId,
+        2,
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Использовать эту версию' })).toBeNull(),
+    );
+    expect(screen.getByText('Новый перевод.')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Исправить перевод' })).toBeNull();
+  });
+
+  it('keeps the preview and attachment separate after a stale-selection conflict', async () => {
+    selectTranslationResult.mockRejectedValue({
+      code: 'CONFLICT',
+      message: 'Refresh before choosing a version',
+    });
+    render(<TranslationReview />);
+    await screen.findByText('Здравствуйте.');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Версия для сравнения' }).hasAttribute('disabled'),
+      ).toBe(false),
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: 'Версия для сравнения' }), {
+      target: { value: olderResultId },
+    });
+    await screen.findByText('Новый перевод.');
+    fireEvent.click(screen.getByRole('button', { name: 'Использовать эту версию' }));
+    expect(await screen.findByText('Refresh before choosing a version')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Использовать эту версию' })).not.toBeNull();
+    expect(screen.getByRole('option', { name: /версия 2 · Прикреплена/ })).not.toBeNull();
+    expect(listProjectTranslations).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads more history using the cursor without selecting or discarding earlier entries', async () => {
+    listTranslationHistory
+      .mockResolvedValueOnce({ link, entries: [historyEntries[0]], nextCursor: resultId })
+      .mockResolvedValueOnce({ link, entries: [historyEntries[1]], nextCursor: null });
+    render(<TranslationReview />);
+    await screen.findByText('Здравствуйте.');
+    fireEvent.click(await screen.findByRole('button', { name: 'Ещё версии' }));
+    await waitFor(() =>
+      expect(listTranslationHistory).toHaveBeenLastCalledWith(
+        projectId,
+        translationId,
+        resultId,
+        25,
+      ),
+    );
+    await screen.findByRole('option', { name: /версия 1/ });
+    expect(screen.getByRole('option', { name: /версия 2/ })).not.toBeNull();
+    expect(selectTranslationResult).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Ещё версии' })).toBeNull();
+  });
+
+  it('discards late history and comparison responses after changing project', async () => {
+    let resolveHistory!: (value: unknown) => void;
+    let resolveComparison!: (value: unknown) => void;
+    listTranslationHistory.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveHistory = resolve;
+        }),
+    );
+    getTranslationComparison.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveComparison = resolve;
+        }),
+    );
+    const { rerender } = render(<TranslationReviewPanel projectId={projectId} />);
+    await waitFor(() => expect(getTranslationComparison).toHaveBeenCalledTimes(1));
+    const otherProjectId = '00000000-0000-4000-8000-000000000008';
+    listProjectTranslations.mockResolvedValue([]);
+    rerender(<TranslationReviewPanel projectId={otherProjectId} />);
+    await screen.findByText('Пока нет переводов для этого проекта.');
+    resolveHistory({ link, entries: historyEntries, nextCursor: null });
+    resolveComparison({
+      resultId,
+      runId: historyEntries[0].runId,
+      totalSegments: 1,
+      offset: 0,
+      needsReview: true,
+      segments: [
+        {
+          id: 1,
+          ordinal: 0,
+          startMs: 1000,
+          endMs: 2000,
+          sourceLines: ['Old source'],
+          translatedLines: ['Old result'],
+        },
+      ],
+    });
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+    expect(screen.queryByText('Old result')).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Версия для сравнения' })).toBeNull();
   });
 });

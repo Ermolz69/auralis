@@ -14,7 +14,7 @@ pub struct StagedArtifact {
 
 #[async_trait]
 pub trait ArtifactStore: Send + Sync {
-    async fn verify_staging_digest(
+    async fn verify_storage_digest(
         &self,
         _key: &str,
         _size: u64,
@@ -91,13 +91,13 @@ impl<T> ArtifactStore for Arc<T>
 where
     T: ArtifactStore + ?Sized,
 {
-    async fn verify_staging_digest(
+    async fn verify_storage_digest(
         &self,
         key: &str,
         size: u64,
         sha256: &str,
     ) -> Result<bool, PortError> {
-        (**self).verify_staging_digest(key, size, sha256).await
+        (**self).verify_storage_digest(key, size, sha256).await
     }
     async fn verify_staging(&self, key: &str, size: u64) -> Result<bool, PortError> {
         (**self).verify_staging(key, size).await

@@ -9,10 +9,11 @@ use application::usecases::translation::{
     BeginTranslationUseCase, EditTranslationResultUseCase, ExecuteTranslationUseCase,
     GetTranslationComparisonUseCase, GetTranslationRunStatusUseCase,
     ImportTranslationSourceUseCase, InspectTranslationSourceUseCase,
-    ListProjectTranslationsUseCase, PublishTranslationResultUseCase,
+    ListProjectTranslationsUseCase, ListTranslationHistoryUseCase, PublishTranslationResultUseCase,
     ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
     RecoverTranslationPublicationsUseCase, RunManagedTranslationUseCase,
-    RunTranslationHostJobUseCase, StartTranslationJobUseCase, TranslationRunUseCase,
+    RunTranslationHostJobUseCase, SelectTranslationResultUseCase, StartTranslationJobUseCase,
+    TranslationRunUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -32,6 +33,8 @@ pub struct TranslationUseCases {
     pub import_source: ImportTranslationSourceUseCase,
     pub list: ListProjectTranslationsUseCase,
     pub comparison: GetTranslationComparisonUseCase,
+    pub history: ListTranslationHistoryUseCase,
+    pub select_result: SelectTranslationResultUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
     pub execute: Arc<ExecuteTranslationUseCase>,
@@ -58,7 +61,7 @@ impl TranslationUseCases {
     ) -> Self {
         let inspect = Arc::new(InspectTranslationSourceUseCase::new(
             projects.clone(),
-            artifacts,
+            artifacts.clone(),
             artifact_store.clone(),
             Arc::new(FormatInspector),
         ));
@@ -92,6 +95,14 @@ impl TranslationUseCases {
             inspect: inspect.clone(),
             import_source,
             list: ListProjectTranslationsUseCase::new(projects, links.clone()),
+            history: ListTranslationHistoryUseCase::new(links.clone()),
+            select_result: SelectTranslationResultUseCase::new(
+                inspect.clone(),
+                links.clone(),
+                Arc::new(TranslateResultReader::new(database_path.clone())),
+                artifacts,
+                artifact_store.clone(),
+            ),
             comparison: GetTranslationComparisonUseCase::new(
                 inspect.clone(),
                 links.clone(),
