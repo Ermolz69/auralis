@@ -108,7 +108,7 @@ tasks:
       - node tools/native-e2e/run.mjs
 
   desktop:e2e:native:translation:history:
-    desc: Edit a checked-model result, preview and select history through native controls, then reopen it
+    desc: Branch an older two-cue checked-model result, verify inherited text and historical selection, then reopen it
     env:
       AURALIS_NATIVE_E2E_TRANSLATION: '1'
       AURALIS_NATIVE_E2E_TRANSLATION_HISTORY: '1'

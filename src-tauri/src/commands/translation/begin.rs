@@ -38,6 +38,7 @@ fn profile_manifest_json() -> Result<String, CommandError> {
     if [
         "AURALIS_NATIVE_E2E_TRANSLATION_CRASH",
         "AURALIS_NATIVE_E2E_TRANSLATION_PAUSE",
+        "AURALIS_NATIVE_E2E_TRANSLATION_HISTORY",
     ]
     .iter()
     .any(|key| std::env::var(key).as_deref() == Ok("1"))

@@ -138,7 +138,10 @@ export async function runNativeE2e(rootDir) {
       await prepareTranslationFixture(
         dataRoot,
         subtitlePath,
-        translationCrashEnabled || translationDeleteEnabled || translationPauseEnabled,
+        translationCrashEnabled ||
+          translationDeleteEnabled ||
+          translationPauseEnabled ||
+          translationHistoryEnabled,
         translationVttEnabled,
         translationPackageEnabled,
         translationPauseEnabled,
@@ -170,7 +173,8 @@ export async function runNativeE2e(rootDir) {
       translationCrashEnabled ||
       translationDeleteEnabled ||
       translationPauseEnabled ||
-      translationPreparationPauseEnabled
+      translationPreparationPauseEnabled ||
+      translationHistoryEnabled
     )
       baselineModelPids = listModelProcessIds();
     app = launchTestApplication(
@@ -281,15 +285,19 @@ export async function runNativeE2e(rootDir) {
         runId,
         interrupted,
         translationVttEnabled ? 'vtt' : 'srt',
-        translationHistoryEnabled ? 3 : 2,
+        translationHistoryEnabled ? 4 : 2,
       );
       if (translationHistoryEnabled) {
         const beforeRestart = await verifyTranslationHistory(dataRoot, runId);
+        assert(
+          [...listModelProcessIds()].every((pid) => baselineModelPids.has(pid)),
+          'Managed model remained alive after historical edits',
+        );
         await terminate(app.child);
         app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
         await waitForTranslationHistoryReopened(dataRoot, app);
         await verifyTranslationHistory(dataRoot, runId, beforeRestart);
-        await verifyTranslationResult(dataRoot, subtitlePath, runId, null, 'srt', 3);
+        await verifyTranslationResult(dataRoot, subtitlePath, runId, null, 'srt', 4);
       }
       if (translationPauseEnabled) verifyResumedPause(dataRoot, interrupted);
       if (translationEventsEnabled) await verifyTranslationEvents(dataRoot, runId);

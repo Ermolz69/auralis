@@ -1,7 +1,8 @@
-import crypto from 'node:crypto';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { verifyHistoryResults } from './translation-history-results.mjs';
+import { verifyHistoryEdits } from './translation-history-edits.mjs';
 
 const REOPEN_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 100;
@@ -25,6 +26,7 @@ export async function verifyTranslationHistory(dataRoot, scenarioId, previous = 
   const markers = [
     'translation-history-manual-ready',
     'translation-history-preview',
+    'translation-history-branch-ready',
     'translation-history-selected',
   ];
   if (previous) markers.push('translation-history-reopened');
@@ -44,75 +46,56 @@ export async function verifyTranslationHistory(dataRoot, scenarioId, previous = 
         'SELECT t.* FROM project_translations t JOIN projects p ON p.id = t.project_id WHERE p.title = ?',
       )
       .get(`native-e2e-translation-complete:${scenarioId}`);
-    if (!link || link.active_run_id !== null)
-      throw new Error('History project lost its completed link');
+    if (!link || link.active_run_id !== null || link.revision !== 5)
+      throw new Error('History project lost its completed link or exact choice revision');
     const publications = host
       .prepare(
-        'SELECT p.*, a.location_value, a.size_bytes, a.project_id, a.state AS artifact_state FROM translation_publications p JOIN artifacts a ON a.id = p.artifact_id WHERE p.translation_id = ? ORDER BY p.rowid',
+        'SELECT p.*, a.location_value, a.size_bytes, a.project_id, a.state AS artifact_state FROM translation_publications p JOIN artifacts a ON a.id = p.artifact_id WHERE p.translation_id = ? ORDER BY p.result_revision',
       )
       .all(link.translation_id);
     if (
-      publications.length !== 2 ||
-      link.selected_result_id !== publications[0].result_id ||
-      link.output_artifact_id !== publications[0].artifact_id
+      publications.length !== 3 ||
+      link.selected_result_id !== publications[1].result_id ||
+      link.output_artifact_id !== publications[1].artifact_id
     )
-      throw new Error('Historical model result is not the project attachment');
-    const outputs = [];
+      throw new Error('Explicit historical revision 2 is not the retained project attachment');
     for (const publication of publications) {
       if (
         publication.state !== 'ready' ||
         publication.artifact_state !== 'ready' ||
         publication.project_id !== link.project_id ||
-        publication.source_sha256 !== link.source_sha256
+        publication.source_sha256 !== link.source_sha256 ||
+        publication.needs_review !== 1 ||
+        publication.run_id !== publications[0].run_id
       )
-        throw new Error('History includes a non-ready or foreign artifact');
-      const result = translate
-        .prepare('SELECT * FROM results WHERE result_id = ?')
-        .get(publication.result_id);
-      const bytes = await fsp.readFile(managedPath(dataRoot, publication.location_value));
-      if (
-        !result ||
-        result.run_id !== publication.run_id ||
-        result.revision !== publication.result_revision ||
-        result.output_sha256 !== hash(bytes) ||
-        Number(publication.size_bytes) !== bytes.length
-      )
-        throw new Error('Immutable result or file differs across databases');
-      if (!bytes.toString('utf8').includes('00:00:01,000 --> 00:00:02,000'))
-        throw new Error('Historical output lost subtitle timing');
-      outputs.push({
-        resultId: result.result_id,
-        revision: result.revision,
-        artifactId: publication.artifact_id,
-        sha256: result.output_sha256,
-      });
+        throw new Error('History includes a foreign, nonready or mismatched publication');
     }
-    if (
-      outputs[0].revision !== 1 ||
-      outputs[1].revision !== 2 ||
-      outputs[0].sha256 === outputs[1].sha256
-    )
-      throw new Error('Manual result did not create a distinct later version');
-    const manual = await fsp.readFile(
-      managedPath(dataRoot, publications[1].location_value),
-      'utf8',
-    );
-    if (!manual.includes('Привет, мир.'))
-      throw new Error('Actual native editor text is absent from the later output');
+    const verified = await verifyHistoryResults(dataRoot, translate, publications);
+    const edits = verifyHistoryEdits(host, translate, link, publications);
     const attempts = translate
       .prepare('SELECT COUNT(*) AS count FROM run_attempts WHERE run_id = ?')
       .get(publications[0].run_id);
-    if (Number(attempts.count) !== 1 || publications[1].run_id !== publications[0].run_id)
-      throw new Error('Reopening history unexpectedly started inference');
+    if (Number(attempts.count) !== 1)
+      throw new Error('History editing or reopening unexpectedly started inference');
+    const checkpoints = translate
+      .prepare(
+        'SELECT block_index, input_fingerprint, accepted_json, committed_at FROM block_checkpoints WHERE run_id = ? ORDER BY block_index',
+      )
+      .all(publications[0].run_id);
+    if (checkpoints.length !== 2) throw new Error('Two-cue model checkpoints were lost');
     const observed = {
       translationId: link.translation_id,
       runId: publications[0].run_id,
       selectedResultId: link.selected_result_id,
       linkRevision: link.revision,
-      outputs,
+      ...verified,
+      edits,
+      checkpoints,
     };
     if (previous && JSON.stringify(previous) !== JSON.stringify(observed))
-      throw new Error('Restart changed history selection, revision or immutable outputs');
+      throw new Error(
+        'Restart changed selection, outputs, edit requests, provenance or committed checkpoints',
+      );
     process.stdout.write(
       `Native translation history verified: ${JSON.stringify({ ...observed, reopened: Boolean(previous), markers })}\n`,
     );
@@ -121,15 +104,4 @@ export async function verifyTranslationHistory(dataRoot, scenarioId, previous = 
     translate.close();
     host.close();
   }
-}
-
-function managedPath(dataRoot, key) {
-  const root = path.resolve(dataRoot, 'projects');
-  const resolved = path.resolve(root, ...key.split('/'));
-  if (!resolved.startsWith(`${root}${path.sep}`))
-    throw new Error('History artifact escaped the managed root');
-  return resolved;
-}
-function hash(bytes) {
-  return crypto.createHash('sha256').update(bytes).digest('hex');
 }

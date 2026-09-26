@@ -17,6 +17,8 @@ import { reopenTranslationHistory } from './reopenTranslationHistory';
 
 const READY_TIMEOUT_MS = 20_000;
 const POLL_INTERVAL_MS = 50;
+// Reserve 16 prefix bytes; one UTF-16 unit encodes to at most three UTF-8 bytes.
+const FAILURE_REASON_MAX_UTF16_UNITS = 80;
 let started = false;
 
 export function NativeE2ERunner() {
@@ -140,7 +142,9 @@ async function runNativeScenario() {
     await renameProject(project.id, `native-e2e-complete:${runId}`, latestProject.revision);
   } catch (error) {
     console.error('Native E2E scenario failed', error);
-    const failureReason = error instanceof Error ? error.message : String(error);
+    const failureReason = (error instanceof Error ? error.message : String(error))
+      .replace(/[\r\n]/g, ' ')
+      .slice(0, FAILURE_REASON_MAX_UTF16_UNITS);
     await invoke('native_e2e_checkpoint_cmd', {
       checkpoint: `scenario-failed:${failureReason}`,
     }).catch(() => undefined);

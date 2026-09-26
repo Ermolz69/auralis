@@ -20,6 +20,7 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "translation-events-panel-ready",
     "translation-history-manual-ready",
     "translation-history-preview",
+    "translation-history-branch-ready",
     "translation-history-selected",
     "translation-history-reopened",
     "translation-pause-acknowledged",

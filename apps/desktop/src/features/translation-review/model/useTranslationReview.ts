@@ -106,7 +106,7 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
       if (!selectedTranslationId) return;
       setPreview({ translationId: selectedTranslationId, resultId });
       setOffset(0);
-      setPage(null);
+      if (selectedResultId !== resultId || offset !== 0) setPage(null);
     },
     offset,
     page,

@@ -96,6 +96,20 @@ beforeEach(() => {
 });
 
 describe('TranslationReview', () => {
+  it('keeps the loaded comparison when the same preview is selected again', async () => {
+    render(<TranslationReview />);
+    await screen.findByText('Здравствуйте.');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Версия для сравнения' }).hasAttribute('disabled'),
+      ).toBe(false),
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: 'Версия для сравнения' }), {
+      target: { value: resultId },
+    });
+    await waitFor(() => expect(screen.getByText('Здравствуйте.')).not.toBeNull());
+    expect(getTranslationComparison).toHaveBeenCalledTimes(1);
+  });
   it('edits an older preview during another active run and retains publication status across preview changes', async () => {
     const editedId = '00000000-0000-4000-8000-000000000010';
     vi.stubGlobal('crypto', { randomUUID: () => editedId });

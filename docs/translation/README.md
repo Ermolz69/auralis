@@ -558,7 +558,8 @@ owned translated publication/artifact exists. Translation deletion cascades the
 journal. Six integration tests and the existing storage tests pass.
 
 The later application and desktop integrations below use these foundations.
-The CLI branch route and native older-base save/reopen remain pending. No
+The CLI branch route and native manual-save interruption remain pending. The
+later native branch record covers completed older-base save/reopen. No
 historical-save control should bypass those boundaries. The full
 contract and evidence live in the pinned module at
 `docs/architecture/015-historical-result-edits.md` and
@@ -584,8 +585,9 @@ The pinned evidence record is
 `eval/experiments/2026-09-26-manual-publication-ordering.md`. Its fixtures arrange
 host metadata and artifact ready states. The later application tests below execute
 historical saves through both databases and verify request/provenance; the desktop
-contract slice supplies supporting UI checks. Actual native process evidence
-remains pending.
+contract slice supplies supporting UI checks. The native branch record below
+covers completed saves and reopening; manual-save process interruption remains
+pending.
 
 ## Historical application save and recovery
 
@@ -608,13 +610,16 @@ CRLF SRT/WebVTT plans, deterministic provider checkpoints, immutable edits,
 managed files and the real outbox. They cover divergent historical bases,
 another unfinished registered run, reopening, concurrent head conflicts, exact
 retries after later revisions, corruption and recovery beyond 100 interrupted
-intents. These are supporting tests with a deterministic provider; actual desktop
-process interruption and real-model historical editing remain unverified.
+intents. These are supporting tests with a deterministic provider. The later native
+branch record covers real-model historical editing; actual desktop process
+interruption within manual-save boundaries remains unverified.
 
 The pinned record is `eval/experiments/2026-09-26-historical-edit-application.md`.
 The subsequent desktop contract slice below adds typed head/link observations,
-guarded IPC/UI saves and publication outcome reads. Native and CLI branch gates
-remain open. S7, language and clean-install gates remain open; work stays local.
+guarded IPC/UI saves and publication outcome reads. The later native branch record
+supplies completed-save/reopening evidence. Native manual-save interruption and
+CLI branch gates remain open. S7, language and clean-install gates remain open;
+work stays local.
 
 ## Historical desktop contracts and controls
 
@@ -640,7 +645,33 @@ passes 17; the targeted historical API/runtime contract unit command passes 23.
 commands at `eval/experiments/2026-09-26-historical-edit-desktop-contract.md`.
 
 These tests use real persistence with a deterministic provider and mocked IPC in
-jsdom. Actual checked-model native older-base saves, conflicting choices,
-reopening and manual journal/core/output process-kill boundaries remain unverified.
-The CLI branch interface, broader review, language and clean Windows delivery
-gates remain open. No weights/corpus payloads or public publication were added.
+jsdom. The native record below supplies completed older-base save and reopening
+evidence. Conflicting concurrent choices and manual journal/core/output
+process-kill boundaries remain unverified. The CLI branch interface, broader
+review, language and clean Windows delivery gates remain open. No weights/corpus
+payloads or public publication were added.
+
+## Native historical branch and reopening
+
+`task desktop:e2e:native:translation:history` passes actual React/Tauri controls
+with the separately supplied checked model. Its authored two-cue SRT produces
+three immutable outputs: model text, a second-cue correction, and a first-cue
+branch copied from the original model version. Independent file and SQLite checks
+verify that the branch retains the model's second cue rather than the later edit,
+and recompute both metadata-only journal digests and edit ancestry.
+
+Explicitly selecting revision 2 changes revision 3's notice to ready history.
+Terminating and reopening the actual desktop retains that choice, all output
+identities/hashes, link revision 5, one inference attempt and two unchanged model
+checkpoints. No inference is replayed; the reopened editor observes the newer head.
+The probe exposed repeated-preview clearing, now fixed with a regression.
+`task frontend:test:components -- src/features/translation-review` passes 18 tests.
+`task frontend:build` passes budgets and checks 16 delivered files with no native
+test modules, model weights or test data. Typecheck, lint, native Rust Clippy,
+module size, IPC parity and frontend boundary checks also pass.
+
+The pinned evidence record is
+`eval/experiments/2026-09-27-native-historical-branch.md`. This test terminates only
+after saves are ready; process-kill recovery between manual journal admission,
+core commit and output publication remains the next native gate. Full S7, language
+quality and clean Windows installation remain open. Development remains local.

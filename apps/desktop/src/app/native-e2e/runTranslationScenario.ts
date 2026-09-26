@@ -126,7 +126,11 @@ async function finishTranslationScenario(
     10,
   );
   const expectedSegments =
-    __NATIVE_E2E_TRANSLATION_CRASH__ || __NATIVE_E2E_TRANSLATION_PAUSE__ ? 2 : 1;
+    __NATIVE_E2E_TRANSLATION_CRASH__ ||
+    __NATIVE_E2E_TRANSLATION_PAUSE__ ||
+    __NATIVE_E2E_TRANSLATION_HISTORY__
+      ? 2
+      : 1;
   if (
     comparison.runId !== translationRunId ||
     !comparison.needsReview ||

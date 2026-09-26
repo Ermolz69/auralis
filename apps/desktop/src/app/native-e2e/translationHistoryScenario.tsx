@@ -1,106 +1,94 @@
 import {
   getTranslationComparison,
+  getTranslationPublication,
   listProjectTranslations,
   listTranslationHistory,
 } from '@/entities/translation';
 import { invoke } from '@/shared/api/tauri';
 import { mountTranslationReview } from './translationReviewScenarioView';
-
-const TIMEOUT_MS = 60_000;
-const POLL_INTERVAL_MS = 25;
-const MANUAL_TEXT = 'Привет, мир.';
+import { TranslationHistoryControls } from './translationHistoryControls';
+import { BRANCH_FIRST_LINE, LATER_SECOND_LINE } from './translationHistoryFixture';
 
 export async function translationHistoryScenario(
   projectId: string,
   translationId: string,
   originalResultId: string,
 ): Promise<void> {
-  const original = await getTranslationComparison(projectId, translationId, originalResultId, 0, 1);
-  const originalText = original.segments[0].translatedLines[0];
-  if (originalText === MANUAL_TEXT)
-    throw new Error('Manual edit must differ from the model result');
+  const original = await getTranslationComparison(projectId, translationId, originalResultId, 0, 2);
+  if (original.segments.length !== 2 || original.segments[1].sourceLines[0] !== '再见。')
+    throw new Error('Historical branch probe requires two mapped model cues');
+  const originalFirst = original.segments[0].translatedLines[0];
+  const originalSecond = original.segments[1].translatedLines[0];
+  if (originalFirst === BRANCH_FIRST_LINE || originalSecond === LATER_SECOND_LINE)
+    throw new Error('Authored manual lines must differ from the model output');
   const view = mountTranslationReview(projectId);
-  const deadline = Date.now() + TIMEOUT_MS;
-  const waitFor = async (predicate: () => boolean | Promise<boolean>) => {
-    while (Date.now() < deadline) {
-      if (await predicate()) return;
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-    }
-    throw new Error(`History controls timed out: ${view.container.textContent?.slice(-1200)}`);
-  };
-  const button = (label: string) =>
-    Array.from(view.container.querySelectorAll('button')).find(
-      (item) => item.textContent?.trim() === label && !item.disabled,
-    );
-  try {
-    await waitFor(() => Boolean(button('Исправить перевод')));
-    button('Исправить перевод')!.click();
-    await waitFor(() => Boolean(view.container.querySelector('input[type="text"]')));
-    const input = view.container.querySelector<HTMLInputElement>('input[type="text"]')!;
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-    if (!setter) throw new Error('Native input setter is unavailable');
-    setter.call(input, MANUAL_TEXT);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    await waitFor(() => Boolean(button('Сохранить новую версию')));
-    button('Сохранить новую версию')!.click();
-    let editedResultId: string | null = null;
-    await waitFor(async () => {
-      const link = (await listProjectTranslations(projectId)).find(
-        (item) => item.translationId === translationId,
-      );
-      if (!link?.selectedResultId || link.selectedResultId === originalResultId) return false;
-      editedResultId = link.selectedResultId;
-      return Boolean(view.container.textContent?.includes(MANUAL_TEXT));
+  const controls = new TranslationHistoryControls(view.container);
+  const selected = async () =>
+    (await listProjectTranslations(projectId)).find((link) => link.translationId === translationId);
+  const waitNewResult = async (previousId: string): Promise<string> => {
+    let resultId: string | null = null;
+    await controls.wait(async () => {
+      const link = await selected();
+      resultId = link?.selectedResultId ?? null;
+      return Boolean(resultId && resultId !== previousId && link?.activeRunId === null);
     });
+    return resultId!;
+  };
+  try {
+    await controls.edit('再见。', LATER_SECOND_LINE);
+    const laterResultId = await waitNewResult(originalResultId);
+    const later = await getTranslationComparison(projectId, translationId, laterResultId, 0, 2);
+    if (
+      later.segments[0].translatedLines[0] !== originalFirst ||
+      later.segments[1].translatedLines[0] !== LATER_SECOND_LINE
+    )
+      throw new Error('First native edit changed the wrong segment');
+    await checkpoint('translation-history-manual-ready');
+
+    await controls.preview(originalResultId, originalSecond);
+    if (
+      (await selected())?.selectedResultId !== laterResultId ||
+      !controls.button('Исправить перевод')
+    )
+      throw new Error('Older preview changed attachment or has no explicit branch control');
+    await checkpoint('translation-history-preview');
+    await controls.edit('你好。', BRANCH_FIRST_LINE);
+    const branchResultId = await waitNewResult(laterResultId);
+    const branch = await getTranslationComparison(projectId, translationId, branchResultId, 0, 2);
+    if (
+      branch.segments[0].translatedLines[0] !== BRANCH_FIRST_LINE ||
+      branch.segments[1].translatedLines[0] !== originalSecond
+    )
+      throw new Error('Older-base branch merged the later second-segment edit');
     const history = await listTranslationHistory(projectId, translationId);
     if (
-      history.entries.length !== 2 ||
-      history.entries[0].resultId !== editedResultId ||
-      history.entries[1].resultId !== originalResultId ||
-      history.link.activeRunId !== null
+      history.entries.length !== 3 ||
+      history.entries[0].resultId !== branchResultId ||
+      history.entries[1].resultId !== laterResultId ||
+      history.entries[2].resultId !== originalResultId
     )
-      throw new Error('Manual edit did not produce two ready historical versions');
-    const edited = await getTranslationComparison(projectId, translationId, editedResultId!, 0, 1);
-    if (
-      edited.segments[0].translatedLines[0] !== MANUAL_TEXT ||
-      edited.segments[0].sourceLines[0] !== '你好。'
-    )
-      throw new Error('Actual input change was not saved to the new result');
-    await checkpoint('translation-history-manual-ready');
-    const select = view.container.querySelector<HTMLSelectElement>(
-      '#translation-history-selection',
+      throw new Error('Native branch did not retain all three immutable versions');
+    await controls.wait(() =>
+      Boolean(view.container.textContent?.includes('Новая версия готова и выбрана для проекта.')),
     );
-    if (!select) throw new Error('Native history selector is missing');
-    await waitFor(
-      () =>
-        !select.disabled &&
-        Array.from(select.options).some((item) => item.value === originalResultId),
-    );
-    select.value = originalResultId;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    await waitFor(
-      () =>
-        Boolean(button('Использовать эту версию')) &&
-        Array.from(view.container.querySelectorAll('p')).some(
-          (item) => item.textContent === originalText,
-        ),
-    );
-    const previewed = (await listProjectTranslations(projectId)).find(
-      (item) => item.translationId === translationId,
-    );
-    if (previewed?.selectedResultId !== editedResultId || button('Исправить перевод'))
-      throw new Error('History preview changed attachment or enabled a stale edit');
-    await checkpoint('translation-history-preview');
-    button('Использовать эту версию')!.click();
-    await waitFor(async () => {
-      const link = (await listProjectTranslations(projectId)).find(
-        (item) => item.translationId === translationId,
-      );
+    await controls.preview(branchResultId, BRANCH_FIRST_LINE);
+    if (!controls.hasParagraph(originalSecond) || controls.hasParagraph(LATER_SECOND_LINE))
+      throw new Error('Native comparison displayed a merged branch');
+    await checkpoint('translation-history-branch-ready');
+
+    await controls.preview(laterResultId, LATER_SECOND_LINE);
+    await controls.wait(() => Boolean(controls.button('Использовать эту версию')));
+    controls.button('Использовать эту версию')!.click();
+    await controls.wait(async () => {
+      const link = await selected();
+      const outcome = await getTranslationPublication(projectId, translationId, branchResultId);
       return (
-        link?.selectedResultId === originalResultId &&
+        link?.selectedResultId === laterResultId &&
         link.activeRunId === null &&
-        !button('Использовать эту версию')
+        outcome.publication.state === 'ready' &&
+        outcome.link.selectedResultId === laterResultId &&
+        !controls.button('Использовать эту версию') &&
+        Boolean(view.container.textContent?.includes('Новая версия готова в истории.'))
       );
     });
     await checkpoint('translation-history-selected');
