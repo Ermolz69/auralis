@@ -152,6 +152,15 @@ even when its runtime cancellation token is unset. The two-database scheduler
 regression observes the actual attached task completion, a cancelled host job and
 paused Translate state after interrupting an unanswered mock HTTP request.
 `task rs:test:application -- --test translation_scheduler_pause --test translation_host_execution_failure`,
-`task rs:fmt` and `task rs:clippy` passed. The recorded MSI above predates these
-cancellation changes and needs a fresh production build and payload audit before
-they can be distributed.
+`task rs:fmt` and `task rs:clippy` passed. The earlier MSI above predates these
+cancellation changes. A fresh `task desktop:bundle -- --bundles msi` now passed
+with source revision `0695d55029366a152136f1faf9160c03456649e8` and Translate
+`2897b1c7a6d3bccef64a9b242a244ef17c1c5bbb`. It verifies nine extracted files,
+the complete packaged application identity and exclusion of weights/test data.
+The new unsigned MSI has SHA-256
+`c702e1b9ee3b06ebe891f8c7221bbc22265c8ee070b234fb455aa610bb5ee007` and a retained
+copy under `.cache/installer-audits/cancellation-2026-09-26-1200/`. Evidence and
+the separate authored QA handoff are recorded at
+`modules/auralis-translate/eval/experiments/2026-09-26-windows-msi-cancellation.md`.
+The handoff is not an application resource; its clean-environment report remains
+unexecuted. Signed delivery and the unseeded setup/offline gate remain open.
