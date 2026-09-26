@@ -10,7 +10,8 @@ pub(crate) const SCHEMA: &str = concat!(
     include_str!("translation_links_schema.sql"),
     include_str!("translation_run_intents_schema.sql"),
     include_str!("translation_host_jobs_schema.sql"),
-    include_str!("translation_publication_revisions_schema.sql")
+    include_str!("translation_publication_revisions_schema.sql"),
+    include_str!("translation_edit_intents_schema.sql")
 );
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
@@ -91,8 +92,11 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker >= 8 {
         expected_tables.push("translation_host_jobs");
     }
+    if schema_marker >= 10 {
+        expected_tables.push("translation_edit_intents");
+    }
     expected_tables.sort_unstable();
-    if table_names != expected_tables || !(1..=9).contains(&schema_marker) {
+    if table_names != expected_tables || !(1..=10).contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -201,6 +205,9 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 9 {
         super::translation_publication_revisions_migration::migrate(pool).await?;
     }
+    if schema_marker < 10 {
+        super::translation_edit_intents_migration::migrate(pool).await?;
+    }
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
     validate_columns(pool, "ui_migrations", &["key"]).await?;
@@ -272,6 +279,22 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     )
     .await?;
 
+    validate_columns(
+        pool,
+        "translation_edit_intents",
+        &[
+            "result_id",
+            "translation_id",
+            "project_id",
+            "base_result_id",
+            "run_id",
+            "expected_head_result_id",
+            "expected_link_revision",
+            "request_sha256",
+            "created_at",
+        ],
+    )
+    .await?;
     Ok(false)
 }
 

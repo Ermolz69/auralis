@@ -543,3 +543,24 @@ Older-base branch edits, fuller review/diagnostic interaction, extra command rac
 actual Windows cleanup failure and language/clean-install gates remain open.
 Development is local only. No public publication or model acquisition occurs in
 this slice, and model/test payloads remain excluded from production delivery.
+
+## Historical edit foundation
+
+The local Translate pin now supplies schema v6 and explicit immutable older-base
+edits with observed-head guards and persisted ancestry. Auralis schema v10 adds
+`translation_edit_intents` and a separate `TranslationEditIntentStore` port. The
+journal stores only IDs, expected head/link revisions, a request digest and a
+creation timestamp. Admission requires a matching project/link revision and a
+ready translated base with an owned frozen run. Exact retries survive changed
+selection; changed requests conflict. Recovery references use bounded cursor
+pages independently of selected/active runs and leave recovery only after a ready
+owned translated publication/artifact exists. Translation deletion cascades the
+journal. Six integration tests and the existing storage tests pass.
+
+These are storage foundations. The current application editor and startup recovery
+do not yet use the journal or the branch API. Separate manual branch publication,
+attachment conflict handling, CLI/IPC/UI and native older-base save/reopen remain
+pending. No historical-save control should bypass those boundaries. The full
+contract and evidence live in the pinned module at
+`docs/architecture/015-historical-result-edits.md` and
+`eval/experiments/2026-09-26-historical-edit-foundation.md`. Development remains local.

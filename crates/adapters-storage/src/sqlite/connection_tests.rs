@@ -47,6 +47,7 @@ mod tests {
                 "project_pins",
                 "project_translations",
                 "projects",
+                "translation_edit_intents",
                 "translation_host_jobs",
                 "translation_publications",
                 "translation_run_intents",
@@ -60,7 +61,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            9
+            10
         );
 
         let project_columns: Vec<String> =
