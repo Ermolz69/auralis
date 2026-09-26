@@ -26,17 +26,7 @@ export async function pausePreparationScenario(
     if (!container.textContent?.includes('Подготовка модели')) {
       throw new Error('Model preparation finished before the observed pause boundary');
     }
-    const clickedAt = performance.now();
-    (await waitForButton(container, 'Пауза')).click();
-    await waitFor(
-      container,
-      () =>
-        !container.textContent?.includes('Подготовка модели') &&
-        container.textContent?.includes('На паузе') &&
-        !!findButton(container, 'Продолжить перевод'),
-      ACKNOWLEDGEMENT_TIMEOUT_MS,
-    );
-    const acknowledgementMs = Math.ceil(performance.now() - clickedAt);
+    const acknowledgementMs = await acknowledgePause(container);
     const status = await getTranslationRunStatus(projectId, translationId);
     const link = (await listProjectTranslations(projectId)).find(
       (item) => item.translationId === translationId,
@@ -72,12 +62,68 @@ export async function pausePreparationScenario(
     await invoke('native_e2e_checkpoint_cmd', {
       checkpoint: 'translation-worker-preflight-visible',
     });
+    if (__NATIVE_E2E_TRANSLATION_WORKER_PREFLIGHT_PAUSE__) {
+      await pauseWorkerPreflight(container, scenarioId, projectId, translationId, runId);
+    }
     await waitFor(container, () => !container.textContent?.includes('Подготовка модели'));
     await waitForResumedAttempt(container, projectId, translationId);
   } finally {
     root.unmount();
     container.remove();
   }
+}
+
+async function pauseWorkerPreflight(
+  container: HTMLElement,
+  scenarioId: string,
+  projectId: string,
+  translationId: string,
+  runId: string,
+): Promise<void> {
+  const project = await invoke('get_project_cmd', { projectId });
+  await renameProject(projectId, `native-e2e-worker-preflight:${scenarioId}`, project.revision);
+  await waitForTitle(projectId, `native-e2e-worker-pause-now:${scenarioId}`);
+  const before = await getTranslationRunStatus(projectId, translationId);
+  if (before.phase !== 'paused' || !before.activeHostJobId || before.pauseRequested) {
+    throw new Error('Accepted worker passed its observed preflight before the pause click');
+  }
+  const acknowledgementMs = await acknowledgePause(container);
+  const paused = await getTranslationRunStatus(projectId, translationId);
+  if (
+    paused.runId !== runId ||
+    paused.phase !== 'paused' ||
+    paused.activeHostJobId ||
+    paused.pauseRequested ||
+    paused.savedBlocks ||
+    paused.resultId
+  ) {
+    throw new Error('Worker preflight pause admitted work or retained its active host job');
+  }
+  const latest = await invoke('get_project_cmd', { projectId });
+  await renameProject(
+    projectId,
+    `native-e2e-worker-paused:${scenarioId}:${acknowledgementMs}`,
+    latest.revision,
+  );
+  await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-worker-preflight-paused' });
+  await waitForTitle(projectId, `native-e2e-worker-resume:${scenarioId}`);
+  (await waitForButton(container, 'Продолжить перевод')).click();
+  await waitFor(container, () => container.textContent?.includes('Подготовка модели'));
+  await waitForWorkerPreflight(projectId, translationId);
+}
+
+async function acknowledgePause(container: HTMLElement): Promise<number> {
+  const clickedAt = performance.now();
+  (await waitForButton(container, 'Пауза')).click();
+  await waitFor(
+    container,
+    () =>
+      !container.textContent?.includes('Подготовка модели') &&
+      container.textContent?.includes('На паузе') &&
+      !!findButton(container, 'Продолжить перевод'),
+    ACKNOWLEDGEMENT_TIMEOUT_MS,
+  );
+  return Math.ceil(performance.now() - clickedAt);
 }
 
 async function waitForButton(container: HTMLElement, label: string): Promise<HTMLButtonElement> {

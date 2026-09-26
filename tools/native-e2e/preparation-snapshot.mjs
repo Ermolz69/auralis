@@ -4,6 +4,16 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 
+export const PREPARATION_RECORD_KINDS = Object.freeze([
+  'jobs',
+  'associations',
+  'attempts',
+  'checkpoints',
+  'results',
+  'publications',
+  'outputArtifacts',
+]);
+
 export function readPreparationSnapshot(dataRoot, titlePrefix) {
   const hostPath = path.join(dataRoot, 'auralis.sqlite');
   const translatePath = path.join(dataRoot, 'auralis-translate.sqlite');
@@ -31,6 +41,11 @@ export function readPreparationSnapshot(dataRoot, titlePrefix) {
       project,
       link,
       run,
+      hostJobs: host
+        .prepare(
+          'SELECT j.id, j.project_id, j.kind, j.status, t.run_id, t.ended_at FROM jobs j JOIN translation_host_jobs t ON t.job_id = j.id WHERE t.run_id = ?',
+        )
+        .all(run.run_id),
       originalSha256: crypto
         .createHash('sha256')
         .update(fs.readFileSync(originalPath))
@@ -83,6 +98,13 @@ export function readPreparationSnapshot(dataRoot, titlePrefix) {
 }
 
 export function verifyEmptyPreparation(snapshot, expectedState, sourceSha256) {
+  verifyPreparationIdentity(snapshot, expectedState, sourceSha256);
+  for (const name of PREPARATION_RECORD_KINDS) {
+    assert.equal(snapshot.counts[name], 0, `Preparation created ${name} before admission`);
+  }
+}
+
+export function verifyPreparationIdentity(snapshot, expectedState, sourceSha256) {
   assert.equal(snapshot.run.state, expectedState);
   assert.equal(snapshot.run.pause_requested, 0);
   assert.equal(snapshot.link.active_run_id, snapshot.run.run_id);
@@ -91,9 +113,6 @@ export function verifyEmptyPreparation(snapshot, expectedState, sourceSha256) {
   assert.equal(snapshot.link.output_artifact_id, null);
   assert.equal(snapshot.originalSha256, sourceSha256);
   assert.equal(snapshot.link.source_sha256, sourceSha256);
-  for (const [name, count] of Object.entries(snapshot.counts)) {
-    assert.equal(count, 0, `Preparation created ${name} before admission`);
-  }
 }
 
 export function releasePreparationGate(dataRoot, snapshot, title) {

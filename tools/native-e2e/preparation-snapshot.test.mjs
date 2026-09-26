@@ -39,6 +39,14 @@ test('rejects every kind of admitted or partial translation record', () => {
   }
 });
 
+test('rejects omitted required record counts', () => {
+  for (const name of Object.keys(snapshot().counts)) {
+    const value = snapshot();
+    delete value.counts[name];
+    assert.throws(() => verifyEmptyPreparation(value, 'paused', SOURCE_SHA256));
+  }
+});
+
 test('rejects unfinished acknowledgement, another run and an exposed result', () => {
   for (const mutate of [
     (value) => {

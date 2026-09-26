@@ -81,6 +81,14 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
       .includes('translation-worker-preflight-visible\n'),
     'Native panel did not restore accepted worker preparation after remount',
   );
+  if (snapshot.workerPause) {
+    assert(
+      fs
+        .readFileSync(path.join(dataRoot, 'native-e2e-bootstrap.txt'), 'utf8')
+        .includes('translation-worker-preflight-paused\n'),
+      'Native panel did not acknowledge worker-preflight pause',
+    );
+  }
   const deadline = Date.now() + 10_000;
   while ([...listPids()].some((pid) => !snapshot.baselinePids.has(pid))) {
     assert(Date.now() < deadline, 'Resumed model child was not released');
@@ -99,15 +107,25 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
       )
       .all(runId);
     assert.equal(attempts.length, 1);
-    assert.equal(jobs.length, 1);
-    assert.equal(jobs[0].status, 'completed');
-    assert(jobs[0].ended_at && attempts[0].ended_at);
-    assert.equal(attempts[0].host_job_id, jobs[0].id);
+    assert.equal(jobs.length, snapshot.workerPause ? 2 : 1);
+    const completed = jobs.filter((job) => job.status === 'completed');
+    assert.equal(completed.length, 1);
+    assert(completed[0].ended_at && attempts[0].ended_at);
+    assert.equal(attempts[0].host_job_id, completed[0].id);
+    if (snapshot.workerPause) {
+      const cancelled = jobs.filter((job) => job.status === 'cancelled');
+      assert.equal(cancelled.length, 1);
+      assert.equal(cancelled[0].id, snapshot.workerPause.jobId);
+      assert(cancelled[0].ended_at);
+      assert.notEqual(cancelled[0].id, completed[0].id);
+    }
     const result = translate.prepare('SELECT * FROM results WHERE run_id = ?').get(runId);
     assert(result);
     process.stdout.write(
       `${JSON.stringify({
-        scenario: 'native_preparation_pause',
+        scenario: snapshot.workerPause
+          ? 'native_worker_preflight_pause'
+          : 'native_preparation_pause',
         format: snapshot.paused.link.source_format,
         run_id: runId,
         translation_id: snapshot.paused.link.translation_id,
@@ -115,11 +133,12 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
         acknowledgement_ms: snapshot.acknowledgementMs,
         counts_at_pause: snapshot.paused.counts,
         source_sha256: snapshot.paused.originalSha256,
-        resumed_job_id: jobs[0].id,
+        resumed_job_id: completed[0].id,
         closed_attempts: attempts.length,
         output_sha256: result.output_sha256,
         child_absent_at_pause_verification: true,
         worker_preflight_ui_restored: true,
+        ...(snapshot.workerPause ? { worker_preflight_pause: snapshot.workerPause } : {}),
       })}\n`,
     );
   } finally {
@@ -128,14 +147,14 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
   }
 }
 
-function assertDesktopAlive(app) {
+export function assertDesktopAlive(app) {
   assert(
     app.child.exitCode === null && app.child.signalCode === null,
     'Desktop exited during preparation pause',
   );
 }
 
-function assertModelParent(pid, appPid) {
+export function assertModelParent(pid, appPid) {
   assert(Number.isInteger(pid) && Number.isInteger(appPid));
   const result = childProcess.spawnSync(
     'powershell.exe',

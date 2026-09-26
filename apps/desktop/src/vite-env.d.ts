@@ -11,5 +11,6 @@ declare const __NATIVE_E2E_SUBTITLE_PATH__: string;
 declare const __NATIVE_E2E_TRANSLATION_CRASH__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_PAUSE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE__: boolean;
+declare const __NATIVE_E2E_TRANSLATION_WORKER_PREFLIGHT_PAUSE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_DELETE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_PACKAGE__: boolean;

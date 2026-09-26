@@ -352,3 +352,42 @@ Evidence is at
 This closes the code-review finding above for the tested completion branch.
 Actual Windows kill/reap failure, command interleavings, clean installation and
 language quality remain open. This slice supplies no new native inference evidence.
+
+## Native accepted-worker preflight pause
+
+`task desktop:e2e:native:translation:worker-preflight-pause` extends the existing
+admission-pause scenario with an actual Pause click after scheduler acceptance
+and panel remount. Before that click the outer observer requires one running
+translation host job/open association, no Translate attempt or partial output,
+and exactly one desktop-owned model child. After acknowledgment the same host job
+must be cancelled and closed, its guard revision invalidated, its model absent,
+and its project-linked run still paused without a result. A final Continue uses
+a distinct host job and completes exactly one Translate attempt.
+
+The first full invocation passed: admission acknowledgment was 775 ms, accepted
+worker acknowledgment was 3059 ms, and source/output/ready-artifact checks passed.
+That binary predates the common acknowledgment-helper extraction and required-count
+observer strengthening. The final rebuilt invocation also passed: admission
+acknowledgment was 213 ms and worker acknowledgment was 3056 ms. Both pauses
+preserved zero Translate attempts/results; the cancelled host association closed,
+guard revision advanced from 1 to 2 and its model was absent at verification.
+Fresh resume completed the same run through a distinct host job and exactly one
+closed Translate attempt, with unchanged source/output digests, a ready separate
+result and final child release. Both invocations cleaned their sandboxes.
+Exact identities and scope are recorded at
+`modules/auralis-translate/eval/experiments/2026-09-26-native-worker-preflight-pause.md`.
+
+`task desktop:e2e:native:preparation:check` passed eleven verifier tests, including
+rejection of omitted required counters, partial output, another job/project/run,
+duplicate associations and invalid terminal state. `task fe:typecheck`,
+`task fe:lint`, `task q:fsd-boundaries`, `task q:ipc-contract`, `task q:file-size`,
+`task q:duplicate-code`, `task rs:clippy` and `task fe:build` passed.
+The production delivery check still verifies 16 emitted frontend files without
+native test modules, weights or evaluation payloads. Source changes are confined
+to native-only tooling/build flags/checkpoints; no product Rust or UI behavior
+changes in this scenario slice.
+
+Initial-hash native cancellation, additional repeated/concurrent commands,
+deletion/publication interleavings, Windows cleanup failure, clean installation
+and bilingual quality remain open. These individual debug-build observations
+do not establish latency or hardware SLAs. Work remains local.

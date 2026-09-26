@@ -19,6 +19,7 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "translation-preparation-started",
     "translation-preparation-paused",
     "translation-worker-preflight-visible",
+    "translation-worker-preflight-paused",
     "translation-result-ready",
     "translation-delete-requested",
     "translation-project-deleted",
