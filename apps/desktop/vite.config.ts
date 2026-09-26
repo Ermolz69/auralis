@@ -61,6 +61,9 @@ const __vite_dirname = path.dirname(fileURLToPath(import.meta.url));
 // https://vite.dev/config/
 export default defineConfig({
   define: {
+    __NATIVE_E2E_TRANSLATION_HISTORY_GAP__: JSON.stringify(
+      nativeE2eTranslationHistory && process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_GAP === '1',
+    ),
     __NATIVE_E2E_TRANSLATION_HISTORY__: JSON.stringify(nativeE2eTranslationHistory),
     __NATIVE_E2E_TRANSLATION_EVENTS__: JSON.stringify(nativeE2eTranslationEvents),
     __NATIVE_E2E_TRANSLATION_START_RACE__: JSON.stringify(nativeE2eTranslationStartRace),

@@ -76,6 +76,11 @@ impl EditHistoricalTranslationUseCase {
             }
             .into());
         }
+        #[cfg(feature = "native-e2e")]
+        if request.base_result_id != request.expected_head_result_id {
+            super::native_e2e_historical_edit_gap::hold_if_requested(base.intent.run_id, result_id)
+                .await?;
+        }
         Ok(result_id)
     }
 }

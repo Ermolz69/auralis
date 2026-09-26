@@ -30,6 +30,8 @@ mod list;
 mod managed_attempt;
 mod managed_worker;
 #[cfg(feature = "native-e2e")]
+mod native_e2e_historical_edit_gap;
+#[cfg(feature = "native-e2e")]
 mod native_e2e_result_gap;
 mod pending_job_failure;
 mod publish;

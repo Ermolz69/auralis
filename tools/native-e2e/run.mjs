@@ -25,6 +25,7 @@ import {
 import { releaseVerifiedPause, verifyResumedPause } from './translation-pause.mjs';
 import { releaseVerifiedPreparationPause, verifyResumedPreparation } from './preparation-pause.mjs';
 import { releaseVerifiedWorkerPreflightPause } from './worker-preflight-pause.mjs';
+import { waitForHistoricalEditGap, verifyHistoricalEditGap } from './historical-edit-gap.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
 const TRANSLATION_RESULT_TIMEOUT_MS = 600_000;
@@ -35,6 +36,9 @@ export async function runNativeE2e(rootDir) {
   const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
   const translationEventsEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
   const translationHistoryEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY === '1';
+  const historicalGapEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_GAP === '1';
+  if (historicalGapEnabled && !translationHistoryEnabled)
+    throw new Error('Historical core gap requires the standalone history mode');
   if (
     translationHistoryEnabled &&
     (!translationEnabled ||
@@ -120,6 +124,8 @@ export async function runNativeE2e(rootDir) {
   const runId = 'isolated-run';
   const secondOwnerEnabled = process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1';
   const resultCommitMarker = path.join(dataRoot, 'native-result-committed.txt');
+  const historicalCommitMarker = path.join(dataRoot, 'native-historical-edit-committed.txt');
+  let historicalGap;
   let app;
   let fixtureServer;
   let failure;
@@ -182,6 +188,7 @@ export async function runNativeE2e(rootDir) {
       dataRoot,
       fixtureServer.url,
       translationResultGapEnabled ? resultCommitMarker : null,
+      historicalGapEnabled ? historicalCommitMarker : null,
     );
     if (translationPackageEnabled) {
       await waitForPackageSelection(dataRoot, app);
@@ -251,6 +258,16 @@ export async function runNativeE2e(rootDir) {
       }
       app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
     }
+    if (historicalGapEnabled) {
+      historicalGap = await waitForHistoricalEditGap(dataRoot, historicalCommitMarker, app);
+      assert(
+        [...listModelProcessIds()].every((pid) => baselineModelPids.has(pid)),
+        'Managed model remained alive before historical commit interruption',
+      );
+      await killNativeProcess(app.child);
+      await verifyHistoricalEditGap(dataRoot, historicalGap, true);
+      app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+    }
     const result = await waitForResult(
       path.join(dataRoot, 'auralis.sqlite'),
       runId,
@@ -288,16 +305,25 @@ export async function runNativeE2e(rootDir) {
         translationHistoryEnabled ? 4 : 2,
       );
       if (translationHistoryEnabled) {
-        const beforeRestart = await verifyTranslationHistory(dataRoot, runId);
+        const beforeRestart = await verifyTranslationHistory(
+          dataRoot,
+          runId,
+          null,
+          historicalGapEnabled,
+        );
         assert(
           [...listModelProcessIds()].every((pid) => baselineModelPids.has(pid)),
           'Managed model remained alive after historical edits',
         );
-        await terminate(app.child);
-        app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
-        await waitForTranslationHistoryReopened(dataRoot, app);
-        await verifyTranslationHistory(dataRoot, runId, beforeRestart);
-        await verifyTranslationResult(dataRoot, subtitlePath, runId, null, 'srt', 4);
+        if (historicalGapEnabled) {
+          await verifyHistoricalEditGap(dataRoot, historicalGap, false);
+        } else {
+          await terminate(app.child);
+          app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+          await waitForTranslationHistoryReopened(dataRoot, app);
+          await verifyTranslationHistory(dataRoot, runId, beforeRestart);
+          await verifyTranslationResult(dataRoot, subtitlePath, runId, null, 'srt', 4);
+        }
       }
       if (translationPauseEnabled) verifyResumedPause(dataRoot, interrupted);
       if (translationEventsEnabled) await verifyTranslationEvents(dataRoot, runId);
@@ -568,7 +594,13 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
   );
 }
 
-function launchTestApplication(rootDir, dataRoot, ytdlpUrl, resultCommitMarker = null) {
+function launchTestApplication(
+  rootDir,
+  dataRoot,
+  ytdlpUrl,
+  resultCommitMarker = null,
+  historicalCommitMarker = null,
+) {
   const targetDir = path.resolve(rootDir, process.env.CARGO_TARGET_DIR ?? 'target');
   const executable = path.join(targetDir, 'debug', 'auralis-app.exe');
   if (!fs.existsSync(executable))
@@ -585,6 +617,9 @@ function launchTestApplication(rootDir, dataRoot, ytdlpUrl, resultCommitMarker =
       AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
       ...(resultCommitMarker
         ? { AURALIS_NATIVE_E2E_RESULT_COMMITTED_PATH: resultCommitMarker }
+        : {}),
+      ...(historicalCommitMarker
+        ? { AURALIS_NATIVE_E2E_HISTORICAL_COMMITTED_PATH: historicalCommitMarker }
         : {}),
       AURALIS_OBSERVABILITY_ENABLED: 'false',
       // Some CI hosts already run inside an OS sandbox, which makes WebView2's

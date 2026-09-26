@@ -125,6 +125,7 @@ const commandResultValidators = {
   health_check: isString,
   native_e2e_checkpoint_cmd: isNull,
   native_e2e_pipeline_pause_reached_cmd: isBoolean,
+  native_e2e_historical_edit_held_cmd: isBoolean,
   create_project_cmd: validateProject,
   create_project_from_youtube_cmd: validateProject,
   rename_project_cmd: validateProject,

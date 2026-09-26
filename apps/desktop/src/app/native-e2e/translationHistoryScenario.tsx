@@ -8,6 +8,7 @@ import { invoke } from '@/shared/api/tauri';
 import { mountTranslationReview } from './translationReviewScenarioView';
 import { TranslationHistoryControls } from './translationHistoryControls';
 import { BRANCH_FIRST_LINE, LATER_SECOND_LINE } from './translationHistoryFixture';
+import { chooseDuringHistoricalGap } from './chooseDuringHistoricalGap';
 
 export async function translationHistoryScenario(
   projectId: string,
@@ -53,6 +54,16 @@ export async function translationHistoryScenario(
       throw new Error('Older preview changed attachment or has no explicit branch control');
     await checkpoint('translation-history-preview');
     await controls.edit('你好。', BRANCH_FIRST_LINE);
+    if (__NATIVE_E2E_TRANSLATION_HISTORY_GAP__) {
+      await chooseDuringHistoricalGap(
+        controls,
+        projectId,
+        translationId,
+        originalResultId,
+        originalSecond,
+      );
+      return;
+    }
     const branchResultId = await waitNewResult(laterResultId);
     const branch = await getTranslationComparison(projectId, translationId, branchResultId, 0, 2);
     if (

@@ -21,13 +21,14 @@ export async function waitForTranslationHistoryReopened(dataRoot, app) {
   throw new Error('Timed out waiting for native historical selection after restart');
 }
 
-export async function verifyTranslationHistory(dataRoot, scenarioId, previous = null) {
+export async function verifyTranslationHistory(dataRoot, scenarioId, previous = null, gap = false) {
   const trace = await fsp.readFile(path.join(dataRoot, 'native-e2e-bootstrap.txt'), 'utf8');
   const markers = [
     'translation-history-manual-ready',
     'translation-history-preview',
-    'translation-history-branch-ready',
-    'translation-history-selected',
+    ...(gap
+      ? ['translation-history-gap-choice', 'translation-history-gap-recovered']
+      : ['translation-history-branch-ready', 'translation-history-selected']),
   ];
   if (previous) markers.push('translation-history-reopened');
   let offset = -1;
@@ -46,7 +47,7 @@ export async function verifyTranslationHistory(dataRoot, scenarioId, previous = 
         'SELECT t.* FROM project_translations t JOIN projects p ON p.id = t.project_id WHERE p.title = ?',
       )
       .get(`native-e2e-translation-complete:${scenarioId}`);
-    if (!link || link.active_run_id !== null || link.revision !== 5)
+    if (!link || link.active_run_id !== null || link.revision !== (gap ? 4 : 5))
       throw new Error('History project lost its completed link or exact choice revision');
     const publications = host
       .prepare(
@@ -55,10 +56,10 @@ export async function verifyTranslationHistory(dataRoot, scenarioId, previous = 
       .all(link.translation_id);
     if (
       publications.length !== 3 ||
-      link.selected_result_id !== publications[1].result_id ||
-      link.output_artifact_id !== publications[1].artifact_id
+      link.selected_result_id !== publications[gap ? 0 : 1].result_id ||
+      link.output_artifact_id !== publications[gap ? 0 : 1].artifact_id
     )
-      throw new Error('Explicit historical revision 2 is not the retained project attachment');
+      throw new Error('Explicit historical choice is not the retained project attachment');
     for (const publication of publications) {
       if (
         publication.state !== 'ready' ||
@@ -97,7 +98,7 @@ export async function verifyTranslationHistory(dataRoot, scenarioId, previous = 
         'Restart changed selection, outputs, edit requests, provenance or committed checkpoints',
       );
     process.stdout.write(
-      `Native translation history verified: ${JSON.stringify({ ...observed, reopened: Boolean(previous), markers })}\n`,
+      `Native translation history verified: ${JSON.stringify({ ...observed, reopened: Boolean(previous) || gap, markers })}\n`,
     );
     return observed;
   } finally {

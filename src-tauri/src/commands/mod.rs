@@ -3,6 +3,7 @@ pub mod artifact_recovery;
 pub mod job;
 pub mod media;
 pub mod native_e2e;
+pub mod native_e2e_historical_edit;
 #[cfg(feature = "native-e2e")]
 mod native_e2e_observation;
 #[cfg(all(test, feature = "native-e2e"))]

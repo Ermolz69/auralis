@@ -672,6 +672,35 @@ module size, IPC parity and frontend boundary checks also pass.
 
 The pinned evidence record is
 `eval/experiments/2026-09-27-native-historical-branch.md`. This test terminates only
-after saves are ready; process-kill recovery between manual journal admission,
-core commit and output publication remains the next native gate. Full S7, language
-quality and clean Windows installation remain open. Development remains local.
+after saves are ready. The subsequent core interruption record below covers one
+manual-save process-kill boundary; journal-only and staged publication interruption
+remain open. Full S7, language quality and clean Windows installation remain open.
+Development remains local.
+
+## Native historical core commit interruption
+
+`task desktop:e2e:native:translation:history:result-gap` passes a forced native
+desktop termination after an actual older-base branch commits and before its save
+response/publication. While the save is held, actual UI controls select the
+original model result, advancing the host link beyond the branch's observation.
+The external harness checks both durable databases and existing managed files
+before and after killing the process, then restarts without the test-only hold.
+
+Production startup publishes the missing branch as ready history while preserving
+the original selected result, artifact and link revision 4. The actual reopened
+panel displays that selected result and previews the recovered branch without
+attachment. Independent final checks verify all three immutable outputs, both
+canonical journal hashes and edit ancestry, one unchanged inference attempt and
+two original checkpoints. The completed model child is absent before interruption
+and at final verification. The isolated sandbox and native frontend are cleaned.
+
+The fault hook and observer are available only with Rust `native-e2e`; normal
+desktop behavior is unchanged. `task rust:clippy` and its native variant pass.
+Ten targeted application tests, 18 review component tests, typecheck, lint, IPC
+parity, module/import limits and production frontend delivery pass. No model or
+test corpus is included in the 16 checked production frontend files.
+
+The pinned evidence record is
+`eval/experiments/2026-09-27-native-historical-result-gap.md`. Journal-only and
+staged-file/outbox interruption, real unfinished-run interleavings, fuller review,
+CLI branch delivery, language and clean-install gates remain open. Work stays local.
