@@ -5,18 +5,26 @@ use std::time::Duration;
 const MAX_STARTUP_TIMEOUT: Duration = Duration::from_secs(600);
 const MIN_READINESS_INTERVAL: Duration = Duration::from_millis(50);
 const MAX_READINESS_INTERVAL: Duration = Duration::from_secs(5);
+pub const DEFAULT_RAM_CACHE_MIB: u32 = 0;
+const MAX_RAM_CACHE_MIB: u32 = 512;
 
 pub struct ManagedRuntimeConfig {
     pub executable: PathBuf,
     pub model_file: PathBuf,
     pub context_tokens: u32,
     pub gpu_layers: u32,
+    pub ram_cache_mib: u32,
     pub startup_timeout: Duration,
     pub readiness_interval: Duration,
 }
 
 impl ManagedRuntimeConfig {
     pub fn validate(&self) -> Result<(), PortError> {
+        if self.ram_cache_mib > MAX_RAM_CACHE_MIB {
+            return Err(PortError::InvalidSource {
+                message: format!("managed runtime RAM cache exceeds {MAX_RAM_CACHE_MIB} MiB"),
+            });
+        }
         if self.context_tokens == 0
             || self.startup_timeout.is_zero()
             || self.startup_timeout > MAX_STARTUP_TIMEOUT

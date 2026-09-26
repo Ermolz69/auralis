@@ -155,6 +155,7 @@ fn runtime(executable: PathBuf, model_file: PathBuf) -> Result<ManagedLlamaRunti
         model_file,
         context_tokens: 2048,
         gpu_layers: 99,
+        ram_cache_mib: adapters_translate::DEFAULT_RAM_CACHE_MIB,
         startup_timeout: Duration::from_secs(120),
         readiness_interval: Duration::from_millis(250),
     })

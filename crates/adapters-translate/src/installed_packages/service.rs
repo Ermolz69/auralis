@@ -2,7 +2,7 @@ use super::catalog;
 use super::runtime::InstalledPackageRuntime;
 use super::selection::PackageSelection;
 use super::{TranslationPackageError, TranslationPackageStatus};
-use crate::{ManagedLlamaRuntime, ManagedRuntimeConfig};
+use crate::{DEFAULT_RAM_CACHE_MIB, ManagedLlamaRuntime, ManagedRuntimeConfig};
 use auralis_translation_llamacpp::{
     ReleaseAsset, ReleaseManifest, hash_file, verify_runtime_files,
 };
@@ -104,6 +104,7 @@ impl TranslationPackageService {
             model_file: root.join("model").join(&release.model_asset().filename),
             context_tokens: DEFAULT_CONTEXT_TOKENS,
             gpu_layers: DEFAULT_GPU_LAYERS,
+            ram_cache_mib: DEFAULT_RAM_CACHE_MIB,
             startup_timeout: DEFAULT_STARTUP_TIMEOUT,
             readiness_interval: DEFAULT_READINESS_INTERVAL,
         };

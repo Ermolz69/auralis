@@ -42,6 +42,7 @@ async fn rejects_unchecked_or_mismatched_model_before_process_start() -> Result<
         model_file: model,
         context_tokens: 2048,
         gpu_layers: 0,
+        ram_cache_mib: adapters_translate::DEFAULT_RAM_CACHE_MIB,
         startup_timeout: Duration::from_secs(1),
         readiness_interval: Duration::from_millis(100),
     })?;
@@ -64,5 +65,33 @@ async fn rejects_unchecked_or_mismatched_model_before_process_start() -> Result<
         runtime.acquire(&intent(CHECKED_PROFILE)).await,
         Err(PortError::NotFound { .. })
     ));
+    Ok(())
+}
+
+#[test]
+fn rejects_oversized_ram_cache_before_model_admission() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    for cache_mib in [
+        adapters_translate::DEFAULT_RAM_CACHE_MIB,
+        128,
+        512,
+        513,
+        u32::MAX,
+    ] {
+        let runtime = ManagedLlamaRuntime::new(ManagedRuntimeConfig {
+            executable: directory.path().join("llama-server.exe"),
+            model_file: directory.path().join("model.gguf"),
+            context_tokens: 2048,
+            gpu_layers: 0,
+            ram_cache_mib: cache_mib,
+            startup_timeout: Duration::from_secs(1),
+            readiness_interval: Duration::from_millis(100),
+        });
+        if cache_mib <= 512 {
+            assert!(runtime.is_ok());
+        } else {
+            assert!(matches!(runtime, Err(PortError::InvalidSource { .. })));
+        }
+    }
     Ok(())
 }

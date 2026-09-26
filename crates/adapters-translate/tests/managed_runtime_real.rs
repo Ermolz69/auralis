@@ -23,6 +23,7 @@ async fn starts_and_releases_the_checked_local_server() -> Result<(), Box<dyn Er
         model_file,
         context_tokens: 2048,
         gpu_layers: 99,
+        ram_cache_mib: adapters_translate::DEFAULT_RAM_CACHE_MIB,
         startup_timeout: Duration::from_secs(120),
         readiness_interval: Duration::from_millis(250),
     })?;
@@ -39,6 +40,17 @@ async fn starts_and_releases_the_checked_local_server() -> Result<(), Box<dyn Er
         created_at: chrono::Utc::now(),
     };
     let lease = runtime.acquire(&intent).await?;
+    let props: serde_json::Value = reqwest::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(5))
+        .build()?
+        .get(format!("{}props", lease.server_url()))
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    assert_eq!(props["total_slots"], 1);
     let address = lease
         .server_url()
         .strip_prefix("http://")

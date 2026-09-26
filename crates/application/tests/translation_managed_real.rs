@@ -117,6 +117,7 @@ async fn managed_model_translates_and_publishes_separate_project_copy() -> Resul
         model_file,
         context_tokens: 2048,
         gpu_layers: 99,
+        ram_cache_mib: adapters_translate::DEFAULT_RAM_CACHE_MIB,
         startup_timeout: Duration::from_secs(120),
         readiness_interval: Duration::from_millis(250),
     })?);

@@ -25,6 +25,7 @@ process-wrap = { workspace = true, features = ["tokio1", "job-object", "kill-on-
 windows = { workspace = true, features = ["Win32_System_Threading"] }
 
 [dev-dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
 rusqlite = "0.39"
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }

@@ -1,5 +1,5 @@
 use crate::bootstrap::paths::AppPaths;
-use adapters_translate::{ManagedLlamaRuntime, ManagedRuntimeConfig};
+use adapters_translate::{DEFAULT_RAM_CACHE_MIB, ManagedLlamaRuntime, ManagedRuntimeConfig};
 use ports::error::PortError;
 use ports::translation_model_runtime::TranslationModelRuntimePort;
 use serde::Deserialize;
@@ -16,6 +16,8 @@ struct TranslationRuntimeSettings {
     model_file: PathBuf,
     context_tokens: u32,
     gpu_layers: u32,
+    #[serde(default = "default_ram_cache_mib")]
+    ram_cache_mib: u32,
     startup_timeout_seconds: u64,
     readiness_interval_milliseconds: u64,
 }
@@ -43,11 +45,16 @@ pub fn load(paths: &AppPaths) -> Result<Option<Arc<dyn TranslationModelRuntimePo
         model_file: settings.model_file,
         context_tokens: settings.context_tokens,
         gpu_layers: settings.gpu_layers,
+        ram_cache_mib: settings.ram_cache_mib,
         startup_timeout: Duration::from_secs(settings.startup_timeout_seconds),
         readiness_interval: Duration::from_millis(settings.readiness_interval_milliseconds),
     };
     let runtime = ManagedLlamaRuntime::new(config)?;
     Ok(Some(Arc::new(runtime)))
+}
+
+fn default_ram_cache_mib() -> u32 {
+    DEFAULT_RAM_CACHE_MIB
 }
 
 fn io_error(error: std::io::Error) -> PortError {

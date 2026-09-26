@@ -16,7 +16,7 @@ pub use format_inspector::FormatInspector;
 pub use installed_packages::{
     TranslationPackageError, TranslationPackageService, TranslationPackageStatus,
 };
-pub use managed_runtime::{ManagedLlamaRuntime, ManagedRuntimeConfig};
+pub use managed_runtime::{DEFAULT_RAM_CACHE_MIB, ManagedLlamaRuntime, ManagedRuntimeConfig};
 pub use project_cleanup::TranslateProjectCleanup;
 pub use result_editor::TranslateResultEditor;
 pub use result_reader::TranslateResultReader;
