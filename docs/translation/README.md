@@ -179,3 +179,19 @@ documentation, so the prior MSI's application runtime is unaffected; its exact
 source identity remains recorded above. Machine installation commands, CLI-owned
 runtime, richer provider errors and language release gates remain open. No public
 publication was performed.
+
+`task desktop:e2e:native:translation:vtt:pause` now passed through the actual
+React/Tauri desktop and installed checked model. The shared verifier requires a
+cancelled first host job, closed Translate attempt, retained active run and first
+checkpoint, no result/publication or translated artifact at pause, and release of
+the managed child. Same-process resume creates a distinct host job, preserves every
+first-checkpoint field and publishes a separate ready review-required output.
+Both original copies retain the initial source digest; protected WebVTT header,
+NOTE, timing and CRLF survive. The runner emits a compact identity record and
+removes the test sandbox/frontend build. Evidence is at
+`modules/auralis-translate/eval/experiments/2026-09-26-native-vtt-pause-resume.md`.
+`task q:translation-delivery` passed eight policy/publication tests; documentation
+checks passed in both repositories. The prior native WebVTT pause gap is now closed
+for this named synthetic scenario. Concurrent commands, pre-attempt admission,
+clean Windows installation and language quality remain open. No product Rust or
+production frontend code changed in this test tooling slice.

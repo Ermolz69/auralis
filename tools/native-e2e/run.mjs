@@ -193,6 +193,10 @@ export async function runNativeE2e(rootDir) {
         translationVttEnabled ? 'vtt' : 'srt',
       );
       if (translationPauseEnabled) verifyResumedPause(dataRoot, interrupted);
+      assert(
+        (await sha256(subtitlePath)) === subtitleDigest,
+        'Translation changed the external source after its initial digest',
+      );
     }
   } catch (error) {
     const logs = app ? formatProcessLogs(app) : '';

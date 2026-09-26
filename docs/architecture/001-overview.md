@@ -18,9 +18,9 @@ state, and adapter-owned external processes.
 - **Domain layer**: Core entities (`domain` crate). Agnostic of UI or infrastructure.
 - **Ports**: Interfaces and contracts (`ports` crate) isolating domain from external IO.
 - **Job runtime**: The `jobs` crate schedules work, exposes snapshots, publishes lifecycle events, and coordinates cancellation.
-- **Adapters**: Storage, Tauri, yt-dlp, FFmpeg/ffprobe, and model test doubles in `adapters-*` crates.
-- **Storage**: SQLite stores projects, jobs, artifacts, the YouTube import journal, and outbox messages. Project files use managed storage keys.
-- **External tools**: Bundled FFmpeg, ffprobe, and yt-dlp processes are invoked through adapters. Production local AI model runners are not wired yet.
+- **Adapters**: Storage, Tauri, yt-dlp, FFmpeg/ffprobe, experimental Translate integration, and ASR/TTS test doubles in `adapters-*` crates.
+- **Storage**: Auralis SQLite stores projects, jobs, artifacts, translation links, the YouTube import journal, and outbox messages. Translate SQLite owns detailed runs, checkpoints, edits and results. Project files use managed storage keys.
+- **External tools**: Bundled FFmpeg, ffprobe, and yt-dlp processes are invoked through adapters. Experimental subtitle translation owns a separately installed checked llama.cpp runtime through `adapters-translate`; model weights are acquired explicitly and excluded from application packages. Production ASR/TTS runners remain work.
 
 ## IPC contract
 
@@ -42,6 +42,12 @@ payload.
 - Finalize and clean managed files through the SQLite transaction/outbox flow.
 - Check for and install signed application updates in packaged builds.
 - Run a mock dubbing pipeline for UI and orchestration validation.
+- Import supported existing SRT/WebVTT files, preserve originals, run experimental
+  checked-model translation through project jobs and both SQLite files, and
+  publish separate review-required results. The subtitle workspace provides
+  installation/selection, saved progress, pause/resume and paged comparison/edit
+  controls; [integration status](../translation/README.md) records evidence and
+  the open language, clean-machine and concurrency gates.
 
 ## Target dubbing pipeline
 

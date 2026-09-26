@@ -13,6 +13,13 @@ The backend is organized as a Rust workspace enforcing clean architecture bounda
 - **adapters-ytdlp**: Implements YouTube validation, metadata, media download/resume, and subtitle retrieval.
 - **adapters-ffmpeg**: Implements ffprobe-backed media inspection. Extraction and muxing currently exist only as mock adapter behavior for the mock pipeline.
 - **adapters-model**: Contains mock ASR/TTS behavior; a production model runtime is not implemented.
+- **adapters-translate**: Bridges application translation ports to the independent
+  Translate crates pinned under `modules/auralis-translate`. Owns strict file
+  inspection, the Translate SQLite boundary, immutable result reconstruction,
+  explicit package installation/selection and managed checked llama.cpp processes.
+  Auralis application jobs and the outbox retain project/artifact ownership; core
+  translation rules and model validation stay in the nested library workspace.
+  This integration is experimental; see [its evidence](../translation/README.md).
 - **adapters-tauri**: Maps job events and DTOs to Tauri and opens project workspaces through the native shell boundary.
 - **src-tauri**: Composition root that resolves runtime paths, initializes observability and SQLite services, starts workers, registers Tauri plugins and commands, and performs graceful shutdown.
 
@@ -27,4 +34,7 @@ The current packaged external executables are FFmpeg, ffprobe, and yt-dlp.
 - Sidecars are **never** invoked directly from the frontend.
 - The React UI dispatches a command to the Tauri layer, which delegates to an application use case. The use case calls a port implemented by the appropriate adapter.
 - yt-dlp descendants are owned by a Windows Job Object or a Unix process group and lifetime monitor so application termination does not leave downloads running.
-- Future production model runners must follow the same adapter boundary; the current model adapter is not a production sidecar integration.
+- Experimental translation uses an owned, separately installed llama.cpp child;
+  the application release does not embed its runtime or weights. Future production
+  ASR/TTS runners must follow the same adapter boundary; `adapters-model` still
+  contains test doubles.

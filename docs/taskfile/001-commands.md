@@ -243,3 +243,10 @@ until those checks finish; the frontend then resumes in the same desktop process
 The final checks require the original checkpoint unchanged, a cancelled first job,
 a completed second job, and a separate ready output. Temporary data and the native
 test frontend are removed. The production bundle excludes this scenario.
+
+`task desktop:e2e:native:translation:vtt:pause` runs the same lifecycle for the
+strict WebVTT subset: two plain Chinese cues, CRLF, absent external cue IDs and a
+protected `NOTE` block. Pause also requires no translated artifact of any state;
+completion checks both original copies against the initial source digest. The
+runner emits a compact record of run/job identity and checkpoint retention for
+local evidence. This is a technical synthetic-file check, not bilingual review.

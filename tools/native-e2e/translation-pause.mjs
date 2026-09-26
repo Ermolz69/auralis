@@ -21,11 +21,13 @@ export async function releaseVerifiedPause(dataRoot, scenarioId, app, baselinePi
       assert.equal(paused.checkpoints.length, 1);
       assert.equal(paused.results, 0);
       assert.equal(paused.publications, 0);
+      assert.equal(paused.outputArtifacts, 0);
       assert.equal(paused.jobs.length, 1);
       assert.equal(paused.jobs[0].status, 'cancelled');
       assert(paused.jobs[0].ended_at, 'Cancelled host association remained active');
       assert.equal(paused.jobs[0].run_id, paused.run.run_id);
       assert.equal(paused.link.active_run_id, paused.run.run_id);
+      assert.equal(paused.link.translation_id, paused.run.translation_id);
       assert.equal(paused.link.selected_result_id, null);
       assert.equal(paused.link.output_artifact_id, null);
       assert.equal(paused.attempts.length, 1);
@@ -103,6 +105,18 @@ export function verifyResumedPause(dataRoot, snapshot) {
     assert.equal(attempts.length, 2);
     assert(attempts.every((attempt) => attempt.ended_at !== null));
     assert.equal(new Set(attempts.map((attempt) => attempt.host_job_id)).size, 2);
+    process.stdout.write(
+      `${JSON.stringify({
+        scenario: 'native_translation_pause',
+        format: snapshot.paused.link.source_format,
+        run_id: snapshot.runId,
+        first_job_id: snapshot.paused.jobs[0].id,
+        resumed_job_id: jobs.find((job) => job.status === 'completed').id,
+        checkpoint_retained: true,
+        closed_attempts: attempts.length,
+        partial_output_artifacts_at_pause: snapshot.paused.outputArtifacts,
+      })}\n`,
+    );
   } finally {
     translate.close();
     host.close();
@@ -147,6 +161,13 @@ function readPaused(dataRoot, scenarioId) {
         host
           .prepare('SELECT COUNT(*) AS count FROM translation_publications WHERE run_id = ?')
           .get(run.run_id).count,
+      ),
+      outputArtifacts: Number(
+        host
+          .prepare(
+            "SELECT COUNT(*) AS count FROM artifacts WHERE project_id = ? AND kind = 'TranslatedTranscript'",
+          )
+          .get(project.id).count,
       ),
     };
   } catch (error) {

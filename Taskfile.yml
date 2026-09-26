@@ -126,6 +126,15 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:vtt:pause:
+    desc: Pause and resume native strict-WebVTT translation with a checked model and exact checkpoint retention
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_VTT: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_PAUSE: '1'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   desktop:e2e:native:translation:vtt:crash:
     desc: Kill and restart native strict-WebVTT translation after one checked-model checkpoint
     env:
