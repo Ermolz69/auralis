@@ -6,6 +6,20 @@ The independent Translate repository is pinned as a Git submodule at `modules/au
 
 The pinned Translate CLI has `fetch-release`, `fetch-asset`, and `install-online` for the experimental Windows CPU package. It downloads only assets declared by the checked release manifest, preserves untrusted partial files for HTTP Range retry, and publishes cache entries after pinned length and SHA-256 verification. A real upstream download, online package creation, and installed-model `doctor` passed on the development machine; see `modules/auralis-translate/eval/experiments/2026-09-25-resumable-download.md`. Auralis now exposes installation and selection of that pinned package in the subtitle workspace. A clean offline machine smoke remains open.
 
+The current local pin adds all four package operations, including `install-offline`,
+to the CLI machine protocol at
+`modules/auralis-translate/docs/reference/cli-protocol-v1.md`.
+Versioned requests and verified JSON/JSONL cache/package receipts are available
+without launching inference or selecting an Auralis runtime. Typed integrity,
+ownership, transport and IO failures preserve earlier verified files without
+claiming a completed install. The
+evidence record at
+`modules/auralis-translate/eval/experiments/2026-09-26-cli-package-protocol.md`
+documents ten process regressions, real cache/offline/online receipt verification,
+existing-package conflict preservation and a fresh upstream notice download.
+Embedded Auralis still calls the Rust adapters directly; clean-machine delivery,
+CLI-owned runtime and upgrade/removal remain open. Development stays local.
+
 The opt-in `task desktop:e2e:native:translation:crash` terminates the desktop after one committed model block, verifies Job Object cleanup of the model child, restarts the same executable, and resumes the project-linked run to a ready separate result. Its evidence record is `modules/auralis-translate/eval/experiments/2026-09-25-native-tauri-crash.md`. This synthetic two-cue test does not score translation quality.
 
 The application integration test `crates/application/tests/translation_vtt_publish.rs` now exercises strict WebVTT import, a project-linked host job through both SQLite databases, pending output publication, and selection only after outbox finalization. It checks that the ready WebVTT copy retains protected `NOTE`, timing, CRLF, and header bytes while the managed and external originals remain unchanged. The model response is mocked; interruption/resume and language quality remain open. Evidence is recorded at `modules/auralis-translate/eval/experiments/2026-09-25-auralis-vtt-two-db.md`.
