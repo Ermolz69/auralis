@@ -10,6 +10,7 @@ import {
 } from '@/entities/translation';
 import { invoke } from '@/shared/api/tauri';
 import { pauseTranslationScenario } from './pauseTranslationScenario';
+import { pausePreparationScenario } from './pausePreparationScenario';
 
 const ARTIFACT_TIMEOUT_MS = 20_000;
 const PUBLICATION_TIMEOUT_MS = 180_000;
@@ -38,8 +39,15 @@ export async function runTranslationScenario(runId: string, sourcePath: string):
   }
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-run-ready' });
 
-  let start = await startTranslationRun(project.id, translationId);
+  let start: Awaited<ReturnType<typeof startTranslationRun>> | null;
+  if (__NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE__) {
+    await pausePreparationScenario(runId, project.id, translationId, translationRunId);
+    start = null;
+  } else {
+    start = await startTranslationRun(project.id, translationId);
+  }
   if (__NATIVE_E2E_TRANSLATION_PAUSE__) {
+    if (!start) throw new Error('Inference pause requires an admitted host job');
     start = await pauseTranslationScenario(
       runId,
       project.id,

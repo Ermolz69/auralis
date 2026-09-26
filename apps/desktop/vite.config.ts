@@ -26,6 +26,8 @@ const nativeE2eTranslationCrash =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
 const nativeE2eTranslationPause =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_PAUSE === '1';
+const nativeE2eTranslationPreparationPause =
+  nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE === '1';
 const nativeE2eTranslationDelete =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
 const nativeE2eTranslationPackage =
@@ -59,6 +61,9 @@ export default defineConfig({
     __NATIVE_E2E_SUBTITLE_PATH__: JSON.stringify(nativeE2eSubtitlePath ?? ''),
     __NATIVE_E2E_TRANSLATION_CRASH__: JSON.stringify(nativeE2eTranslationCrash),
     __NATIVE_E2E_TRANSLATION_PAUSE__: JSON.stringify(nativeE2eTranslationPause),
+    __NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE__: JSON.stringify(
+      nativeE2eTranslationPreparationPause,
+    ),
     __NATIVE_E2E_TRANSLATION_DELETE__: JSON.stringify(nativeE2eTranslationDelete),
     __NATIVE_E2E_TRANSLATION_PACKAGE__: JSON.stringify(nativeE2eTranslationPackage),
   },

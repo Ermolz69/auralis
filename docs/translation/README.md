@@ -226,7 +226,7 @@ model after this guard change: separate SRT/WebVTT outputs and identical offline
 export. Evidence and retained identities are recorded at
 `modules/auralis-translate/eval/experiments/2026-09-26-attempt-admission-guard.md`.
 The guard is now combined with cooperative preparation control described below.
-Native preparation-pause evidence, admission command races, fresh package
+Initial-hash native preparation evidence, admission command races, fresh package
 audit, clean Windows installation and bilingual quality remain open.
 
 ## Cooperative preparation cancellation
@@ -262,6 +262,24 @@ cases and cleanup failure taking precedence over cancellation acknowledgment.
 
 Evidence and command scope are at
 `modules/auralis-translate/eval/experiments/2026-09-26-preparation-cancellation.md`.
-Native UI preparation pause, its latency and child/slot cleanup are not yet a
-recorded gate. Full command interleavings, packaging and language gates remain
-open. Development and the submodule update stay local.
+A native post-child preparation pause is now recorded at
+`modules/auralis-translate/eval/experiments/2026-09-26-native-preparation-pause.md`.
+`task desktop:e2e:native:translation:preparation-pause` passed on its full repeat:
+the actual panel's Start/Pause/Continue buttons retain the same run, acknowledge
+pause in one observed 310 ms interval, leave all job/attempt/checkpoint/result/
+publication/output counts zero and release the observed desktop-owned model child.
+Fresh resume creates exactly one completed job and one closed Translate attempt,
+then publishes a separate ready `needs_review` artifact with an unchanged original.
+The first invocation failed because the helper confused scheduler acceptance with
+attempt creation; the corrected helper waits through the worker's checked preflight.
+The test does not slow down, block or replace model preparation.
+
+`task desktop:e2e:native:preparation:check` passed four rejection checks.
+`task q:fsd-boundaries`, `task q:ipc-contract`, `task q:file-size`,
+`task q:duplicate-code` and `task fe:build` passed. The production build excludes
+the native test modules, weights and evaluation data; its 16 emitted frontend
+files passed delivery checks. Initial-hash native cancellation, repeated pause
+during resume, full command interleavings, packaging and language gates remain
+open. The post-admission worker preflight can still display the retained paused
+phase; coherent event-driven UI progress remains work. This is one development
+machine observation, not a latency SLA. Development and the submodule stay local.
