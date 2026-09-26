@@ -19,6 +19,7 @@ use domain::{media::ArtifactId, project::Project};
 use ports::{
     repository::ProjectRepository, translation_inspection::TranslationSourceFormat,
     translation_model_runtime::TranslationModelRuntimePort,
+    translation_run_control::TranslationRunControlPort,
 };
 use std::{error::Error, path::PathBuf, sync::Arc};
 use uuid::Uuid;
@@ -45,6 +46,15 @@ pub struct TranslationAdmissionFixture {
 impl TranslationAdmissionFixture {
     pub async fn new(
         runtime: Arc<dyn TranslationModelRuntimePort>,
+    ) -> Result<Self, Box<dyn Error>> {
+        Self::new_with_control(runtime, |control| control).await
+    }
+
+    pub async fn new_with_control(
+        runtime: Arc<dyn TranslationModelRuntimePort>,
+        wrap_control: impl FnOnce(
+            Arc<dyn TranslationRunControlPort>,
+        ) -> Arc<dyn TranslationRunControlPort>,
     ) -> Result<Self, Box<dyn Error>> {
         let directory = tempfile::tempdir()?;
         let pool = connect_sqlite(directory.path().join("auralis.sqlite")).await?;
@@ -87,7 +97,7 @@ impl TranslationAdmissionFixture {
                 created_at: now,
             })
             .await?;
-        let control = Arc::new(TranslateRunControl::new(translate_path.clone()));
+        let control = wrap_control(Arc::new(TranslateRunControl::new(translate_path.clone())));
         let jobs = Arc::new(SqliteTranslationHostJobStore::new(pool.clone()));
         let request = TranslationRunRequest {
             project_id: project.id().clone(),

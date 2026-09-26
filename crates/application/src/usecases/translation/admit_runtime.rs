@@ -39,8 +39,14 @@ pub(super) async fn acquire(
             outcome = &mut acquisition => break outcome,
         }
     };
-    check(links, control, link, guard).await?;
-    outcome.map_err(Into::into)
+    let admission = check(links, control, link, guard).await;
+    match outcome {
+        Err(cleanup @ PortError::CleanupFailed { .. }) => Err(cleanup.into()),
+        outcome => {
+            admission?;
+            outcome.map_err(Into::into)
+        }
+    }
 }
 
 async fn check(

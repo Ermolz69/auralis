@@ -318,3 +318,37 @@ open. The admission-completion guard can also mask `CleanupFailed` after a newer
 control change; the polling-cancellation path preserves it. This code-review
 finding needs a deterministic public-use-case regression and correction. It is
 not an observed Windows cleanup failure. Work and commits remain local.
+
+## Admission-completion cleanup precedence
+
+The correction to `admit_runtime.rs` retains the outcome of its final guard check
+until it classifies the acquisition result. `CleanupFailed` survives a new pause
+or final control-read error; an ordinary error or successful lease still requires
+that guard. The polling-cancellation branch and atomic attempt admission retain
+their previous behavior. This applies the existing preparation contract without
+changing database, core, IPC or CLI schemas.
+
+`task rs:test:application -- --test translation_admission_completion` reproduced
+the masking defect before the correction. After correction,
+`task rs:test:application -- --test translation_admission_completion --test translation_admission_pause --test translation_run_status`
+passed 12 tests. The new pair deterministically covers four completion/guard
+outcomes through two real SQLite files, with no jobs, attempts, checkpoints,
+results or publications and an unchanged original. `task rs:test:application`
+passed all 103 unit tests and default integrations; three real-model cases remain
+opt-in. Runtime/control decorators are confined to `tests/support/`; no production
+API exists solely for testing.
+
+`task rs:test:desktop -- --test translation_cleanup_error` passed a separate
+integration test for the actual mapper/wire contract: cleanup failure remains
+`RECOVERY_REQUIRED` with restart guidance and no private paths/raw diagnostics;
+ordinary cancellation remains `CANCELLED`. The restricted Tauri build initially
+reported OS error 5 while preparing an existing media resource; the same command
+passed with local build-script permission. `task rs:clippy`, `task rs:fmt-write`
+and `task q:file-size` passed. `task q:duplicate-code` passed its production
+frontend policy; it does not validate Rust test duplication.
+
+Evidence is at
+`modules/auralis-translate/eval/experiments/2026-09-26-admission-completion-cleanup.md`.
+This closes the code-review finding above for the tested completion branch.
+Actual Windows kill/reap failure, command interleavings, clean installation and
+language quality remain open. This slice supplies no new native inference evidence.
