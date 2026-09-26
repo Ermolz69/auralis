@@ -164,3 +164,18 @@ the separate authored QA handoff are recorded at
 `modules/auralis-translate/eval/experiments/2026-09-26-windows-msi-cancellation.md`.
 The handoff is not an application resource; its clean-environment report remains
 unexecuted. Signed delivery and the unseeded setup/offline gate remain open.
+
+The local Translate pin now includes opt-in standalone CLI JSON/JSONL, bounded
+named requests, durable progress and stable machine exit codes. Seven real-process
+and SQLite tests cover both formats, pause/resume, output failure after result
+commit and immutable edit recovery. `task check`, `task test:cli:protocol` and
+`task eval:cli:protocol` passed in the standalone checkout; the last task uses
+supplied checked local assets for four authored cues per format, followed by
+identical offline re-export. The protocol and evidence are at
+`modules/auralis-translate/docs/reference/cli-protocol-v1.md`
+and `modules/auralis-translate/eval/experiments/2026-09-26-cli-machine-protocol.md`.
+Auralis still calls the library directly. This slice changes only CLI code and
+documentation, so the prior MSI's application runtime is unaffected; its exact
+source identity remains recorded above. Machine installation commands, CLI-owned
+runtime, richer provider errors and language release gates remain open. No public
+publication was performed.
