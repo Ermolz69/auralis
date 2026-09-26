@@ -270,7 +270,7 @@ where
         };
         for publication in translations.list_ready_publications(limit).await? {
             match translations
-                .select_ready_result(
+                .finalize_ready_publication(
                     publication.translation_id,
                     publication.result_id,
                     domain::chrono::Utc::now(),
@@ -280,7 +280,7 @@ where
                 Ok(_) => tracing::info!(
                     translation_id = %publication.translation_id,
                     result_id = %publication.result_id,
-                    "ready translation result selected"
+                    "ready translation publication finalized"
                 ),
                 Err(ports::error::PortError::Conflict { .. }) => {
                     tracing::debug!(

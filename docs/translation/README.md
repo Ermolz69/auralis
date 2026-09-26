@@ -558,9 +558,29 @@ owned translated publication/artifact exists. Translation deletion cascades the
 journal. Six integration tests and the existing storage tests pass.
 
 These are storage foundations. The current application editor and startup recovery
-do not yet use the journal or the branch API. Separate manual branch publication,
-attachment conflict handling, CLI/IPC/UI and native older-base save/reopen remain
+do not yet use the journal or the branch API. Application branch publication,
+journal replay, CLI/IPC/UI and native older-base save/reopen remain
 pending. No historical-save control should bypass those boundaries. The full
 contract and evidence live in the pinned module at
 `docs/architecture/015-historical-result-edits.md` and
 `eval/experiments/2026-09-26-historical-edit-foundation.md`. Development remains local.
+
+## Manual publication ordering
+
+The storage/outbox path now recognizes explicit journaled branches. Its
+`finalize_ready_publication` port completes them as attached or ready historical
+results, preserves the active run, and leaves a changed project choice intact.
+A current pending automatic publication makes a manual branch ready but
+unattached. Automatic precedence excludes these branches, and an older automatic
+result cannot replace a selected newer manual revision from the same run.
+Automatic/manual operations have separate modules under one immediate transaction.
+Ready manual replay never attaches a previously detached result; explicit history
+selection is the later user action. Eight real-SQLite tests cover ordering,
+concurrency, idempotency, ready-state checks, rollback and reopening.
+
+The pinned evidence record is
+`eval/experiments/2026-09-26-manual-publication-ordering.md`. Its fixtures arrange
+host metadata and artifact ready states; actual historical save through both
+databases, request/provenance verification, UI and native process evidence are
+still pending. The current application publisher continues to use ordinary linked
+run resolution until that historical route is integrated.

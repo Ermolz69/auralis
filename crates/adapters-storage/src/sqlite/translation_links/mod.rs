@@ -1,13 +1,16 @@
+mod automatic_finalization;
 mod begin;
+mod finalization;
 mod history;
 mod list;
+mod manual_finalization;
+mod manual_publication_guard;
 mod publication;
 mod publication_row;
 mod ready_publications;
 mod repository;
 mod row;
 mod run_intent;
-mod select;
 mod select_history;
 mod staged_publication;
 mod start_run;

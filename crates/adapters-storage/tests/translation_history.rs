@@ -207,7 +207,7 @@ async fn explicit_selection_preserves_active_run_and_rejects_stale_or_foreign_ch
     assert!(
         fixture
             .store
-            .select_ready_result(fixture.intent.translation_id, second.result_id, Utc::now())
+            .finalize_ready_publication(fixture.intent.translation_id, second.result_id, Utc::now())
             .await
             .is_err()
     );

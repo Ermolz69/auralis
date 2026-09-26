@@ -52,7 +52,7 @@ pub trait TranslationLinkStore: Send + Sync {
         intent: PublicationIntent,
         staged: StagedArtifact,
     ) -> Result<(), PortError>;
-    async fn select_ready_result(
+    async fn finalize_ready_publication(
         &self,
         translation_id: Uuid,
         result_id: Uuid,

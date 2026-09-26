@@ -2,32 +2,23 @@ use super::{row, validation};
 use chrono::{DateTime, Utc};
 use ports::error::PortError;
 use ports::translation_links::TranslationLink;
-use sqlx::SqlitePool;
+use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
 
 pub(super) async fn run(
-    pool: &SqlitePool,
-    translation_id: Uuid,
+    transaction: &mut Transaction<'_, Sqlite>,
+    link: &TranslationLink,
     result_id: Uuid,
     updated_at: DateTime<Utc>,
 ) -> Result<TranslationLink, PortError> {
-    validation::uuid(translation_id, "ID")?;
-    validation::uuid(result_id, "result ID")?;
-    let mut transaction = pool.begin_with("BEGIN IMMEDIATE").await.map_err(|error| {
-        super::super::helpers::map_sqlite_error("select_translation_result", error)
-    })?;
-    let link = row::load(&mut *transaction, translation_id)
-        .await?
-        .ok_or_else(|| PortError::NotFound {
-            resource: "translation link".into(),
-        })?;
+    let translation_id = link.translation_id;
     let publication: Option<(String, String, String, i64, String)> = sqlx::query_as(
         "SELECT run_id, artifact_id, source_sha256, expected_link_revision, state
          FROM translation_publications WHERE translation_id = ? AND result_id = ?",
     )
     .bind(translation_id.to_string())
     .bind(result_id.to_string())
-    .fetch_optional(&mut *transaction)
+    .fetch_optional(&mut **transaction)
     .await
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("read_translation_publication", error)
@@ -44,7 +35,7 @@ pub(super) async fn run(
             .is_some_and(|id| id.to_string() == artifact_id)
         && state == "ready"
     {
-        return Ok(link);
+        return Ok(link.clone());
     }
     if state != "pending" && state != "ready" {
         return Err(validation::conflict("publication is not pending or ready"));
@@ -58,7 +49,7 @@ pub(super) async fn run(
             .bind(translation_id.to_string())
             .bind(selected_result_id.to_string())
             .bind(&link.source_sha256)
-            .fetch_optional(&mut *transaction)
+            .fetch_optional(&mut **transaction)
             .await
             .map_err(|error| {
                 super::super::helpers::map_sqlite_error("read_selected_translation_run", error)
@@ -92,11 +83,12 @@ pub(super) async fn run(
              AND (newer.result_revision > current.result_revision OR
                   (newer.result_revision = current.result_revision AND newer.rowid > current.rowid))
             WHERE current.translation_id = ? AND current.result_id = ?
+              AND NOT EXISTS(SELECT 1 FROM translation_edit_intents i WHERE i.result_id = newer.result_id)
         )",
     )
     .bind(translation_id.to_string())
     .bind(result_id.to_string())
-    .fetch_one(&mut *transaction)
+    .fetch_one(&mut **transaction)
     .await
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("check_translation_result_precedence", error)
@@ -109,7 +101,7 @@ pub(super) async fn run(
     let artifact: Option<(String, String, String)> =
         sqlx::query_as("SELECT project_id, kind, state FROM artifacts WHERE id = ?")
             .bind(&artifact_id)
-            .fetch_optional(&mut *transaction)
+            .fetch_optional(&mut **transaction)
             .await
             .map_err(|error| {
                 super::super::helpers::map_sqlite_error("check_translation_output", error)
@@ -136,7 +128,7 @@ pub(super) async fn run(
     .bind(expected_revision)
     .bind(link.active_run_id.map(|id| id.to_string()))
     .bind(&source_sha256)
-    .execute(&mut *transaction)
+    .execute(&mut **transaction)
     .await
     .map_err(|error| super::super::helpers::map_sqlite_error("select_translation_result", error))?;
     if changed.rows_affected() != 1 {
@@ -151,16 +143,13 @@ pub(super) async fn run(
     .bind(updated_at.to_rfc3339())
     .bind(translation_id.to_string())
     .bind(result_id.to_string())
-    .execute(&mut *transaction)
+    .execute(&mut **transaction)
     .await
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("finish_translation_publication", error)
     })?;
-    let selected = row::load(&mut *transaction, translation_id)
+    let selected = row::load(&mut **transaction, translation_id)
         .await?
         .ok_or_else(|| validation::conflict("selected translation link is missing"))?;
-    transaction.commit().await.map_err(|error| {
-        super::super::helpers::map_sqlite_error("commit_translation_selection", error)
-    })?;
     Ok(selected)
 }

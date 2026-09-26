@@ -1,7 +1,7 @@
 use domain::media::ArtifactId;
 use ports::error::PortError;
 use ports::translation_links::{TranslationPublicationRecord, TranslationPublicationState};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, SqliteExecutor};
 use uuid::Uuid;
 
 #[derive(FromRow)]
@@ -17,8 +17,8 @@ pub(super) struct StoredPublication {
     state: String,
 }
 
-pub(super) async fn load(
-    pool: &SqlitePool,
+pub(super) async fn load<'e, E: SqliteExecutor<'e>>(
+    executor: E,
     translation_id: Uuid,
     result_id: Uuid,
 ) -> Result<Option<TranslationPublicationRecord>, PortError> {
@@ -29,7 +29,7 @@ pub(super) async fn load(
     )
     .bind(translation_id.to_string())
     .bind(result_id.to_string())
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("read_translation_publication", error)

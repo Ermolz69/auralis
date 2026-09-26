@@ -1,5 +1,5 @@
 use super::{
-    begin, history, list, publication_row, ready_publications, row, run_intent, select,
+    begin, finalization, history, list, publication_row, ready_publications, row, run_intent,
     select_history, staged_publication, start_run,
 };
 use async_trait::async_trait;
@@ -112,12 +112,12 @@ impl TranslationLinkStore for SqliteTranslationLinkStore {
         staged_publication::commit(&self.pool, &intent, &staged).await
     }
 
-    async fn select_ready_result(
+    async fn finalize_ready_publication(
         &self,
         translation_id: Uuid,
         result_id: Uuid,
         updated_at: DateTime<Utc>,
     ) -> Result<TranslationLink, PortError> {
-        select::run(&self.pool, translation_id, result_id, updated_at).await
+        finalization::run(&self.pool, translation_id, result_id, updated_at).await
     }
 }

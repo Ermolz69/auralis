@@ -45,7 +45,7 @@ impl EditIntentRow {
     }
 }
 
-pub(super) async fn load<'e, E: SqliteExecutor<'e>>(
+pub(crate) async fn load<'e, E: SqliteExecutor<'e>>(
     executor: E,
     result_id: Uuid,
 ) -> Result<Option<TranslationEditIntent>, PortError> {

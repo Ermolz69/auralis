@@ -34,6 +34,12 @@ pub(super) async fn record_in_tx(
     }
     let expected_revision = i64::try_from(intent.expected_link_revision)
         .map_err(|_| validation::conflict("invalid expected link revision"))?;
+    let link = row::load(&mut **transaction, intent.translation_id)
+        .await?
+        .ok_or_else(|| PortError::NotFound {
+            resource: "translation link".into(),
+        })?;
+    let manual = super::manual_publication_guard::check(transaction, intent, &link).await?;
     let existing: Option<(String, String, String, i64, i64, i64)> = sqlx::query_as(
         "SELECT run_id, artifact_id, source_sha256, expected_link_revision, needs_review, result_revision
          FROM translation_publications WHERE translation_id = ? AND result_id = ?",
@@ -61,11 +67,6 @@ pub(super) async fn record_in_tx(
             "result publication differs from stored record",
         ));
     }
-    let link = row::load(&mut **transaction, intent.translation_id)
-        .await?
-        .ok_or_else(|| PortError::NotFound {
-            resource: "translation link".into(),
-        })?;
     let selected_run_matches = if link.active_run_id.is_none() {
         if let Some(selected_result_id) = link.selected_result_id {
             let selected_run: Option<String> = sqlx::query_scalar(
@@ -87,18 +88,20 @@ pub(super) async fn record_in_tx(
     } else {
         false
     };
-    if !(link.active_run_id == Some(intent.run_id) || selected_run_matches)
-        || link.source_sha256 != intent.source_sha256
-        || link.revision != intent.expected_link_revision
+    if !manual
+        && (!(link.active_run_id == Some(intent.run_id) || selected_run_matches)
+            || link.source_sha256 != intent.source_sha256
+            || link.revision != intent.expected_link_revision)
     {
         return Err(validation::conflict(
             "run, source, or link revision changed",
         ));
     }
     let newer_exists: i64 = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM translation_publications
-         WHERE translation_id = ? AND run_id = ? AND source_sha256 = ?
-           AND expected_link_revision = ? AND result_revision > ?)",
+        "SELECT EXISTS(SELECT 1 FROM translation_publications p
+         WHERE p.translation_id = ? AND p.run_id = ? AND p.source_sha256 = ?
+           AND p.expected_link_revision = ? AND p.result_revision > ?
+           AND NOT EXISTS(SELECT 1 FROM translation_edit_intents i WHERE i.result_id = p.result_id))",
     )
     .bind(intent.translation_id.to_string())
     .bind(intent.run_id.to_string())
@@ -110,9 +113,29 @@ pub(super) async fn record_in_tx(
     .map_err(|error| {
         super::super::helpers::map_sqlite_error("check_newer_translation_result", error)
     })?;
-    if newer_exists != 0 {
+    if !manual && newer_exists != 0 {
         return Err(validation::conflict(
             "a newer result is already staged for publication",
+        ));
+    }
+    let newer_manual_selection: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM translation_publications p
+         JOIN translation_edit_intents i ON i.result_id = p.result_id
+         WHERE p.translation_id = ? AND p.result_id = ? AND p.run_id = ?
+           AND p.state = 'ready' AND p.result_revision > ?)",
+    )
+    .bind(intent.translation_id.to_string())
+    .bind(link.selected_result_id.map(|id| id.to_string()))
+    .bind(intent.run_id.to_string())
+    .bind(i64::from(intent.result_revision))
+    .fetch_one(&mut **transaction)
+    .await
+    .map_err(|error| {
+        super::super::helpers::map_sqlite_error("check_selected_manual_precedence", error)
+    })?;
+    if !manual && newer_manual_selection {
+        return Err(validation::conflict(
+            "a newer manual revision is selected for this run",
         ));
     }
     let artifact: Option<(String, String, String)> =

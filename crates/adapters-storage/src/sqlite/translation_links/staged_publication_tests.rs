@@ -174,7 +174,7 @@ async fn artifact_publication_and_outbox_commit_together_and_retry() {
         .await
         .unwrap();
     store
-        .select_ready_result(intent.translation_id, publication.result_id, Utc::now())
+        .finalize_ready_publication(intent.translation_id, publication.result_id, Utc::now())
         .await
         .unwrap();
     store
@@ -249,7 +249,7 @@ async fn newer_edit_wins_when_both_publications_are_waiting_for_finalization() {
     );
     assert!(matches!(
         store
-            .select_ready_result(intent.translation_id, first.result_id, Utc::now())
+            .finalize_ready_publication(intent.translation_id, first.result_id, Utc::now())
             .await,
         Err(PortError::Conflict { .. })
     ));
@@ -265,7 +265,7 @@ async fn newer_edit_wins_when_both_publications_are_waiting_for_finalization() {
         .await
         .unwrap();
     let selected = store
-        .select_ready_result(intent.translation_id, edited.result_id, Utc::now())
+        .finalize_ready_publication(intent.translation_id, edited.result_id, Utc::now())
         .await
         .unwrap();
     assert_eq!(selected.selected_result_id, Some(edited.result_id));

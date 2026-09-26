@@ -104,7 +104,7 @@ impl HistoryFixture {
             .execute(&self.pool)
             .await?;
         self.store
-            .select_ready_result(
+            .finalize_ready_publication(
                 self.intent.translation_id,
                 publication.result_id,
                 Utc::now(),

@@ -5,3 +5,4 @@ mod row;
 mod validation;
 
 pub use repository::SqliteTranslationEditIntentStore;
+pub(super) use row::load as load_intent;

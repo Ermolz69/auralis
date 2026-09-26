@@ -230,7 +230,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
     publication::record(&pool, &publication).await.unwrap();
     assert!(matches!(
         store
-            .select_ready_result(
+            .finalize_ready_publication(
                 publication.translation_id,
                 publication.result_id,
                 Utc::now()
@@ -260,7 +260,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
         .unwrap();
     assert!(matches!(
         store
-            .select_ready_result(
+            .finalize_ready_publication(
                 publication.translation_id,
                 publication.result_id,
                 Utc::now()
@@ -275,7 +275,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
         .await
         .unwrap();
     let selected = store
-        .select_ready_result(
+        .finalize_ready_publication(
             publication.translation_id,
             publication.result_id,
             Utc::now(),
@@ -290,7 +290,7 @@ async fn result_is_selected_only_after_ready_artifact_and_matching_revision() {
     assert_eq!(store.list_recoverable().await.unwrap().len(), 1);
     assert_eq!(
         store
-            .select_ready_result(
+            .finalize_ready_publication(
                 publication.translation_id,
                 publication.result_id,
                 Utc::now()

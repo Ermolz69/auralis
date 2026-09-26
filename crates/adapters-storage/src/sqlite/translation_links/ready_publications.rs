@@ -16,9 +16,14 @@ pub(super) async fn list(
          FROM translation_publications p
          JOIN artifacts a ON a.id = p.artifact_id
          JOIN project_translations l ON l.translation_id = p.translation_id
+         LEFT JOIN translation_edit_intents i ON i.result_id = p.result_id
          WHERE p.state = 'pending' AND a.state = 'ready'
            AND a.kind = 'TranslatedTranscript' AND a.project_id = l.project_id
-           AND (l.active_run_id = p.run_id OR
+           AND l.source_sha256 = p.source_sha256
+           AND ((i.result_id IS NOT NULL AND i.translation_id = p.translation_id
+                    AND i.project_id = l.project_id AND i.run_id = p.run_id
+                    AND i.expected_link_revision = p.expected_link_revision)
+                OR (i.result_id IS NULL AND (l.active_run_id = p.run_id OR
                 (l.active_run_id IS NULL AND EXISTS (
                     SELECT 1 FROM translation_publications selected
                     WHERE selected.translation_id = l.translation_id
@@ -27,7 +32,6 @@ pub(super) async fn list(
                       AND selected.source_sha256 = l.source_sha256
                       AND selected.state = 'ready'
                 )))
-           AND l.source_sha256 = p.source_sha256
            AND l.revision = p.expected_link_revision
            AND NOT EXISTS (
                SELECT 1 FROM translation_publications newer
@@ -37,7 +41,8 @@ pub(super) async fn list(
                  AND newer.expected_link_revision = p.expected_link_revision
                  AND (newer.result_revision > p.result_revision OR
                       (newer.result_revision = p.result_revision AND newer.rowid > p.rowid))
-           )
+                 AND NOT EXISTS(SELECT 1 FROM translation_edit_intents edited WHERE edited.result_id = newer.result_id)
+           )))
          ORDER BY p.created_at, p.result_id LIMIT ?",
     )
     .bind(limit)
