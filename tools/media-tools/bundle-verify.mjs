@@ -8,15 +8,32 @@ import { targetAssets } from './manifest.mjs';
 import { renderNotices, renderProvenance } from './provenance.mjs';
 import { expectedStagedFilenames } from './staged-files.mjs';
 import { assertNoTranslationPayload } from '../translation-delivery/policy.mjs';
+import { verifyBundledApplication } from './bundled-application.mjs';
 
 export async function verifyBuiltBundle({ rootDir, manifest, target }) {
   const bundleRoot = path.join(rootDir, 'target/release/bundle');
-  const materializedRoot = await materializeBundle(bundleRoot);
+  const materialized = await materializeBundle(bundleRoot);
+  const materializedRoot = materialized.root;
   try {
-    await verifyMaterializedTree(materializedRoot, manifest, target);
+    const payload = await verifyMaterializedTree(materializedRoot, manifest, target);
+    const application =
+      process.platform === 'win32'
+        ? await verifyBundledApplication(
+            materializedRoot,
+            path.join(rootDir, 'target/release/auralis-app.exe'),
+          )
+        : null;
+    const artifact = materialized.artifact
+      ? {
+          file: path.relative(rootDir, materialized.artifact),
+          bytes: (await fsp.stat(materialized.artifact)).size,
+          sha256: await sha256File(materialized.artifact),
+        }
+      : null;
+    return { createdAt: new Date().toISOString(), target, artifact, payload, application };
   } finally {
     if (materializedRoot !== bundleRoot && !materializedRoot.endsWith('.app')) {
-      await fsp.rm(materializedRoot, { recursive: true, force: true });
+      await removeTemporaryExtraction(materializedRoot);
     }
   }
 }
@@ -39,13 +56,10 @@ export async function verifyMaterializedTree(root, manifest, target) {
     ),
   );
   bundledFiles.push(
-    await verifyUniqueText(
-      files,
-      'THIRD-PARTY-NOTICES.txt',
-      renderNotices(manifest, target),
-    ),
+    await verifyUniqueText(files, 'THIRD-PARTY-NOTICES.txt', renderNotices(manifest, target)),
   );
   await verifyBundledDirectory(bundledFiles, manifest, target);
+  return { fileCount: files.length, files: files.map((file) => path.relative(root, file)).sort() };
 }
 
 function walkFiles(directory, files = []) {
@@ -62,23 +76,42 @@ async function materializeBundle(bundleRoot) {
   if (process.platform === 'darwin') {
     const app = findDirectories(bundleRoot).find((directory) => directory.endsWith('.app'));
     if (!app) throw new Error(`No macOS app bundle found under ${bundleRoot}`);
-    return app;
+    return { root: app, artifact: null };
   }
 
   const temporary = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-bundle-'));
   if (process.platform === 'win32') {
-    const msi = walkFiles(bundleRoot).find((file) => file.endsWith('.msi'));
-    if (!msi) throw new Error(`No MSI bundle found under ${bundleRoot}`);
-    runExtractor('msiexec.exe', ['/a', msi, '/qn', `TARGETDIR=${temporary}`]);
-    return temporary;
+    const installers = walkFiles(bundleRoot).filter((file) => file.endsWith('.msi'));
+    try {
+      if (installers.length !== 1)
+        throw new Error(
+          `Expected exactly one MSI bundle under ${bundleRoot}, found ${installers.length}`,
+        );
+      runExtractor('msiexec.exe', ['/a', installers[0], '/qn', `TARGETDIR=${temporary}`]);
+      return { root: temporary, artifact: installers[0] };
+    } catch (error) {
+      await removeTemporaryExtraction(temporary);
+      throw error;
+    }
   }
   if (process.platform === 'linux') {
     const deb = walkFiles(bundleRoot).find((file) => file.endsWith('.deb'));
     if (!deb) throw new Error(`No Debian bundle found under ${bundleRoot}`);
     runExtractor('dpkg-deb', ['-x', deb, temporary]);
-    return temporary;
+    return { root: temporary, artifact: deb };
   }
   throw new Error(`Unsupported bundle verification host: ${process.platform}`);
+}
+
+async function removeTemporaryExtraction(directory) {
+  const resolved = path.resolve(directory);
+  if (
+    path.dirname(resolved) !== path.resolve(os.tmpdir()) ||
+    !path.basename(resolved).startsWith('auralis-bundle-')
+  ) {
+    throw new Error('Refusing cleanup outside the owned bundle extraction directory');
+  }
+  await fsp.rm(resolved, { recursive: true, force: true });
 }
 
 function findDirectories(directory, directories = []) {
@@ -110,15 +143,18 @@ function runExtractor(command, args) {
 
 async function verifyUniqueFile(files, basename, expectedSha256) {
   const matches = files.filter((file) => path.basename(file) === basename);
-  if (matches.length !== 1) throw new Error(`Expected exactly one bundled ${basename}, found ${matches.length}`);
+  if (matches.length !== 1)
+    throw new Error(`Expected exactly one bundled ${basename}, found ${matches.length}`);
   const actualSha256 = await sha256File(matches[0]);
-  if (actualSha256 !== expectedSha256) throw new Error(`Bundled ${basename} failed SHA-256 verification`);
+  if (actualSha256 !== expectedSha256)
+    throw new Error(`Bundled ${basename} failed SHA-256 verification`);
   return matches[0];
 }
 
 async function verifyUniqueText(files, basename, expected) {
   const matches = files.filter((file) => path.basename(file) === basename);
-  if (matches.length !== 1) throw new Error(`Expected exactly one bundled ${basename}, found ${matches.length}`);
+  if (matches.length !== 1)
+    throw new Error(`Expected exactly one bundled ${basename}, found ${matches.length}`);
   if ((await fsp.readFile(matches[0], 'utf8')) !== expected) {
     throw new Error(`Bundled ${basename} is stale`);
   }

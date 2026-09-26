@@ -5,6 +5,7 @@
   "build": {
     "beforeDevCommand": "task desktop:before-dev",
     "beforeBuildCommand": "task desktop:before-build",
+    "beforeBundleCommand": "task desktop:before-bundle",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../apps/desktop/dist"
   },

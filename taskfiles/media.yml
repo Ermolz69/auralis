@@ -10,6 +10,7 @@ tasks:
     desc: Validate pinned versions, integrity metadata and build/release wiring without downloads
     cmds:
       - node --test tools/media-tools/media-tools.test.mjs
+      - node --test tools/media-tools/bundled-application.test.mjs
       - node tools/media-tools/cli.mjs check
 
   prepare:

@@ -5,7 +5,7 @@ export function verifyRepositoryPolicy(rootDir) {
   const taskfile = fs
     .readFileSync(path.join(rootDir, 'Taskfile.yml'), 'utf8')
     .replaceAll('\r\n', '\n');
-  for (const task of ['desktop:before-dev', 'desktop:before-build']) {
+  for (const task of ['desktop:before-dev', 'desktop:before-build', 'desktop:before-bundle']) {
     if (!taskfile.includes(`  ${task}:\n`)) throw new Error(`Taskfile is missing ${task}`);
     if (taskfile.includes(`  ${task}:\n    internal: true`)) {
       throw new Error(`${task} must be callable by the Tauri CLI`);
@@ -45,10 +45,16 @@ export function verifyRepositoryPolicy(rootDir) {
   if (tauriConfig.build?.beforeDevCommand !== 'task desktop:before-dev') {
     throw new Error('Tauri beforeDevCommand must prepare media tools through Taskfile');
   }
+  if (tauriConfig.build?.beforeBundleCommand !== 'task desktop:before-bundle') {
+    throw new Error(
+      'Tauri beforeBundleCommand must capture application identity before package patching',
+    );
+  }
 
   const ignored = fs.readFileSync(path.join(rootDir, '.gitignore'), 'utf8');
   for (const line of ['/src-tauri/binaries/*']) {
-    if (!ignored.split(/\r?\n/).includes(line)) throw new Error(`Missing generated binary ignore: ${line}`);
+    if (!ignored.split(/\r?\n/).includes(line))
+      throw new Error(`Missing generated binary ignore: ${line}`);
   }
 
   for (const workflow of ['.github/workflows/tauri-build.yml', '.github/workflows/release.yml']) {

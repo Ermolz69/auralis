@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { verifyBuiltBundle } from './bundle-verify.mjs';
 import { loadManifest, resolveTarget } from './manifest.mjs';
@@ -33,7 +34,12 @@ async function main() {
     return;
   }
   if (command === 'verify-bundle') {
-    await verifyBuiltBundle({ rootDir, manifest, target });
+    const report = await verifyBuiltBundle({ rootDir, manifest, target });
+    await fs.writeFile(
+      path.join(rootDir, 'target/bundle-verification.json'),
+      `${JSON.stringify(report, null, 2)}\n`,
+    );
+    process.stdout.write(`${JSON.stringify(report)}\n`);
     process.stdout.write(`Verified media tools inside the ${target} installer bundle.\n`);
     return;
   }

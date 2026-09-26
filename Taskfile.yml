@@ -75,6 +75,18 @@ tasks:
       - pnpm tauri build {{.CLI_ARGS}}
       - task: media:bundle:verify
 
+  desktop:bundle:from-build:
+    desc: Package the current release executable and verify its payload without recompiling
+    cmds:
+      - task: media:verify
+      - pnpm tauri bundle {{.CLI_ARGS}}
+      - task: media:bundle:verify
+
+  desktop:before-bundle:
+    desc: Capture the current Windows application identity before package patching and signing
+    cmds:
+      - node tools/release/prepare-bundled-application.mjs
+
   desktop:e2e:native:
     desc: Run real React-to-IPC-to-Rust-to-SQLite-to-ffprobe/yt-dlp/filesystem acceptance
     cmds:

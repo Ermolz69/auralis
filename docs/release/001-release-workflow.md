@@ -22,6 +22,20 @@ FFmpeg, ffprobe, and yt-dlp executables declared in `tools/media-tools/manifest.
 verifies their SHA-256 digests and reported versions, and stages their licenses and source
 provenance. After Tauri creates the installer, `task media:bundle:verify` extracts the
 platform package and rejects missing, duplicate, modified, or stale media-tool resources.
+The extracted tree is also checked for translation weights and test/evaluation payloads.
+On Windows the verifier requires exactly one `auralis-app.exe` with the full SHA-256
+captured by the signing wrapper after package marking and signing. Its digest record also
+binds the pre-signing source to the current `target/release/auralis-app.exe`. Tauri 2.11.4
+temporarily replaces its `UNK` bundle marker with `MSI` or `NSS` and restores the source
+after bundling, so comparing the two raw hashes directly incorrectly rejects valid packages.
+`task desktop:before-bundle` captures the source digest and exact variable offset in the
+fresh executable before Tauri changes it; other marker-like string constants are allowed.
+The wrapper reverses only that captured marker in a memory copy and requires the resulting
+digest to match the frozen source. The packaged digest covers every post-signing byte. Missing/stale records, changed
+payloads and duplicate executables fail. Signature trust is checked separately by release CI.
+The verifier reports the extracted inventory and both application digests before cleanup.
+Its successful report is retained at `target/bundle-verification.json`, with installer
+length and digest. Windows verification requires one unambiguous MSI artifact.
 Installer generation is explicitly enabled in `tauri.conf.json`; producing only the bare
 application executable is not considered a successful release build.
 On Windows the workflow installs the generated current-user NSIS package into an isolated
@@ -40,6 +54,17 @@ static manifest at
 build produces Tauri v2 updater bundles and mandatory `.sig` files. The publish job combines
 their signatures into `latest.json`; the manifest points directly to the assets attached to
 the matching `app-v<version>` GitHub Release.
+
+Local unsigned diagnostic bundles may be built with `task desktop:bundle -- --bundles msi`
+to exercise payload verification during development, as authorized for the translation
+implementation. This produces an ignored local artifact with the normal production feature
+set. Official release publication, updater artifacts, signing and clean-machine acceptance
+remain governed by the release workflow above. Starting the normal application can open
+existing user databases; local content audits only extract the package and read its files.
+`task desktop:bundle:from-build -- --bundles msi` repeats packaging and verification of the
+current release executable after a verifier/signing-wrapper change. It checks prepared media
+tools first and does not rebuild Rust or the embedded frontend. Use the ordinary build task
+after production source changes.
 
 ## Atomic publication
 

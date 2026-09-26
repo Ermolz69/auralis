@@ -20,6 +20,9 @@ coverage/
 # Verified media tools are generated from tools/media-tools/manifest.json
 /src-tauri/binaries/*
 
+# Local installer investigations and other development-only caches
+/.cache/
+
 # Env files
 .env
 .env.*

@@ -3,19 +3,24 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { windowsSigningConfig } from './signing-config.mjs';
+import { recordBundledApplication } from './record-bundled-application.mjs';
 
 const target = process.argv[2];
 if (!target) {
   process.stderr.write('Tauri did not provide a Windows signing target\n');
   process.exitCode = 1;
-} else if (!process.env.WINDOWS_SIGNING_MODE && process.env.AURALIS_REQUIRE_SIGNING !== 'true') {
-  process.stdout.write('Skipping Windows code signing for non-release build.\n');
 } else {
   try {
-    const config = windowsSigningConfig();
-    if (config.mode === 'pfx') signWithPfx(target, config.timestampUrl);
-    else signWithAzure(target);
-    process.stdout.write(`Signed ${path.basename(target)} using ${config.mode}.\n`);
+    await recordBundledApplication(target, () => {
+      if (!process.env.WINDOWS_SIGNING_MODE && process.env.AURALIS_REQUIRE_SIGNING !== 'true') {
+        process.stdout.write('Skipping Windows code signing for non-release build.\n');
+        return;
+      }
+      const config = windowsSigningConfig();
+      if (config.mode === 'pfx') signWithPfx(target, config.timestampUrl);
+      else signWithAzure(target);
+      process.stdout.write(`Signed ${path.basename(target)} using ${config.mode}.\n`);
+    });
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;
