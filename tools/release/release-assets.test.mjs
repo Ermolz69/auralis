@@ -52,6 +52,17 @@ test('builds the static GitHub updater manifest from signed bundles', () => {
   });
 });
 
+test('publication excludes upstream model weights and local reports', () => {
+  withPackages((root) => {
+    fs.writeFileSync(path.join(root, 'windows/Hy-MT2.gguf'), 'upstream weights');
+    fs.writeFileSync(path.join(root, 'windows/translation-report.json'), 'local evaluation');
+    const output = path.join(path.dirname(root), 'publish');
+    prepareReleaseAssets(root, output, metadata);
+    assert(!fs.existsSync(path.join(output, 'Hy-MT2.gguf')));
+    assert(!fs.existsSync(path.join(output, 'translation-report.json')));
+  });
+});
+
 test('prepares updater metadata and deterministic SHA-256 checksums', () => {
   withPackages((root) => {
     const output = path.join(path.dirname(root), 'publish');

@@ -7,6 +7,7 @@ import { sha256File } from './integrity.mjs';
 import { targetAssets } from './manifest.mjs';
 import { renderNotices, renderProvenance } from './provenance.mjs';
 import { expectedStagedFilenames } from './staged-files.mjs';
+import { assertNoTranslationPayload } from '../translation-delivery/policy.mjs';
 
 export async function verifyBuiltBundle({ rootDir, manifest, target }) {
   const bundleRoot = path.join(rootDir, 'target/release/bundle');
@@ -22,6 +23,7 @@ export async function verifyBuiltBundle({ rootDir, manifest, target }) {
 
 export async function verifyMaterializedTree(root, manifest, target) {
   const files = walkFiles(root);
+  assertNoTranslationPayload(files.map((file) => path.relative(root, file)));
   const bundledFiles = [];
   for (const asset of targetAssets(manifest, target)) {
     bundledFiles.push(await verifyUniqueFile(files, asset.output, asset.sha256));

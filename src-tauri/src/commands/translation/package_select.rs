@@ -1,4 +1,4 @@
-use super::package_error;
+use super::{package_admission, package_error};
 use crate::bootstrap::selected_translation_runtime::SelectedTranslationRuntime;
 use crate::bootstrap::translation::TranslationUseCases;
 use crate::dto::error::CommandError;
@@ -15,17 +15,7 @@ pub async fn select_translation_package_cmd(
     usecases: State<'_, Arc<TranslationUseCases>>,
 ) -> Result<TranslationPackageStatus, CommandError> {
     let mut selected = selected_runtime.write().await;
-    if !usecases
-        .jobs
-        .list_active()
-        .await
-        .map_err(CommandError::from)?
-        .is_empty()
-    {
-        return Err(CommandError::Busy(
-            "Pause or finish active translation jobs before changing the model".into(),
-        ));
-    }
+    package_admission::ensure_no_active_jobs(&usecases).await?;
     let packages = packages.inner().clone();
     let (runtime, status) = tokio::task::spawn_blocking(move || {
         let runtime = packages.select(&release_id, &backend)?;

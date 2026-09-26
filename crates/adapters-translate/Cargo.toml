@@ -11,6 +11,7 @@ auralis-translation-llamacpp = { path = "../../modules/auralis-translate/crates/
 auralis-translation-sqlite = { path = "../../modules/auralis-translate/crates/auralis-translation-sqlite" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 ports.workspace = true
 domain.workspace = true

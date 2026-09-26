@@ -4,6 +4,7 @@ pub mod edit;
 pub mod import_source;
 pub mod inspect;
 pub mod list;
+mod package_admission;
 mod package_error;
 pub mod package_install;
 pub mod package_select;

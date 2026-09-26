@@ -56,4 +56,23 @@ describe('TranslationModelSetup', () => {
     expect(await screen.findByRole('alert')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Выбрать модель' })).not.toBeNull();
   });
+
+  it('lets a selected package be verified and repaired without changing its selection', async () => {
+    getTranslationPackageStatus.mockResolvedValue({
+      ...packageStatus,
+      installed: true,
+      selected: true,
+    });
+    installTranslationPackage.mockResolvedValue({
+      ...packageStatus,
+      installed: true,
+      selected: true,
+    });
+    render(<TranslationModelSetup />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Проверить и восстановить' }));
+    await waitFor(() => expect(installTranslationPackage).toHaveBeenCalledOnce());
+    expect(
+      await screen.findByText('Локальная модель выбрана. Перед запуском её файлы будут проверены.'),
+    ).not.toBeNull();
+  });
 });

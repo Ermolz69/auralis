@@ -20,9 +20,15 @@ tasks:
     desc: Validate bundle budgets and desktop content security policy
     cmds:
       - node --test tools/scripts/check-bundle.test.mjs tools/scripts/check-csp.test.mjs
+      - task: translation-delivery
       - task: ipc-contract
       - task: release-metadata
       - task: :release:smoke:check
+
+  translation-delivery:
+    desc: Reject embedded translation weights and test payloads and verify release publication excludes them
+    cmds:
+      - node --test tools/translation-delivery/policy.test.mjs tools/release/release-assets.test.mjs
 
   docs:
     cmds:

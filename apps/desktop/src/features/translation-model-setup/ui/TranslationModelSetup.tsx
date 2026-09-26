@@ -99,8 +99,21 @@ export function TranslationModelSetup() {
           size="sm"
           onClick={() => void select()}
           loading={busy === 'select'}
+          disabled={busy === 'install'}
         >
           Выбрать модель
+        </Button>
+      )}
+      {status?.supported && status.installed && (
+        <Button
+          className="mt-3 ml-2"
+          size="sm"
+          variant="secondary"
+          onClick={() => void install()}
+          loading={busy === 'install'}
+          disabled={busy === 'select'}
+        >
+          {busy === 'install' ? 'Проверка и восстановление…' : 'Проверить и восстановить'}
         </Button>
       )}
     </section>

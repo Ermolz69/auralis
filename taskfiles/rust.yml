@@ -27,13 +27,13 @@ tasks:
       - cargo test --locked -p auralis-app {{.CLI_ARGS}}
 
   test:translate:package:
-    desc: Install and select the pinned CPU package from a complete local asset cache
+    desc: Install, select, corrupt, and repair the pinned CPU package from a complete local asset cache
     requires:
       vars: [ASSET_DIR]
     env:
       AURALIS_TEST_PACKAGE_ASSET_DIR: '{{.ASSET_DIR}}'
     cmds:
-      - cargo test --locked -p adapters-translate --lib installs_and_selects_a_real_cached_package -- --ignored
+      - cargo test --locked -p adapters-translate --test installed_packages installs_and_selects_a_real_cached_package -- --ignored
 
   resolve:translate:
     desc: Resolve the pinned Translate submodule against the Auralis Cargo workspace

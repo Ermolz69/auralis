@@ -1,13 +1,14 @@
 use super::catalog;
+use super::runtime::InstalledPackageRuntime;
 use super::selection::PackageSelection;
 use super::{TranslationPackageError, TranslationPackageStatus};
 use crate::{ManagedLlamaRuntime, ManagedRuntimeConfig};
 use auralis_translation_llamacpp::{
-    ReleaseAsset, ReleaseManifest, download_release_assets, hash_file, install_offline,
+    ReleaseAsset, ReleaseManifest, hash_file, verify_runtime_files,
 };
 use ports::translation_model_runtime::TranslationModelRuntimePort;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, TryLockError};
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::time::Duration;
 
 const STATUS_SCHEMA_VERSION: u32 = 1;
@@ -18,9 +19,9 @@ const DEFAULT_READINESS_INTERVAL: Duration = Duration::from_millis(250);
 const SERVER_EXECUTABLE_NAME: &str = "llama-server.exe";
 
 pub struct TranslationPackageService {
-    packages_root: PathBuf,
-    cache_dir: PathBuf,
-    selection_file: PathBuf,
+    pub(super) packages_root: PathBuf,
+    pub(super) cache_dir: PathBuf,
+    pub(super) selection_file: PathBuf,
     install_lock: Mutex<()>,
 }
 
@@ -50,36 +51,17 @@ impl TranslationPackageService {
     }
 
     pub fn install(&self) -> Result<TranslationPackageStatus, TranslationPackageError> {
-        self.ensure_supported_platform()?;
-        let _guard = match self.install_lock.try_lock() {
-            Ok(guard) => guard,
-            Err(TryLockError::WouldBlock) => return Err(TranslationPackageError::Busy),
-            Err(TryLockError::Poisoned(_)) => {
-                return Err(TranslationPackageError::Invalid(
-                    "package installation lock is poisoned",
-                ));
-            }
-        };
-        let release = catalog::release()?;
-        if self.package_root(&release).exists() {
-            self.verify_complete(&release)?;
-            return self.status();
+        self.repair()
+    }
+
+    pub(super) fn lock_installation(&self) -> Result<MutexGuard<'_, ()>, TranslationPackageError> {
+        match self.install_lock.try_lock() {
+            Ok(guard) => Ok(guard),
+            Err(TryLockError::WouldBlock) => Err(TranslationPackageError::Busy),
+            Err(TryLockError::Poisoned(_)) => Err(TranslationPackageError::Invalid(
+                "package installation lock is poisoned",
+            )),
         }
-        download_release_assets(
-            catalog::RELEASE,
-            catalog::PROFILE,
-            catalog::BACKEND,
-            &self.cache_dir,
-        )?;
-        install_offline(
-            catalog::RELEASE,
-            catalog::PROFILE,
-            catalog::BACKEND,
-            &self.cache_dir,
-            &self.packages_root,
-        )?;
-        self.verify_complete(&release)?;
-        self.status()
     }
 
     pub fn select(
@@ -125,59 +107,37 @@ impl TranslationPackageService {
             startup_timeout: DEFAULT_STARTUP_TIMEOUT,
             readiness_interval: DEFAULT_READINESS_INTERVAL,
         };
-        Ok(Arc::new(ManagedLlamaRuntime::new(config)?))
+        let variant = release
+            .variants()
+            .iter()
+            .find(|variant| variant.backend == catalog::BACKEND)
+            .ok_or(TranslationPackageError::Invalid(
+                "pinned backend is missing",
+            ))?
+            .clone();
+        Ok(Arc::new(InstalledPackageRuntime::new(
+            root,
+            variant,
+            ManagedLlamaRuntime::new(config)?,
+        )))
     }
 
-    fn verify_complete(&self, release: &ReleaseManifest) -> Result<(), TranslationPackageError> {
-        self.validate_structure(release)?;
-        let root = self.package_root(release);
-        for asset in release.assets_for_backend(catalog::BACKEND)? {
-            let path = asset_path(&root, release, asset);
-            let (digest, bytes) = hash_file(&path).map_err(|_| {
-                TranslationPackageError::Invalid("installed asset could not be hashed")
-            })?;
-            if Some(bytes) != asset.bytes || !digest.to_string().eq_ignore_ascii_case(&asset.sha256)
-            {
-                return Err(TranslationPackageError::Invalid(
-                    "installed asset differs from its pinned digest",
-                ));
-            }
-        }
-        Ok(())
+    pub(super) fn verify_complete(
+        &self,
+        release: &ReleaseManifest,
+    ) -> Result<(), TranslationPackageError> {
+        verify_complete_at(&self.package_root(release), release)
     }
 
     fn validate_structure(&self, release: &ReleaseManifest) -> Result<(), TranslationPackageError> {
-        let root = self.package_root(release);
-        let metadata = std::fs::symlink_metadata(&root)?;
-        if !metadata.file_type().is_dir() {
-            return Err(TranslationPackageError::Invalid(
-                "installed package root is not a directory",
-            ));
-        }
-        for (name, expected) in [
-            ("release.json", catalog::RELEASE),
-            ("profile.json", catalog::PROFILE),
-        ] {
-            let path = root.join(name);
-            verify_regular_file(&path, Some(expected.len() as u64))?;
-            if std::fs::read(path)? != expected {
-                return Err(TranslationPackageError::Invalid(
-                    "installed manifest differs from pinned package",
-                ));
-            }
-        }
-        verify_regular_file(&root.join("runtime").join(SERVER_EXECUTABLE_NAME), None)?;
-        for asset in release.assets_for_backend(catalog::BACKEND)? {
-            verify_regular_file(&asset_path(&root, release, asset), asset.bytes)?;
-        }
-        Ok(())
+        validate_structure_at(&self.package_root(release), release)
     }
 
-    fn package_root(&self, release: &ReleaseManifest) -> PathBuf {
+    pub(super) fn package_root(&self, release: &ReleaseManifest) -> PathBuf {
         self.packages_root.join(&release.id).join(catalog::BACKEND)
     }
 
-    fn ensure_supported_platform(&self) -> Result<(), TranslationPackageError> {
+    pub(super) fn ensure_supported_platform(&self) -> Result<(), TranslationPackageError> {
         if cfg!(all(target_os = "windows", target_arch = "x86_64")) {
             Ok(())
         } else {
@@ -186,6 +146,61 @@ impl TranslationPackageService {
             ))
         }
     }
+}
+
+pub(super) fn verify_complete_at(
+    root: &Path,
+    release: &ReleaseManifest,
+) -> Result<(), TranslationPackageError> {
+    validate_structure_at(root, release)?;
+    for asset in release.assets_for_backend(catalog::BACKEND)? {
+        let path = asset_path(root, release, asset);
+        let (digest, bytes) = hash_file(&path)
+            .map_err(|_| TranslationPackageError::Invalid("installed asset could not be hashed"))?;
+        if Some(bytes) != asset.bytes || !digest.to_string().eq_ignore_ascii_case(&asset.sha256) {
+            return Err(TranslationPackageError::Invalid(
+                "installed asset differs from its pinned digest",
+            ));
+        }
+    }
+    let variant = release
+        .variants()
+        .iter()
+        .find(|variant| variant.backend == catalog::BACKEND)
+        .ok_or(TranslationPackageError::Invalid(
+            "pinned backend is missing",
+        ))?;
+    verify_runtime_files(&root.join("assets"), &root.join("runtime"), variant)?;
+    Ok(())
+}
+
+fn validate_structure_at(
+    root: &Path,
+    release: &ReleaseManifest,
+) -> Result<(), TranslationPackageError> {
+    let metadata = std::fs::symlink_metadata(root)?;
+    if !metadata.file_type().is_dir() {
+        return Err(TranslationPackageError::Invalid(
+            "installed package root is not a directory",
+        ));
+    }
+    for (name, expected) in [
+        ("release.json", catalog::RELEASE),
+        ("profile.json", catalog::PROFILE),
+    ] {
+        let path = root.join(name);
+        verify_regular_file(&path, Some(expected.len() as u64))?;
+        if std::fs::read(path)? != expected {
+            return Err(TranslationPackageError::Invalid(
+                "installed manifest differs from pinned package",
+            ));
+        }
+    }
+    verify_regular_file(&root.join("runtime").join(SERVER_EXECUTABLE_NAME), None)?;
+    for asset in release.assets_for_backend(catalog::BACKEND)? {
+        verify_regular_file(&asset_path(root, release, asset), asset.bytes)?;
+    }
+    Ok(())
 }
 
 fn asset_path(root: &Path, release: &ReleaseManifest, asset: &ReleaseAsset) -> PathBuf {
