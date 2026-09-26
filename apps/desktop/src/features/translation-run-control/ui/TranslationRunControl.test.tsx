@@ -45,6 +45,39 @@ beforeEach(() => {
 });
 
 describe('TranslationRunControl', () => {
+  it('allows pause during initial preparation and paused-run resume without reporting cancellation as an error', async () => {
+    for (const phase of ['requested', 'paused'] as const) {
+      let rejectStart: (reason: unknown) => void = () => {
+        throw new Error('Start was not called');
+      };
+      startTranslationRun.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectStart = reject;
+          }),
+      );
+      getTranslationRunStatus.mockResolvedValue({ ...requested, phase });
+      render(<TranslationRunControl projectId={projectId} />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: phase === 'requested' ? 'Начать перевод' : 'Продолжить перевод',
+        }),
+      );
+      expect(await screen.findByText('Подготовка модели: 0/2')).not.toBeNull();
+      getTranslationRunStatus.mockResolvedValue({ ...requested, phase: 'paused' });
+      fireEvent.click(await screen.findByRole('button', { name: 'Пауза' }));
+      await waitFor(() =>
+        expect(pauseTranslationRun).toHaveBeenCalledWith(projectId, translationId),
+      );
+      rejectStart({ code: 'CANCELLED', message: 'The operation was cancelled' });
+      await screen.findByText('На паузе: 0/2');
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Продолжить перевод' }).hasAttribute('disabled'),
+      ).toBe(false);
+      cleanup();
+    }
+  });
   it('starts a prepared run and shows committed progress', async () => {
     render(<TranslationRunControl projectId={projectId} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Начать перевод' }));

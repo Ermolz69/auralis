@@ -14,6 +14,34 @@ const CHECKED_PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.checked.experimental.json"
 );
 
+#[tokio::test]
+async fn cancelled_admission_does_not_open_files_and_releases_its_slot()
+-> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let runtime = ManagedLlamaRuntime::new(ManagedRuntimeConfig {
+        executable: directory.path().join("missing-server.exe"),
+        model_file: directory.path().join("missing-model.gguf"),
+        context_tokens: 2048,
+        gpu_layers: 0,
+        ram_cache_mib: adapters_translate::DEFAULT_RAM_CACHE_MIB,
+        startup_timeout: Duration::from_secs(1),
+        readiness_interval: Duration::from_millis(100),
+    })?;
+    let cancellation = ports::cancellation::CancellationToken::new();
+    cancellation.cancel();
+    assert!(matches!(
+        runtime
+            .acquire_with_control(&intent(CHECKED_PROFILE), cancellation)
+            .await,
+        Err(PortError::Cancelled)
+    ));
+    assert!(matches!(
+        runtime.acquire(&intent(CHECKED_PROFILE)).await,
+        Err(PortError::NotFound { .. })
+    ));
+    Ok(())
+}
+
 fn intent(profile: &str) -> TranslationRunIntent {
     TranslationRunIntent {
         run_id: Uuid::new_v4(),

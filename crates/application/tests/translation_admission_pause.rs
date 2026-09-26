@@ -15,6 +15,72 @@ use translation_admission_fixture::{SOURCE, TranslationAdmissionFixture};
 const TIMEOUT: Duration = Duration::from_secs(5);
 
 #[tokio::test]
+async fn pause_does_not_hide_failed_preparation_cleanup() -> Result<(), Box<dyn Error>> {
+    let runtime = GatedTranslationRuntime::cleanup_failure("http://127.0.0.1:9/".into());
+    let fixture = TranslationAdmissionFixture::new(runtime.clone()).await?;
+    let managed = fixture.managed.clone();
+    let request = fixture.request.clone();
+    let admission = tokio::spawn(async move { managed.admit(request).await });
+    tokio::time::timeout(TIMEOUT, runtime.entered.acquire())
+        .await??
+        .forget();
+    fixture.pause.pause(fixture.request.clone()).await?;
+    assert!(matches!(
+        tokio::time::timeout(TIMEOUT, admission).await??,
+        Err(ApplicationError::Port(PortError::CleanupFailed { .. }))
+    ));
+    assert!(fixture.jobs.active_for_run(fixture.run_id).await?.is_none());
+    assert_eq!(
+        fixture.pause.status(fixture.request.clone()).await?.phase,
+        TranslationRunPhase::Paused
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn pause_stops_preparation_without_releasing_the_runtime_barrier()
+-> Result<(), Box<dyn Error>> {
+    for initially_paused in [false, true] {
+        let runtime = GatedTranslationRuntime::cancellable("http://127.0.0.1:9/".into());
+        let fixture = TranslationAdmissionFixture::new(runtime.clone()).await?;
+        if initially_paused {
+            fixture.pause.pause(fixture.request.clone()).await?;
+        }
+        let managed = fixture.managed.clone();
+        let request = fixture.request.clone();
+        let admission = tokio::spawn(async move { managed.admit(request).await });
+        tokio::time::timeout(TIMEOUT, runtime.entered.acquire())
+            .await??
+            .forget();
+        fixture.pause.pause(fixture.request.clone()).await?;
+        assert!(matches!(
+            tokio::time::timeout(TIMEOUT, admission).await??,
+            Err(ApplicationError::Port(PortError::Cancelled))
+        ));
+        assert_eq!(runtime.returned.load(Ordering::SeqCst), 0);
+        assert_eq!(runtime.dropped.load(Ordering::SeqCst), 0);
+        assert_eq!(runtime.release.available_permits(), 0);
+        assert!(fixture.jobs.active_for_run(fixture.run_id).await?.is_none());
+        assert_eq!(
+            fixture.pause.status(fixture.request.clone()).await?.phase,
+            TranslationRunPhase::Paused
+        );
+        assert_eq!(std::fs::read(&fixture.source_path)?, SOURCE);
+    }
+    Ok(())
+}
+
+#[test]
+fn admission_policy_rejects_unbounded_polling() {
+    use application::usecases::translation::TranslationAdmissionPolicy;
+    assert!(TranslationAdmissionPolicy::new(Duration::ZERO).is_none());
+    assert!(TranslationAdmissionPolicy::new(Duration::from_millis(9)).is_none());
+    assert!(TranslationAdmissionPolicy::new(Duration::from_millis(10)).is_some());
+    assert!(TranslationAdmissionPolicy::new(Duration::from_secs(1)).is_some());
+    assert!(TranslationAdmissionPolicy::new(Duration::from_millis(1001)).is_none());
+}
+
+#[tokio::test]
 async fn pause_during_model_admission_prevents_creating_a_host_job() -> Result<(), Box<dyn Error>> {
     for initially_paused in [false, true] {
         let runtime = GatedTranslationRuntime::new("http://127.0.0.1:9/".into());

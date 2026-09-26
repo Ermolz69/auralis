@@ -52,9 +52,10 @@ struct FixedRuntime;
 
 #[async_trait]
 impl TranslationModelRuntimePort for FixedRuntime {
-    async fn acquire(
+    async fn acquire_with_control(
         &self,
         _: &TranslationRunIntent,
+        _cancellation: ports::cancellation::CancellationToken,
     ) -> Result<Box<dyn TranslationModelLease>, PortError> {
         Ok(Box::new(FixedLease))
     }
@@ -62,9 +63,10 @@ impl TranslationModelRuntimePort for FixedRuntime {
 
 #[async_trait]
 impl TranslationModelRuntimePort for UnavailableRuntime {
-    async fn acquire(
+    async fn acquire_with_control(
         &self,
         _: &TranslationRunIntent,
+        _cancellation: ports::cancellation::CancellationToken,
     ) -> Result<Box<dyn TranslationModelLease>, PortError> {
         Err(PortError::Busy {
             message: "model slot unavailable".into(),

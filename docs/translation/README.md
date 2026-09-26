@@ -225,6 +225,43 @@ The independent CLI passed `task eval:cli:protocol` with the installed checked
 model after this guard change: separate SRT/WebVTT outputs and identical offline
 export. Evidence and retained identities are recorded at
 `modules/auralis-translate/eval/experiments/2026-09-26-attempt-admission-guard.md`.
-Hashing/readiness currently finishes before a cancelled admission releases its
-resources. Prompt interruption, native admission command races, fresh package
+The guard is now combined with cooperative preparation control described below.
+Native preparation-pause evidence, admission command races, fresh package
 audit, clean Windows installation and bilingual quality remain open.
+
+## Cooperative preparation cancellation
+
+`TranslationModelRuntimePort::acquire_with_control` carries an owned cancellation
+token through installed-package verification, initial model hashing, child startup
+and readiness/preflight. The ordinary `acquire` facade supplies a fresh token.
+Managed admission polls its linked durable start guard with a validated 10–1000 ms
+policy, default 250 ms. On a control change/error it signals cancellation and awaits
+cleanup. The model adapter checks a synchronous callback at hash/decompression
+chunk and HTTP headers/body boundaries. Runtime workers are joined rather than
+abandoned by a timeout; readiness also checks the existing startup deadline.
+Acquisition failure kills/reaps the owned child before the slot is released.
+`CleanupFailed` propagates even after pause and maps to the existing native
+`RECOVERY_REQUIRED` code. Successful admission disarms its cancellation drop guard.
+
+The host executor's final checked-server preflight uses throttled SQLite guard
+checks and rechecks the guard without throttling before considering the outcome.
+It still requires the guard atomically at attempt creation. Original, checkpoint,
+result and status wire schemas remain unchanged.
+
+The React panel now exposes **Pause** during a pending start/resume request,
+labels model preparation and refreshes cancelled admission without a failure
+alert. `task fe:test:components -- src/features/translation-run-control/ui/TranslationRunControl.test.tsx`
+passed six cases; `task fe:typecheck` and `task fe:lint` passed.
+`task rs:test:translate` and `task rs:clippy` passed.
+`task rs:test:translate -- --test managed_runtime_real -- --ignored --nocapture`
+passed successful real checked admission, one slot and owned-child release in
+166.66 seconds. Controlled application tests cancel initial/resumed admission
+without releasing the runtime barrier and retain the paused project run.
+The full default `task rs:test:application` suite passed, including eight admission
+cases and cleanup failure taking precedence over cancellation acknowledgment.
+
+Evidence and command scope are at
+`modules/auralis-translate/eval/experiments/2026-09-26-preparation-cancellation.md`.
+Native UI preparation pause, its latency and child/slot cleanup are not yet a
+recorded gate. Full command interleavings, packaging and language gates remain
+open. Development and the submodule update stay local.

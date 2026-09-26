@@ -29,6 +29,7 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [snapshots, setSnapshots] = useState<Record<string, TranslationRunSnapshot>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const readyResults = useRef('');
@@ -77,13 +78,15 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
   const start = async (translationId: string) => {
     if (busyId) return;
     setBusyId(translationId);
+    setStartingId(translationId);
     setError(null);
     try {
       await startTranslationRun(projectId, translationId);
-      setRevision((value) => value + 1);
     } catch (reason) {
-      setError(failureMessage(reason));
+      if (toCommandError(reason).code !== 'CANCELLED') setError(failureMessage(reason));
     } finally {
+      setRevision((value) => value + 1);
+      setStartingId(null);
       setBusyId(null);
     }
   };
@@ -141,7 +144,9 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
         {links.map((link) => {
           const snapshot = snapshots[link.translationId];
           const canStart = snapshot && ['requested', 'paused', 'failed'].includes(snapshot.phase);
-          const canPause = snapshot?.phase === 'running' && !snapshot.pauseRequested;
+          const preparing = startingId === link.translationId;
+          const canPause =
+            snapshot && (snapshot.phase === 'running' || preparing) && !snapshot.pauseRequested;
           const unpublishedResultId =
             snapshot?.phase === 'validated' && snapshot.resultId !== link.selectedResultId
               ? snapshot.resultId
@@ -154,7 +159,7 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
               <span className="font-mono">{link.translationId.slice(0, 8)}</span>
               <span>
                 {snapshot
-                  ? `${PHASE_LABELS[snapshot.phase]}: ${snapshot.savedBlocks}/${snapshot.totalBlocks}`
+                  ? `${preparing ? 'Подготовка модели' : PHASE_LABELS[snapshot.phase]}: ${snapshot.savedBlocks}/${snapshot.totalBlocks}`
                   : 'Состояние загружается'}
                 {snapshot?.pauseRequested ? ' · Запрошена пауза' : ''}
                 {link.selectedResultId ? ' · Результат прикреплён' : ''}

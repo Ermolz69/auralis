@@ -7,7 +7,9 @@ use auralis_translation::{
 };
 use auralis_translation_formats::srt::SrtParsePolicy;
 use auralis_translation_formats::vtt::VttParsePolicy;
-use auralis_translation_llamacpp::{LlamaCppProvider, ModelProfile, verify_server};
+use auralis_translation_llamacpp::{
+    LlamaCppProvider, ModelProfile, RequestControlPolicy, verify_server_with_control,
+};
 use auralis_translation_sqlite::{ResultSpec, RunStop, SqliteConfig, TranslateDb};
 use ports::committed_translation_progress::CommittedTranslationProgress;
 use ports::error::PortError;
@@ -269,7 +271,25 @@ fn execute_run(
             message: error.to_string(),
         }
     })?;
-    verify_server(&provider, &profile).map_err(|error| PortError::ExternalToolFailed {
+    let preparation = auralis_translation_sqlite::AttemptStartControl::new(
+        &database,
+        start_guard,
+        RequestControlPolicy::default().poll_interval(),
+    )
+    .map_err(|error| storage("prepare_translation_control", error))?;
+    let check = || {
+        preparation
+            .check()
+            .map_err(|cause| auralis_translation::ProviderError(cause.to_string()))
+    };
+    let verification = verify_server_with_control(&provider, &profile, &check);
+    database
+        .check_attempt_start(start_guard)
+        .map_err(|error| match error {
+            auralis_translation_sqlite::DbError::PauseRequested => PortError::Cancelled,
+            other => storage("check_translation_preflight", other),
+        })?;
+    verification.map_err(|error| PortError::ExternalToolFailed {
         tool: "llama.cpp preflight".into(),
         message: error.to_string(),
     })?;

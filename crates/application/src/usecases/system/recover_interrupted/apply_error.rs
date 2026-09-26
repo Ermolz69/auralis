@@ -27,6 +27,7 @@ impl ApplyRecoveryActionError {
                 PortError::Unsupported { .. } => "Unsupported",
                 PortError::AlreadyStopped => "AlreadyStopped",
                 PortError::Unexpected { .. } => "Unexpected",
+                PortError::CleanupFailed { .. } => "CleanupFailed",
             },
         }
     }

@@ -38,6 +38,9 @@ pub enum PortError {
     #[error("Operation cancelled")]
     Cancelled,
 
+    #[error("Cleanup failed for {resource}: {message}")]
+    CleanupFailed { resource: String, message: String },
+
     #[error("Unsupported operation: {message}")]
     Unsupported { message: String },
 

@@ -1,9 +1,14 @@
 use super::config::ManagedRuntimeConfig;
 use super::lease::ManagedLlamaLease;
 use super::owned_process;
+use super::preparation::RuntimePreparation;
 use async_trait::async_trait;
 use auralis_translation::SourceHash;
-use auralis_translation_llamacpp::{LlamaCppProvider, ModelProfile, hash_file, verify_server};
+use auralis_translation_llamacpp::{
+    LlamaCppProvider, ModelProfile, PreparationControl, hash_file_with_control,
+    verify_server_with_control,
+};
+use ports::cancellation::CancellationToken;
 use ports::error::PortError;
 use ports::translation_links::TranslationRunIntent;
 use ports::translation_model_runtime::{TranslationModelLease, TranslationModelRuntimePort};
@@ -11,9 +16,9 @@ use std::net::TcpListener;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::process::Command;
 use tokio::sync::Semaphore;
-use tokio::time::Instant;
 
 const LOOPBACK_HOST: &str = "127.0.0.1";
 const SERVER_TOOL: &str = "managed llama.cpp server";
@@ -35,7 +40,9 @@ impl ManagedLlamaRuntime {
     async fn verify_model(
         &self,
         intent: &TranslationRunIntent,
+        control: &RuntimePreparation,
     ) -> Result<(ModelProfile, PathBuf), PortError> {
+        control.check().map_err(|cause| control.error(cause))?;
         let bytes = intent.profile_manifest_json.as_bytes();
         if SourceHash::digest(bytes).to_string() != intent.profile_sha256 {
             return Err(conflict(
@@ -67,11 +74,13 @@ impl ManagedLlamaRuntime {
         let expected_hash = SourceHash::parse_hex(&profile.model_file_sha256)
             .ok_or_else(|| invalid("checked model digest is invalid"))?;
         let path_for_hash = path.clone();
-        let (actual_hash, actual_bytes) =
-            tokio::task::spawn_blocking(move || hash_file(&path_for_hash))
-                .await
-                .map_err(|error| unexpected(&error.to_string()))?
-                .map_err(|error| tool_error(&error.to_string()))?;
+        let hash_control = control.clone();
+        let (actual_hash, actual_bytes) = tokio::task::spawn_blocking(move || {
+            hash_file_with_control(&path_for_hash, &hash_control)
+        })
+        .await
+        .map_err(|error| unexpected(&error.to_string()))?
+        .map_err(|error| control.error(error))?;
         if actual_bytes != expected_bytes || actual_hash != expected_hash {
             return Err(conflict(
                 "installed model digest differs from checked profile",
@@ -85,26 +94,27 @@ impl ManagedLlamaRuntime {
         lease: &mut ManagedLlamaLease,
         profile: ModelProfile,
         model_path: PathBuf,
+        cancellation: CancellationToken,
     ) -> Result<(), PortError> {
         let deadline = Instant::now() + self.config.startup_timeout;
+        let control = RuntimePreparation::new(cancellation.clone(), Some(deadline));
         loop {
+            control.check().map_err(|cause| control.error(cause))?;
             if lease.exited().map_err(io_error)? {
                 return Err(tool_error("server exited before model preflight"));
             }
             let url = lease.server_url().to_owned();
             let profile_to_probe = profile.clone();
-            let reported = tokio::time::timeout_at(
-                deadline,
-                tokio::task::spawn_blocking(move || {
-                    let provider = LlamaCppProvider::new(&url, profile_to_probe)
-                        .map_err(|error| error.to_string())?;
-                    Ok::<_, String>(provider.probe_server())
-                }),
-            )
+            let probe_control = control.clone();
+            let reported = tokio::task::spawn_blocking(move || {
+                let provider = LlamaCppProvider::new(&url, profile_to_probe)
+                    .map_err(|error| error.to_string())?;
+                Ok::<_, String>(provider.probe_server_with_control(&probe_control))
+            })
             .await
-            .map_err(|_| tool_error("server did not become ready before startup timeout"))?
             .map_err(|error| unexpected(&error.to_string()))?
             .map_err(|error| tool_error(&error))?;
+            control.check().map_err(|cause| control.error(cause))?;
             if let Ok(report) = reported {
                 let reported_path = std::fs::canonicalize(&report.model_path).map_err(io_error)?;
                 if reported_path != model_path {
@@ -112,17 +122,15 @@ impl ManagedLlamaRuntime {
                 }
                 let url = lease.server_url().to_owned();
                 let profile_to_verify = profile.clone();
-                tokio::time::timeout_at(
-                    deadline,
-                    tokio::task::spawn_blocking(move || {
-                        let provider = LlamaCppProvider::new(&url, profile_to_verify.clone())?;
-                        verify_server(&provider, &profile_to_verify)
-                    }),
-                )
+                let verify_control = control.clone();
+                tokio::task::spawn_blocking(move || {
+                    let provider = LlamaCppProvider::new(&url, profile_to_verify.clone())?;
+                    verify_server_with_control(&provider, &profile_to_verify, &verify_control)
+                })
                 .await
-                .map_err(|_| tool_error("model preflight exceeded startup timeout"))?
                 .map_err(|error| unexpected(&error.to_string()))?
-                .map_err(|error| tool_error(&error.to_string()))?;
+                .map_err(|error| control.error(error))?;
+                control.check().map_err(|cause| control.error(cause))?;
                 if lease.exited().map_err(io_error)? {
                     return Err(tool_error("server exited during model preflight"));
                 }
@@ -133,17 +141,22 @@ impl ManagedLlamaRuntime {
                     "server did not become ready before startup timeout",
                 ));
             }
-            tokio::time::sleep(self.config.readiness_interval).await;
+            tokio::select! {
+                _ = cancellation.cancelled() => return Err(PortError::Cancelled),
+                _ = tokio::time::sleep(self.config.readiness_interval) => {}
+            }
         }
     }
 }
 
 #[async_trait]
 impl TranslationModelRuntimePort for ManagedLlamaRuntime {
-    async fn acquire(
+    async fn acquire_with_control(
         &self,
         intent: &TranslationRunIntent,
+        cancellation: CancellationToken,
     ) -> Result<Box<dyn TranslationModelLease>, PortError> {
+        let cancel_on_drop = cancellation.clone().drop_guard();
         let permit = self
             .slot
             .clone()
@@ -151,7 +164,9 @@ impl TranslationModelRuntimePort for ManagedLlamaRuntime {
             .map_err(|_| PortError::Busy {
                 message: "a managed translation model is already active".into(),
             })?;
-        let (profile, model_path) = self.verify_model(intent).await?;
+        let control = RuntimePreparation::new(cancellation.clone(), None);
+        let (profile, model_path) = self.verify_model(intent, &control).await?;
+        control.check().map_err(|cause| control.error(cause))?;
         let listener = TcpListener::bind((LOOPBACK_HOST, 0)).map_err(io_error)?;
         let port = listener.local_addr().map_err(io_error)?.port();
         drop(listener);
@@ -181,8 +196,20 @@ impl TranslationModelRuntimePort for ManagedLlamaRuntime {
         let child = owned_process::spawn(command).map_err(io_error)?;
         let url = format!("http://{LOOPBACK_HOST}:{port}/");
         let mut lease = ManagedLlamaLease::new(url, child, permit);
-        self.wait_until_ready(&mut lease, profile, model_path)
-            .await?;
+        let result = self
+            .wait_until_ready(&mut lease, profile, model_path, cancellation)
+            .await;
+        if let Err(error) = result {
+            lease
+                .stop()
+                .await
+                .map_err(|cause| PortError::CleanupFailed {
+                    resource: SERVER_TOOL.into(),
+                    message: cause.to_string(),
+                })?;
+            return Err(error);
+        }
+        cancel_on_drop.disarm();
         Ok(Box::new(lease))
     }
 }

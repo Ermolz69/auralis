@@ -1,3 +1,5 @@
+mod admission_policy;
+mod admit_runtime;
 mod begin;
 mod begin_request;
 mod comparison;
@@ -31,6 +33,7 @@ mod run_request;
 mod schedule_managed;
 mod start_job;
 
+pub use admission_policy::TranslationAdmissionPolicy;
 pub use begin::BeginTranslationUseCase;
 pub use begin_request::BeginTranslationRequest;
 pub use comparison::GetTranslationComparisonUseCase;

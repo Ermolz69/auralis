@@ -57,6 +57,7 @@ pub enum PortErrorKind {
     Unsupported,
     Unexpected,
     AlreadyStopped,
+    CleanupFailed,
 }
 
 impl PortErrorKind {
@@ -75,6 +76,7 @@ impl PortErrorKind {
             ports::error::PortError::Unsupported { .. } => Self::Unsupported,
             ports::error::PortError::Unexpected { .. } => Self::Unexpected,
             ports::error::PortError::AlreadyStopped => Self::AlreadyStopped,
+            ports::error::PortError::CleanupFailed { .. } => Self::CleanupFailed,
         }
     }
 }

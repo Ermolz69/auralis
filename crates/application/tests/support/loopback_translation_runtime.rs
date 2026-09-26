@@ -12,9 +12,10 @@ impl TranslationModelLease for LoopbackTranslationRuntime {
 
 #[async_trait::async_trait]
 impl TranslationModelRuntimePort for LoopbackTranslationRuntime {
-    async fn acquire(
+    async fn acquire_with_control(
         &self,
         _: &TranslationRunIntent,
+        _cancellation: ports::cancellation::CancellationToken,
     ) -> Result<Box<dyn TranslationModelLease>, PortError> {
         Ok(Box::new(Self(self.0.clone())))
     }

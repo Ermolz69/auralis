@@ -73,6 +73,10 @@ impl From<ApplicationError> for CommandError {
                 PortError::Cancelled => {
                     CommandError::Cancelled("The operation was cancelled".to_string())
                 }
+                PortError::CleanupFailed { .. } => CommandError::RecoveryRequired(
+                    "Translation model cleanup failed; restart the application before retrying"
+                        .into(),
+                ),
                 PortError::AlreadyStopped => {
                     CommandError::Internal("An unexpected internal error occurred".to_string())
                 }

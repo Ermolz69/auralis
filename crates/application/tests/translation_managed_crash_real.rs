@@ -73,11 +73,15 @@ struct EndpointRecordingRuntime {
 
 #[async_trait::async_trait]
 impl TranslationModelRuntimePort for EndpointRecordingRuntime {
-    async fn acquire(
+    async fn acquire_with_control(
         &self,
         intent: &TranslationRunIntent,
+        cancellation: ports::cancellation::CancellationToken,
     ) -> Result<Box<dyn TranslationModelLease>, PortError> {
-        let lease = self.inner.acquire(intent).await?;
+        let lease = self
+            .inner
+            .acquire_with_control(intent, cancellation)
+            .await?;
         std::fs::write(&self.endpoint_file, lease.server_url()).map_err(|error| PortError::Io {
             message: error.to_string(),
         })?;

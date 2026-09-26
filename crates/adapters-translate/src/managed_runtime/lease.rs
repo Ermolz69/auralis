@@ -21,6 +21,10 @@ impl ManagedLlamaLease {
     pub fn exited(&mut self) -> io::Result<bool> {
         self.child.exited()
     }
+
+    pub async fn stop(&mut self) -> io::Result<()> {
+        self.child.stop().await
+    }
 }
 
 impl TranslationModelLease for ManagedLlamaLease {

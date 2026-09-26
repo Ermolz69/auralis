@@ -19,6 +19,7 @@ pub struct RunManagedTranslationUseCase {
     start_job: StartTranslationJobUseCase,
     run_job: RunTranslationHostJobUseCase,
     publish: PublishTranslationResultUseCase,
+    admission_policy: super::TranslationAdmissionPolicy,
 }
 
 impl RunManagedTranslationUseCase {
@@ -37,7 +38,13 @@ impl RunManagedTranslationUseCase {
             start_job,
             run_job,
             publish,
+            admission_policy: super::TranslationAdmissionPolicy::default(),
         }
+    }
+
+    pub fn with_admission_policy(mut self, policy: super::TranslationAdmissionPolicy) -> Self {
+        self.admission_policy = policy;
+        self
     }
 
     pub async fn execute(
@@ -103,19 +110,16 @@ impl RunManagedTranslationUseCase {
         if start_guard.run_id != run_id {
             return Err(PortError::Cancelled.into());
         }
-        let acquisition = self.runtime.acquire(&intent).await;
-        let current_link = self
-            .links
-            .get(request.translation_id)
-            .await?
-            .ok_or(PortError::Cancelled)?;
-        if current_link.project_id != link.project_id
-            || current_link.active_run_id != Some(run_id)
-            || self.control.capture_start(&current_link).await? != start_guard
-        {
-            return Err(PortError::Cancelled.into());
-        }
-        let lease = acquisition?;
+        let lease = super::admit_runtime::acquire(
+            self.runtime.as_ref(),
+            self.links.as_ref(),
+            self.control.as_ref(),
+            &intent,
+            &link,
+            start_guard,
+            self.admission_policy,
+        )
+        .await?;
         let job = self
             .start_job
             .execute_for_run(
