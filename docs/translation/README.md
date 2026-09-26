@@ -120,3 +120,38 @@ After this runtime change, `task rs:clippy` and `task rs:test:translate` passed.
 A fresh local `task desktop:bundle -- --bundles msi` and `task desktop:bundle:from-build -- --bundles msi` now pass actual installer-content verification. The extracted tree has the application, seven media/compliance files and the MSI administrative copy, with no model/test payloads. `desktop:before-bundle` captures source identity and the active marker offset; the signing wrapper binds that source to the complete package executable, preserving Tauri's package marker/signing behavior. Initial direct-hash and marker-search attempts failed; the corrected verifier rejects missing/stale records and corrupt/duplicate application files. Evidence is at `modules/auralis-translate/eval/experiments/2026-09-26-windows-msi-content.md`; the unexecuted clean Windows protocol is at `modules/auralis-translate/docs/evaluation/006-clean-windows-installation.md`. Local packages remain unsigned, and G9 is open.
 
 From the Auralis repository root, run `task rs:test:translate`, `task rs:test:ports`, `task rs:test:storage`, `task rs:test:application`, and `task rs:clippy`. The Translate submodule has its own `task check` and `task build`. Compilation and mock-based tests do not establish bilingual translation quality or a supported release configuration.
+
+The local Translate pin now implements `RunControl` during HTTP headers/body
+reads. It polls a durable pause request, drops unfinished inference output, and
+keeps saved checkpoints for the next attempt. Idle pooling is disabled across
+synchronous model hashing/checkpoint work. The Auralis adapter maps acknowledgment
+to `PortError::Cancelled`, records `pause requested`, closes the Translate attempt
+as paused, and lets the host job and managed lease finish through their existing
+ownership path. `task rs:test:translate` verifies cancellation of an unanswered
+mock request with no result; checked-model SRT/WebVTT CLI evidence is at
+`modules/auralis-translate/eval/experiments/2026-09-26-request-cancellation.md`.
+Native pause and same-process race verdicts must be recorded separately.
+
+`task desktop:e2e:native:translation:pause` now passed with the checked installed
+assets. React/Tauri pauses after one saved block, while the outer harness checks
+the cancelled host job, paused Translate attempt, unchanged active run, absent
+result/publication and managed child release. A test-only title barrier then
+releases resume in the same desktop. Final verification requires two closed
+attempts with different host IDs, a cancelled first job, completed second job,
+an identical full first-checkpoint row and separate ready output. The first run
+failed on a missing feature-gated test checkpoint label; the corrected full run
+passed and cleaned its sandbox. Evidence is at
+`modules/auralis-translate/eval/experiments/2026-09-26-native-pause-resume.md`.
+Native WebVTT pause, pre-attempt admission cancellation and simultaneous command
+interleavings remain open. The updated lockfile uses Tokio 1.53.1; Rust adapter,
+port, application and Clippy checks passed. The production frontend build also
+passed the exclusion audit for the new native scenario.
+
+The managed worker now reports durable UI pause as `RuntimeTaskOutcome::Cancelled`
+even when its runtime cancellation token is unset. The two-database scheduler
+regression observes the actual attached task completion, a cancelled host job and
+paused Translate state after interrupting an unanswered mock HTTP request.
+`task rs:test:application -- --test translation_scheduler_pause --test translation_host_execution_failure`,
+`task rs:fmt` and `task rs:clippy` passed. The recorded MSI above predates these
+cancellation changes and needs a fresh production build and payload audit before
+they can be distributed.

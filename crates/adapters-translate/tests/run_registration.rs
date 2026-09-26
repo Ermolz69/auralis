@@ -10,6 +10,7 @@ use chrono::Utc;
 use domain::job::JobId;
 use domain::media::ArtifactId;
 use domain::project::ProjectId;
+use ports::error::PortError;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_links::{TranslationLink, TranslationRunIntent};
 use ports::translation_result::TranslationResultPort;
@@ -314,6 +315,110 @@ async fn running_pause_request_is_visible_without_changing_another_project()
     let paused = control.snapshot(&link).await?;
     assert_eq!(paused.phase, TranslationRunPhase::Paused);
     assert!(!paused.pause_requested);
+    assert_eq!(std::fs::read(source_path)?, source);
+    Ok(())
+}
+
+#[tokio::test]
+async fn executor_acknowledges_pause_without_waiting_for_a_model_response()
+-> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let source = b"1\n00:00:01,000 --> 00:00:02,000\nhello\n";
+    let source_path = directory.path().join("source.srt");
+    let database_path = directory.path().join("translate.sqlite");
+    std::fs::write(&source_path, source)?;
+    let (link, intent) = records("srt", source);
+    TranslateRunRegistrar::new(database_path.clone())
+        .ensure_run(&source_path, &link, &intent)
+        .await?;
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let endpoint = format!("http://{}/", listener.local_addr()?);
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+    let server = std::thread::spawn(move || -> Result<(), String> {
+        listener
+            .set_nonblocking(true)
+            .map_err(|cause| cause.to_string())?;
+        let started = Instant::now();
+        let mut stream = loop {
+            match listener.accept() {
+                Ok((stream, _)) => break stream,
+                Err(cause) if cause.kind() == std::io::ErrorKind::WouldBlock => {
+                    if started.elapsed() > Duration::from_secs(5) {
+                        return Err("request timeout".into());
+                    }
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(cause) => return Err(cause.to_string()),
+            }
+        };
+        stream
+            .set_nonblocking(false)
+            .map_err(|cause| cause.to_string())?;
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .map_err(|cause| cause.to_string())?;
+        read_request(&mut stream).map_err(|cause| cause.to_string())?;
+        ready_tx.send(()).map_err(|_| "receiver closed")?;
+        let mut byte = [0];
+        match stream.read(&mut byte) {
+            Ok(0) => Ok(()),
+            Err(cause) if cause.kind() == std::io::ErrorKind::ConnectionReset => Ok(()),
+            other => Err(format!(
+                "paused model request remained connected: {other:?}"
+            )),
+        }
+    });
+    let job_id = JobId::new();
+    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
+    let executor = TranslateRunExecutor::experimental_unchecked(database_path.clone());
+    let (work_source, work_link, work_intent, work_job) = (
+        source_path.clone(),
+        link.clone(),
+        intent.clone(),
+        job_id.clone(),
+    );
+    let work = tokio::spawn(async move {
+        executor
+            .execute_for_host(
+                &work_source,
+                &work_link,
+                &work_intent,
+                &endpoint,
+                &work_job,
+                progress_tx,
+            )
+            .await
+    });
+    tokio::time::timeout(Duration::from_secs(5), ready_rx).await??;
+    TranslateRunControl::new(database_path.clone())
+        .request_pause(&link)
+        .await?;
+    let result = tokio::time::timeout(Duration::from_secs(3), work).await??;
+    assert!(matches!(result, Err(PortError::Cancelled)));
+    server.join().map_err(|_| "server panicked")??;
+    let database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    let run_id = RunId::new(intent.run_id).ok_or("nil run ID")?;
+    assert_eq!(
+        database.run_state(run_id)?,
+        auralis_translation::RunState::Paused
+    );
+    assert!(!database.pause_requested(run_id)?);
+    assert!(database.checkpoints(run_id)?.is_empty());
+    assert!(database.result_for_run(run_id).is_err());
+    let saved: Vec<_> = std::iter::from_fn(|| progress_rx.try_recv().ok())
+        .map(|progress| progress.saved_blocks)
+        .collect();
+    assert_eq!(saved, [0]);
+    let attempt: (Option<String>, Option<i64>, Option<String>) =
+        rusqlite::Connection::open(&database_path)?.query_row(
+            "SELECT host_job_id, ended_at, stop_reason FROM run_attempts WHERE run_id = ?1",
+            [intent.run_id.to_string()],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )?;
+    assert_eq!(attempt.0, Some(job_id.to_string()));
+    assert!(attempt.1.is_some());
+    assert_eq!(attempt.2.as_deref(), Some("pause requested"));
+    assert_eq!(link.active_run_id, Some(intent.run_id));
     assert_eq!(std::fs::read(source_path)?, source);
     Ok(())
 }

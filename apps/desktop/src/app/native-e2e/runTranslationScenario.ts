@@ -9,6 +9,7 @@ import {
   startTranslationRun,
 } from '@/entities/translation';
 import { invoke } from '@/shared/api/tauri';
+import { pauseTranslationScenario } from './pauseTranslationScenario';
 
 const ARTIFACT_TIMEOUT_MS = 20_000;
 const PUBLICATION_TIMEOUT_MS = 180_000;
@@ -37,7 +38,16 @@ export async function runTranslationScenario(runId: string, sourcePath: string):
   }
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-run-ready' });
 
-  const start = await startTranslationRun(project.id, translationId);
+  let start = await startTranslationRun(project.id, translationId);
+  if (__NATIVE_E2E_TRANSLATION_PAUSE__) {
+    start = await pauseTranslationScenario(
+      runId,
+      project.id,
+      translationId,
+      translationRunId,
+      start.jobId,
+    );
+  }
   if (__NATIVE_E2E_TRANSLATION_DELETE__) {
     await waitForRunningAttempt(project.id, translationId);
     await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-delete-requested' });
@@ -102,7 +112,8 @@ async function finishTranslationScenario(
     0,
     10,
   );
-  const expectedSegments = __NATIVE_E2E_TRANSLATION_CRASH__ ? 2 : 1;
+  const expectedSegments =
+    __NATIVE_E2E_TRANSLATION_CRASH__ || __NATIVE_E2E_TRANSLATION_PAUSE__ ? 2 : 1;
   if (
     comparison.runId !== translationRunId ||
     !comparison.needsReview ||

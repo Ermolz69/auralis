@@ -110,6 +110,14 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:pause:
+    desc: Pause a checked-model native job, verify both databases and child release, then resume in the same desktop
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_PAUSE: '1'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   desktop:e2e:native:translation:vtt:
     desc: Run native Tauri strict-WebVTT translation acceptance with an installed checked llama.cpp model
     env:

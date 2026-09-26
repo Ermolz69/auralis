@@ -1,7 +1,9 @@
 use super::{ManagedTranslationAttempt, TranslationRunRequest, TranslationRunUseCase};
+use crate::error::ApplicationError;
 use crate::usecases::translation::pending_job_failure;
 use domain::job::JobId;
 use ports::cancellation::CancelHandle;
+use ports::error::PortError;
 use ports::job_runtime_control::{
     JobRuntimeControlPort, RuntimeCompletion, RuntimeTask, RuntimeTaskOutcome,
 };
@@ -67,10 +69,12 @@ pub(super) fn spawn(
             Ok(_) => RuntimeTaskOutcome::Completed,
             Err(error) => {
                 log_pending_failure(jobs.as_ref(), run_id, &job_id).await;
-                tracing::warn!(job_id = %job_id, error = %error, "managed translation attempt did not publish");
-                if token.is_cancelled() {
+                if token.is_cancelled()
+                    || matches!(&error, ApplicationError::Port(PortError::Cancelled))
+                {
                     RuntimeTaskOutcome::Cancelled
                 } else {
+                    tracing::warn!(job_id = %job_id, error = %error, "managed translation attempt did not publish");
                     RuntimeTaskOutcome::ApplicationFailed
                 }
             }

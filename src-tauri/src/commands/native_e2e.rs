@@ -15,6 +15,7 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "ytdlp-project-ready",
     "translation-source-ready",
     "translation-run-ready",
+    "translation-pause-acknowledged",
     "translation-result-ready",
     "translation-delete-requested",
     "translation-project-deleted",

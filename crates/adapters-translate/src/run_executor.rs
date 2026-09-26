@@ -264,18 +264,13 @@ fn execute_run(
     if let Err(error) =
         plan.execute_with_policy(&provider, &mut database, &mut reporter, &control, retry)
     {
-        let stop = if matches!(error, PortError::Cancelled) {
-            RunStop::Paused
+        let (stop, reason) = if matches!(error, PortError::Cancelled) {
+            (RunStop::Paused, "pause requested")
         } else {
-            RunStop::Failed
+            (RunStop::Failed, "Translate execution did not complete")
         };
         database
-            .stop_attempt(
-                run_id,
-                attempt,
-                stop,
-                "Translate execution did not complete",
-            )
+            .stop_attempt(run_id, attempt, stop, reason)
             .map_err(|stop_error| storage("stop_translate_attempt", stop_error))?;
         return Err(error);
     }

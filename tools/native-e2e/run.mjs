@@ -8,11 +8,16 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { loadManifest, resolveTarget } from '../media-tools/manifest.mjs';
-import { seedPackageCache, verifyInstalledPackage, waitForPackageSelection } from './package-install.mjs';
+import {
+  seedPackageCache,
+  verifyInstalledPackage,
+  waitForPackageSelection,
+} from './package-install.mjs';
 import { waitForResultCommitGap, verifyResultCommitGap } from './result-gap.mjs';
 import { verifySecondOwnerRejected } from './second-owner.mjs';
 import { verifyTranslationDeletion } from './verify-translation-deletion.mjs';
 import { verifyTranslationResult } from './verify-translation.mjs';
+import { releaseVerifiedPause, verifyResumedPause } from './translation-pause.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
 const TRANSLATION_RESULT_TIMEOUT_MS = 600_000;
@@ -25,16 +30,29 @@ export async function runNativeE2e(rootDir) {
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1';
   const translationCrashEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1';
+  const translationPauseEnabled =
+    translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_PAUSE === '1';
   const translationResultGapEnabled =
     translationCrashEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1';
   const translationDeleteEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
   const translationPackageEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1';
+  if (
+    translationPauseEnabled &&
+    (translationCrashEnabled || translationDeleteEnabled || translationPackageEnabled)
+  ) {
+    throw new Error(
+      'Native pause acceptance does not combine with crash, deletion or package modes',
+    );
+  }
   if (translationVttEnabled && (translationResultGapEnabled || translationDeleteEnabled)) {
     throw new Error('Native WebVTT acceptance does not combine with result-gap or deletion modes');
   }
-  if (translationPackageEnabled && (translationVttEnabled || translationCrashEnabled || translationDeleteEnabled)) {
+  if (
+    translationPackageEnabled &&
+    (translationVttEnabled || translationCrashEnabled || translationDeleteEnabled)
+  ) {
     throw new Error('Native package acceptance runs as a standalone translation mode');
   }
   const testRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-native-e2e-'));
@@ -63,9 +81,10 @@ export async function runNativeE2e(rootDir) {
       await prepareTranslationFixture(
         dataRoot,
         subtitlePath,
-        translationCrashEnabled || translationDeleteEnabled,
+        translationCrashEnabled || translationDeleteEnabled || translationPauseEnabled,
         translationVttEnabled,
         translationPackageEnabled,
+        translationPauseEnabled,
       );
       subtitleDigest = await sha256(subtitlePath);
       if (translationPackageEnabled) {
@@ -80,13 +99,15 @@ export async function runNativeE2e(rootDir) {
     buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
       translationEnabled,
       translationCrashEnabled,
+      translationPauseEnabled,
       translationDeleteEnabled,
       translationVttEnabled,
       translationPackageEnabled,
       subtitlePath,
     });
 
-    if (translationCrashEnabled || translationDeleteEnabled) baselineModelPids = listModelProcessIds();
+    if (translationCrashEnabled || translationDeleteEnabled || translationPauseEnabled)
+      baselineModelPids = listModelProcessIds();
     app = launchTestApplication(
       rootDir,
       dataRoot,
@@ -102,6 +123,15 @@ export async function runNativeE2e(rootDir) {
     if (secondOwnerEnabled) {
       await verifySecondOwnerRejected(dataRoot, app, () =>
         launchTestApplication(rootDir, dataRoot, fixtureServer.url),
+      );
+    }
+    if (translationPauseEnabled) {
+      interrupted = await releaseVerifiedPause(
+        dataRoot,
+        runId,
+        app,
+        baselineModelPids,
+        listModelProcessIds,
       );
     }
     if (translationCrashEnabled) {
@@ -138,7 +168,13 @@ export async function runNativeE2e(rootDir) {
           : RESULT_TIMEOUT_MS,
     );
     const deletedTranslationProjectId = translationDeleteEnabled
-      ? await verifyTranslationDeletion(dataRoot, subtitlePath, subtitleDigest, baselineModelPids, listModelProcessIds)
+      ? await verifyTranslationDeletion(
+          dataRoot,
+          subtitlePath,
+          subtitleDigest,
+          baselineModelPids,
+          listModelProcessIds,
+        )
       : null;
     await verifyResult({
       dataRoot,
@@ -156,6 +192,7 @@ export async function runNativeE2e(rootDir) {
         interrupted,
         translationVttEnabled ? 'vtt' : 'srt',
       );
+      if (translationPauseEnabled) verifyResumedPause(dataRoot, interrupted);
     }
   } catch (error) {
     const logs = app ? formatProcessLogs(app) : '';
@@ -213,25 +250,42 @@ export async function runNativeE2e(rootDir) {
   if (failure) throw failure;
 }
 
-async function prepareTranslationFixture(dataRoot, subtitlePath, translationCrashEnabled, translationVttEnabled, translationPackageEnabled) {
+async function prepareTranslationFixture(
+  dataRoot,
+  subtitlePath,
+  translationCrashEnabled,
+  translationVttEnabled,
+  translationPackageEnabled,
+  translationPauseEnabled = false,
+) {
   const firstCue = '1\n00:00:01,000 --> 00:00:02,000\n你好。\n';
-  const secondCue = '2\n00:00:03,000 --> 00:00:04,000\n再见。\n';
+  const secondLine = translationPauseEnabled
+    ? '我们先检查原来的字幕文件，再把需要翻译的文字取出来。翻译完成以后，程序会创建一个新的文件，保留原来的时间和顺序。如果中途停止，已经保存的部分不需要重新翻译。'
+    : '再见。';
+  const secondCue = `2\n00:00:03,000 --> 00:00:04,000\n${secondLine}\n`;
   const vttHeader = 'WEBVTT\r\n\r\nNOTE provenance\r\nnative fixture\r\n\r\n';
   const vttFirstCue = '00:00:01.000 --> 00:00:02.000\r\n你好。\r\n';
-  const vttSecondCue = '\r\n00:00:03.000 --> 00:00:04.000\r\n再见。\r\n';
+  const vttSecondCue = `\r\n00:00:03.000 --> 00:00:04.000\r\n${secondLine}\r\n`;
   const vttSource = `${vttHeader}${vttFirstCue}${translationCrashEnabled ? vttSecondCue : ''}`;
   await fsp.writeFile(
     subtitlePath,
-    translationVttEnabled ? vttSource : translationCrashEnabled ? `${firstCue}\n${secondCue}` : firstCue,
+    translationVttEnabled
+      ? vttSource
+      : translationCrashEnabled
+        ? `${firstCue}\n${secondCue}`
+        : firstCue,
   );
   if (translationPackageEnabled) return;
   const executable = process.env.AURALIS_TEST_LLAMA_SERVER;
   const modelFile = process.env.AURALIS_TEST_GGUF;
   if (!executable || !modelFile || !path.isAbsolute(executable) || !path.isAbsolute(modelFile)) {
-    throw new Error('Translation native E2E requires absolute AURALIS_TEST_LLAMA_SERVER and AURALIS_TEST_GGUF paths');
+    throw new Error(
+      'Translation native E2E requires absolute AURALIS_TEST_LLAMA_SERVER and AURALIS_TEST_GGUF paths',
+    );
   }
   for (const asset of [executable, modelFile]) {
-    if (!(await fsp.stat(asset)).isFile()) throw new Error(`Translation asset is not a file: ${asset}`);
+    if (!(await fsp.stat(asset)).isFile())
+      throw new Error(`Translation asset is not a file: ${asset}`);
   }
   await fsp.writeFile(
     path.join(dataRoot, 'translation-runtime.json'),
@@ -311,7 +365,12 @@ async function startFixtureServer(sourcePath) {
     if (range) {
       start = Number(range[1]);
       end = range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
-      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= size) {
+      if (
+        !Number.isSafeInteger(start) ||
+        !Number.isSafeInteger(end) ||
+        start > end ||
+        start >= size
+      ) {
         response.writeHead(416, { 'content-range': `bytes */${size}`, connection: 'close' });
         response.end();
         return;
@@ -367,6 +426,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_TRANSLATION_VTT: translation.translationVttEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE: translation.translationPackageEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_CRASH: translation.translationCrashEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_TRANSLATION_PAUSE: translation.translationPauseEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_DELETE: translation.translationDeleteEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_SUBTITLE_PATH: translation.subtitlePath,
   };
@@ -424,7 +484,9 @@ async function waitForTranslationCheckpoint(dataRoot, runId, app, baselineModelP
   let managedModelPids = [];
   while (Date.now() < deadline) {
     if (app.child.exitCode !== null || app.child.signalCode !== null) {
-      throw new Error(`Native application exited before its first translation checkpoint: ${app.child.exitCode}`);
+      throw new Error(
+        `Native application exited before its first translation checkpoint: ${app.child.exitCode}`,
+      );
     }
     const interrupted = readTranslationCheckpoint(dataRoot, runId);
     if (interrupted?.runState === 'running' && managedModelPids.length === 0) {
@@ -451,7 +513,9 @@ function readTranslationCheckpoint(dataRoot, runId) {
     host = new DatabaseSync(hostPath, { readOnly: true });
     translate = new DatabaseSync(translatePath, { readOnly: true });
     const link = host
-      .prepare('SELECT pt.translation_id, pt.active_run_id FROM project_translations pt JOIN projects p ON p.id = pt.project_id WHERE p.title = ?')
+      .prepare(
+        'SELECT pt.translation_id, pt.active_run_id FROM project_translations pt JOIN projects p ON p.id = pt.project_id WHERE p.title = ?',
+      )
       .get(`native-e2e-translation-running:${runId}`);
     if (!link?.active_run_id) return null;
     const run = translate
@@ -461,7 +525,9 @@ function readTranslationCheckpoint(dataRoot, runId) {
       .prepare('SELECT COUNT(*) AS count FROM block_checkpoints WHERE run_id = ?')
       .get(link.active_run_id);
     const firstBlock = translate
-      .prepare('SELECT input_fingerprint, accepted_json, committed_at FROM block_checkpoints WHERE run_id = ? AND block_index = 0')
+      .prepare(
+        'SELECT input_fingerprint, accepted_json, committed_at FROM block_checkpoints WHERE run_id = ? AND block_index = 0',
+      )
       .get(link.active_run_id);
     return {
       translationId: link.translation_id,
@@ -472,7 +538,11 @@ function readTranslationCheckpoint(dataRoot, runId) {
     };
   } catch (error) {
     const message = String(error);
-    if (message.includes('locked') || message.includes('busy') || message.includes('no such table')) {
+    if (
+      message.includes('locked') ||
+      message.includes('busy') ||
+      message.includes('no such table')
+    ) {
       return null;
     }
     throw error;
@@ -483,10 +553,14 @@ function readTranslationCheckpoint(dataRoot, runId) {
 }
 
 async function crashNativeProcess(child, baselineModelPids, knownModelPids = []) {
-  assert(child.exitCode === null && child.signalCode === null, 'Native desktop exited before crash injection');
-  const managedModelPids = knownModelPids.length > 0
-    ? knownModelPids
-    : [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
+  assert(
+    child.exitCode === null && child.signalCode === null,
+    'Native desktop exited before crash injection',
+  );
+  const managedModelPids =
+    knownModelPids.length > 0
+      ? knownModelPids
+      : [...listModelProcessIds()].filter((pid) => !baselineModelPids.has(pid));
   assert(managedModelPids.length > 0, 'Native desktop has no managed model process to interrupt');
   await killNativeProcess(child);
   const deadline = Date.now() + 10_000;
@@ -495,14 +569,19 @@ async function crashNativeProcess(child, baselineModelPids, knownModelPids = [])
     if (managedModelPids.every((pid) => !active.has(pid))) return;
     await delay(100);
   }
-  throw new Error(`Managed model process survived native desktop termination: ${managedModelPids.join(', ')}`);
+  throw new Error(
+    `Managed model process survived native desktop termination: ${managedModelPids.join(', ')}`,
+  );
 }
 
 async function killNativeProcess(child) {
   const exited = new Promise((resolve) => child.once('exit', resolve));
   assert(child.kill('SIGKILL'), 'Could not terminate the native desktop process');
   await Promise.race([exited, delay(10_000)]);
-  assert(child.exitCode !== null || child.signalCode !== null, 'Native desktop process survived the crash injection');
+  assert(
+    child.exitCode !== null || child.signalCode !== null,
+    'Native desktop process survived the crash injection',
+  );
 }
 
 function listModelProcessIds() {
@@ -519,7 +598,10 @@ function listModelProcessIds() {
 
 function verifyInterruptedTranslation(dataRoot, runId, expected) {
   const actual = readTranslationCheckpoint(dataRoot, runId);
-  assert(actual?.translationId === expected.translationId, 'Crash changed the project translation link');
+  assert(
+    actual?.translationId === expected.translationId,
+    'Crash changed the project translation link',
+  );
   assert(actual.runId === expected.runId, 'Crash changed the unfinished project run');
   assert(
     actual.savedBlocks === 1 && actual.runState === 'running',
@@ -556,9 +638,7 @@ function tryReadResult(databasePath, completedTitle, failedTitle) {
   try {
     database = new DatabaseSync(databasePath, { readOnly: true });
     const failedProject = database
-      .prepare(
-        'SELECT id FROM projects WHERE title = ?',
-      )
+      .prepare('SELECT id FROM projects WHERE title = ?')
       .get(failedTitle);
     if (failedProject) return { failed: true };
 
@@ -594,7 +674,9 @@ function tryReadResult(databasePath, completedTitle, failedTitle) {
         'SELECT kind, payload_json, status, attempts, last_error, aggregate_id FROM outbox_messages ORDER BY rowid LIMIT 4',
       )
       .all();
-    const pendingYoutubeImports = database.prepare('SELECT COUNT(*) AS count FROM youtube_imports').get();
+    const pendingYoutubeImports = database
+      .prepare('SELECT COUNT(*) AS count FROM youtube_imports')
+      .get();
     if (
       jobs.length !== 1 ||
       jobs[0].status !== 'cancelled' ||
@@ -643,9 +725,14 @@ async function verifyResult({
   youtubeArtifacts,
 }) {
   const outbox = deletedTranslationProjectId
-    ? allOutbox.filter((record) =>
-        record.aggregate_id !== deletedTranslationProjectId &&
-        !['delete_storage_key', 'delete_project_artifact_dir', 'delete_project_translation'].includes(record.kind),
+    ? allOutbox.filter(
+        (record) =>
+          record.aggregate_id !== deletedTranslationProjectId &&
+          ![
+            'delete_storage_key',
+            'delete_project_artifact_dir',
+            'delete_project_translation',
+          ].includes(record.kind),
       )
     : allOutbox;
   assert(project.status === 'Cancelled', `Unexpected project status: ${project.status}`);
@@ -720,7 +807,10 @@ async function verifyResult({
     `Unexpected yt-dlp project status: ${youtubeProject.status}`,
   );
   const youtubeSource = JSON.parse(youtubeProject.source_json);
-  assert(youtubeSource.YoutubeUrl?.url === ytdlpUrl, 'yt-dlp project did not preserve its source URL');
+  assert(
+    youtubeSource.YoutubeUrl?.url === ytdlpUrl,
+    'yt-dlp project did not preserve its source URL',
+  );
   assert(youtubeArtifacts.length === 1, 'Expected one downloaded yt-dlp artifact');
   const youtubeArtifact = youtubeArtifacts[0];
   assert(youtubeArtifact.project_id === youtubeProject.id, 'yt-dlp artifact ownership mismatch');
@@ -820,10 +910,7 @@ function formatProcessLogs(app) {
 
 async function readBootstrapCheckpoint(dataRoot) {
   try {
-    const checkpoint = await fsp.readFile(
-      path.join(dataRoot, 'native-e2e-bootstrap.txt'),
-      'utf8',
-    );
+    const checkpoint = await fsp.readFile(path.join(dataRoot, 'native-e2e-bootstrap.txt'), 'utf8');
     return `\nNative E2E checkpoint trace:\n${checkpoint.trim() || '(empty)'}`;
   } catch (error) {
     if (error?.code === 'ENOENT') return '\nNative E2E checkpoint trace: (not created)';
@@ -848,7 +935,15 @@ async function terminate(child) {
     if (child.exitCode === null && child.signalCode === null) {
       childProcess.spawnSync(
         'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', 'Stop-Process', '-Id', String(child.pid), '-Force'],
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          'Stop-Process',
+          '-Id',
+          String(child.pid),
+          '-Force',
+        ],
         {
           stdio: 'ignore',
           windowsHide: true,
@@ -880,22 +975,24 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
       process.stdout.write(
         process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1'
           ? 'Native Tauri single-owner E2E passed: a second process was rejected before storage setup, while the first completed its workflow; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1'
-          ? 'Native Tauri deletion E2E passed: active checked-model translation stopped and both databases removed the project state; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
-          ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1' &&
-              process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
-          ? 'Native Tauri WebVTT crash E2E passed: first checkpoint survived desktop termination and the resumed run published a separate copy; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
-          ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1'
-          ? 'Native Tauri package E2E passed: React installed and selected the pinned CPU package, desktop restart restored it, and a real subtitle translation published a separate output; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1'
-          ? 'Native Tauri WebVTT E2E passed: checked local translation preserved the separate source, protected spans, and both databases; sandbox cleaned.\n'
-          : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
-          ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
-          : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PAUSE === '1'
+            ? 'Native Tauri pause E2E passed: retained checkpoint and active run, cancelled host job, released managed child and resumed in the same desktop; sandbox cleaned.\n'
+            : process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1'
+              ? 'Native Tauri deletion E2E passed: active checked-model translation stopped and both databases removed the project state; sandbox cleaned.\n'
+              : process.env.AURALIS_NATIVE_E2E_TRANSLATION_RESULT_GAP === '1'
+                ? 'Native Tauri result-gap E2E passed: a committed Translate result was recovered into a ready separate Auralis artifact after restart; sandbox cleaned.\n'
+                : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1' &&
+                    process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
+                  ? 'Native Tauri WebVTT crash E2E passed: first checkpoint survived desktop termination and the resumed run published a separate copy; sandbox cleaned.\n'
+                  : process.env.AURALIS_NATIVE_E2E_TRANSLATION_CRASH === '1'
+                    ? 'Native Tauri crash E2E passed: committed checkpoint survived desktop termination and resumed through a second checked-model attempt; sandbox cleaned.\n'
+                    : process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1'
+                      ? 'Native Tauri package E2E passed: React installed and selected the pinned CPU package, desktop restart restored it, and a real subtitle translation published a separate output; sandbox cleaned.\n'
+                      : process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1'
+                        ? 'Native Tauri WebVTT E2E passed: checked local translation preserved the separate source, protected spans, and both databases; sandbox cleaned.\n'
+                        : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
+                          ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
+                          : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
       ),
     )
     .catch((error) => {

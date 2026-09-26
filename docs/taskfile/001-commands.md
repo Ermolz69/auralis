@@ -231,3 +231,15 @@ task release:assets:validate PLATFORM=windows
 Release tasks are normally orchestrated by GitHub Actions. Signing, package
 installation, and publication tasks require the platform artifacts and credentials
 described in the release documentation.
+
+## Native translation pause
+
+`task desktop:e2e:native:translation:pause` uses explicitly installed checked
+model/runtime assets supplied by `AURALIS_TEST_LLAMA_SERVER` and `AURALIS_TEST_GGUF`.
+It creates an isolated Windows app-data directory, imports two synthetic cues,
+pauses after one saved block through React/Tauri, and checks both SQLite files and
+managed child release. A test-only project-title barrier keeps the workflow paused
+until those checks finish; the frontend then resumes in the same desktop process.
+The final checks require the original checkpoint unchanged, a cancelled first job,
+a completed second job, and a separate ready output. Temporary data and the native
+test frontend are removed. The production bundle excludes this scenario.

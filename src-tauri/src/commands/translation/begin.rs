@@ -35,7 +35,13 @@ pub async fn begin_translation_run_cmd(
 
 fn profile_manifest_json() -> Result<String, CommandError> {
     #[cfg(feature = "native-e2e")]
-    if std::env::var("AURALIS_NATIVE_E2E_TRANSLATION_CRASH").as_deref() == Ok("1") {
+    if [
+        "AURALIS_NATIVE_E2E_TRANSLATION_CRASH",
+        "AURALIS_NATIVE_E2E_TRANSLATION_PAUSE",
+    ]
+    .iter()
+    .any(|key| std::env::var(key).as_deref() == Ok("1"))
+    {
         let mut profile: serde_json::Value =
             serde_json::from_str(EXPERIMENTAL_CHECKED_CHINESE_PROFILE)
                 .map_err(|_| CommandError::Internal("Invalid native E2E model profile".into()))?;
