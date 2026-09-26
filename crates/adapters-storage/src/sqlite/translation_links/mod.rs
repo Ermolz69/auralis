@@ -7,6 +7,7 @@ mod manual_finalization;
 mod manual_publication_guard;
 mod publication;
 mod publication_row;
+mod publication_view;
 mod ready_publications;
 mod repository;
 mod row;

@@ -557,7 +557,9 @@ pages independently of selected/active runs and leave recovery only after a read
 owned translated publication/artifact exists. Translation deletion cascades the
 journal. Six integration tests and the existing storage tests pass.
 
-The later application integration below uses these foundations. Typed historical observation/save contracts, CLI/IPC/UI and native older-base save/reopen remain pending. No historical-save control should bypass those boundaries. The full
+The later application and desktop integrations below use these foundations.
+The CLI branch route and native older-base save/reopen remain pending. No
+historical-save control should bypass those boundaries. The full
 contract and evidence live in the pinned module at
 `docs/architecture/015-historical-result-edits.md` and
 `eval/experiments/2026-09-26-historical-edit-foundation.md`. Development remains local.
@@ -580,7 +582,10 @@ concurrency, idempotency, ready-state checks, rollback and reopening.
 
 The pinned evidence record is
 `eval/experiments/2026-09-26-manual-publication-ordering.md`. Its fixtures arrange
-host metadata and artifact ready states. The later application tests below execute historical saves through both databases and verify request/provenance; UI and actual native process evidence remain pending.
+host metadata and artifact ready states. The later application tests below execute
+historical saves through both databases and verify request/provenance; the desktop
+contract slice supplies supporting UI checks. Actual native process evidence
+remains pending.
 
 ## Historical application save and recovery
 
@@ -607,7 +612,35 @@ intents. These are supporting tests with a deterministic provider; actual deskto
 process interruption and real-model historical editing remain unverified.
 
 The pinned record is `eval/experiments/2026-09-26-historical-edit-application.md`.
-Typed head/link observations, CLI/IPC/UI commands, frozen retry requests and
-attached versus detached presentation are next. Historical save controls remain
-unavailable until their complete delivery route is verified. S7, language and
-clean-install gates remain open; all changes stay local.
+The subsequent desktop contract slice below adds typed head/link observations,
+guarded IPC/UI saves and publication outcome reads. Native and CLI branch gates
+remain open. S7, language and clean-install gates remain open; work stays local.
+
+## Historical desktop contracts and controls
+
+Production composition registers `get_historical_translation_edit_context_cmd`,
+`edit_historical_translation_result_cmd` and `get_translation_publication_cmd`.
+Context verifies the actual ready base and its frozen run's head independently of
+another active run. Publication reads link, publication and artifact state in one
+SQLite transaction, preventing a mixed ready/selection snapshot.
+
+Experimental controls can edit a ready historical preview. They freeze UUID,
+guards and lines for exact retries, disable duplicate saves, refresh a confirmed
+precommit conflict explicitly and discard obsolete contexts/callbacks. Scoped
+opening avoids an unintended context request after switching bases. The separate
+publication notice survives comparison paging, reports pending versus ready
+attached/historical outcomes, and refreshes through events or bounded polling.
+
+`task rust:test:application -- --test translation_historical_edits --test translation_publish --test translation_vtt_publish --test translation_publication_recovery --test translation_result_gap_recovery`
+passes 13 tests. `task frontend:test:components -- src/features/translation-review`
+passes 17; the targeted historical API/runtime contract unit command passes 23.
+`task rust:clippy`, `task frontend:typecheck`, `task frontend:lint`,
+`task quality:file-size`, `task quality:ipc-contract` and
+`task quality:fsd-boundaries` pass. The pinned evidence record contains exact
+commands at `eval/experiments/2026-09-26-historical-edit-desktop-contract.md`.
+
+These tests use real persistence with a deterministic provider and mocked IPC in
+jsdom. Actual checked-model native older-base saves, conflicting choices,
+reopening and manual journal/core/output process-kill boundaries remain unverified.
+The CLI branch interface, broader review, language and clean Windows delivery
+gates remain open. No weights/corpus payloads or public publication were added.

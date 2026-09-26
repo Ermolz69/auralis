@@ -12,6 +12,12 @@ use uuid::Uuid;
 
 #[async_trait]
 pub trait TranslationLinkStore: Send + Sync {
+    async fn publication_view(
+        &self,
+        project_id: &ProjectId,
+        translation_id: Uuid,
+        result_id: Uuid,
+    ) -> Result<super::TranslationPublicationView, PortError>;
     async fn list_ready_history(
         &self,
         project_id: &ProjectId,

@@ -4,6 +4,9 @@ import { useTranslationReview, COMPARISON_PAGE_SIZE } from '../model/useTranslat
 import { TranslationSegmentEditor } from './TranslationSegmentEditor';
 import { useTranslationHistory } from '../model/useTranslationHistory';
 import { TranslationHistorySelector } from './TranslationHistorySelector';
+import { useState } from 'react';
+import type { TranslationPublication } from '@/shared/api/contracts/translation';
+import { TranslationPublicationNotice } from './TranslationPublicationNotice';
 
 export function TranslationReviewPanel({
   projectId,
@@ -13,6 +16,10 @@ export function TranslationReviewPanel({
   refreshRevision?: number;
 }) {
   const review = useTranslationReview(projectId, refreshRevision);
+  const [publication, setPublication] = useState<{
+    projectId: string;
+    record: TranslationPublication;
+  } | null>(null);
   const history = useTranslationHistory(
     projectId,
     review.selected,
@@ -21,13 +28,7 @@ export function TranslationReviewPanel({
   );
   const page = review.page?.resultId === review.previewResultId ? review.page : null;
   const readyLinks = review.links.filter((link) => link.selectedResultId);
-  const canEdit = Boolean(
-    page &&
-    review.selected &&
-    page.resultId === review.selected.selectedResultId &&
-    history.entries[0]?.resultId === page.resultId &&
-    (!review.selected.activeRunId || review.selected.activeRunId === page.runId),
-  );
+  const canEdit = Boolean(page && review.selected);
 
   return (
     <section
@@ -48,6 +49,17 @@ export function TranslationReviewPanel({
       {!review.loadingLinks && review.links.length === 0 && (
         <p className="mt-3 text-xs text-muted">Пока нет переводов для этого проекта.</p>
       )}
+      {publication &&
+        projectId === publication.projectId &&
+        review.selected?.translationId === publication.record.translationId && (
+          <TranslationPublicationNotice
+            key={`${projectId}:${publication.record.resultId}`}
+            projectId={projectId}
+            translationId={publication.record.translationId}
+            resultId={publication.record.resultId}
+            refreshRevision={review.historyRevision}
+          />
+        )}
       {review.links.length > 0 && (
         <p className="mt-3 text-xs text-muted">
           {readyLinks.length} готово · {review.links.length - readyLinks.length} в работе
@@ -96,10 +108,7 @@ export function TranslationReviewPanel({
                 {page.needsReview ? 'Требует проверки' : 'Проверено'} · {page.totalSegments} реплик
               </p>
               {!canEdit && (
-                <p className="mt-2 text-xs text-muted">
-                  Эта версия доступна для сравнения. Для правки выберите последнюю готовую версию
-                  без другого активного запуска.
-                </p>
+                <p className="mt-2 text-xs text-muted">Загружаем проверенный перевод для правки.</p>
               )}
               <div className="mt-2 space-y-2">
                 {page.segments.map((segment) => (
@@ -132,7 +141,10 @@ export function TranslationReviewPanel({
                           translationId={review.selected.translationId}
                           baseResultId={page.resultId}
                           segment={segment}
-                          onPublished={() => review.refresh()}
+                          onPublished={(record) => {
+                            setPublication({ projectId, record });
+                            review.refresh();
+                          }}
                         />
                       )}
                     </div>

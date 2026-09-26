@@ -27,6 +27,14 @@ impl SqliteTranslationLinkStore {
 
 #[async_trait]
 impl TranslationLinkStore for SqliteTranslationLinkStore {
+    async fn publication_view(
+        &self,
+        project_id: &ProjectId,
+        translation_id: Uuid,
+        result_id: Uuid,
+    ) -> Result<ports::translation_links::TranslationPublicationView, PortError> {
+        super::publication_view::read(&self.pool, project_id, translation_id, result_id).await
+    }
     async fn list_ready_history(
         &self,
         project_id: &ProjectId,

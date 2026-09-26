@@ -6,14 +6,15 @@ use adapters_translate::{
     TranslateRunExecutor, TranslateRunRecovery, TranslateRunRegistrar,
 };
 use application::usecases::translation::{
-    BeginTranslationUseCase, EditTranslationResultUseCase, ExecuteTranslationUseCase,
-    GetTranslationComparisonUseCase, GetTranslationRunStatusUseCase,
-    ImportTranslationSourceUseCase, InspectTranslationSourceUseCase,
-    ListProjectTranslationsUseCase, ListTranslationHistoryUseCase, PublishTranslationResultUseCase,
-    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
-    RecoverTranslationPublicationsUseCase, RunManagedTranslationUseCase,
-    RunTranslationHostJobUseCase, SelectTranslationResultUseCase, StartTranslationJobUseCase,
-    TranslationRunUseCase,
+    BeginTranslationUseCase, EditHistoricalTranslationUseCase, EditTranslationResultUseCase,
+    ExecuteTranslationUseCase, GetHistoricalTranslationEditContextUseCase,
+    GetTranslationComparisonUseCase, GetTranslationPublicationUseCase,
+    GetTranslationRunStatusUseCase, ImportTranslationSourceUseCase,
+    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase, ListTranslationHistoryUseCase,
+    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
+    RecoverTranslationHostJobsUseCase, RecoverTranslationPublicationsUseCase,
+    RunManagedTranslationUseCase, RunTranslationHostJobUseCase, SelectTranslationResultUseCase,
+    StartTranslationJobUseCase, TranslationRunUseCase, VerifyTranslationHistoryUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -37,6 +38,9 @@ pub struct TranslationUseCases {
     pub select_result: SelectTranslationResultUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
+    pub historical_edit: EditHistoricalTranslationUseCase,
+    pub edit_context: GetHistoricalTranslationEditContextUseCase,
+    pub publication: GetTranslationPublicationUseCase,
     pub execute: Arc<ExecuteTranslationUseCase>,
     pub run_job: RunTranslationHostJobUseCase,
     pub run: TranslationRunUseCase,
@@ -90,7 +94,25 @@ impl TranslationUseCases {
             artifact_store.clone(),
         )
         .with_edit_intents(edits.clone());
+        let history_verifier = Arc::new(VerifyTranslationHistoryUseCase::new(
+            inspect.clone(),
+            links.clone(),
+            Arc::new(TranslateResultReader::new(database_path.clone())),
+            artifacts.clone(),
+            artifact_store.clone(),
+        ));
         Self {
+            historical_edit: EditHistoricalTranslationUseCase::new(
+                history_verifier.clone(),
+                edits.clone(),
+                Arc::new(TranslateResultEditor::new(database_path.clone())),
+            ),
+            edit_context: GetHistoricalTranslationEditContextUseCase::new(
+                history_verifier,
+                control.clone(),
+                Arc::new(TranslateResultReader::new(database_path.clone())),
+            ),
+            publication: GetTranslationPublicationUseCase::new(links.clone()),
             control: control.clone(),
             jobs: jobs.clone(),
             inspect: inspect.clone(),

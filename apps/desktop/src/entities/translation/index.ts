@@ -15,3 +15,8 @@ export {
 } from './api/translationApi';
 export { subscribeTranslationChanges } from './api/translationEvents';
 export { listTranslationHistory, selectTranslationResult } from './api/translationHistory';
+export {
+  getHistoricalTranslationEditContext,
+  editHistoricalTranslationResult,
+  getTranslationPublication,
+} from './api/translationHistoricalEdit';

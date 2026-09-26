@@ -1,16 +1,9 @@
-import { useState } from 'react';
-import { editTranslationResult, publishTranslationResult } from '@/entities/translation';
 import type {
   ComparedTranslationSegment,
   TranslationPublication,
 } from '@/shared/api/contracts/translation';
 import { Button } from '@/shared/ui/button';
-
-type EditAttempt = {
-  resultId: string;
-  lines: string[];
-  edited: boolean;
-};
+import { useHistoricalTranslationEdit } from '../model/useHistoricalTranslationEdit';
 
 type Props = {
   projectId: string;
@@ -27,95 +20,76 @@ export function TranslationSegmentEditor({
   segment,
   onPublished,
 }: Props) {
-  const [open, setOpen] = useState(false);
-  const [lines, setLines] = useState(segment.translatedLines);
-  const [attempt, setAttempt] = useState<EditAttempt | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [publication, setPublication] = useState<TranslationPublication | null>(null);
-
-  const save = async () => {
-    const current = attempt ?? { resultId: crypto.randomUUID(), lines: [...lines], edited: false };
-    setAttempt(current);
-    setSaving(true);
-    setError(null);
-    try {
-      if (!current.edited) {
-        const savedId = await editTranslationResult({
-          projectId,
-          translationId,
-          baseResultId,
-          resultId: current.resultId,
-          segmentId: segment.id,
-          lines: current.lines,
-        });
-        if (savedId !== current.resultId)
-          throw new Error('Сохранённая версия не совпадает с запросом');
-        setAttempt({ ...current, edited: true });
-      }
-      const published = await publishTranslationResult(projectId, translationId, current.resultId);
-      setPublication(published);
-      onPublished(published);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Не удалось сохранить правку');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!open) {
+  const edit = useHistoricalTranslationEdit(
+    projectId,
+    translationId,
+    baseResultId,
+    segment,
+    onPublished,
+  );
+  if (!edit.open)
     return (
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" onClick={() => edit.setOpen(true)}>
         Исправить перевод
       </Button>
     );
-  }
 
   return (
     <div className="mt-2 space-y-2 border-t border-border pt-2">
-      {lines.map((line, index) => (
+      <p className="text-xs text-muted">Новая версия сохранит остальные реплики из этой версии.</p>
+      {edit.preparing && (
+        <p role="status" className="text-xs text-muted">
+          Проверяем версию для правки…
+        </p>
+      )}
+      {edit.lines.map((line, index) => (
         <label key={index} className="block text-xs text-muted">
           Строка перевода {index + 1}
           <input
             type="text"
             value={line}
             onChange={(event) =>
-              setLines((current) =>
+              edit.setLines((current) =>
                 current.map((value, item) => (item === index ? event.target.value : value)),
               )
             }
-            disabled={Boolean(attempt) || saving || Boolean(publication)}
+            disabled={Boolean(edit.attempt) || edit.saving || Boolean(edit.publication)}
             className="mt-1 w-full rounded-sm border border-border bg-canvas px-2 py-1.5 text-xs text-text"
           />
         </label>
       ))}
-      {error && (
+      {edit.error && (
         <p role="alert" className="text-xs text-danger">
-          {error}
+          {edit.error.message}
         </p>
       )}
-      {publication && (
+      {edit.publication && (
         <p role="status" className="text-xs text-muted">
-          {publication.state === 'ready'
-            ? 'Новая версия готова. Обновите список переводов.'
-            : 'Новая версия сохранена. Ожидаем публикации файла; обновите список переводов.'}
+          Правка сохранена отдельной версией. Готовность и выбор показаны выше.
         </p>
       )}
-      {!publication && (
-        <div className="flex gap-2">
+      {!edit.publication && (
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            onClick={() => void save()}
-            loading={saving}
-            disabled={lines.some((line) => !line.trim())}
+            onClick={() => void edit.save()}
+            loading={edit.saving}
+            disabled={!edit.context || edit.preparing || edit.lines.some((line) => !line.trim())}
           >
-            {attempt ? 'Повторить сохранение' : 'Сохранить новую версию'}
+            {edit.attempt ? 'Повторить сохранение' : 'Сохранить новую версию'}
           </Button>
-          {!attempt && (
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          {!edit.attempt && (
+            <Button variant="ghost" size="sm" onClick={() => edit.setOpen(false)}>
               Отмена
             </Button>
           )}
+          {edit.error &&
+            !edit.saving &&
+            (!edit.attempt || (!edit.attempt.edited && edit.error.code === 'CONFLICT')) && (
+              <Button variant="ghost" size="sm" onClick={edit.fresh}>
+                Обновить версию для правки
+              </Button>
+            )}
         </div>
       )}
     </div>

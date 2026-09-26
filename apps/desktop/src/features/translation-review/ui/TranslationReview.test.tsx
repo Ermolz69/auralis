@@ -8,6 +8,10 @@ const listProjectTranslations = vi.hoisted(() => vi.fn());
 const getTranslationComparison = vi.hoisted(() => vi.fn());
 const listTranslationHistory = vi.hoisted(() => vi.fn());
 const selectTranslationResult = vi.hoisted(() => vi.fn());
+const getHistoricalTranslationEditContext = vi.hoisted(() => vi.fn());
+const editHistoricalTranslationResult = vi.hoisted(() => vi.fn());
+const publishTranslationResult = vi.hoisted(() => vi.fn());
+const getTranslationPublication = vi.hoisted(() => vi.fn());
 
 vi.mock('@/entities/project', () => ({
   useProjectContext: () => ({ project: { id: '00000000-0000-4000-8000-000000000001' } }),
@@ -17,6 +21,10 @@ vi.mock('@/entities/translation', () => ({
   getTranslationComparison,
   listTranslationHistory,
   selectTranslationResult,
+  getHistoricalTranslationEditContext,
+  editHistoricalTranslationResult,
+  publishTranslationResult,
+  getTranslationPublication,
 }));
 
 const projectId = '00000000-0000-4000-8000-000000000001';
@@ -46,7 +54,10 @@ const historyEntries = [resultId, olderResultId].map((id, index) => ({
   needsReview: true,
 }));
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 beforeEach(() => {
   vi.clearAllMocks();
   listProjectTranslations.mockResolvedValue([link]);
@@ -85,6 +96,111 @@ beforeEach(() => {
 });
 
 describe('TranslationReview', () => {
+  it('edits an older preview during another active run and retains publication status across preview changes', async () => {
+    const editedId = '00000000-0000-4000-8000-000000000010';
+    vi.stubGlobal('crypto', { randomUUID: () => editedId });
+    const activeLink = { ...link, activeRunId: '00000000-0000-4000-8000-000000000011' };
+    listProjectTranslations.mockResolvedValue([activeLink]);
+    listTranslationHistory.mockResolvedValue({
+      link: activeLink,
+      entries: historyEntries,
+      nextCursor: null,
+    });
+    getHistoricalTranslationEditContext.mockResolvedValue({
+      projectId,
+      translationId,
+      baseResultId: olderResultId,
+      runId: historyEntries[0].runId,
+      baseRevision: 1,
+      expectedHeadResultId: resultId,
+      headRevision: 2,
+      expectedLinkRevision: 2,
+    });
+    editHistoricalTranslationResult.mockResolvedValue(editedId);
+    const pending = {
+      translationId,
+      resultId: editedId,
+      runId: historyEntries[0].runId,
+      artifactId: '00000000-0000-4000-8000-000000000012',
+      sourceSha256: link.sourceSha256,
+      needsReview: true,
+      state: 'pending',
+    };
+    publishTranslationResult.mockResolvedValue(pending);
+    getTranslationPublication.mockResolvedValue({ link: activeLink, publication: pending });
+    render(<TranslationReview />);
+    await screen.findByText('Здравствуйте.');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Версия для сравнения' }).hasAttribute('disabled'),
+      ).toBe(false),
+    );
+    fireEvent.change(screen.getByRole('combobox', { name: 'Версия для сравнения' }), {
+      target: { value: olderResultId },
+    });
+    await screen.findByText('Новый перевод.');
+    fireEvent.click(screen.getByRole('button', { name: 'Исправить перевод' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Сохранить новую версию' }).hasAttribute('disabled'),
+      ).toBe(false),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Строка перевода 1' }), {
+      target: { value: 'Историческая правка.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить новую версию' }));
+    await screen.findByText(/Ожидаем готовности отдельного файла/);
+    expect(editHistoricalTranslationResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseResultId: olderResultId,
+        expectedHeadResultId: resultId,
+        expectedLinkRevision: 2,
+        lines: ['Историческая правка.'],
+      }),
+    );
+    expect(selectTranslationResult).not.toHaveBeenCalled();
+    const chosen = {
+      ...activeLink,
+      selectedResultId: editedId,
+      outputArtifactId: pending.artifactId,
+      revision: 3,
+    };
+    getTranslationPublication.mockResolvedValue({
+      link: chosen,
+      publication: { ...pending, state: 'ready' },
+    });
+    listProjectTranslations.mockResolvedValue([chosen]);
+    listTranslationHistory.mockResolvedValue({
+      link: chosen,
+      entries: [
+        {
+          ...historyEntries[0],
+          resultId: editedId,
+          resultRevision: 3,
+          artifactId: pending.artifactId,
+        },
+        ...historyEntries,
+      ],
+      nextCursor: null,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить переводы' }));
+    await screen.findByRole('option', { name: /версия 3/ });
+    await screen.findByText(/выбрана для проекта/);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Версия для сравнения' }), {
+      target: { value: editedId },
+    });
+    await waitFor(() =>
+      expect(getTranslationComparison).toHaveBeenCalledWith(
+        projectId,
+        translationId,
+        editedId,
+        0,
+        25,
+      ),
+    );
+    expect(screen.getByText(/выбрана для проекта/)).not.toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
   it('shows a ready result beside its original and requests only the next page', async () => {
     render(<TranslationReview />);
     expect(await screen.findByText('Здравствуйте.')).not.toBeNull();
@@ -152,7 +268,7 @@ describe('TranslationReview', () => {
     await screen.findByText('Новый перевод.');
     expect(screen.queryByText('Здравствуйте.')).toBeNull();
     expect(selectTranslationResult).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Исправить перевод' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Исправить перевод' })).not.toBeNull();
     const chosen = { ...link, selectedResultId: olderResultId, revision: 3 };
     listProjectTranslations.mockResolvedValue([chosen]);
     listTranslationHistory.mockResolvedValue({
@@ -173,7 +289,7 @@ describe('TranslationReview', () => {
       expect(screen.queryByRole('button', { name: 'Использовать эту версию' })).toBeNull(),
     );
     expect(screen.getByText('Новый перевод.')).not.toBeNull();
-    expect(screen.queryByRole('button', { name: 'Исправить перевод' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Исправить перевод' })).not.toBeNull();
   });
 
   it('keeps the preview and attachment separate after a stale-selection conflict', async () => {

@@ -2,18 +2,8 @@ import type { Artifact } from './artifact';
 import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
 import type { Project } from './project';
-import {
-  validateTranslationComparisonPage,
-  validateTranslationInspection,
-  validateTranslationLink,
-  validateTranslationPackageStatus,
-  validateTranslationPublication,
-  validateTranslationRunSnapshot,
-  validateTranslationStart,
-  isUuid,
-} from './translationValidation';
+import { translationCommandResultValidators } from './translationCommandValidation';
 import { validateMediaMetadata, validateMediaSource } from './mediaValidation';
-import { validateTranslationHistoryPage } from './translationHistoryValidation';
 import {
   isArrayOf,
   isBoolean,
@@ -148,24 +138,11 @@ const commandResultValidators = {
   delete_project_cmd: isNull,
   list_project_artifacts_cmd: (value) => isArrayOf(value, validateArtifact),
   resolve_artifact_path_cmd: isString,
-  inspect_translation_source_cmd: validateTranslationInspection,
+  ...translationCommandResultValidators,
   import_translation_source_cmd: (value) =>
     validateArtifact(value) &&
     value.kind === 'originalSubtitle' &&
     value.state === 'pendingFinalize',
-  begin_translation_run_cmd: validateTranslationLink,
-  start_translation_run_cmd: validateTranslationStart,
-  get_translation_package_status_cmd: validateTranslationPackageStatus,
-  install_translation_package_cmd: validateTranslationPackageStatus,
-  select_translation_package_cmd: validateTranslationPackageStatus,
-  edit_translation_result_cmd: isUuid,
-  publish_translation_result_cmd: validateTranslationPublication,
-  list_project_translations_cmd: (value) => isArrayOf(value, validateTranslationLink),
-  get_translation_comparison_cmd: validateTranslationComparisonPage,
-  get_translation_run_status_cmd: validateTranslationRunSnapshot,
-  list_translation_history_cmd: validateTranslationHistoryPage,
-  select_translation_result_cmd: validateTranslationLink,
-  pause_translation_run_cmd: isNull,
   list_jobs_cmd: validateJobSnapshot,
   list_job_history_page_cmd: validateJobHistoryPage,
   list_jobs_snapshot_cmd: validateJobSnapshot,

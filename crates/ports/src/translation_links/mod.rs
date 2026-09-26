@@ -1,6 +1,7 @@
 mod publication_intent;
 mod publication_record;
 mod publication_state;
+mod publication_view;
 mod ready_publication;
 mod run_intent;
 mod start_translation_run;
@@ -13,6 +14,7 @@ pub use history_selection::SelectTranslationHistoryResult;
 pub use publication_intent::PublicationIntent;
 pub use publication_record::TranslationPublicationRecord;
 pub use publication_state::TranslationPublicationState;
+pub use publication_view::TranslationPublicationView;
 pub use ready_publication::ReadyPublication;
 pub use run_intent::TranslationRunIntent;
 pub use start_translation_run::StartTranslationRun;

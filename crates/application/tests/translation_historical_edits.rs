@@ -6,6 +6,8 @@ mod historical_fixture;
 mod historical_provider;
 #[path = "support/historical_seed.rs"]
 mod historical_seed;
+#[path = "translation_historical_edits/observations.rs"]
+mod observations;
 
 use application::usecases::translation::{
     EditHistoricalTranslationRequest, SelectTranslationResultRequest,

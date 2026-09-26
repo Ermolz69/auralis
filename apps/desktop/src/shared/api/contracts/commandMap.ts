@@ -9,6 +9,11 @@ import type { PendingYoutubeImport } from './youtubeImport';
 import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
 import type {
+  HistoricalTranslationEditContext,
+  EditHistoricalTranslationResult,
+  TranslationPublicationView,
+} from './translationHistoricalEdit';
+import type {
   BeginTranslationRun,
   EditTranslationResult,
   TranslationComparisonPage,
@@ -138,6 +143,18 @@ export interface CommandMap {
   edit_translation_result_cmd: {
     args: { input: EditTranslationResult };
     result: string;
+  };
+  get_historical_translation_edit_context_cmd: {
+    args: { projectId: string; translationId: string; baseResultId: string };
+    result: HistoricalTranslationEditContext;
+  };
+  edit_historical_translation_result_cmd: {
+    args: { input: EditHistoricalTranslationResult };
+    result: string;
+  };
+  get_translation_publication_cmd: {
+    args: { projectId: string; translationId: string; resultId: string };
+    result: TranslationPublicationView;
   };
   publish_translation_result_cmd: {
     args: { projectId: string; translationId: string; resultId: string };
