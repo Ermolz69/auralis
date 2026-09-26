@@ -30,7 +30,26 @@ impl StartTranslationJobUseCase {
     }
 
     pub async fn execute(&self, request: TranslationRunRequest) -> Result<Job, ApplicationError> {
+        self.execute_inner(request, None).await
+    }
+
+    pub async fn execute_for_run(
+        &self,
+        request: TranslationRunRequest,
+        run_id: uuid::Uuid,
+    ) -> Result<Job, ApplicationError> {
+        self.execute_inner(request, Some(run_id)).await
+    }
+
+    async fn execute_inner(
+        &self,
+        request: TranslationRunRequest,
+        expected_run: Option<uuid::Uuid>,
+    ) -> Result<Job, ApplicationError> {
         let (link, run_id) = self.checked_run(&request).await?;
+        if expected_run.is_some_and(|expected| expected != run_id) {
+            return Err(PortError::Cancelled.into());
+        }
         let snapshot = self.control.snapshot(&link).await?;
         if snapshot.run_id != run_id {
             return Err(ApplicationError::InvalidOperation {

@@ -62,6 +62,16 @@ impl TranslationRunRecoveryPort for FixedRecovery {
 
 #[async_trait]
 impl TranslationRunControlPort for FixedRunControl {
+    async fn capture_start(
+        &self,
+        _: &TranslationLink,
+    ) -> Result<ports::translation_start_guard::TranslationStartGuard, PortError> {
+        Ok(ports::translation_start_guard::TranslationStartGuard {
+            run_id: self.run_id,
+            phase: self.phase,
+            control_revision: 0,
+        })
+    }
     async fn snapshot(&self, _link: &TranslationLink) -> Result<TranslationRunSnapshot, PortError> {
         Ok(TranslationRunSnapshot {
             run_id: self.run_id,

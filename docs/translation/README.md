@@ -75,9 +75,9 @@ Inspection is exposed through a read-only Tauri command and typed frontend IPC, 
 
 `ReconcileTranslationRunsUseCase` enumerates active links, reads their frozen intents, rechecks the original, and retries missing Translate records. It reports each link's outcome independently, including a legacy link with no frozen intent. A real two-database integration test starts with the Translate database directory absent, observes the persisted Auralis link, then creates the directory and reconciles the run. The original remains byte-for-byte unchanged. A project result is selected only after the translated copy is a ready managed artifact.
 
-`ExecuteTranslationUseCase` rechecks the project-owned original and frozen run intent, ensures Translate records exist, then calls `TranslateRunExecutor`. The executor verifies the stored run and model profile, probes the supplied local llama.cpp server with the shared Translate preflight, executes missing blocks, and commits a structurally validated `needs_review` result in Translate SQLite. Repeating execution of a validated run returns its stored result ID. A checked model profile is required by the normal constructor; `experimental_unchecked` is restricted to development tests. A mock HTTP server test exercises execution and publication through the two databases while preserving the original bytes. This path is an application API with a caller-supplied server URL. The managed start command now owns a checked runtime lease and is exposed in the desktop UI; a one-cue native checked-model E2E passed. Clean-machine package validation, progress events, and mid-request cancellation remain open. The mock HTTP and native tests establish protocol and persistence behavior, not real-model translation quality.
+`ExecuteTranslationUseCase` rechecks the project-owned original and frozen run intent, ensures Translate records exist, then calls `TranslateRunExecutor`. The executor verifies the stored run and model profile, probes the supplied local llama.cpp server with the shared Translate preflight, executes missing blocks, and commits a structurally validated `needs_review` result in Translate SQLite. Repeating execution of a validated run returns its stored result ID. A checked model profile is required by the normal constructor; `experimental_unchecked` is restricted to development tests. A mock HTTP server test exercises execution and publication through the two databases while preserving the original bytes. This path is an application API with a caller-supplied server URL. The managed start command now owns a checked runtime lease and is exposed in the desktop UI; a one-cue native checked-model E2E passed. Clean-machine package validation, progress events and prompt cancellation during admission remain open. The mock HTTP and native tests establish protocol and persistence behavior, not real-model translation quality.
 
-`TranslationRunUseCase` reads the active run's phase, committed block count, pending pause flag, and validated result identity through `TranslateRunControl`. It accepts a pause request only for a project-owned link whose Translate records match the linked source. An in-flight worker observes the durable flag at a block boundary; the current HTTP request is not interrupted. Calling execution again after an acknowledged pause resumes the same run and skips saved checkpoints. Tests cover pre-run pause/resume, a pause flag on a running attempt, project mismatch rejection, and the final result status. The run panel now polls this control API; the background host worker requests a durable pause when its runtime cancellation signal fires.
+`TranslationRunUseCase` reads the active run's phase, committed block count, pending pause flag, and validated result identity through `TranslateRunControl`. It accepts a pause request only for a project-owned link whose Translate records match the linked source. An in-flight worker polls the durable flag during HTTP response headers/body reads and rechecks it at acceptance boundaries; unfinished output is discarded. Calling execution again after an acknowledged pause resumes the same run and skips saved checkpoints. Tests cover pre-run pause/resume, a pause flag on a running attempt, project mismatch rejection, and the final result status. The run panel now polls this control API; the background host worker requests a durable pause when its runtime cancellation signal fires.
 
 `PublishTranslationResultUseCase` accepts a specific stored `result_id`. The Translate adapter confirms its run and source identities, renders a separate SRT/WebVTT copy from the original and selected segments, and checks the stored output digest. Auralis stages that copy, hashes the staged bytes, and atomically records the pending artifact, publication, and outbox action. Repeating the call returns the same pending or ready publication. The outbox worker selects the result only after finalizing the artifact. A real two-database test uses a deterministic mock HTTP model response to verify host job execution, publication, and an unchanged original; it does not establish language quality.
 
@@ -192,6 +192,39 @@ removes the test sandbox/frontend build. Evidence is at
 `modules/auralis-translate/eval/experiments/2026-09-26-native-vtt-pause-resume.md`.
 `task q:translation-delivery` passed eight policy/publication tests; documentation
 checks passed in both repositories. The prior native WebVTT pause gap is now closed
-for this named synthetic scenario. Concurrent commands, pre-attempt admission,
+for this named synthetic scenario. Concurrent commands, prompt pre-attempt cancellation,
 clean Windows installation and language quality remain open. No product Rust or
 production frontend code changed in this test tooling slice.
+
+## Guarded attempt admission
+
+Translate schema v5 adds a durable run control revision. A managed start captures
+the run ID, phase and revision before runtime acquisition, retains it through the
+host job and passes it to the executor. Each pause, including a repeated pause on
+an already-paused resume, invalidates the older guard. Auralis rechecks it after
+acquisition even on runtime failure and requires the original active run when
+creating the pending job. Translate rechecks it in an immediate transaction before
+clearing pause and creating the attempt. Explicit resume captures the latest
+revision; the guard is transient and is not duplicated into the host database or
+frontend status schema.
+
+`task rs:test:application -- --test translation_admission_pause` passed five
+two-database tests. Newer pause prevents host job creation, drops the acquired
+lease and takes precedence over a simultaneous runtime failure. Without a new
+pause, acquisition retains its error. Pause after admission but before the worker
+starts closes the host job as cancelled, creates no model HTTP request or Translate
+attempt/result, retains the project run and leaves the source unchanged. A fresh
+explicit resume still admits that paused run. The controlled runtime is test
+infrastructure, not model support evidence. `task rs:test:translate` passed the
+default adapter suite; its two installed-model/package cases are opt-in.
+`task rs:clippy`, the full default `task rs:test:application` suite and
+`task rs:test:ports` (19 cases) also passed. Real-model application cases remain
+opt-in. No frontend status schema changed.
+
+The independent CLI passed `task eval:cli:protocol` with the installed checked
+model after this guard change: separate SRT/WebVTT outputs and identical offline
+export. Evidence and retained identities are recorded at
+`modules/auralis-translate/eval/experiments/2026-09-26-attempt-admission-guard.md`.
+Hashing/readiness currently finishes before a cancelled admission releases its
+resources. Prompt interruption, native admission command races, fresh package
+audit, clean Windows installation and bilingual quality remain open.

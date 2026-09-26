@@ -8,6 +8,7 @@ pub mod control;
 pub mod engine;
 pub mod error;
 pub mod events;
+pub mod host_translation_execution;
 pub mod job_query;
 pub mod job_runtime_control;
 pub mod job_scheduler;
@@ -32,6 +33,7 @@ pub mod translation_result_edit;
 pub mod translation_run_control;
 pub mod translation_run_recovery;
 pub mod translation_run_registration;
+pub mod translation_start_guard;
 pub mod ui_preferences;
 pub mod workspace;
 

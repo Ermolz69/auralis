@@ -176,6 +176,7 @@ async fn webvtt_runs_through_both_databases_and_publishes_a_separate_verified_co
                 project_id: project.id().clone(),
                 translation_id,
                 server_url: endpoint,
+                start_guard: None,
             },
             host_job.id(),
         )

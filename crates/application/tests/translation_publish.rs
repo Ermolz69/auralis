@@ -158,6 +158,7 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
                 project_id: project.id().clone(),
                 translation_id,
                 server_url: endpoint,
+                start_guard: None,
             },
             host_job.id(),
         )

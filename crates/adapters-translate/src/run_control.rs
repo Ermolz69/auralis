@@ -6,6 +6,7 @@ use ports::translation_links::TranslationLink;
 use ports::translation_run_control::{
     TranslationRunControlPort, TranslationRunPhase, TranslationRunSnapshot,
 };
+use ports::translation_start_guard::TranslationStartGuard;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -21,6 +22,37 @@ impl TranslateRunControl {
 
 #[async_trait]
 impl TranslationRunControlPort for TranslateRunControl {
+    async fn capture_start(
+        &self,
+        link: &TranslationLink,
+    ) -> Result<TranslationStartGuard, PortError> {
+        let database_path = self.database_path.clone();
+        let link = link.clone();
+        tokio::task::spawn_blocking(move || {
+            let run_id = link
+                .active_run_id
+                .ok_or_else(|| conflict("translation has no active run"))?;
+            let (database, run_id, _) = open_run(&database_path, &link, run_id)?;
+            let guard = database
+                .capture_attempt_start(run_id)
+                .map_err(|error| database_error("capture_translation_start", error))?;
+            let phase = match guard.state() {
+                RunState::Requested => TranslationRunPhase::Requested,
+                RunState::Paused => TranslationRunPhase::Paused,
+                RunState::Failed => TranslationRunPhase::Failed,
+                _ => return Err(conflict("run cannot admit a new attempt")),
+            };
+            Ok(TranslationStartGuard {
+                run_id: run_id.get(),
+                phase,
+                control_revision: guard.control_revision(),
+            })
+        })
+        .await
+        .map_err(|error| PortError::Unexpected {
+            message: error.to_string(),
+        })?
+    }
     async fn snapshot(&self, link: &TranslationLink) -> Result<TranslationRunSnapshot, PortError> {
         let run_id = link
             .active_run_id

@@ -126,6 +126,7 @@ async fn result_gap_child() -> Result<(), Box<dyn Error>> {
                 project_id,
                 translation_id,
                 server_url: endpoint,
+                start_guard: None,
             },
             host_job.id(),
         )

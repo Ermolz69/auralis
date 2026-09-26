@@ -9,11 +9,13 @@ use auralis_translation_formats::srt::SrtParsePolicy;
 use auralis_translation_formats::vtt::VttParsePolicy;
 use auralis_translation_llamacpp::{LlamaCppProvider, ModelProfile, verify_server};
 use auralis_translation_sqlite::{ResultSpec, RunStop, SqliteConfig, TranslateDb};
-use domain::job::JobId;
 use ports::committed_translation_progress::CommittedTranslationProgress;
 use ports::error::PortError;
+use ports::host_translation_execution::HostTranslationExecution;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_links::{TranslationLink, TranslationRunIntent};
+use ports::translation_run_control::TranslationRunPhase;
+use ports::translation_start_guard::TranslationStartGuard;
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
@@ -44,17 +46,25 @@ impl TranslateRunExecutor {
         link: &TranslationLink,
         intent: &TranslationRunIntent,
         server_url: &str,
-        job_id: Option<&JobId>,
-        progress: Option<UnboundedSender<CommittedTranslationProgress>>,
+        host: Option<HostTranslationExecution>,
     ) -> Result<Uuid, PortError> {
         let database_path = self.database_path.clone();
         let source_path = source_path.to_path_buf();
         let link = link.clone();
         let intent = intent.clone();
         let server_url = server_url.to_owned();
+        let (host_job_id, start_guard, progress) = match host {
+            Some(host) => (
+                Some(host.job_id.to_string()),
+                host.start_guard,
+                Some(host.progress),
+            ),
+            None => (None, None, None),
+        };
         let options = RunExecutionOptions {
             allow_unchecked_profile: self.allow_unchecked_profile,
-            host_job_id: job_id.map(ToString::to_string),
+            host_job_id,
+            start_guard,
             progress,
         };
         tokio::task::spawn_blocking(move || {
@@ -83,8 +93,7 @@ impl TranslationExecutionPort for TranslateRunExecutor {
         intent: &TranslationRunIntent,
         server_url: &str,
     ) -> Result<Uuid, PortError> {
-        self.run(source_path, link, intent, server_url, None, None)
-            .await
+        self.run(source_path, link, intent, server_url, None).await
     }
 
     async fn execute_for_host(
@@ -93,22 +102,15 @@ impl TranslationExecutionPort for TranslateRunExecutor {
         link: &TranslationLink,
         intent: &TranslationRunIntent,
         server_url: &str,
-        job_id: &JobId,
-        progress: UnboundedSender<CommittedTranslationProgress>,
+        host: HostTranslationExecution,
     ) -> Result<Uuid, PortError> {
-        self.run(
-            source_path,
-            link,
-            intent,
-            server_url,
-            Some(job_id),
-            Some(progress),
-        )
-        .await
+        self.run(source_path, link, intent, server_url, Some(host))
+            .await
     }
 }
 
 struct RunExecutionOptions {
+    start_guard: Option<TranslationStartGuard>,
     allow_unchecked_profile: bool,
     host_job_id: Option<String>,
     progress: Option<UnboundedSender<CommittedTranslationProgress>>,
@@ -233,6 +235,34 @@ fn execute_run(
         }
         RunState::Requested | RunState::Paused | RunState::Failed => {}
     }
+    let start_guard = match options.start_guard {
+        Some(guard) => {
+            if guard.run_id != run_id.get() {
+                return Err(PortError::Cancelled);
+            }
+            let state = match guard.phase {
+                TranslationRunPhase::Requested => RunState::Requested,
+                TranslationRunPhase::Paused => RunState::Paused,
+                TranslationRunPhase::Failed => RunState::Failed,
+                _ => return Err(invalid("invalid admission phase")),
+            };
+            auralis_translation_sqlite::AttemptStartGuard::new(
+                run_id,
+                state,
+                guard.control_revision,
+            )
+            .map_err(|error| storage("read_admission_guard", error))?
+        }
+        None => database
+            .capture_attempt_start(run_id)
+            .map_err(|error| storage("capture_admission_guard", error))?,
+    };
+    let current_guard = database
+        .capture_attempt_start(run_id)
+        .map_err(|error| storage("check_admission_guard", error))?;
+    if current_guard != start_guard {
+        return Err(PortError::Cancelled);
+    }
     let provider = LlamaCppProvider::new(server_url, profile.clone()).map_err(|error| {
         PortError::ExternalToolFailed {
             tool: "llama.cpp".into(),
@@ -247,17 +277,12 @@ fn execute_run(
         .ok_or_else(|| invalid("invalid model retry policy"))?;
     let control = TranslateDb::open(database_path, SqliteConfig::default())
         .map_err(|error| storage("open_translate_control", error))?;
-    let attempt = match database
-        .run_state(run_id)
-        .map_err(|error| storage("read_translate_run_state", error))?
-    {
-        RunState::Requested => database.begin_initial_attempt(&run, options.host_job_id.as_deref()),
-        RunState::Paused | RunState::Failed => {
-            database.begin_attempt(&run, options.host_job_id.as_deref())
-        }
-        _ => return Err(conflict("run state changed before attempt start")),
-    }
-    .map_err(|error| storage("begin_translate_attempt", error))?;
+    let attempt = database
+        .begin_guarded_attempt(&run, options.host_job_id.as_deref(), start_guard)
+        .map_err(|error| match error {
+            auralis_translation_sqlite::DbError::PauseRequested => PortError::Cancelled,
+            other => storage("begin_translate_attempt", other),
+        })?;
     let mut reporter = ForwardProgress {
         sender: options.progress,
     };

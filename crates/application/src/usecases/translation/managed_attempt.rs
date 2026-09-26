@@ -6,11 +6,12 @@ use crate::error::ApplicationError;
 use domain::job::Job;
 use ports::translation_links::TranslationPublicationRecord;
 use ports::translation_model_runtime::TranslationModelLease;
+use ports::translation_start_guard::TranslationStartGuard;
 use uuid::Uuid;
 
 pub struct ManagedTranslationAttempt {
     request: TranslationRunRequest,
-    run_id: Uuid,
+    start_guard: TranslationStartGuard,
     job: Job,
     lease: Box<dyn TranslationModelLease>,
     run_job: RunTranslationHostJobUseCase,
@@ -20,7 +21,7 @@ pub struct ManagedTranslationAttempt {
 impl ManagedTranslationAttempt {
     pub(super) fn new(
         request: TranslationRunRequest,
-        run_id: Uuid,
+        start_guard: TranslationStartGuard,
         job: Job,
         lease: Box<dyn TranslationModelLease>,
         run_job: RunTranslationHostJobUseCase,
@@ -28,7 +29,7 @@ impl ManagedTranslationAttempt {
     ) -> Self {
         Self {
             request,
-            run_id,
+            start_guard,
             job,
             lease,
             run_job,
@@ -41,7 +42,7 @@ impl ManagedTranslationAttempt {
     }
 
     pub fn run_id(&self) -> Uuid {
-        self.run_id
+        self.start_guard.run_id
     }
 
     pub async fn execute(self) -> Result<TranslationPublicationRecord, ApplicationError> {
@@ -52,13 +53,14 @@ impl ManagedTranslationAttempt {
                     project_id: self.request.project_id.clone(),
                     translation_id: self.request.translation_id,
                     server_url: self.lease.server_url().into(),
+                    start_guard: Some(self.start_guard),
                 },
                 self.job.id(),
             )
             .await?;
         drop(self.lease);
         #[cfg(feature = "native-e2e")]
-        super::native_e2e_result_gap::hold_if_requested(self.run_id, result_id).await?;
+        super::native_e2e_result_gap::hold_if_requested(self.start_guard.run_id, result_id).await?;
         self.publish
             .execute(PublishTranslationRequest {
                 project_id: self.request.project_id,

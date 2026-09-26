@@ -5,6 +5,7 @@ use crate::error::ApplicationError;
 use domain::job::JobId;
 use ports::committed_translation_progress::CommittedTranslationProgress;
 use ports::error::PortError;
+use ports::host_translation_execution::HostTranslationExecution;
 use ports::translation_execution::TranslationExecutionPort;
 use ports::translation_inspection::TranslationSourceFormat;
 use ports::translation_links::TranslationLinkStore;
@@ -113,8 +114,11 @@ impl ExecuteTranslationUseCase {
                     &link,
                     &intent,
                     &request.server_url,
-                    job_id,
-                    progress,
+                    HostTranslationExecution {
+                        job_id: job_id.clone(),
+                        start_guard: request.start_guard,
+                        progress,
+                    },
                 )
                 .await
                 .map_err(Into::into),

@@ -231,8 +231,11 @@ async fn local_model_run_commits_a_result_and_reuses_it_without_another_server_c
             &link,
             &intent,
             &endpoint,
-            &job_id,
-            progress_sender,
+            ports::host_translation_execution::HostTranslationExecution {
+                job_id: job_id.clone(),
+                start_guard: None,
+                progress: progress_sender,
+            },
         )
         .await?;
     let reported: Vec<_> = std::iter::from_fn(|| progress_receiver.try_recv().ok())
@@ -384,8 +387,11 @@ async fn executor_acknowledges_pause_without_waiting_for_a_model_response()
                 &work_link,
                 &work_intent,
                 &endpoint,
-                &work_job,
-                progress_tx,
+                ports::host_translation_execution::HostTranslationExecution {
+                    job_id: work_job,
+                    start_guard: None,
+                    progress: progress_tx,
+                },
             )
             .await
     });
@@ -438,6 +444,7 @@ fn respond_once(listener: TcpListener) -> Result<(), Box<dyn Error + Send + Sync
             Err(error) => return Err(error.into()),
         }
     };
+    stream.set_nonblocking(false)?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
     read_request(&mut stream)?;
     let body = r#"{"choices":[{"message":{"content":"Привет."},"finish_reason":"stop"}]}"#;

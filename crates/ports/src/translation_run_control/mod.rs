@@ -11,6 +11,10 @@ use uuid::Uuid;
 
 #[async_trait]
 pub trait TranslationRunControlPort: Send + Sync {
+    async fn capture_start(
+        &self,
+        link: &TranslationLink,
+    ) -> Result<crate::translation_start_guard::TranslationStartGuard, PortError>;
     async fn snapshot(&self, link: &TranslationLink) -> Result<TranslationRunSnapshot, PortError>;
     async fn snapshot_for_run(
         &self,

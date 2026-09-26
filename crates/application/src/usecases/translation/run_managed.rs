@@ -99,17 +99,36 @@ impl RunManagedTranslationUseCase {
                 message: "Translation run cannot start a new managed attempt".into(),
             });
         }
-        let lease = self.runtime.acquire(&intent).await?;
+        let start_guard = self.control.capture_start(&link).await?;
+        if start_guard.run_id != run_id {
+            return Err(PortError::Cancelled.into());
+        }
+        let acquisition = self.runtime.acquire(&intent).await;
+        let current_link = self
+            .links
+            .get(request.translation_id)
+            .await?
+            .ok_or(PortError::Cancelled)?;
+        if current_link.project_id != link.project_id
+            || current_link.active_run_id != Some(run_id)
+            || self.control.capture_start(&current_link).await? != start_guard
+        {
+            return Err(PortError::Cancelled.into());
+        }
+        let lease = acquisition?;
         let job = self
             .start_job
-            .execute(TranslationRunRequest {
-                project_id: request.project_id.clone(),
-                translation_id: request.translation_id,
-            })
+            .execute_for_run(
+                TranslationRunRequest {
+                    project_id: request.project_id.clone(),
+                    translation_id: request.translation_id,
+                },
+                run_id,
+            )
             .await?;
         Ok(ManagedTranslationAttempt::new(
             request,
-            run_id,
+            start_guard,
             job,
             lease,
             self.run_job.clone(),
