@@ -557,15 +557,15 @@ pages independently of selected/active runs and leave recovery only after a read
 owned translated publication/artifact exists. Translation deletion cascades the
 journal. Six integration tests and the existing storage tests pass.
 
-These are storage foundations. The current application editor and startup recovery
-do not yet use the journal or the branch API. Application branch publication,
-journal replay, CLI/IPC/UI and native older-base save/reopen remain
-pending. No historical-save control should bypass those boundaries. The full
+The later application integration below uses these foundations. Typed historical observation/save contracts, CLI/IPC/UI and native older-base save/reopen remain pending. No historical-save control should bypass those boundaries. The full
 contract and evidence live in the pinned module at
 `docs/architecture/015-historical-result-edits.md` and
 `eval/experiments/2026-09-26-historical-edit-foundation.md`. Development remains local.
 
 ## Manual publication ordering
+
+The subsequent application path is described in the next section; this record
+describes its earlier storage foundation.
 
 The storage/outbox path now recognizes explicit journaled branches. Its
 `finalize_ready_publication` port completes them as attached or ready historical
@@ -580,7 +580,34 @@ concurrency, idempotency, ready-state checks, rollback and reopening.
 
 The pinned evidence record is
 `eval/experiments/2026-09-26-manual-publication-ordering.md`. Its fixtures arrange
-host metadata and artifact ready states; actual historical save through both
-databases, request/provenance verification, UI and native process evidence are
-still pending. The current application publisher continues to use ordinary linked
-run resolution until that historical route is integrated.
+host metadata and artifact ready states. The later application tests below execute historical saves through both databases and verify request/provenance; UI and actual native process evidence remain pending.
+
+## Historical application save and recovery
+
+`VerifyTranslationHistoryUseCase` shares ready base, frozen-run and managed
+file verification with explicit historical selection. A separate
+`EditHistoricalTranslationUseCase` records the complete versioned request digest
+before the adapter commits an immutable branch at its observed Translate head.
+The ordinary editor keeps latest-base-only semantics.
+
+The publisher accepts admitted historical runs independently of current project
+selection. It verifies reconstructed output, frozen profile/parser/block policy,
+review state, persisted edit ancestry and request digest before staging. Existing
+manual publication retries recheck immutable revision/review/link metadata.
+Production desktop storage now instantiates the edit journal and supplies it to
+publication and startup recovery. Recovery advances through all journal pages,
+isolates missing-result errors and never repeats inference or invents an edit.
+
+Five application tests exercise actual source import, both SQLite files,
+CRLF SRT/WebVTT plans, deterministic provider checkpoints, immutable edits,
+managed files and the real outbox. They cover divergent historical bases,
+another unfinished registered run, reopening, concurrent head conflicts, exact
+retries after later revisions, corruption and recovery beyond 100 interrupted
+intents. These are supporting tests with a deterministic provider; actual desktop
+process interruption and real-model historical editing remain unverified.
+
+The pinned record is `eval/experiments/2026-09-26-historical-edit-application.md`.
+Typed head/link observations, CLI/IPC/UI commands, frozen retry requests and
+attached versus detached presentation are next. Historical save controls remain
+unavailable until their complete delivery route is verified. S7, language and
+clean-install gates remain open; all changes stay local.

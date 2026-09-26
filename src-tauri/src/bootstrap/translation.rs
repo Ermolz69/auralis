@@ -55,10 +55,10 @@ impl TranslationUseCases {
         artifacts: RuntimeArtifactIndex,
         artifact_store: RuntimeArtifactStore,
         storage_uow: RuntimeStorageUnitOfWork,
-        links: Arc<dyn TranslationLinkStore>,
-        jobs: Arc<dyn TranslationHostJobStore>,
+        stores: super::translation_stores::TranslationStores,
         database_path: PathBuf,
     ) -> Self {
+        let super::translation_stores::TranslationStores { links, jobs, edits } = stores;
         let inspect = Arc::new(InspectTranslationSourceUseCase::new(
             projects.clone(),
             artifacts.clone(),
@@ -88,7 +88,8 @@ impl TranslationUseCases {
             links.clone(),
             Arc::new(TranslateResultReader::new(database_path.clone())),
             artifact_store.clone(),
-        );
+        )
+        .with_edit_intents(edits.clone());
         Self {
             control: control.clone(),
             jobs: jobs.clone(),
@@ -130,7 +131,8 @@ impl TranslationUseCases {
                 links.clone(),
                 control.clone(),
                 publish.clone(),
-            ),
+            )
+            .with_edit_intents(edits),
             publish,
             reconcile: ReconcileTranslationRunsUseCase::new(inspect, links.clone(), registrar),
             links,

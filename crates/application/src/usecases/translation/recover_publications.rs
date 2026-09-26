@@ -10,6 +10,7 @@ use ports::translation_run_control::{TranslationRunControlPort, TranslationRunPh
 use std::sync::Arc;
 
 pub struct RecoverTranslationPublicationsUseCase {
+    intents: Option<Arc<dyn ports::translation_edit_intents::TranslationEditIntentStore>>,
     links: Arc<dyn TranslationLinkStore>,
     control: Arc<dyn TranslationRunControlPort>,
     publish: PublishTranslationResultUseCase,
@@ -22,14 +23,48 @@ impl RecoverTranslationPublicationsUseCase {
         publish: PublishTranslationResultUseCase,
     ) -> Self {
         Self {
+            intents: None,
             links,
             control,
             publish,
         }
     }
 
+    pub fn with_edit_intents(
+        mut self,
+        intents: Arc<dyn ports::translation_edit_intents::TranslationEditIntentStore>,
+    ) -> Self {
+        self.intents = Some(intents);
+        self
+    }
+
     pub async fn execute(&self) -> Result<Vec<TranslationReconcileItem>, ApplicationError> {
         let mut outcomes = Vec::new();
+        if let Some(intents) = &self.intents {
+            const RECOVERY_PAGE_SIZE: u32 = 100;
+            let mut cursor = None;
+            loop {
+                let page = intents.list_unpublished(cursor, RECOVERY_PAGE_SIZE).await?;
+                if page.is_empty() {
+                    break;
+                }
+                for edit in page {
+                    cursor = Some(edit.result_id);
+                    outcomes.push(TranslationReconcileItem {
+                        translation_id: edit.translation_id,
+                        outcome: self
+                            .publish
+                            .execute(PublishTranslationRequest {
+                                project_id: edit.project_id,
+                                translation_id: edit.translation_id,
+                                result_id: edit.result_id,
+                            })
+                            .await
+                            .map(|_| ()),
+                    });
+                }
+            }
+        }
         for link in self.links.list_recoverable().await? {
             outcomes.push(TranslationReconcileItem {
                 translation_id: link.translation_id,

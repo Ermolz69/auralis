@@ -5,15 +5,18 @@ use uuid::Uuid;
 use crate::error::PortError;
 use crate::translation_links::{TranslationLink, TranslationRunIntent};
 
-pub struct TranslationResultEdit {
-    pub base_result_id: Uuid,
-    pub result_id: Uuid,
-    pub segment_id: u32,
-    pub lines: Vec<String>,
-}
+use super::TranslationResultEdit;
 
 #[async_trait]
 pub trait TranslationResultEditorPort: Send + Sync {
+    async fn commit_branch_edit(
+        &self,
+        source_path: &Path,
+        link: &TranslationLink,
+        intent: &TranslationRunIntent,
+        edit: crate::translation_branch_edit::TranslationBranchEdit,
+    ) -> Result<Uuid, PortError>;
+
     async fn commit_edit(
         &self,
         source_path: &Path,

@@ -25,6 +25,32 @@ impl TranslateResultReader {
 
 #[async_trait]
 impl TranslationResultPort for TranslateResultReader {
+    async fn verified_frozen_result(
+        &self,
+        source_path: &Path,
+        link: &TranslationLink,
+        intent: &ports::translation_links::TranslationRunIntent,
+        result_id: Uuid,
+    ) -> Result<VerifiedTranslationResult, PortError> {
+        let database_path = self.database_path.clone();
+        let source_path = source_path.to_path_buf();
+        let link = link.clone();
+        let intent = intent.clone();
+        tokio::task::spawn_blocking(move || {
+            read_verified(
+                &database_path,
+                &source_path,
+                &link,
+                intent.run_id,
+                result_id,
+                Some(&intent),
+            )
+        })
+        .await
+        .map_err(|error| PortError::Unexpected {
+            message: error.to_string(),
+        })?
+    }
     async fn verified_result(
         &self,
         source_path: &Path,
@@ -42,6 +68,7 @@ impl TranslationResultPort for TranslateResultReader {
                 &link,
                 expected_run_id,
                 result_id,
+                None,
             )
         })
         .await
@@ -92,6 +119,7 @@ fn read_verified(
     link: &TranslationLink,
     expected_run: Uuid,
     result_id: Uuid,
+    intent: Option<&ports::translation_links::TranslationRunIntent>,
 ) -> Result<VerifiedTranslationResult, PortError> {
     let max_bytes = match link.source_format.as_str() {
         "srt" => SrtParsePolicy::default().max_bytes(),
@@ -111,8 +139,16 @@ fn read_verified(
         TranslationId::new(link.translation_id).ok_or_else(|| conflict("translation ID is nil"))?;
     let run_id = RunId::new(expected_run).ok_or_else(|| conflict("run ID is nil"))?;
     let result_id = ResultId::new(result_id).ok_or_else(|| conflict("result ID is nil"))?;
+    if !database_path.is_file() {
+        return Err(PortError::NotFound {
+            resource: "Translate database".into(),
+        });
+    }
     let database = TranslateDb::open(database_path, SqliteConfig::default())
         .map_err(|error| storage("open_translate_database", error))?;
+    if let Some(intent) = intent {
+        crate::frozen_run::verify(&database, &source, link, intent)?;
+    }
     let translation = database
         .translation(translation_id)
         .map_err(|error| storage("read_translate_translation", error))?;
@@ -129,6 +165,16 @@ fn read_verified(
     let run = database
         .run(run_id)
         .map_err(|error| storage("read_translate_run", error))?;
+    let edit_provenance = database
+        .result_edit_provenance(result_id)
+        .map_err(|error| storage("read_translate_edit_provenance", error))?
+        .map(
+            |origin| ports::translation_result::TranslationEditProvenance {
+                base_result_id: origin.base_result_id.get(),
+                observed_head_result_id: origin.observed_head_result_id.get(),
+                segment_id: origin.segment_id.get(),
+            },
+        );
     let result = database
         .result(result_id)
         .map_err(|error| storage("read_translate_result", error))?;
@@ -198,6 +244,7 @@ fn read_verified(
         output_bytes,
         needs_review: result.review_state == ReviewState::NeedsReview,
         segments,
+        edit_provenance,
     })
 }
 

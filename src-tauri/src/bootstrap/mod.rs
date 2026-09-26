@@ -8,6 +8,7 @@ pub mod services;
 pub mod storage;
 pub mod translation;
 mod translation_runtime;
+mod translation_stores;
 pub mod usecases;
 pub mod workers;
 
@@ -67,8 +68,11 @@ pub fn setup(
         services.artifact_index.clone(),
         services.artifact_store.clone(),
         services.storage_uow.clone(),
-        services.translation_links.clone(),
-        translation_jobs,
+        translation_stores::TranslationStores {
+            links: services.translation_links.clone(),
+            jobs: translation_jobs,
+            edits: services.translation_edit_intents.clone(),
+        },
         app_paths.translate_database(),
     );
     let packages = Arc::new(adapters_translate::TranslationPackageService::new(

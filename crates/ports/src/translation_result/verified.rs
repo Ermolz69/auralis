@@ -1,4 +1,4 @@
-use super::ComparedTranslationSegment;
+use super::{ComparedTranslationSegment, TranslationEditProvenance};
 use uuid::Uuid;
 
 pub struct VerifiedTranslationResult {
@@ -9,4 +9,5 @@ pub struct VerifiedTranslationResult {
     pub output_bytes: Vec<u8>,
     pub needs_review: bool,
     pub segments: Vec<ComparedTranslationSegment>,
+    pub edit_provenance: Option<TranslationEditProvenance>,
 }

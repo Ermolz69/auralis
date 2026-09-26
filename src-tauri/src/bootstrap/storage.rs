@@ -151,6 +151,9 @@ async fn setup_storage_with_lease(
             artifact_store: store,
             storage_uow: tx_gateway,
             translation_links: Arc::new(SqliteTranslationLinkStore::new(pool.clone())),
+            translation_edit_intents: Arc::new(
+                adapters_storage::sqlite::SqliteTranslationEditIntentStore::new(pool.clone()),
+            ),
             translation_host_jobs: Arc::new(SqliteTranslationHostJobStore::new(pool)),
         },
         outbox_repo,

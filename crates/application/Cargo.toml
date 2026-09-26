@@ -19,6 +19,7 @@ chrono.workspace = true
 tempfile.workspace = true
 bytes.workspace = true
 tracing.workspace = true
+sha2.workspace = true
 futures.workspace = true
 tokio-util.workspace = true
 

@@ -1,4 +1,5 @@
 mod format_inspector;
+mod frozen_run;
 mod installed_packages;
 mod managed_runtime;
 mod project_cleanup;

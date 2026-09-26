@@ -23,6 +23,7 @@ mod scheduled_job_conversion;
 pub mod source;
 pub mod storage;
 pub mod transaction;
+pub mod translation_branch_edit;
 pub mod translation_cleanup;
 pub mod translation_edit_intents;
 pub mod translation_execution;

@@ -1,6 +1,11 @@
 version: '3'
 
 tasks:
+  lock:refresh:
+    desc: Refresh workspace dependency metadata using the offline package cache
+    cmds:
+      - cargo update --offline --workspace
+
   test:translation-events:
     desc: Verify committed translation lifecycle events against real SQLite state
     cmds:
