@@ -39,7 +39,10 @@ pub async fn native_e2e_checkpoint_cmd(
                 && checkpoint.len() <= 256
                 && !checkpoint.contains('\n')
                 && !checkpoint.contains('\r');
-            if !ALLOWED_CHECKPOINTS.contains(&checkpoint.as_str()) && !diagnostic {
+            if !ALLOWED_CHECKPOINTS.contains(&checkpoint.as_str())
+                && !diagnostic
+                && !super::native_e2e_observation::is_start_observation(&checkpoint)
+            {
                 return Err(CommandError::Validation(
                     "Unknown native E2E checkpoint".to_string(),
                 ));

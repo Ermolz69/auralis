@@ -3,6 +3,7 @@ import { renameProject } from '@/entities/project';
 import { getTranslationRunStatus, listProjectTranslations } from '@/entities/translation';
 import { TranslationRunControl } from '@/features/translation-run-control';
 import { invoke } from '@/shared/api/tauri';
+import { concurrentStartsScenario } from './concurrentStartsScenario';
 
 const PREPARATION_TIMEOUT_MS = 180_000;
 const ACKNOWLEDGEMENT_TIMEOUT_MS = 10_000;
@@ -25,6 +26,9 @@ export async function pausePreparationScenario(
     await waitForTitle(projectId, `native-e2e-preparation-pause-now:${scenarioId}`);
     if (!container.textContent?.includes('Подготовка модели')) {
       throw new Error('Model preparation finished before the observed pause boundary');
+    }
+    if (__NATIVE_E2E_TRANSLATION_START_RACE__) {
+      await concurrentStartsScenario(projectId, translationId, runId, null);
     }
     const acknowledgementMs = await acknowledgePause(container);
     const status = await getTranslationRunStatus(projectId, translationId);
@@ -62,6 +66,11 @@ export async function pausePreparationScenario(
     await invoke('native_e2e_checkpoint_cmd', {
       checkpoint: 'translation-worker-preflight-visible',
     });
+    if (__NATIVE_E2E_TRANSLATION_START_RACE__) {
+      const preflight = await getTranslationRunStatus(projectId, translationId);
+      if (!preflight.activeHostJobId) throw new Error('Concurrent-start probe lost its host job');
+      await concurrentStartsScenario(projectId, translationId, runId, preflight.activeHostJobId);
+    }
     if (__NATIVE_E2E_TRANSLATION_WORKER_PREFLIGHT_PAUSE__) {
       await pauseWorkerPreflight(container, scenarioId, projectId, translationId, runId);
     }

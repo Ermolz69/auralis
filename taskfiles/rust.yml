@@ -158,6 +158,11 @@ tasks:
     cmds:
       - cargo clippy --locked --workspace --all-targets -- -D warnings
 
+  clippy:native-e2e:
+    desc: Check feature-gated native desktop test commands and observers with denied warnings
+    cmds:
+      - cargo clippy --locked -p auralis-app --all-targets --features native-e2e -- -D warnings
+
   test:
     cmds:
       - cargo test --locked --workspace

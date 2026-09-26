@@ -442,3 +442,44 @@ commands, deletion/publication interleavings, actual Windows cleanup failure,
 clean installation and bilingual review remain open. One debug-build 52 ms
 observation does not establish an acknowledgment SLA or close S7/G7. Development
 and the independent submodule remain local; public publication is deferred.
+
+## Native concurrent starts during preparation
+
+`task desktop:e2e:native:translation:start-race` passed its corrected full
+invocation on the checked Windows/CUDA bench. The existing real initial-hash
+Start/Pause/Continue scenario adds two parallel IPC Start requests while the first
+hash owns the slot, and another pair after accepted worker preflight and panel
+remount. The first pair both return typed `BUSY`; the second pair return the exact
+same accepted job/run, which matches the final completed host job.
+
+The actual UI Pause acknowledges in 235 ms with all seven admitted/partial counts
+zero, control revision 0 to 1 and no new model PID. Hash operation 1 stops after
+7,471,104 of 1,133,080,448 bytes. Resume performs three fresh full checks and
+completes one closed host job/Translate attempt to a ready separate `needs_review`
+result. Both original digests, cross-database publication, final child release and
+sandbox/native-build cleanup pass. This is one debug observation, not a latency SLA.
+
+The first invocation failed when the native checkpoint allowlist rejected the new
+observation, despite actual `BUSY` command diagnostics. The corrected command
+accepts bounded JSON only for the two named observation shapes, exactly two
+outcomes and valid IDs, without extra fields or raw newlines. Its validator is
+compiled only under `native-e2e`; ordinary production commands remain unchanged.
+The observer requires both ordered observations with final exact job/run identity.
+It cannot replace the required hash or database checks.
+
+`task desktop:e2e:native:preparation:check` passed twenty observer tests.
+`task rust:test:desktop -- --features native-e2e native_e2e_observation_tests`
+passed three channel tests; its first non-elevated build failed with access error 5
+while the earlier native app was live, then the exact task passed after terminal
+cleanup with build access. `task rust:clippy:native-e2e`, `task fe:typecheck`,
+`task rust:clippy`,
+`task fe:lint`, `task quality:fsd-boundaries`, `task quality:ipc-contract`,
+`task quality:file-size`, `task quality:duplicate-code` and `task fe:build` passed.
+Production delivery still checks sixteen frontend files without native modules,
+weights or evaluation data. Exact observations and identities are recorded in
+`modules/auralis-translate/eval/experiments/2026-09-26-native-concurrent-starts.md`.
+
+These two named same-process Start boundaries are verified. Additional concurrent
+Pause/deletion/publication, other command orderings, OS cleanup failure, clean
+installation and bilingual quality remain open. S7/G7 are not complete. No public
+publication or model download occurs in this tooling slice.

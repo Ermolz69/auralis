@@ -10,6 +10,7 @@ import {
   interruptedHash,
   verifyFreshHashes,
 } from './hash-observation.mjs';
+import { verifyConcurrentStarts } from './start-race-observation.mjs';
 import {
   readPreparationSnapshot,
   releasePreparationGate,
@@ -26,7 +27,7 @@ export async function releaseVerifiedPreparationPause(
   baselinePids,
   listPids,
   sourceSha256,
-  { initialHashBytes } = {},
+  { initialHashBytes, concurrentStarts = false } = {},
 ) {
   const deadline = Date.now() + TIMEOUT_MS;
   let preparing;
@@ -98,6 +99,7 @@ export async function releaseVerifiedPreparationPause(
         managedPids,
         acknowledgementMs,
         baselinePids,
+        concurrentStarts,
         ...(hashStarted ? { initialHash: { started: hashStarted, finished: hashFinished } } : {}),
       };
     }
@@ -156,13 +158,22 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
     const freshHashes = snapshot.initialHash
       ? verifyFreshHashes(readHashRecords(dataRoot), snapshot.initialHash)
       : null;
+    const concurrentStarts = snapshot.concurrentStarts
+      ? verifyConcurrentStarts(
+          fs.readFileSync(path.join(dataRoot, 'native-e2e-bootstrap.txt'), 'utf8'),
+          runId,
+          completed[0].id,
+        )
+      : null;
     process.stdout.write(
       `${JSON.stringify({
-        scenario: snapshot.initialHash
-          ? 'native_initial_hash_pause'
-          : snapshot.workerPause
-            ? 'native_worker_preflight_pause'
-            : 'native_preparation_pause',
+        scenario: snapshot.concurrentStarts
+          ? 'native_concurrent_starts'
+          : snapshot.initialHash
+            ? 'native_initial_hash_pause'
+            : snapshot.workerPause
+              ? 'native_worker_preflight_pause'
+              : 'native_preparation_pause',
         format: snapshot.paused.link.source_format,
         run_id: runId,
         translation_id: snapshot.paused.link.translation_id,
@@ -179,6 +190,7 @@ export async function verifyResumedPreparation(dataRoot, snapshot, listPids) {
         ...(snapshot.initialHash
           ? { interrupted_initial_hash: snapshot.initialHash, completed_fresh_hashes: freshHashes }
           : {}),
+        ...(concurrentStarts ? { concurrent_start_observations: concurrentStarts } : {}),
       })}\n`,
     );
   } finally {
