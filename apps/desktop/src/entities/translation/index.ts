@@ -13,3 +13,4 @@ export {
   selectTranslationPackage,
   startTranslationRun,
 } from './api/translationApi';
+export { subscribeTranslationChanges } from './api/translationEvents';

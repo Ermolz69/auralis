@@ -20,6 +20,8 @@ const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH
 const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
 const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL : '';
 const nativeE2eTranslation = nativeE2e && process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
+const nativeE2eTranslationEvents =
+  nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
 const nativeE2eTranslationVtt =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1';
 const nativeE2eTranslationCrash =
@@ -57,6 +59,7 @@ const __vite_dirname = path.dirname(fileURLToPath(import.meta.url));
 // https://vite.dev/config/
 export default defineConfig({
   define: {
+    __NATIVE_E2E_TRANSLATION_EVENTS__: JSON.stringify(nativeE2eTranslationEvents),
     __NATIVE_E2E_TRANSLATION_START_RACE__: JSON.stringify(nativeE2eTranslationStartRace),
     __APP_VERSION__: JSON.stringify(desktopPackage.version),
     __NATIVE_E2E__: JSON.stringify(nativeE2e),

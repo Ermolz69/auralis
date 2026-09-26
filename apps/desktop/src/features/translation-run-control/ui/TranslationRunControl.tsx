@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  getTranslationRunStatus,
-  listProjectTranslations,
   pauseTranslationRun,
   publishTranslationResult,
   startTranslationRun,
@@ -9,8 +7,8 @@ import {
 import type { TranslationLink, TranslationRunSnapshot } from '@/shared/api/contracts/translation';
 import { toCommandError } from '@/shared/api/contracts';
 import { Button } from '@/shared/ui/button';
+import { observeTranslationRuns } from '../model/observeTranslationRuns';
 
-const REFRESH_INTERVAL_MS = 3000;
 const PHASE_LABELS: Record<TranslationRunSnapshot['phase'], string> = {
   requested: 'Ожидает запуска',
   running: 'Переводится',
@@ -35,44 +33,22 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
   const readyResults = useRef('');
 
   useEffect(() => {
-    let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const poll = async () => {
-      try {
-        const current = await listProjectTranslations(projectId);
-        const statuses = await Promise.all(
-          current.map(async (link) => {
-            if (!link.activeRunId) return null;
-            return [
-              link.translationId,
-              await getTranslationRunStatus(projectId, link.translationId),
-            ] as const;
-          }),
-        );
-        if (active) {
-          const currentReadyResults = current
-            .filter((link) => link.selectedResultId && link.outputArtifactId)
-            .map((link) => `${link.translationId}:${link.selectedResultId}`)
-            .sort()
-            .join('|');
-          if (readyResults.current !== currentReadyResults) {
-            onReadyResultsChanged?.();
-          }
-          readyResults.current = currentReadyResults;
-          setLinks(current);
-          setSnapshots(Object.fromEntries(statuses.filter((item) => item !== null)));
+    return observeTranslationRuns(projectId, {
+      onSnapshot: (current, statuses) => {
+        const currentReadyResults = current
+          .filter((link) => link.selectedResultId && link.outputArtifactId)
+          .map((link) => `${link.translationId}:${link.selectedResultId}`)
+          .sort()
+          .join('|');
+        if (readyResults.current !== currentReadyResults) {
+          onReadyResultsChanged?.();
         }
-      } catch (reason) {
-        if (active) setError(failureMessage(reason));
-      } finally {
-        if (active) timer = setTimeout(() => void poll(), REFRESH_INTERVAL_MS);
-      }
-    };
-    void poll();
-    return () => {
-      active = false;
-      if (timer) clearTimeout(timer);
-    };
+        readyResults.current = currentReadyResults;
+        setLinks(current);
+        setSnapshots(statuses);
+      },
+      onError: (reason) => setError(failureMessage(reason)),
+    });
   }, [projectId, revision, onReadyResultsChanged]);
 
   const start = async (translationId: string) => {

@@ -17,6 +17,7 @@ import { waitForResultCommitGap, verifyResultCommitGap } from './result-gap.mjs'
 import { verifySecondOwnerRejected } from './second-owner.mjs';
 import { verifyTranslationDeletion } from './verify-translation-deletion.mjs';
 import { verifyTranslationResult } from './verify-translation.mjs';
+import { verifyTranslationEvents } from './translation-events.mjs';
 import { releaseVerifiedPause, verifyResumedPause } from './translation-pause.mjs';
 import { releaseVerifiedPreparationPause, verifyResumedPreparation } from './preparation-pause.mjs';
 import { releaseVerifiedWorkerPreflightPause } from './worker-preflight-pause.mjs';
@@ -28,6 +29,16 @@ const POLL_INTERVAL_MS = 100;
 export async function runNativeE2e(rootDir) {
   assertSupportedPlatform();
   const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
+  const translationEventsEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
+  if (
+    translationEventsEnabled &&
+    (!translationEnabled ||
+      ['VTT', 'CRASH', 'PAUSE', 'PREPARATION_PAUSE', 'DELETE', 'PACKAGE'].some(
+        (mode) => process.env[`AURALIS_NATIVE_E2E_TRANSLATION_${mode}`] === '1',
+      ))
+  ) {
+    throw new Error('Translation events require a separate ordinary SRT invocation');
+  }
   const translationVttEnabled =
     translationEnabled && process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1';
   const translationCrashEnabled =
@@ -259,6 +270,7 @@ export async function runNativeE2e(rootDir) {
         translationVttEnabled ? 'vtt' : 'srt',
       );
       if (translationPauseEnabled) verifyResumedPause(dataRoot, interrupted);
+      if (translationEventsEnabled) await verifyTranslationEvents(dataRoot, runId);
       if (translationPreparationPauseEnabled)
         await verifyResumedPreparation(dataRoot, preparationPause, listModelProcessIds);
       assert(

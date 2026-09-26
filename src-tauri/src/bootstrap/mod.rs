@@ -11,7 +11,7 @@ mod translation_runtime;
 pub mod usecases;
 pub mod workers;
 
-use adapters_tauri::{PreparedJobEventBridge, TauriEventPublisher};
+use adapters_tauri::{EventfulTranslationHostJobs, PreparedJobEventBridge, TauriEventPublisher};
 use application::services::job_lifecycle_coordinator::JobLifecycleCoordinator;
 use ports::error::PortError;
 use std::sync::Arc;
@@ -55,13 +55,20 @@ pub fn setup(
     let (services, outbox_repo) = storage::setup_storage(&app_paths, storage_lease)?;
     record_native_e2e_checkpoint("storage-ready");
 
+    let prepared_bridge =
+        PreparedJobEventBridge::new(adapters_tauri::JobEventBridgeConfig::default());
+    let translation_jobs = Arc::new(EventfulTranslationHostJobs::new(
+        services.translation_host_jobs.clone(),
+        prepared_bridge.emitter(),
+    ));
+
     let translations = translation::TranslationUseCases::new(
         services.project_repo.clone(),
         services.artifact_index.clone(),
         services.artifact_store.clone(),
         services.storage_uow.clone(),
         services.translation_links.clone(),
-        services.translation_host_jobs.clone(),
+        translation_jobs,
         app_paths.translate_database(),
     );
     let packages = Arc::new(adapters_translate::TranslationPackageService::new(
@@ -113,10 +120,6 @@ pub fn setup(
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
         workspace_root.clone(),
     ));
-
-    // 2. Prepare Event Bridge (does not spawn tasks yet)
-    let prepared_bridge =
-        PreparedJobEventBridge::new(adapters_tauri::JobEventBridgeConfig::default());
 
     // 3. Build Job Scheduler & load snapshots (fallible, before spawning anything)
     let job_manager = services::build_job_scheduler(

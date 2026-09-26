@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TranslationRunControl } from './TranslationRunControl';
 
 const listProjectTranslations = vi.hoisted(() => vi.fn());
@@ -8,12 +8,15 @@ const getTranslationRunStatus = vi.hoisted(() => vi.fn());
 const startTranslationRun = vi.hoisted(() => vi.fn());
 const pauseTranslationRun = vi.hoisted(() => vi.fn());
 const publishTranslationResult = vi.hoisted(() => vi.fn());
+const subscribeTranslationChanges = vi.hoisted(() => vi.fn());
+let notifyChange: () => void;
 vi.mock('@/entities/translation', () => ({
   listProjectTranslations,
   getTranslationRunStatus,
   startTranslationRun,
   pauseTranslationRun,
   publishTranslationResult,
+  subscribeTranslationChanges,
 }));
 
 const projectId = '00000000-0000-4000-8000-000000000001';
@@ -38,6 +41,10 @@ const requested = {
 afterEach(() => cleanup());
 beforeEach(() => {
   vi.clearAllMocks();
+  subscribeTranslationChanges.mockImplementation(async (_projectId, notify) => {
+    notifyChange = notify;
+    return () => {};
+  });
   listProjectTranslations.mockResolvedValue([link]);
   getTranslationRunStatus.mockResolvedValue(requested);
   startTranslationRun.mockResolvedValue({
@@ -50,6 +57,26 @@ beforeEach(() => {
 });
 
 describe('TranslationRunControl', () => {
+  it('updates committed progress and ready comparison from events before any polling tick', async () => {
+    const onReadyResultsChanged = vi.fn();
+    render(
+      <TranslationRunControl projectId={projectId} onReadyResultsChanged={onReadyResultsChanged} />,
+    );
+    await screen.findByRole('button', { name: 'Начать перевод' });
+    getTranslationRunStatus.mockResolvedValue({ ...requested, phase: 'running', savedBlocks: 1 });
+    await act(async () => notifyChange());
+    expect(screen.getByText('Переводится: 1/2')).not.toBeNull();
+    listProjectTranslations.mockResolvedValue([
+      {
+        ...link,
+        selectedResultId: '00000000-0000-4000-8000-000000000004',
+        outputArtifactId: '00000000-0000-4000-8000-000000000005',
+      },
+    ]);
+    await act(async () => notifyChange());
+    expect(onReadyResultsChanged).toHaveBeenCalledTimes(1);
+    expect(listProjectTranslations).toHaveBeenCalledTimes(3);
+  });
   it('keeps accepted preparation visible while the first refreshed status is delayed', async () => {
     let releaseStatus: (value: unknown) => void = () => {
       throw new Error('No status read');

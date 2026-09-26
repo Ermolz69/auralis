@@ -19,6 +19,7 @@ pub mod project_workspace;
 pub mod recovered_translation_run;
 pub mod recovery;
 pub mod repository;
+mod scheduled_job_conversion;
 pub mod source;
 pub mod storage;
 pub mod transaction;

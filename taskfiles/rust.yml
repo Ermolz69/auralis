@@ -1,6 +1,10 @@
 version: '3'
 
 tasks:
+  test:translation-events:
+    desc: Verify committed translation lifecycle events against real SQLite state
+    cmds:
+      - cargo test --locked -p adapters-tauri --test translation_job_events
   dependencies:verify:
     desc: Verify the actual resolved SQLx packages and SQLite-only feature set
     cmds:

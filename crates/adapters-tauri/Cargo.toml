@@ -16,11 +16,15 @@ async-trait.workspace = true
 tokio = { workspace = true, features = ["sync", "fs"] }
 tracing.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
 chrono.workspace = true
 tempfile.workspace = true
+adapters-storage.workspace = true
+sqlx.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]
 workspace = true

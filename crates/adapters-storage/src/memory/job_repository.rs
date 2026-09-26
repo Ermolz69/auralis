@@ -197,18 +197,5 @@ fn build_history_page(
 }
 
 fn job_to_scheduled(job: Job) -> ports::job_scheduler::ScheduledJob {
-    let snap = job.to_snapshot();
-    ports::job_scheduler::ScheduledJob {
-        id: snap.id,
-        kind: snap.kind,
-        revision: snap.revision,
-        project_id: Some(snap.project_id),
-        title: snap.title,
-        status: snap.status,
-        stage: snap.stage,
-        progress: snap.progress,
-        error: snap.error.map(|error| error.message),
-        created_at: snap.created_at,
-        updated_at: snap.updated_at,
-    }
+    job.to_snapshot().into()
 }

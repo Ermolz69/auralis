@@ -11,6 +11,7 @@ import {
 import { invoke } from '@/shared/api/tauri';
 import { pauseTranslationScenario } from './pauseTranslationScenario';
 import { pausePreparationScenario } from './pausePreparationScenario';
+import { translationEventsScenario } from './translationEventsScenario';
 
 const ARTIFACT_TIMEOUT_MS = 20_000;
 const PUBLICATION_TIMEOUT_MS = 180_000;
@@ -40,7 +41,10 @@ export async function runTranslationScenario(runId: string, sourcePath: string):
   await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-run-ready' });
 
   let start: Awaited<ReturnType<typeof startTranslationRun>> | null;
-  if (__NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE__) {
+  if (__NATIVE_E2E_TRANSLATION_EVENTS__) {
+    await translationEventsScenario(project.id);
+    start = null;
+  } else if (__NATIVE_E2E_TRANSLATION_PREPARATION_PAUSE__) {
     await pausePreparationScenario(runId, project.id, translationId, translationRunId);
     start = null;
   } else {

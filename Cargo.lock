@@ -51,6 +51,7 @@ dependencies = [
 name = "adapters-tauri"
 version = "0.1.0"
 dependencies = [
+ "adapters-storage",
  "application",
  "async-trait",
  "chrono",
@@ -59,12 +60,14 @@ dependencies = [
  "ports",
  "serde",
  "serde_json",
+ "sqlx",
  "tauri",
  "tauri-plugin-shell",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
