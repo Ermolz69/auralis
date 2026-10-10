@@ -116,6 +116,7 @@ export function TranslationReviewPanel({
                   translationId={review.selected.translationId}
                   resultId={page.resultId}
                   refreshRevision={review.historyRevision}
+                  format={review.selected.sourceFormat}
                 />
               )}
               {!canEdit && (

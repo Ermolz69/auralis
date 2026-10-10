@@ -7,15 +7,15 @@ use adapters_translate::{
 };
 use application::usecases::translation::{
     BeginTranslationUseCase, EditHistoricalTranslationUseCase, EditTranslationResultUseCase,
-    ExecuteTranslationUseCase, GetHistoricalTranslationEditContextUseCase,
-    GetTranslationComparisonUseCase, GetTranslationPublicationUseCase,
-    GetTranslationRunStatusUseCase, ImportTranslationSourceUseCase,
-    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase, ListTranslationHistoryUseCase,
-    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
-    RecoverTranslationHostJobsUseCase, RecoverTranslationPublicationsUseCase,
-    RunManagedTranslationUseCase, RunTranslationHostJobUseCase, SelectTranslationResultUseCase,
-    StartTranslationJobUseCase, TranslationReviewUseCase, TranslationRunUseCase,
-    VerifyTranslationHistoryUseCase,
+    ExecuteTranslationUseCase, ExportTranslationResultUseCase,
+    GetHistoricalTranslationEditContextUseCase, GetTranslationComparisonUseCase,
+    GetTranslationPublicationUseCase, GetTranslationRunStatusUseCase,
+    ImportTranslationSourceUseCase, InspectTranslationSourceUseCase,
+    ListProjectTranslationsUseCase, ListTranslationHistoryUseCase, PublishTranslationResultUseCase,
+    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
+    RecoverTranslationPublicationsUseCase, RunManagedTranslationUseCase,
+    RunTranslationHostJobUseCase, SelectTranslationResultUseCase, StartTranslationJobUseCase,
+    TranslationReviewUseCase, TranslationRunUseCase, VerifyTranslationHistoryUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -38,6 +38,7 @@ pub struct TranslationUseCases {
     pub history: ListTranslationHistoryUseCase,
     pub select_result: SelectTranslationResultUseCase,
     pub review: TranslationReviewUseCase,
+    pub export: ExportTranslationResultUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
     pub historical_edit: EditHistoricalTranslationUseCase,
@@ -63,6 +64,7 @@ impl TranslationUseCases {
         storage_uow: RuntimeStorageUnitOfWork,
         stores: super::translation_stores::TranslationStores,
         database_path: PathBuf,
+        app_root: PathBuf,
     ) -> Self {
         let super::translation_stores::TranslationStores {
             links,
@@ -133,7 +135,8 @@ impl TranslationUseCases {
                 artifacts,
                 artifact_store.clone(),
             ),
-            review: TranslationReviewUseCase::new(history_verifier, reviews),
+            review: TranslationReviewUseCase::new(history_verifier.clone(), reviews),
+            export: ExportTranslationResultUseCase::new(history_verifier, app_root),
             comparison: GetTranslationComparisonUseCase::new(
                 inspect.clone(),
                 links.clone(),

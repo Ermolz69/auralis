@@ -5,7 +5,14 @@ import { TranslationReviewDecision } from './TranslationReviewDecision';
 
 const getTranslationReview = vi.hoisted(() => vi.fn());
 const recordTranslationReview = vi.hoisted(() => vi.fn());
-vi.mock('@/entities/translation', () => ({ getTranslationReview, recordTranslationReview }));
+const exportTranslationResult = vi.hoisted(() => vi.fn());
+const save = vi.hoisted(() => vi.fn());
+vi.mock('@/entities/translation', () => ({
+  getTranslationReview,
+  recordTranslationReview,
+  exportTranslationResult,
+}));
+vi.mock('@tauri-apps/plugin-dialog', () => ({ save }));
 
 const projectId = '00000000-0000-4000-8000-000000000001';
 const translationId = '00000000-0000-4000-8000-000000000002';
@@ -14,6 +21,15 @@ const editedResult = '00000000-0000-4000-8000-000000000004';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  save.mockResolvedValue(null);
+  exportTranslationResult.mockImplementation(
+    async (_projectId, _translationId, view, destination) => ({
+      resultId: view.resultId,
+      resultSha256: view.resultSha256,
+      sizeBytes: 100,
+      destination,
+    }),
+  );
   getTranslationReview.mockImplementation(async (_projectId, _translationId, resultId) => ({
     resultId,
     resultSha256: resultId === firstResult ? 'a'.repeat(64) : 'b'.repeat(64),
@@ -45,6 +61,7 @@ it('requires an explicit digest-bound decision and leaves an edited result unapp
       translationId={translationId}
       resultId={firstResult}
       refreshRevision={0}
+      format="srt"
     />,
   );
   await screen.findByText('Решение ещё не принято');
@@ -72,10 +89,37 @@ it('requires an explicit digest-bound decision and leaves an edited result unapp
       translationId={translationId}
       resultId={editedResult}
       refreshRevision={1}
+      format="srt"
     />,
   );
   await waitFor(() =>
     expect(getTranslationReview).toHaveBeenCalledWith(projectId, translationId, editedResult),
   );
   await screen.findByText('Решение ещё не принято');
+});
+
+it('exports an unapproved exact result after a save location is chosen', async () => {
+  save.mockResolvedValue('C:\\Exports\\translation.srt');
+  render(
+    <TranslationReviewDecision
+      projectId={projectId}
+      translationId={translationId}
+      resultId={firstResult}
+      refreshRevision={0}
+      format="srt"
+    />,
+  );
+  await screen.findByText('Решение ещё не принято');
+  fireEvent.click(screen.getByRole('button', { name: 'Сохранить эту версию' }));
+  await screen.findByText('Сохранено: C:\\Exports\\translation.srt');
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({ filters: [{ name: 'SRT', extensions: ['srt'] }] }),
+  );
+  expect(exportTranslationResult).toHaveBeenCalledWith(
+    projectId,
+    translationId,
+    expect.objectContaining({ resultId: firstResult, resultSha256: 'a'.repeat(64) }),
+    'C:\\Exports\\translation.srt',
+  );
+  expect(recordTranslationReview).not.toHaveBeenCalled();
 });

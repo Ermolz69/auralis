@@ -4,12 +4,14 @@ import type {
   TranslationReviewView,
 } from '@/shared/api/contracts/translation';
 
-export function getTranslationReview(
+export async function getTranslationReview(
   projectId: string,
   translationId: string,
   resultId: string,
 ): Promise<TranslationReviewView> {
-  return invoke('get_translation_review_cmd', { projectId, translationId, resultId });
+  const view = await invoke('get_translation_review_cmd', { projectId, translationId, resultId });
+  if (view.resultId !== resultId) throw new Error('Решение относится к другой версии перевода');
+  return view;
 }
 
 export function recordTranslationReview(

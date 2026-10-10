@@ -75,6 +75,7 @@ pub fn setup(
             reviews: services.translation_reviews.clone(),
         },
         app_paths.translate_database(),
+        app_paths.root().to_path_buf(),
     );
     let packages = Arc::new(adapters_translate::TranslationPackageService::new(
         app_paths.translation_packages(),

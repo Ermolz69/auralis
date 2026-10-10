@@ -13,6 +13,7 @@ import {
 } from './translationValidation';
 import { validateTranslationHistoryPage } from './translationHistoryValidation';
 import { validateTranslationReviewView } from './translationReviewValidation';
+import { validateTranslationExportReceipt } from './translationExportValidation';
 import {
   validateHistoricalTranslationEditContext,
   validateTranslationPublicationView,
@@ -37,5 +38,6 @@ export const translationCommandResultValidators = {
   select_translation_result_cmd: validateTranslationLink,
   get_translation_review_cmd: validateTranslationReviewView,
   record_translation_review_cmd: validateTranslationReviewView,
+  export_translation_result_cmd: validateTranslationExportReceipt,
   pause_translation_run_cmd: isNull,
 } satisfies Partial<Record<keyof CommandMap, Validator>>;

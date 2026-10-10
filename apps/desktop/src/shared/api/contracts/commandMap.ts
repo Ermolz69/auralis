@@ -25,6 +25,7 @@ import type {
   TranslationRunSnapshot,
   TranslationReviewDecision,
   TranslationReviewView,
+  TranslationExportReceipt,
   TranslationStart,
 } from './translation';
 
@@ -52,10 +53,7 @@ export interface CommandMap {
   native_e2e_checkpoint_cmd: { args: { checkpoint: string }; result: null };
   native_e2e_pipeline_pause_reached_cmd: { args: undefined; result: boolean };
   native_e2e_historical_edit_held_cmd: { args: undefined; result: boolean };
-  create_project_cmd: {
-    args: { title: string };
-    result: Project;
-  };
+  create_project_cmd: { args: { title: string }; result: Project };
   create_project_from_youtube_cmd: {
     args: { url: string; projectId?: string | null };
     result: Project;
@@ -64,10 +62,7 @@ export interface CommandMap {
     args: { projectId: string; title: string; expectedRevision: number };
     result: Project;
   };
-  open_project_folder_cmd: {
-    args: { projectId: string };
-    result: null;
-  };
+  open_project_folder_cmd: { args: { projectId: string }; result: null };
   start_project_mock_pipeline_cmd: {
     args: {
       projectId: string;
@@ -93,10 +88,7 @@ export interface CommandMap {
     args: undefined;
     result: Project[];
   };
-  delete_project_cmd: {
-    args: { projectId: string };
-    result: null;
-  };
+  delete_project_cmd: { args: { projectId: string }; result: null };
   list_project_artifacts_cmd: {
     args: { projectId: string; kind?: ArtifactKind | null };
     result: Artifact[];
@@ -205,6 +197,16 @@ export interface CommandMap {
       note: string;
     };
     result: TranslationReviewView;
+  };
+  export_translation_result_cmd: {
+    args: {
+      projectId: string;
+      translationId: string;
+      resultId: string;
+      expectedResultSha256: string;
+      destination: string;
+    };
+    result: TranslationExportReceipt;
   };
   pause_translation_run_cmd: {
     args: { projectId: string; translationId: string };

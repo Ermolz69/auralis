@@ -14,6 +14,7 @@ const publishTranslationResult = vi.hoisted(() => vi.fn());
 const getTranslationPublication = vi.hoisted(() => vi.fn());
 const getTranslationReview = vi.hoisted(() => vi.fn());
 const recordTranslationReview = vi.hoisted(() => vi.fn());
+const exportTranslationResult = vi.hoisted(() => vi.fn());
 
 vi.mock('@/entities/project', () => ({
   useProjectContext: () => ({ project: { id: '00000000-0000-4000-8000-000000000001' } }),
@@ -29,6 +30,7 @@ vi.mock('@/entities/translation', () => ({
   getTranslationPublication,
   getTranslationReview,
   recordTranslationReview,
+  exportTranslationResult,
 }));
 
 const projectId = '00000000-0000-4000-8000-000000000001';

@@ -2,6 +2,7 @@ pub mod begin;
 pub mod comparison;
 pub mod edit;
 pub mod edit_context;
+pub mod export;
 pub mod historical_edit;
 pub mod history;
 pub mod import_source;

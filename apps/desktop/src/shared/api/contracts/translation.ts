@@ -33,6 +33,13 @@ export interface TranslationReviewView {
   latest: TranslationReviewRecord | null;
 }
 
+export interface TranslationExportReceipt {
+  resultId: string;
+  resultSha256: string;
+  sizeBytes: number;
+  destination: string;
+}
+
 export interface TranslationPackageStatus {
   schemaVersion: 1;
   releaseId: string;
