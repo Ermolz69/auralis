@@ -10,6 +10,7 @@ pub mod storage;
 pub mod translation;
 mod translation_runtime;
 mod translation_stores;
+pub mod tts;
 pub mod usecases;
 pub mod workers;
 
@@ -129,6 +130,7 @@ pub fn setup(
         project_locks.clone(),
     );
     app.manage(caster_usecases);
+    app.manage(tts::setup(&app_paths, services.project_repo.clone()));
     if let Some(runtime) = caster_runtime {
         app.manage(runtime);
     }

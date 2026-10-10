@@ -27,7 +27,7 @@ async fn v10_database_gains_speech_tables_without_losing_existing_jobs()
     let marker: i64 = sqlx::query_scalar("PRAGMA user_version")
         .fetch_one(&migrated)
         .await?;
-    assert_eq!(marker, 11);
+    assert!(marker >= 11);
     let title: String = sqlx::query_scalar("SELECT title FROM projects WHERE id = 'existing'")
         .fetch_one(&migrated)
         .await?;

@@ -293,6 +293,7 @@ dependencies = [
  "adapters-storage",
  "adapters-tauri",
  "adapters-translate",
+ "adapters-tts",
  "adapters-ytdlp",
  "application",
  "async-trait",

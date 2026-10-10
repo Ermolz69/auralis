@@ -108,6 +108,7 @@ pub fn run() -> Result<(), AppRunError> {
             commands::ui_preferences::import_project_pins_cmd,
             commands::artifact_recovery::list_artifact_recovery_cmd,
             commands::caster::list_voice_catalog_cmd,
+            commands::tts::get_speech_catalog_cmd,
             commands::caster::inspect_voice_cmd,
             commands::caster::inspect_voice_reference_cmd,
             commands::caster::check_voice_compatibility_cmd,

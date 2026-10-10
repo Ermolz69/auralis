@@ -2,6 +2,7 @@ import type { Project, CreateProjectResponse } from './project';
 import type { CastResult, LogicalCast, ManualSelection, ReferencePlayback, VoiceCatalogPage, VoiceCompatibility, VoiceDetails } from './caster';
 import type { StoredTheme, ProjectPin, ProjectPins, LegacyPin } from './uiPreferences';
 import type { Transcript } from './transcript';
+import type { SpeechCatalogSnapshot } from './speechCatalog';
 import type { Job, JobHistoryCursor, JobHistoryPage } from './job';
 import type { MediaMetadata } from './media';
 import type { SubtitleTrack } from './subtitle';
@@ -29,6 +30,7 @@ import type {
 } from './translation';
 
 export interface CommandMap {
+  get_speech_catalog_cmd: { args: { projectId: string }; result: SpeechCatalogSnapshot };
   list_voice_catalog_cmd: { args: { projectId: string; after?: string | null; limit: number }; result: VoiceCatalogPage };
   inspect_voice_cmd: { args: { projectId: string; voiceId: string; afterReference?: string | null; limit: number }; result: VoiceDetails };
   inspect_voice_reference_cmd: { args: { projectId: string; voiceId: string; referenceId: string }; result: ReferencePlayback };

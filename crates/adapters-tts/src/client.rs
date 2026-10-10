@@ -19,6 +19,7 @@ const PINNED_VOXCPM_REVISION: &str = "32279effe8c19989596f05d353d1447f51d9e915";
 #[derive(Clone, Debug)]
 pub struct TtsRuntimeConfig {
     pub python_executable: PathBuf,
+    pub package_root: PathBuf,
     pub voice_store: PathBuf,
     pub profile_root: PathBuf,
     pub model_cache: PathBuf,
@@ -62,6 +63,8 @@ pub struct TtsWorkerClient {
 impl TtsWorkerClient {
     pub fn new(runtime: TtsRuntimeConfig) -> Result<Self, PortError> {
         if !runtime.python_executable.is_absolute()
+            || !runtime.package_root.is_absolute()
+            || !runtime.package_root.join("src/tts/worker.py").is_file()
             || !runtime.voice_store.is_absolute()
             || !runtime.profile_root.is_absolute()
             || !runtime.model_cache.is_absolute()
@@ -79,8 +82,9 @@ impl TtsWorkerClient {
         let mut command = Command::new(&self.runtime.python_executable);
         command
             .arg("-I")
-            .arg("-m")
-            .arg("src.tts.worker")
+            .arg("-c")
+            .arg("import sys; sys.path.insert(0, sys.argv[1]); from src.tts.worker import main; raise SystemExit(main())")
+            .arg(&self.runtime.package_root)
             .env_remove("PYTHONPATH")
             .env_remove("PYTHONHOME")
             .env("PYTHONNOUSERSITE", "1")

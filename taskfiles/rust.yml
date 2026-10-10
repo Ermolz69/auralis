@@ -6,6 +6,30 @@ tasks:
     cmds:
       - rustfmt --edition 2024 crates/adapters-tts/src/lib.rs crates/adapters-tts/src/client.rs crates/adapters-tts/src/execute.rs crates/adapters-tts/src/framed.rs crates/adapters-tts/src/owned_process.rs crates/adapters-tts/src/preflight.rs crates/adapters-tts/src/protocol.rs crates/adapters-tts/src/result_verification.rs crates/adapters-tts/src/wav_verification.rs crates/adapters-tts/tests/protocol.rs crates/adapters-tts/tests/framed.rs crates/adapters-tts/tests/result_verification.rs crates/domain/src/job/kind.rs crates/domain/src/job/entity.rs crates/domain/src/job/entity/speech_progress.rs crates/domain/src/media/artifact.rs crates/domain/tests/speech_job.rs crates/adapters-storage/src/local/storage_key.rs crates/adapters-storage/src/sqlite/connection.rs crates/adapters-storage/src/sqlite/connection_tests.rs crates/adapters-storage/src/sqlite/speech_run_migration.rs crates/adapters-storage/src/sqlite/speech_run_migration_tests.rs crates/adapters-storage/src/sqlite/speech_run_repository.rs crates/adapters-storage/tests/speech_job_kind.rs crates/adapters-storage/tests/speech_runs.rs crates/ports/src/speech_run.rs src-tauri/src/dto/artifact.rs
 
+  fmt:tts-catalog:
+    desc: Format the isolated TTS catalog bridge
+    cmds:
+      - rustfmt --edition 2024 crates/ports/src/speech_catalog.rs crates/application/src/usecases/speech_catalog.rs crates/adapters-tts/src/catalog.rs crates/adapters-tts/src/client.rs crates/adapters-tts/tests/installed_catalog.rs src-tauri/src/bootstrap/tts.rs src-tauri/src/commands/tts.rs
+
+  test:tts-catalog:installed:
+    desc: Read selected Ciri and Geralt copies through the installed TTS worker without model loading
+    requires:
+      vars: [PYTHON, PACKAGE_ROOT, VOICE_STORE, PROFILE_ROOT, MODEL_CACHE]
+    env:
+      AURALIS_TEST_TTS_PYTHON: '{{.PYTHON}}'
+      AURALIS_TEST_TTS_PACKAGE_ROOT: '{{.PACKAGE_ROOT}}'
+      AURALIS_TEST_TTS_VOICE_STORE: '{{.VOICE_STORE}}'
+      AURALIS_TEST_TTS_PROFILE_ROOT: '{{.PROFILE_ROOT}}'
+      AURALIS_TEST_TTS_MODEL_CACHE: '{{.MODEL_CACHE}}'
+    cmds:
+      - cargo test --locked -p adapters-tts --test installed_catalog -- --ignored --nocapture
+
+  test:tts-catalog:
+    desc: Check the TTS catalog port and adapter without loading models
+    cmds:
+      - cargo test --locked -p adapters-tts
+      - cargo check --locked -p application
+
   test:tts:
     desc: Verify the model-free TTS worker transport adapter
     cmds:

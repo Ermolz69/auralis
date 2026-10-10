@@ -90,9 +90,19 @@ inputs, model revisions, seeds, output WAVs, manifests and SHA-256 hashes. Their
 durations were 3,840/3,200 ms for VoxCPM2 Ciri/Geralt and 6,432/2,880 ms for
 ESpeech Ciri/Geralt. Peak additional VRAM was at most 6,051 MiB, below the
 declared 7 GiB limit. `task voices:prepare-review` produced four CONTRACT
-`awaiting_review` reports. The user has been asked to listen and score each
-recording; no v2 reference has been qualified yet. These legacy CLI probes do
-not satisfy the required speech-plan short and longer cases.
+`awaiting_review` reports. The owner explicitly approved using the existing
+CASTER source voices in Auralis on 10 October. This settles the source assets
+for both engines. It does not supply six listening scores for the new probe
+outputs: no v2 reference has been qualified yet, and the current CONTRACT
+speech-plan validator still rejects these copies for synthesis. No scores or
+reviewer decision were inferred from source-asset approval. These legacy CLI
+probes do not satisfy the required speech-plan short and longer cases.
+
+Auralis now has a separate TTS catalog bridge and frontend selector. An
+installed-wheel check reads both pinned native profiles and all four selected
+Ciri/Geralt voice copies through the real worker without loading models. The
+selector does not yet start synthesis, and no installed Auralis runtime
+configuration or managed result publication has passed native acceptance.
 
 ## Observed checks
 
@@ -109,6 +119,17 @@ not satisfy the required speech-plan short and longer cases.
   vocoder were found in the local cache offline, without model loading.
 - TTS `task voices:prepare-review`: four native real-audio qualification probes
   and awaiting-review reports verified; human scores pending.
+- TTS `task test:unit`: 84 passed after cache identity coverage and explicit
+  UTF-8 worker streams on Windows.
+- TTS `task package:wheel`, `task package:smoke`, and
+  `task package:install:catalog`: rebuilt and checked offline component wheels.
+- Auralis `task rs:test:tts-catalog` and `task rs:test:tts-catalog:installed`:
+  model-free adapter checks and installed-worker Ciri/Geralt catalog passed.
+- Auralis `task fe:typecheck`: passed with the TTS catalog selector.
+- Auralis `task rs:check`: passed after aligning two job-queue call sites in
+  the shared checkout with their current signatures.
+- Auralis `task rs:test:tts`: passed after the v10 speech migration test was
+  made independent of later schema versions.
 - Auralis `task rs:fmt:tts`: passed for the isolated adapter sources.
 - Auralis `task rs:lock:refresh`: passed offline after adding adapter dependencies.
 - Auralis `task rs:test:tts`: protocol, framing, lineage tampering and WAV

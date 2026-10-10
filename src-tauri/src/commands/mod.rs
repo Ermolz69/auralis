@@ -14,4 +14,5 @@ pub mod project;
 pub mod project_avatar;
 pub mod translation;
 pub mod ui_preferences;
+pub mod tts;
 pub mod youtube_import;

@@ -22,6 +22,7 @@ pub mod recovery;
 pub mod repository;
 mod scheduled_job_conversion;
 pub mod source;
+pub mod speech_catalog;
 pub mod speech_run;
 pub mod storage;
 pub mod transaction;

@@ -3,6 +3,7 @@ import { validateCastResult, validateReferencePlayback, validateVoiceCatalogPage
 import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
 import type { Project } from './project';
+import { validateSpeechCatalog } from './speechCatalogValidation';
 import { translationCommandResultValidators } from './translationCommandValidation';
 import { validateMediaMetadata, validateMediaSource } from './mediaValidation';
 import {
@@ -105,6 +106,7 @@ export function validateArtifact(value: unknown): value is Artifact {
 }
 
 const commandResultValidators = {
+  get_speech_catalog_cmd: validateSpeechCatalog,
   list_voice_catalog_cmd: validateVoiceCatalogPage,
   inspect_voice_cmd: validateVoiceDetails,
   inspect_voice_reference_cmd: validateReferencePlayback,
