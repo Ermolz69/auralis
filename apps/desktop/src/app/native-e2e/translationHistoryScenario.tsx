@@ -8,6 +8,7 @@ import { invoke } from '@/shared/api/tauri';
 import { mountTranslationReview } from './translationReviewScenarioView';
 import { TranslationHistoryControls } from './translationHistoryControls';
 import { BRANCH_FIRST_LINE, LATER_SECOND_LINE } from './translationHistoryFixture';
+import { exportHistoryResult } from './translationHistoryExport';
 import { chooseDuringHistoricalGap } from './chooseDuringHistoricalGap';
 
 export async function translationHistoryScenario(
@@ -86,6 +87,12 @@ export async function translationHistoryScenario(
     if (!controls.hasParagraph(originalSecond) || controls.hasParagraph(LATER_SECOND_LINE))
       throw new Error('Native comparison displayed a merged branch');
     await checkpoint('translation-history-branch-ready');
+
+    if (__NATIVE_E2E_TRANSLATION_HISTORY_EXPORT__) {
+      await exportHistoryResult(projectId, translationId, branchResultId, 'native-export');
+      await exportHistoryResult(projectId, translationId, laterResultId, 'native-export');
+      await checkpoint('translation-history-exported');
+    }
 
     await controls.preview(laterResultId, LATER_SECOND_LINE);
     await controls.wait(() => Boolean(controls.button('Использовать эту версию')));

@@ -126,6 +126,36 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:translation:history:export:
+    desc: Export two historical SRT results through native IPC, then retry and re-export after desktop restart
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_HISTORY: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_EXPORT: '1'
+    cmds:
+      - task: desktop:e2e:native:translation:history:export:check
+      - node tools/native-e2e/run.mjs
+
+  desktop:e2e:native:translation:history:export:vtt:
+    desc: Export two historical strict WebVTT results through native IPC and retry after restart
+    env:
+      AURALIS_NATIVE_E2E_TRANSLATION: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_VTT: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_HISTORY: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_EXPORT: '1'
+    cmds:
+      - task: desktop:e2e:native:translation:history:export:check
+      - node tools/native-e2e/run.mjs
+
+  desktop:e2e:native:translation:history:export:check:
+    desc: Check the native history export harness before model admission
+    cmds:
+      - node --check tools/native-e2e/run.mjs
+      - node --check tools/native-e2e/translation-history.mjs
+      - node --check tools/native-e2e/translation-history-exports.mjs
+      - node --check tools/native-e2e/translation-history-results.mjs
+      - node --test tools/native-e2e/translation-history-exports.test.mjs tools/native-e2e/translation-history-results.test.mjs
+
   desktop:e2e:native:translation:history:result-gap:
     desc: Kill after an older-base edit commits, then recover its output without overriding a newer UI choice
     env:

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  listTranslationHistory,
   pauseTranslationRun,
   publishTranslationResult,
   startTranslationRun,
@@ -33,22 +34,45 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
   const readyResults = useRef('');
 
   useEffect(() => {
-    return observeTranslationRuns(projectId, {
+    let active = true;
+    let observation = 0;
+    const dispose = observeTranslationRuns(projectId, {
       onSnapshot: (current, statuses) => {
-        const currentReadyResults = current
+        const selectedResults = current
           .filter((link) => link.selectedResultId && link.outputArtifactId)
           .map((link) => `${link.translationId}:${link.selectedResultId}`)
-          .sort()
-          .join('|');
-        if (readyResults.current !== currentReadyResults) {
-          onReadyResultsChanged?.();
-        }
-        readyResults.current = currentReadyResults;
+          .sort();
         setLinks(current);
         setSnapshots(statuses);
+        const currentObservation = ++observation;
+        void Promise.all(
+          current.map(async (link) => {
+            const page = await listTranslationHistory(projectId, link.translationId, null, 1);
+            const latest = page.entries[0]?.resultId;
+            return latest ? `${link.translationId}:${latest}` : null;
+          }),
+        )
+          .then((historyHeads) => {
+            if (!active || currentObservation !== observation) return;
+            const currentReadyResults = [
+              ...selectedResults,
+              ...historyHeads.filter((head) => head !== null),
+            ]
+              .sort()
+              .join('|');
+            if (readyResults.current !== currentReadyResults) onReadyResultsChanged?.();
+            readyResults.current = currentReadyResults;
+          })
+          .catch((reason) => {
+            if (active && currentObservation === observation) setError(failureMessage(reason));
+          });
       },
       onError: (reason) => setError(failureMessage(reason)),
     });
+    return () => {
+      active = false;
+      dispose();
+    };
   }, [projectId, revision, onReadyResultsChanged]);
 
   const start = async (translationId: string) => {

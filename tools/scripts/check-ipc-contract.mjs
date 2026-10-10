@@ -110,10 +110,12 @@ export function verifyIpcContract(rootDir) {
   const rustEntry = fs.readFileSync(path.join(rootDir, 'src-tauri/src/lib.rs'), 'utf8');
   const commandDirectory = path.join(rootDir, 'src-tauri/src/commands');
   const commandSources = readRustCommandSources(commandDirectory);
-  const contractSource = fs.readFileSync(
-    path.join(rootDir, 'apps/desktop/src/shared/api/contracts/commandMap.ts'),
-    'utf8',
-  );
+  const contractDirectory = path.join(rootDir, 'apps/desktop/src/shared/api/contracts');
+  const contractSource = fs
+    .readdirSync(contractDirectory)
+    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+    .map((name) => fs.readFileSync(path.join(contractDirectory, name), 'utf8'))
+    .join('\n');
   const registered = extractRegisteredCommands(rustEntry);
   const annotated = extractAnnotatedCommands(commandSources);
   const typed = extractInterfaceKeys(contractSource, 'CommandMap');
@@ -140,19 +142,27 @@ export function readRustCommandSources(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) return readRustCommandSources(entryPath);
-    return entry.isFile() && entry.name.endsWith('.rs')
-      ? [fs.readFileSync(entryPath, 'utf8')]
-      : [];
+    return entry.isFile() && entry.name.endsWith('.rs') ? [fs.readFileSync(entryPath, 'utf8')] : [];
   });
 }
 
-function extractInterfaceBody(source, interfaceName) {
+function extractInterfaceBody(source, interfaceName, ancestors = new Set()) {
+  if (ancestors.has(interfaceName)) throw new Error(`Cyclic TypeScript interface ${interfaceName}`);
   const marker = `export interface ${interfaceName}`;
   const markerIndex = source.indexOf(marker);
   if (markerIndex < 0) throw new Error(`Cannot find TypeScript ${interfaceName}`);
   const openIndex = source.indexOf('{', markerIndex);
   const closeIndex = findMatching(source, openIndex, '{', '}');
-  return source.slice(openIndex + 1, closeIndex);
+  const parents = source.slice(markerIndex, openIndex).match(/\bextends\s+(.+)$/)?.[1];
+  const inherited = parents
+    ? parents
+        .split(',')
+        .map((name) =>
+          extractInterfaceBody(source, name.trim(), new Set([...ancestors, interfaceName])),
+        )
+        .join('\n')
+    : '';
+  return `${inherited}\n${source.slice(openIndex + 1, closeIndex)}`;
 }
 
 function findMatching(source, openIndex, openCharacter, closeCharacter) {
@@ -216,6 +226,11 @@ function normalizeRustType(type) {
   if (vector !== null) return `${normalizeRustType(vector)}[]`;
   const option = unwrapGeneric(compact, 'Option');
   if (option !== null) return `${normalizeRustType(option)} | null`;
+  const map = unwrapGeneric(compact, 'BTreeMap');
+  if (map !== null) {
+    const [key, value] = splitTopLevel(map, ',');
+    return `Record<${normalizeRustType(key)}, ${normalizeRustType(value)}>`;
+  }
   return compact.split('::').at(-1).replace(/Dto$/, '');
 }
 

@@ -7,14 +7,15 @@ use adapters_translate::{
 };
 use application::usecases::translation::{
     BeginTranslationUseCase, EditHistoricalTranslationUseCase, EditTranslationResultUseCase,
-    ExecuteTranslationUseCase, GetHistoricalTranslationEditContextUseCase,
-    GetTranslationComparisonUseCase, GetTranslationPublicationUseCase,
-    GetTranslationRunStatusUseCase, ImportTranslationSourceUseCase,
-    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase, ListTranslationHistoryUseCase,
-    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
-    RecoverTranslationHostJobsUseCase, RecoverTranslationPublicationsUseCase,
-    RunManagedTranslationUseCase, RunTranslationHostJobUseCase, SelectTranslationResultUseCase,
-    StartTranslationJobUseCase, TranslationRunUseCase, VerifyTranslationHistoryUseCase,
+    ExecuteTranslationUseCase, ExportTranslationResultUseCase,
+    GetHistoricalTranslationEditContextUseCase, GetTranslationComparisonUseCase,
+    GetTranslationPublicationUseCase, GetTranslationRunStatusUseCase,
+    ImportTranslationSourceUseCase, InspectTranslationSourceUseCase,
+    ListProjectTranslationsUseCase, ListTranslationHistoryUseCase, PublishTranslationResultUseCase,
+    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
+    RecoverTranslationPublicationsUseCase, RunManagedTranslationUseCase,
+    RunTranslationHostJobUseCase, SelectTranslationResultUseCase, StartTranslationJobUseCase,
+    TranslationReviewUseCase, TranslationRunUseCase, VerifyTranslationHistoryUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -36,6 +37,8 @@ pub struct TranslationUseCases {
     pub comparison: GetTranslationComparisonUseCase,
     pub history: ListTranslationHistoryUseCase,
     pub select_result: SelectTranslationResultUseCase,
+    pub review: TranslationReviewUseCase,
+    pub export: ExportTranslationResultUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
     pub historical_edit: EditHistoricalTranslationUseCase,
@@ -61,8 +64,14 @@ impl TranslationUseCases {
         storage_uow: RuntimeStorageUnitOfWork,
         stores: super::translation_stores::TranslationStores,
         database_path: PathBuf,
+        app_root: PathBuf,
     ) -> Self {
-        let super::translation_stores::TranslationStores { links, jobs, edits } = stores;
+        let super::translation_stores::TranslationStores {
+            links,
+            jobs,
+            edits,
+            reviews,
+        } = stores;
         let inspect = Arc::new(InspectTranslationSourceUseCase::new(
             projects.clone(),
             artifacts.clone(),
@@ -108,7 +117,7 @@ impl TranslationUseCases {
                 Arc::new(TranslateResultEditor::new(database_path.clone())),
             ),
             edit_context: GetHistoricalTranslationEditContextUseCase::new(
-                history_verifier,
+                history_verifier.clone(),
                 control.clone(),
                 Arc::new(TranslateResultReader::new(database_path.clone())),
             ),
@@ -126,6 +135,8 @@ impl TranslationUseCases {
                 artifacts,
                 artifact_store.clone(),
             ),
+            review: TranslationReviewUseCase::new(history_verifier.clone(), reviews),
+            export: ExportTranslationResultUseCase::new(history_verifier, app_root),
             comparison: GetTranslationComparisonUseCase::new(
                 inspect.clone(),
                 links.clone(),

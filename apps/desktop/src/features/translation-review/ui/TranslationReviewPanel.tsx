@@ -7,6 +7,7 @@ import { TranslationHistorySelector } from './TranslationHistorySelector';
 import { useState } from 'react';
 import type { TranslationPublication } from '@/shared/api/contracts/translation';
 import { TranslationPublicationNotice } from './TranslationPublicationNotice';
+import { TranslationReviewDecision } from './TranslationReviewDecision';
 
 export function TranslationReviewPanel({
   projectId,
@@ -105,8 +106,19 @@ export function TranslationReviewPanel({
           {page && (
             <>
               <p className="mt-3 text-xs text-muted">
-                {page.needsReview ? 'Требует проверки' : 'Проверено'} · {page.totalSegments} реплик
+                {page.needsReview ? 'Требует проверки' : 'Структурная проверка пройдена'} ·{' '}
+                {page.totalSegments} реплик
               </p>
+              {projectId && review.selected && (
+                <TranslationReviewDecision
+                  key={`${review.selected.translationId}:${page.resultId}`}
+                  projectId={projectId}
+                  translationId={review.selected.translationId}
+                  resultId={page.resultId}
+                  refreshRevision={review.historyRevision}
+                  format={review.selected.sourceFormat}
+                />
+              )}
               {!canEdit && (
                 <p className="mt-2 text-xs text-muted">Загружаем проверенный перевод для правки.</p>
               )}

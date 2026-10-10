@@ -1,14 +1,13 @@
 import type { Project, CreateProjectResponse } from './project';
-import type { CastResult, LogicalCast, ManualSelection, ReferencePlayback, VoiceCatalogPage, VoiceCompatibility, VoiceDetails } from './caster';
+import type { VoiceCommandMap } from './voiceCommandMap';
 import type { StoredTheme, ProjectPin, ProjectPins, LegacyPin } from './uiPreferences';
 import type { Transcript } from './transcript';
-import type { SpeechCatalogSnapshot } from './speechCatalog';
 import type { Job, JobHistoryCursor, JobHistoryPage } from './job';
+export type { EventMap } from './eventMap';
 import type { MediaMetadata } from './media';
 import type { SubtitleTrack } from './subtitle';
 import type { ProjectAvatar } from './projectAvatar';
 import type { PendingYoutubeImport } from './youtubeImport';
-import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
 import type {
   HistoricalTranslationEditContext,
@@ -26,18 +25,13 @@ import type {
   TranslationPackageStatus,
   TranslationPublication,
   TranslationRunSnapshot,
+  TranslationReviewDecision,
+  TranslationReviewView,
+  TranslationExportReceipt,
   TranslationStart,
 } from './translation';
 
-export interface CommandMap {
-  get_speech_catalog_cmd: { args: { projectId: string }; result: SpeechCatalogSnapshot };
-  list_voice_catalog_cmd: { args: { projectId: string; after?: string | null; limit: number }; result: VoiceCatalogPage };
-  inspect_voice_cmd: { args: { projectId: string; voiceId: string; afterReference?: string | null; limit: number }; result: VoiceDetails };
-  inspect_voice_reference_cmd: { args: { projectId: string; voiceId: string; referenceId: string }; result: ReferencePlayback };
-  check_voice_compatibility_cmd: { args: { projectId: string; voiceId: string; engineId: string; emotionId: string }; result: VoiceCompatibility };
-  get_manual_cast_cmd: { args: { projectId: string }; result: CastResult | null };
-  assign_manual_cast_cmd: { args: { projectId: string; cast: LogicalCast; selections: Record<string, ManualSelection>; expectedRevision: string | null; requestId: string }; result: CastResult };
-  recover_manual_cast_cmd: { args: { projectId: string }; result: string };
+export interface CommandMap extends VoiceCommandMap {
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
   set_color_theme_cmd: { args: { value: string; expectedRevision: number }; result: StoredTheme };
   import_color_theme_cmd: { args: { value: string }; result: StoredTheme };
@@ -57,18 +51,9 @@ export interface CommandMap {
     args: { projectId: string; dataUrl?: string | null; onlyIfMissing: boolean };
     result: ProjectAvatar;
   };
-  health_check: {
-    args: undefined;
-    result: string;
-  };
-  native_e2e_checkpoint_cmd: {
-    args: { checkpoint: string };
-    result: null;
-  };
-  native_e2e_pipeline_pause_reached_cmd: {
-    args: undefined;
-    result: boolean;
-  };
+  health_check: { args: undefined; result: string };
+  native_e2e_checkpoint_cmd: { args: { checkpoint: string }; result: null };
+  native_e2e_pipeline_pause_reached_cmd: { args: undefined; result: boolean };
   native_e2e_historical_edit_held_cmd: { args: undefined; result: boolean };
   native_e2e_historical_retry_input_cmd: {
     args: undefined;
@@ -86,10 +71,7 @@ export interface CommandMap {
     args: { projectId: string; title: string; expectedRevision: number };
     result: Project;
   };
-  open_project_folder_cmd: {
-    args: { projectId: string };
-    result: null;
-  };
+  open_project_folder_cmd: { args: { projectId: string }; result: null };
   start_project_mock_pipeline_cmd: {
     args: {
       projectId: string;
@@ -115,10 +97,7 @@ export interface CommandMap {
     args: undefined;
     result: Project[];
   };
-  delete_project_cmd: {
-    args: { projectId: string };
-    result: null;
-  };
+  delete_project_cmd: { args: { projectId: string }; result: null };
   list_project_artifacts_cmd: {
     args: { projectId: string; kind?: ArtifactKind | null };
     result: Artifact[];
@@ -211,6 +190,33 @@ export interface CommandMap {
     };
     result: TranslationLink;
   };
+  get_translation_review_cmd: {
+    args: { projectId: string; translationId: string; resultId: string };
+    result: TranslationReviewView;
+  };
+  record_translation_review_cmd: {
+    args: {
+      projectId: string;
+      translationId: string;
+      resultId: string;
+      expectedResultSha256: string;
+      expectedLinkRevision: number;
+      decision: TranslationReviewDecision;
+      reviewerLabel: string;
+      note: string;
+    };
+    result: TranslationReviewView;
+  };
+  export_translation_result_cmd: {
+    args: {
+      projectId: string;
+      translationId: string;
+      resultId: string;
+      expectedResultSha256: string;
+      destination: string;
+    };
+    result: TranslationExportReceipt;
+  };
   pause_translation_run_cmd: {
     args: { projectId: string; translationId: string };
     result: null;
@@ -240,11 +246,4 @@ export interface CommandMap {
     args: { projectId: string; path: string };
     result: Project;
   };
-}
-
-export interface EventMap {
-  'job-event': JobEvent;
-  'job-events-invalidated': null;
-  'project-updated': { projectId: string };
-  'transcript-ready': { projectId: string; jobId: string };
 }

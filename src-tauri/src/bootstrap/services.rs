@@ -23,6 +23,7 @@ pub struct RuntimeServices {
     pub translation_links: Arc<dyn ports::translation_links::TranslationLinkStore>,
     pub translation_edit_intents:
         Arc<dyn ports::translation_edit_intents::TranslationEditIntentStore>,
+    pub translation_reviews: Arc<dyn ports::translation_reviews::TranslationReviewStore>,
     pub translation_host_jobs: Arc<dyn ports::translation_host_job::TranslationHostJobStore>,
 }
 

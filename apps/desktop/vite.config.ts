@@ -25,6 +25,8 @@ const nativeE2eTranslationEvents =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
 const nativeE2eTranslationHistory =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY === '1';
+const nativeE2eTranslationHistoryExport =
+  nativeE2eTranslationHistory && process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_EXPORT === '1';
 const nativeE2eTranslationVtt =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_VTT === '1';
 const nativeE2eTranslationCrash =
@@ -70,6 +72,7 @@ export default defineConfig({
       nativeE2eTranslationHistory && process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_GAP === '1',
     ),
     __NATIVE_E2E_TRANSLATION_HISTORY__: JSON.stringify(nativeE2eTranslationHistory),
+    __NATIVE_E2E_TRANSLATION_HISTORY_EXPORT__: JSON.stringify(nativeE2eTranslationHistoryExport),
     __NATIVE_E2E_TRANSLATION_EVENTS__: JSON.stringify(nativeE2eTranslationEvents),
     __NATIVE_E2E_TRANSLATION_START_RACE__: JSON.stringify(nativeE2eTranslationStartRace),
     __APP_VERSION__: JSON.stringify(desktopPackage.version),

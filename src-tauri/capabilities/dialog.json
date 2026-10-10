@@ -3,5 +3,5 @@
   "identifier": "dialog-capability",
   "description": "Enable dialog plugin",
   "windows": ["*"],
-  "permissions": ["dialog:default", "dialog:allow-open"]
+  "permissions": ["dialog:default", "dialog:allow-open", "dialog:allow-save"]
 }

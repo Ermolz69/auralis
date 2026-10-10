@@ -19,7 +19,10 @@ test('finds commands in nested Rust modules', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'auralis-ipc-'));
   try {
     fs.mkdirSync(path.join(directory, 'translation'));
-    fs.writeFileSync(path.join(directory, 'translation', 'compare.rs'), '#[tauri::command]\npub async fn compare_cmd() -> Result<(), Error> {}');
+    fs.writeFileSync(
+      path.join(directory, 'translation', 'compare.rs'),
+      '#[tauri::command]\npub async fn compare_cmd() -> Result<(), Error> {}',
+    );
     assert.deepEqual(extractAnnotatedCommands(readRustCommandSources(directory)), ['compare_cmd']);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
@@ -84,6 +87,25 @@ test('extracts the centralized Rust event registry and quoted EventMap keys', ()
       'EventMap',
     ),
     ['one', 'two'],
+  );
+});
+
+test('checks inherited command maps and Rust string-keyed selections', () => {
+  const source = `export interface VoiceCommandMap {
+  cast_cmd: { args: { selections: Record<string, Selection>; expectedRevision?: string | null }; result: string };
+}
+export interface CommandMap extends VoiceCommandMap {
+  health_cmd: { args: undefined; result: string };
+}`;
+  const rust = extractRustCommandSignatures([
+    `#[command]
+pub async fn cast_cmd(selections: BTreeMap<String, Selection>, expected_revision: Option<String>) -> Result<String, CommandError> {}
+#[command]
+pub async fn health_cmd() -> Result<String, CommandError> {}`,
+  ]);
+  assert.deepEqual(extractInterfaceKeys(source, 'CommandMap'), ['cast_cmd', 'health_cmd']);
+  assert.doesNotThrow(() =>
+    assertCommandSignatures(rust, extractTypeScriptCommandSignatures(source)),
   );
 });
 

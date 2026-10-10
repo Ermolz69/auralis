@@ -13,6 +13,87 @@ const project = {
 };
 
 describe('IPC runtime validation', () => {
+  it('keeps persisted theme and pin revisions safe at the IPC boundary', () => {
+    const theme = { value: 'night', revision: 2 };
+    const pin = { projectId: project.id, pinned: true, revision: 3 };
+    expect(parseCommandResult('get_color_theme_cmd', theme)).toEqual(theme);
+    expect(parseCommandResult('get_project_pins_cmd', { migrated: true, entries: [pin] })).toEqual({
+      migrated: true,
+      entries: [pin],
+    });
+    expect(parseCommandResult('set_project_pin_cmd', pin)).toEqual(pin);
+    expect(() =>
+      parseCommandResult('get_color_theme_cmd', {
+        ...theme,
+        revision: Number.MAX_SAFE_INTEGER + 1,
+      }),
+    ).toThrow(IpcContractError);
+    expect(() =>
+      parseCommandResult('get_project_pins_cmd', {
+        migrated: true,
+        entries: [{ ...pin, pinned: 'true' }],
+      }),
+    ).toThrow(IpcContractError);
+  });
+
+  it('rejects damaged recovery records and accepts absent optional native state', () => {
+    const pending = [{ projectId: project.id, title: 'Import', state: 'Staged' }];
+    expect(parseCommandResult('list_pending_youtube_imports_cmd', pending)).toEqual(pending);
+    expect(() =>
+      parseCommandResult('list_pending_youtube_imports_cmd', [{ ...pending[0], state: 'Ready' }]),
+    ).toThrow(IpcContractError);
+    expect(parseCommandResult('list_artifact_recovery_cmd', [project.id])).toEqual([project.id]);
+    expect(() => parseCommandResult('list_artifact_recovery_cmd', [42])).toThrow(IpcContractError);
+    expect(parseCommandResult('native_e2e_historical_retry_input_cmd', null)).toBeNull();
+    expect(parseCommandResult('get_manual_cast_cmd', null)).toBeNull();
+  });
+
+  it('accepts a checked speech catalog and rejects malformed reference provenance', () => {
+    const catalog = {
+      profiles: [{ profile_id: 'p1', profile_sha256: 'a'.repeat(64), engine_id: 'engine' }],
+      voices: [
+        {
+          voice_id: 'voice',
+          display_name: 'Голос',
+          description: 'Prepared voice',
+          manifest_sha256: 'b'.repeat(64),
+          references: [
+            {
+              reference_id: 'reference',
+              engine_id: 'engine',
+              emotion_id: 'neutral',
+              transcript: 'Здравствуйте',
+              audio_sha256: 'c'.repeat(64),
+              qualification_status: 'qualified',
+            },
+          ],
+        },
+      ],
+    };
+    expect(parseCommandResult('get_speech_catalog_cmd', catalog)).toEqual(catalog);
+    expect(() =>
+      parseCommandResult('get_speech_catalog_cmd', {
+        ...catalog,
+        voices: [
+          {
+            ...catalog.voices[0],
+            references: [{ ...catalog.voices[0].references[0], audio_sha256: 'wrong' }],
+          },
+        ],
+      }),
+    ).toThrow(IpcContractError);
+    expect(() =>
+      parseCommandResult('get_speech_catalog_cmd', {
+        ...catalog,
+        voices: [
+          {
+            ...catalog.voices[0],
+            references: [{ ...catalog.voices[0].references[0], qualification_status: 'approved' }],
+          },
+        ],
+      }),
+    ).toThrow(IpcContractError);
+  });
   it('accepts a valid command payload', () => {
     expect(parseCommandResult('list_projects_cmd', [project])).toEqual([project]);
     expect(

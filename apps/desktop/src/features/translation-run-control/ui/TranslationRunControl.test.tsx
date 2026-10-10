@@ -48,7 +48,7 @@ beforeEach(() => {
     return () => {};
   });
   listProjectTranslations.mockResolvedValue([link]);
-  listTranslationHistory.mockResolvedValue({ readyCount: 1 });
+  listTranslationHistory.mockResolvedValue({ entries: [], nextCursor: null });
   getTranslationRunStatus.mockResolvedValue(requested);
   startTranslationRun.mockResolvedValue({
     state: 'accepted',
@@ -61,13 +61,24 @@ beforeEach(() => {
 
 describe('TranslationRunControl', () => {
   it('refreshes ready history when a detached result appears without changing the project selection', async () => {
-    const selected = { ...link, activeRunId: null, selectedResultId: '00000000-0000-4000-8000-000000000004', outputArtifactId: '00000000-0000-4000-8000-000000000005' };
+    const selected = {
+      ...link,
+      activeRunId: null,
+      selectedResultId: '00000000-0000-4000-8000-000000000004',
+      outputArtifactId: '00000000-0000-4000-8000-000000000005',
+    };
     listProjectTranslations.mockResolvedValue([selected]);
-    listTranslationHistory.mockResolvedValue({ readyCount: 2 });
+    listTranslationHistory.mockResolvedValue({
+      entries: [{ resultId: selected.selectedResultId }],
+      nextCursor: null,
+    });
     const changed = vi.fn();
     render(<TranslationRunControl projectId={projectId} onReadyResultsChanged={changed} />);
     await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
-    listTranslationHistory.mockResolvedValue({ readyCount: 3 });
+    listTranslationHistory.mockResolvedValue({
+      entries: [{ resultId: '00000000-0000-4000-8000-000000000007' }],
+      nextCursor: null,
+    });
     await act(async () => notifyChange());
     expect(changed).toHaveBeenCalledTimes(2);
     await act(async () => notifyChange());

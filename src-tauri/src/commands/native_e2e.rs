@@ -21,6 +21,7 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "translation-history-manual-ready",
     "translation-history-preview",
     "translation-history-branch-ready",
+    "translation-history-exported",
     "translation-history-selected",
     "translation-history-reopened",
     "translation-history-gap-choice",

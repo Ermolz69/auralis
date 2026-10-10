@@ -17,7 +17,7 @@ pub fn inspect_pcm16_wav(path: &Path) -> Result<WavProperties, PortError> {
     file.read_exact(&mut riff).map_err(io_error)?;
     if &riff[..4] != b"RIFF"
         || &riff[8..] != b"WAVE"
-        || u32::from_le_bytes(riff[4..8].try_into().unwrap()) as u64 + 8 != length
+        || u32::from_le_bytes([riff[4], riff[5], riff[6], riff[7]]) as u64 + 8 != length
     {
         return Err(invalid("TTS output is not a complete RIFF WAVE file"));
     }
@@ -26,7 +26,7 @@ pub fn inspect_pcm16_wav(path: &Path) -> Result<WavProperties, PortError> {
     while file.stream_position().map_err(io_error)? + 8 <= length {
         let mut header = [0u8; 8];
         file.read_exact(&mut header).map_err(io_error)?;
-        let size = u32::from_le_bytes(header[4..8].try_into().unwrap()) as u64;
+        let size = u32::from_le_bytes([header[4], header[5], header[6], header[7]]) as u64;
         let content = file.stream_position().map_err(io_error)?;
         let padded = size + (size & 1);
         let next = content
@@ -37,12 +37,12 @@ pub fn inspect_pcm16_wav(path: &Path) -> Result<WavProperties, PortError> {
             b"fmt " if format.is_none() && size >= 16 => {
                 let mut fields = [0u8; 16];
                 file.read_exact(&mut fields).map_err(io_error)?;
-                let encoding = u16::from_le_bytes(fields[0..2].try_into().unwrap());
-                let channels = u16::from_le_bytes(fields[2..4].try_into().unwrap());
-                let sample_rate = u32::from_le_bytes(fields[4..8].try_into().unwrap());
-                let byte_rate = u32::from_le_bytes(fields[8..12].try_into().unwrap());
-                let block_align = u16::from_le_bytes(fields[12..14].try_into().unwrap());
-                let bit_depth = u16::from_le_bytes(fields[14..16].try_into().unwrap());
+                let encoding = u16::from_le_bytes([fields[0], fields[1]]);
+                let channels = u16::from_le_bytes([fields[2], fields[3]]);
+                let sample_rate = u32::from_le_bytes([fields[4], fields[5], fields[6], fields[7]]);
+                let byte_rate = u32::from_le_bytes([fields[8], fields[9], fields[10], fields[11]]);
+                let block_align = u16::from_le_bytes([fields[12], fields[13]]);
+                let bit_depth = u16::from_le_bytes([fields[14], fields[15]]);
                 if encoding != 1
                     || channels == 0
                     || sample_rate == 0

@@ -25,6 +25,8 @@ mod translation_host_jobs_migration;
 pub mod translation_links;
 mod translation_links_migration;
 mod translation_publication_revisions_migration;
+pub mod translation_reviews;
+mod translation_reviews_migration;
 mod translation_run_intents_migration;
 pub mod ui_preferences;
 mod ui_preferences_migration;
@@ -41,6 +43,7 @@ pub use speech_run_repository::SqliteSpeechRunStore;
 pub use translation_edit_intents::SqliteTranslationEditIntentStore;
 pub use translation_host_job_repository::SqliteTranslationHostJobStore;
 pub use translation_links::SqliteTranslationLinkStore;
+pub use translation_reviews::SqliteTranslationReviewStore;
 pub use unit_of_work::SqliteStorageUnitOfWork;
 
 #[cfg(test)]

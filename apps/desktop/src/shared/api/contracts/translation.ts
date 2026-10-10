@@ -14,6 +14,32 @@ export interface TranslationHistoryPage {
   nextCursor: string | null;
 }
 
+export type TranslationReviewDecision = 'approved' | 'withdrawn';
+
+export interface TranslationReviewRecord {
+  eventId: string;
+  decision: TranslationReviewDecision;
+  reviewerLabel: string;
+  note: string;
+  createdAt: string;
+}
+
+export interface TranslationReviewView {
+  resultId: string;
+  resultSha256: string;
+  linkRevision: number;
+  needsReview: boolean;
+  selected: boolean;
+  latest: TranslationReviewRecord | null;
+}
+
+export interface TranslationExportReceipt {
+  resultId: string;
+  resultSha256: string;
+  sizeBytes: number;
+  destination: string;
+}
+
 export interface TranslationPackageStatus {
   schemaVersion: 1;
   releaseId: string;

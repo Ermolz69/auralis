@@ -38,6 +38,7 @@ pub mod translation_links;
 pub mod translation_model_runtime;
 pub mod translation_result;
 pub mod translation_result_edit;
+pub mod translation_reviews;
 pub mod translation_run_control;
 pub mod translation_run_recovery;
 pub mod translation_run_registration;
