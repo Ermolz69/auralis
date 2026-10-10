@@ -3,7 +3,7 @@ use super::{
 };
 use crate::error::ApplicationError;
 use ports::error::PortError;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -97,14 +97,31 @@ fn export_new(
         .as_file()
         .sync_all()
         .map_err(|error| io("persist translation export", error))?;
-    staged.persist_noclobber(&published).map_err(|error| {
-        if error.error.kind() == std::io::ErrorKind::AlreadyExists {
-            conflict("export destination already exists")
-        } else {
-            io("publish translation export", error.error)
+    match staged.persist_noclobber(&published) {
+        Ok(_) => Ok(()),
+        Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => {
+            if matches_existing(&published, bytes)? {
+                Ok(())
+            } else {
+                Err(conflict(
+                    "export destination already exists with different bytes",
+                ))
+            }
         }
-    })?;
-    Ok(())
+        Err(error) => Err(io("publish translation export", error.error)),
+    }
+}
+
+fn matches_existing(path: &Path, expected: &[u8]) -> Result<bool, PortError> {
+    let file = std::fs::File::open(path).map_err(|error| io("open existing export", error))?;
+    let limit = u64::try_from(expected.len())
+        .map_err(|_| invalid("translation output is too large"))?
+        .saturating_add(1);
+    let mut actual = Vec::new();
+    file.take(limit)
+        .read_to_end(&mut actual)
+        .map_err(|error| io("read existing export", error))?;
+    Ok(actual == expected)
 }
 
 fn invalid(message: &str) -> PortError {

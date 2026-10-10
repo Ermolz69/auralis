@@ -30,7 +30,7 @@ async fn vtt_history_exports_exact_immutable_versions() -> Result<(), Box<dyn Er
 }
 
 async fn export_flow(format: TranslationSourceFormat) -> Result<(), Box<dyn Error>> {
-    let fixture = HistoricalFixture::new(format).await?;
+    let mut fixture = HistoricalFixture::new(format).await?;
     let export_dir = tempfile::tempdir()?;
     let exporter = ExportTranslationResultUseCase::new(
         fixture.verifier(),
@@ -42,6 +42,7 @@ async fn export_flow(format: TranslationSourceFormat) -> Result<(), Box<dyn Erro
         "vtt"
     };
     let original_bytes = std::fs::read(&fixture.source_path)?;
+    let mut published_bytes = Vec::new();
     for result_id in [fixture.base_id, fixture.head_id] {
         let verified = fixture
             .verifier()
@@ -83,9 +84,51 @@ async fn export_flow(format: TranslationSourceFormat) -> Result<(), Box<dyn Erro
             }
         };
         assert_eq!(cue_count, 2);
+        published_bytes.push((result_id, exported));
     }
+    fixture.reopen().await?;
+    let reopened = ExportTranslationResultUseCase::new(
+        fixture.verifier(),
+        fixture.directory.path().to_path_buf(),
+    );
+    for (result_id, expected) in published_bytes {
+        let first_destination = export_dir.path().join(format!("{result_id}.{extension}"));
+        let retried = reopened
+            .execute(ExportTranslationResultRequest {
+                project_id: fixture.project_id.clone(),
+                translation_id: fixture.translation_id,
+                result_id,
+                expected_result_sha256: sha256(&expected),
+                destination: first_destination.clone(),
+            })
+            .await?;
+        assert_eq!(retried.result_id, result_id);
+        assert_eq!(retried.size_bytes as usize, expected.len());
+        assert_eq!(std::fs::read(first_destination)?, expected);
+        let destination = export_dir
+            .path()
+            .join(format!("reopened-{result_id}.{extension}"));
+        let receipt = reopened
+            .execute(ExportTranslationResultRequest {
+                project_id: fixture.project_id.clone(),
+                translation_id: fixture.translation_id,
+                result_id,
+                expected_result_sha256: sha256(&expected),
+                destination: destination.clone(),
+            })
+            .await?;
+        assert_eq!(receipt.result_id, result_id);
+        assert_eq!(receipt.size_bytes as usize, expected.len());
+        assert_eq!(std::fs::read(destination)?, expected);
+    }
+    assert_eq!(std::fs::read_dir(export_dir.path())?.count(), 4);
     assert_eq!(std::fs::read(&fixture.source_path)?, original_bytes);
     Ok(())
+}
+
+fn sha256(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    format!("{:x}", sha2::Sha256::digest(bytes))
 }
 
 #[tokio::test]

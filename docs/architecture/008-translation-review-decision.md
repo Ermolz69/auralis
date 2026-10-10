@@ -31,9 +31,11 @@ databases. The request binds the displayed result ID and SHA-256. The exported
 SRT or strict WebVTT file is staged beside the user-selected destination,
 synced and published without replacing an existing file. Paths inside the
 Auralis data root are rejected, so export cannot overwrite originals or managed
-results. A draft may be exported without speech approval; export itself does not
-create a review decision. The user can repeat export to a different path while
-the immutable result remains available.
+results. A retry after an uncertain response succeeds only when the existing
+destination is byte-identical to the verified result; a different file remains
+untouched and causes a conflict. A draft may be exported without speech approval;
+export itself does not create a review decision. The user can repeat export to a
+different path while the immutable result remains available.
 
 The review journal lives in Auralis SQLite with project/translation/publication
 foreign keys and migrates existing databases with no implicit approvals. The
