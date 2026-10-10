@@ -10,7 +10,7 @@ and separate evidence. Source cue windows are lineage, not automatic duration fi
 | ID      | Deliverable                                                          | Required evidence                                                                           | Current status                                                                                        |
 | ------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | INT-T01 | Reusable installed library, legacy CLI and worker on one render core | Installed wheel, baseline comparison, exact profile/model pins                              | Candidate TTS commit `99f2979`; installed import smoke passed; baseline comparison open               |
-| INT-T02 | Canonical plan, strict references and complete lineage               | CONTRACT fixtures, malformed plan/profile/reference/split rejection, manifest coverage      | Model-free candidate tests pass; frozen CONTRACT commit open                                          |
+| INT-T02 | Canonical plan, strict references and complete lineage               | CONTRACT fixtures, malformed plan/profile/reference/split rejection, manifest coverage      | Model-free CONTRACT checks and independent Rust result verifier pass; real plan candidate open        |
 | INT-T03 | Owned sequential execution and recovery                              | Admission, process exit, durable progress, cancel, crash, exact resume, stale attempt tests | Bounded Windows Job Object transport candidate builds; host admission and native lifecycle tests open |
 | INT-T04 | Verified cache reuse                                                 | Changed input identity and corruption matrix with unaffected cache entries retained         | Audio/metadata corruption covered; full matrix open                                                   |
 | INT-T05 | Real audio from both engines                                         | Short and longer cases, hashes, measured durations, actual listening                        | Four real legacy CLI probes passed technical verification; speech-plan cases and listening open       |
@@ -22,7 +22,11 @@ The current new worker operations are `capabilities`, `catalog`, `compose`,
 speech-plan files to 16 MiB. The cooperative cancellation deadline is 15
 seconds; the host must enforce process-tree exit and hold machine admission
 until termination. The host will stage one attempt under a project-owned root
-and publish only after verifying the full manifest and final WAV. Semantic,
+and publish only after verifying the full manifest and final WAV. The Rust
+adapter now independently rechecks plan and profile hashes, utterance and chunk
+order, exact text concatenation, cue and role lineage, reference IDs, segment
+audio hashes, model revision, final output hashes, and PCM16 WAV measurements.
+The host publication path has not been implemented yet. Semantic,
 identity and quality failures have zero automatic retries. A transient
 transport or storage failure permits at most two retries after reconciliation
 of the prior attempt; each retry gets a fresh attempt ID. No model job may
@@ -100,8 +104,9 @@ not satisfy the required speech-plan short and longer cases.
   and awaiting-review reports verified; human scores pending.
 - Auralis `task rs:fmt:tts`: passed for the isolated adapter sources.
 - Auralis `task rs:lock:refresh`: passed offline after adding adapter dependencies.
-- Auralis `task rs:test:tts`: 5 framed protocol tests passed on native Windows;
-  the execution path compiled but has not run a model or native lifecycle test.
+- Auralis `task rs:test:tts`: protocol, framing, lineage tampering and WAV
+  verification tests passed on native Windows; the execution path compiled but
+  has not run a model or native lifecycle test.
 
 These are engineering checks. Auralis Rust, frontend, native, real-audio and
 clean-install checks must be added here with exact observed outcomes before

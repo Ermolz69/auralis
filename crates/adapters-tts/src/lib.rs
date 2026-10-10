@@ -4,6 +4,8 @@ mod framed;
 mod owned_process;
 mod preflight;
 mod protocol;
+mod result_verification;
+mod wav_verification;
 
 pub use client::{TtsRuntimeConfig, TtsWorkerClient};
 pub use execute::{
@@ -12,3 +14,4 @@ pub use execute::{
 pub use framed::WorkerFrameReader;
 pub use preflight::{TtsCapabilities, TtsCatalog, TtsComposed, TtsValidated};
 pub use protocol::{WorkerEvent, WorkerIdentity, WorkerProtocol};
+pub use result_verification::verify_result_files;

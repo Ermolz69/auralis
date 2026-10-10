@@ -5,9 +5,6 @@ use ports::error::PortError;
 use process_wrap::tokio::ChildWrapper;
 use serde::Deserialize;
 use serde_json::json;
-use sha2::{Digest, Sha256};
-use std::fs::File;
-use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
@@ -18,6 +15,7 @@ use crate::client::TtsWorkerClient;
 use crate::framed::WorkerFrameReader;
 use crate::owned_process;
 use crate::protocol::{WorkerIdentity, WorkerProtocol, WorkerRequest};
+use crate::result_verification::verify_result_files;
 
 const EXECUTION_DEADLINE: Duration = Duration::from_secs(45 * 60);
 const CANCELLATION_DEADLINE: Duration = Duration::from_secs(20);
@@ -123,7 +121,12 @@ impl TtsWorkerClient {
         .await;
         match result {
             Ok(TtsExecutionOutcome::Completed(completed)) => {
-                verify_output_hashes(&completed).await?;
+                let completed = tokio::task::spawn_blocking(move || {
+                    verify_result_files(&request, &completed)?;
+                    Ok::<_, PortError>(completed)
+                })
+                .await
+                .map_err(|error| unexpected(&error.to_string()))??;
                 Ok(TtsExecutionOutcome::Completed(completed))
             }
             Ok(outcome) => Ok(outcome),
@@ -244,40 +247,6 @@ async fn run_worker(
         ));
     }
     Ok(terminal)
-}
-
-async fn verify_output_hashes(completed: &TtsCompleted) -> Result<(), PortError> {
-    let output = completed.output.clone();
-    let manifest = completed.manifest.clone();
-    let output_hash = completed.output_sha256.clone();
-    let manifest_hash = completed.manifest_sha256.clone();
-    tokio::task::spawn_blocking(move || {
-        if hash_file(&output)? != output_hash || hash_file(&manifest)? != manifest_hash {
-            return Err(invalid_event(
-                "TTS output or manifest hash changed before publication",
-            ));
-        }
-        Ok(())
-    })
-    .await
-    .map_err(|error| unexpected(&error.to_string()))?
-}
-
-fn hash_file(path: &Path) -> Result<String, PortError> {
-    if path.is_symlink() || !path.is_file() {
-        return Err(invalid_event("TTS result is not a regular file"));
-    }
-    let mut stream = File::open(path).map_err(io_error)?;
-    let mut digest = Sha256::new();
-    let mut buffer = [0u8; 64 * 1024];
-    loop {
-        let read = stream.read(&mut buffer).map_err(io_error)?;
-        if read == 0 {
-            break;
-        }
-        digest.update(&buffer[..read]);
-    }
-    Ok(format!("{:x}", digest.finalize()))
 }
 
 async fn drain_diagnostic(mut stderr: impl AsyncRead + Unpin) -> std::io::Result<(Vec<u8>, bool)> {
