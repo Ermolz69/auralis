@@ -43,6 +43,7 @@ domain = { path = "crates/domain" }
 filetime = "0.2.29"
 futures = "0.3.32"
 jobs = { path = "crates/jobs" }
+libc = "0.2.186"
 ports = { path = "crates/ports" }
 process-wrap = { version = "10.0.0", default-features = false }
 serde = "1.0.228"

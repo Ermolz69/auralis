@@ -55,6 +55,16 @@ impl From<ApplicationError> for CommandError {
                 }
             },
             ApplicationError::Port(port_err) => match port_err {
+                PortError::QueueFull { .. } => CommandError::Busy(
+                    "The job queue is full; try again after a job finishes".into(),
+                ),
+                PortError::AdmissionClosed => {
+                    CommandError::Busy("The application is shutting down".into())
+                }
+                PortError::InvalidResourceRequest { .. }
+                | PortError::InvalidRuntimeConfiguration { .. } => {
+                    CommandError::Validation("Invalid job resource configuration".into())
+                }
                 PortError::NotFound { .. } => {
                     CommandError::NotFound("Resource not found".to_string())
                 }
@@ -74,8 +84,7 @@ impl From<ApplicationError> for CommandError {
                     CommandError::Cancelled("The operation was cancelled".to_string())
                 }
                 PortError::CleanupFailed { .. } => CommandError::RecoveryRequired(
-                    "Translation model cleanup failed; restart the application before retrying"
-                        .into(),
+                    "Job cleanup needs attention; restart the application before retrying".into(),
                 ),
                 PortError::AlreadyStopped => {
                     CommandError::Internal("An unexpected internal error occurred".to_string())

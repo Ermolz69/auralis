@@ -8,8 +8,8 @@ use super::error::YtDlpError;
 
 #[derive(Clone, Copy)]
 pub struct YtDlpCommandPaths<'a> {
-    ytdlp_candidates: &'a [PathBuf],
-    ffmpeg_candidates: &'a [PathBuf],
+    pub(super) ytdlp_candidates: &'a [PathBuf],
+    pub(super) ffmpeg_candidates: &'a [PathBuf],
 }
 
 impl<'a> YtDlpCommandPaths<'a> {
@@ -254,14 +254,14 @@ pub async fn run_ytdlp_download_subtitle(
     Err(YtDlpError::MissingYtDlp)
 }
 
-fn apply_ffmpeg_location(command: &mut Command, candidates: &[PathBuf]) {
+pub(super) fn apply_ffmpeg_location(command: &mut Command, candidates: &[PathBuf]) {
     if let Some(candidate) = candidates.iter().find(|path| path.is_file()) {
         command.arg("--ffmpeg-location").arg(candidate);
     }
 }
 
 #[allow(clippy::collapsible_if)]
-async fn find_downloaded_subtitle(
+pub(super) async fn find_downloaded_subtitle(
     dir: &std::path::Path,
     run_id: &str,
     expected_format: &str,

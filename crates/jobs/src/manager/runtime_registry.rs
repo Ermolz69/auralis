@@ -5,6 +5,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub enum JobRuntimeEntry {
+    Managed {
+        project_id: ProjectId,
+        task: RuntimeTask,
+        /// Keeps resources owned even if the asynchronous supervisor unexpectedly unwinds.
+        resource_guard: Arc<dyn Send + Sync>,
+    },
     Reserved {
         project_id: ProjectId,
     },
@@ -49,9 +55,7 @@ impl RuntimeRegistry {
     }
 
     pub fn close_and_take_all(&self) -> HashMap<JobId, JobRuntimeEntry> {
-        let mut inner = self.lock_inner();
-        inner.closed = true;
-        std::mem::take(&mut inner.entries)
+        self.try_close().unwrap_or_default()
     }
 
     pub fn try_close(&self) -> Option<HashMap<JobId, JobRuntimeEntry>> {
@@ -60,7 +64,19 @@ impl RuntimeRegistry {
             None
         } else {
             inner.closed = true;
-            Some(std::mem::take(&mut inner.entries))
+            let mut legacy = std::mem::take(&mut inner.entries);
+            let managed: Vec<_> = legacy
+                .iter()
+                .filter_map(|(id, entry)| {
+                    matches!(entry, JobRuntimeEntry::Managed { .. }).then_some(id.clone())
+                })
+                .collect();
+            for id in managed {
+                if let Some(entry) = legacy.remove(&id) {
+                    inner.entries.insert(id, entry);
+                }
+            }
+            Some(legacy)
         }
     }
 }

@@ -27,7 +27,7 @@ async fn existing_v5_database_gains_links_without_losing_projects() {
             .fetch_one(&pool)
             .await
             .unwrap(),
-        11
+        12
     );
     let title: String = sqlx::query_scalar("SELECT title FROM projects WHERE id = 'project-1'")
         .fetch_one(&pool)

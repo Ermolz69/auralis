@@ -1,5 +1,11 @@
 # Job Runtime and Cancellation
 
+The desktop subtitle pipeline now uses [durable dispatch](./008-job-dispatch.md).
+Its admission returns Pending; Running requires resources and an attached,
+acknowledged executor. Managed workers retain reservations through cleanup and
+are never force-aborted as proof of process exit. The forced-abort descriptions
+below apply only to the legacy runtime attachment contract.
+
 ## Responsibilities
 
 The job subsystem separates durable lifecycle state from in-process execution:

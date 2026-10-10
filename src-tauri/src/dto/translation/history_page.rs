@@ -7,6 +7,7 @@ use serde::Serialize;
 pub struct TranslationHistoryPageDto {
     pub link: TranslationLinkDto,
     pub entries: Vec<TranslationHistoryEntryDto>,
+    pub ready_count: u64,
     pub next_cursor: Option<String>,
 }
 
@@ -15,6 +16,7 @@ impl From<TranslationHistoryPage> for TranslationHistoryPageDto {
         Self {
             link: value.link.into(),
             entries: value.entries.into_iter().map(Into::into).collect(),
+            ready_count: value.ready_count,
             next_cursor: value.next_cursor.map(|id| id.to_string()),
         }
     }

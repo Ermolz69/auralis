@@ -9,6 +9,7 @@ import { invoke } from '@/shared/api/tauri';
 import { mountTranslationReview } from './translationReviewScenarioView';
 import { TranslationHistoryControls } from './translationHistoryControls';
 import { BRANCH_FIRST_LINE } from './translationHistoryFixture';
+import { retryHistoricalJournal } from './retryHistoricalJournal';
 
 export async function recoverHistoricalEditGap(scenarioId: string): Promise<boolean> {
   const projects = await listProjects();
@@ -22,6 +23,8 @@ export async function recoverHistoricalEditGap(scenarioId: string): Promise<bool
   const view = mountTranslationReview(project.id);
   const controls = new TranslationHistoryControls(view.container);
   try {
+    if (__NATIVE_E2E_TRANSLATION_HISTORY_JOURNAL_GAP__)
+      await retryHistoricalJournal(controls, project.id, translationId);
     await controls.wait(
       async () => (await listTranslationHistory(project.id, translationId)).entries.length === 3,
     );

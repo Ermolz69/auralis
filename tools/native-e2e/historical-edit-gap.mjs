@@ -3,12 +3,13 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { verifyHistoryEdits } from './translation-history-edits.mjs';
+import { inspectHistoricalJournalGap } from './historical-journal-gap.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIMEOUT_MS = 600_000;
 const POLL_MS = 100;
 
-export async function waitForHistoricalEditGap(dataRoot, markerPath, app) {
+export async function waitForHistoricalEditGap(dataRoot, markerPath, app, options = {}) {
   const deadline = Date.now() + TIMEOUT_MS;
   while (Date.now() < deadline) {
     if (app.child.exitCode !== null || app.child.signalCode !== null)
@@ -21,8 +22,21 @@ export async function waitForHistoricalEditGap(dataRoot, markerPath, app) {
       const parts = marker.trim().split(':');
       if (parts.length !== 2 || !parts.every((part) => UUID.test(part)))
         throw new Error('Historical commit marker has invalid identifiers');
-      const expected = { runId: parts[0], resultId: parts[1] };
-      return { ...expected, snapshot: await inspectHistoricalGap(dataRoot, expected, true) };
+      const expected = {
+        runId: parts[0],
+        resultId: parts[1],
+        journalOnly: Boolean(options.journalOnly),
+      };
+      if (options.journalOnly)
+        expected.input = JSON.parse(await fsp.readFile(options.requestPath, 'utf8'));
+      return {
+        ...expected,
+        snapshot: await (options.journalOnly ? inspectHistoricalJournalGap : inspectHistoricalGap)(
+          dataRoot,
+          expected,
+          true,
+        ),
+      };
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
   }
@@ -30,7 +44,9 @@ export async function waitForHistoricalEditGap(dataRoot, markerPath, app) {
 }
 
 export async function verifyHistoricalEditGap(dataRoot, expected, beforeRecovery) {
-  const snapshot = await inspectHistoricalGap(dataRoot, expected, beforeRecovery);
+  const snapshot = await (
+    expected.journalOnly ? inspectHistoricalJournalGap : inspectHistoricalGap
+  )(dataRoot, expected, beforeRecovery);
   if (JSON.stringify(snapshot) !== JSON.stringify(expected.snapshot))
     throw new Error(
       'Historical interruption/recovery changed committed edits, files or model checkpoints',

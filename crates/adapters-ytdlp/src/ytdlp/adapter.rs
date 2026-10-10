@@ -14,6 +14,7 @@ pub struct YtDlpAdapter {
     ffmpeg_candidates: Vec<PathBuf>,
     timeout_ms: u64,
     media_download_timeout_ms: u64,
+    subtitle_process_limits: super::ProcessLimits,
     #[cfg(feature = "native-e2e")]
     native_e2e_url: Option<String>,
 }
@@ -31,6 +32,7 @@ impl YtDlpAdapter {
             ffmpeg_candidates: vec![PathBuf::from("ffmpeg"), PathBuf::from("ffmpeg.exe")],
             timeout_ms: 60_000,
             media_download_timeout_ms: 30 * 60_000,
+            subtitle_process_limits: super::ProcessLimits::default(),
             #[cfg(feature = "native-e2e")]
             native_e2e_url: None,
         }
@@ -44,7 +46,18 @@ impl YtDlpAdapter {
     pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = timeout_ms;
         self.media_download_timeout_ms = timeout_ms;
+        self.subtitle_process_limits.execution_timeout =
+            std::time::Duration::from_millis(timeout_ms);
         self
+    }
+
+    pub fn with_subtitle_process_limits(
+        mut self,
+        limits: super::ProcessLimits,
+    ) -> Result<Self, PortError> {
+        limits.validate()?;
+        self.subtitle_process_limits = limits;
+        Ok(self)
     }
 
     #[cfg(feature = "native-e2e")]
@@ -162,6 +175,66 @@ use ports::source::SubtitleSourcePort;
 
 #[async_trait]
 impl SubtitleSourcePort for YtDlpAdapter {
+    async fn list_subtitles_cancellable(
+        &self,
+        source: &MediaSource,
+        token: &ports::cancellation::CancellationToken,
+    ) -> Result<Vec<SubtitleTrack>, PortError> {
+        self.validate_source(source).await?;
+        let url = match source {
+            MediaSource::YoutubeUrl { url } | MediaSource::RemoteUrl { url } => url,
+            _ => {
+                return Err(PortError::InvalidSource {
+                    message: "Subtitles require a URL".into(),
+                });
+            }
+        };
+        let json = super::subtitle_process::metadata(
+            self.command_paths(),
+            url,
+            token,
+            self.subtitle_process_limits,
+        )
+        .await?;
+        let value = serde_json::from_str(&json).map_err(super::error::YtDlpError::ParseFailed)?;
+        Ok(parse_subtitle_tracks(&value))
+    }
+
+    async fn download_subtitle_cancellable(
+        &self,
+        request: ports::source::DownloadSubtitleRequest,
+        token: &ports::cancellation::CancellationToken,
+    ) -> Result<domain::media::Artifact, PortError> {
+        self.validate_source(&request.source).await?;
+        let url = match &request.source {
+            MediaSource::YoutubeUrl { url } | MediaSource::RemoteUrl { url } => url,
+            _ => {
+                return Err(PortError::InvalidSource {
+                    message: "Subtitles require a URL".into(),
+                });
+            }
+        };
+        let path = super::subtitle_process::download(
+            self.command_paths(),
+            url,
+            &request.target_directory,
+            &request.track,
+            token,
+            self.subtitle_process_limits,
+        )
+        .await?;
+        super::containment::verify_containment(&request.target_directory, &path)?;
+        Ok(domain::media::Artifact {
+            id: domain::media::ArtifactId::new(),
+            kind: ArtifactKind::OriginalSubtitle,
+            location: ArtifactLocation::LocalPath(path.to_string_lossy().into()),
+            size_bytes: None,
+            state: domain::media::ArtifactState::PendingFinalize,
+            created_at: domain::chrono::Utc::now(),
+            updated_at: domain::chrono::Utc::now(),
+            ready_at: None,
+        })
+    }
     async fn list_subtitles(&self, source: &MediaSource) -> Result<Vec<SubtitleTrack>, PortError> {
         self.validate_source(source).await?;
 

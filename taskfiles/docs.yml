@@ -1,10 +1,33 @@
 version: '3'
 
 tasks:
+  check:queue:
+    desc: Validate queue architecture, task commands and evidence without scanning unrelated worktrees
+    cmds:
+      - task: check
+      - pnpm markdownlint-cli2 "docs/architecture/007-job-runtime.md" "docs/architecture/008-job-dispatch.md" "docs/storage/production-storage.md" "docs/taskfile/001-commands.md" "docs/evaluation/job-queue-fixtures.md"
+      - pnpm prettier --check "docs/architecture/008-job-dispatch.md" "docs/evaluation/job-queue-fixtures.md"
+
+  fmt:queue:
+    desc: Format the new queue contract and evaluation record
+    cmds:
+      - pnpm prettier --write "docs/architecture/008-job-dispatch.md" "docs/evaluation/job-queue-fixtures.md"
   fmt:caster:
     desc: Format only the Caster integration execution record
     cmds:
       - pnpm prettier --write "docs/integration/caster-execution.md"
+
+  fmt:tts:
+    desc: Format the TTS integration execution record without touching concurrent documents
+    cmds:
+      - pnpm prettier --write "docs/integration/tts-execution.md"
+
+  integration:
+    desc: Validate module integration architecture and goal prompts
+    cmds:
+      - task: check
+      - pnpm markdownlint-cli2 "docs/integration/**/*.md" "docs/README.md"
+      - pnpm prettier --check "docs/integration/**/*.md" "docs/README.md"
 
   all:
     cmds:

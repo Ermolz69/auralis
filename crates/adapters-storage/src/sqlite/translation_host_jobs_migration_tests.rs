@@ -40,7 +40,7 @@ async fn v7_database_gains_one_active_host_job_per_run_without_losing_link()
     let marker: i64 = sqlx::query_scalar("PRAGMA user_version")
         .fetch_one(&pool)
         .await?;
-    assert_eq!(marker, 11);
+    assert_eq!(marker, 12);
     let active_run: String = sqlx::query_scalar(
         "SELECT active_run_id FROM project_translations WHERE translation_id = 'translation-1'",
     )

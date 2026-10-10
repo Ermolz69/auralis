@@ -26,6 +26,39 @@ pub trait VideoSourcePort: Send + Sync {
 
 #[async_trait]
 pub trait SubtitleSourcePort: Send + Sync {
+    /// The compatibility default drains the operation; process adapters override to stop and join.
+    async fn list_subtitles_cancellable(
+        &self,
+        source: &MediaSource,
+        token: &crate::cancellation::CancellationToken,
+    ) -> Result<Vec<SubtitleTrack>, PortError> {
+        if token.is_cancelled() {
+            return Err(PortError::Cancelled);
+        }
+        let result = self.list_subtitles(source).await;
+        if token.is_cancelled() {
+            Err(PortError::Cancelled)
+        } else {
+            result
+        }
+    }
+
+    async fn download_subtitle_cancellable(
+        &self,
+        request: DownloadSubtitleRequest,
+        token: &crate::cancellation::CancellationToken,
+    ) -> Result<Artifact, PortError> {
+        if token.is_cancelled() {
+            return Err(PortError::Cancelled);
+        }
+        let result = self.download_subtitle(request).await;
+        if token.is_cancelled() {
+            Err(PortError::Cancelled)
+        } else {
+            result
+        }
+    }
+
     async fn list_subtitles(&self, source: &MediaSource) -> Result<Vec<SubtitleTrack>, PortError>;
     async fn download_subtitle(
         &self,

@@ -5,6 +5,21 @@ use windows::Win32::System::Threading::CREATE_NO_WINDOW;
 pub struct OwnedChild(Box<dyn ChildWrapper>);
 
 impl OwnedChild {
+    pub fn stdout(&mut self) -> &mut Option<tokio::process::ChildStdout> {
+        self.0.stdout()
+    }
+    pub fn stderr(&mut self) -> &mut Option<tokio::process::ChildStderr> {
+        self.0.stderr()
+    }
+    pub fn start_kill(&mut self) -> std::io::Result<()> {
+        self.0.start_kill()
+    }
+    pub fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>> {
+        self.0.try_wait()
+    }
+    pub async fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
+        self.0.wait().await
+    }
     pub async fn wait_with_output(self) -> std::io::Result<std::process::Output> {
         std::pin::Pin::from(self.0.wait_with_output()).await
     }

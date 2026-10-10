@@ -13,6 +13,7 @@ pub enum RuntimeTaskOutcome {
     DeletedNoOp,
     ApplicationFailed,
     RecoveryRequired,
+    CleanupUnconfirmed,
     Panicked,
 }
 

@@ -1,6 +1,29 @@
 version: '3'
 
 tasks:
+  clippy:queue:
+    desc: Check queue libraries and their integration tests independently of unrelated adapters
+    cmds:
+      - cargo clippy --locked -p jobs -p application -p adapters-storage -p adapters-ytdlp --lib -- -D warnings
+      - cargo clippy --locked -p application --test job_queue --test job_queue_recovery --test job_queue_benchmark -- -D warnings
+      - cargo clippy --locked -p adapters-ytdlp --tests -- -D warnings
+  fmt:queue:
+    desc: Format only queue implementation and integration sources without traversing unrelated modules
+    cmds:
+      - node tools/job-queue/format.mjs
+
+  test:queue:
+    desc: Verify durable dispatch, resource fairness, cleanup, recovery and the real application pipeline
+    cmds:
+      - cargo test --locked -p application --test job_queue {{.CLI_ARGS}}
+      - cargo test --locked -p application --test job_queue_recovery {{.CLI_ARGS}}
+      - cargo test --locked -p adapters-ytdlp queue_process {{.CLI_ARGS}}
+
+  bench:queue:
+    desc: Compare bounded sequential and parallel fixture execution without external services
+    cmds:
+      - cargo test --locked -p application --test job_queue_benchmark -- --ignored --nocapture
+
   fmt:tts:
     desc: Format only TTS integration Rust sources without touching concurrent work
     cmds:

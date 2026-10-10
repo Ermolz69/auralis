@@ -20,6 +20,8 @@ pub struct ImportYoutubeSubtitlesUseCase {
     storage_uow: Arc<dyn StorageUnitOfWork>,
     workspace_port: Arc<dyn TempWorkspacePort>,
     cleanup_coordinator: ImportCleanupCoordinator,
+    cpu_executor: Option<Arc<dyn ports::job_resources::CpuExecutorPort>>,
+    max_subtitle_bytes: u64,
 }
 
 impl ImportYoutubeSubtitlesUseCase {
@@ -37,7 +39,19 @@ impl ImportYoutubeSubtitlesUseCase {
             storage_uow,
             workspace_port: workspace_port.clone(),
             cleanup_coordinator: ImportCleanupCoordinator::new(artifact_store, workspace_port),
+            cpu_executor: None,
+            max_subtitle_bytes: 10 * 1024 * 1024,
         }
+    }
+
+    pub fn with_cpu_executor(
+        mut self,
+        executor: Arc<dyn ports::job_resources::CpuExecutorPort>,
+        max_subtitle_bytes: u64,
+    ) -> Self {
+        self.cpu_executor = Some(executor);
+        self.max_subtitle_bytes = max_subtitle_bytes;
+        self
     }
 
     pub async fn execute(
@@ -64,7 +78,10 @@ impl ImportYoutubeSubtitlesUseCase {
             }
             track
         } else {
-            let subtitles = self.subtitle_source.list_subtitles(source).await?;
+            let subtitles = self
+                .subtitle_source
+                .list_subtitles_cancellable(source, &request.cancellation_token)
+                .await?;
             if subtitles.is_empty() {
                 return Err(ApplicationError::InvalidOperation {
                     message: "No subtitles found".to_string(),
@@ -98,21 +115,16 @@ impl ImportYoutubeSubtitlesUseCase {
                 .await);
         }
 
-        let download_fut = self.subtitle_source.download_subtitle(download_request);
-        let artifact = tokio::select! {
-            res = download_fut => {
-                match res {
-                    Ok(a) => a,
-                    Err(e) => {
-                        return Err(self.cleanup_coordinator
-                            .handle_workspace_failure(&alloc.workspace_key, e.into())
-                            .await);
-                    }
-                }
-            }
-            _ = request.cancellation_token.cancelled() => {
-                return Err(self.cleanup_coordinator
-                    .handle_workspace_failure(&alloc.workspace_key, ports::error::PortError::Cancelled.into())
+        let artifact = match self
+            .subtitle_source
+            .download_subtitle_cancellable(download_request, &request.cancellation_token)
+            .await
+        {
+            Ok(a) => a,
+            Err(e) => {
+                return Err(self
+                    .cleanup_coordinator
+                    .handle_workspace_failure(&alloc.workspace_key, e.into())
                     .await);
             }
         };
@@ -159,7 +171,7 @@ impl ImportYoutubeSubtitlesUseCase {
 
         let vtt_content = match self
             .workspace_port
-            .read_workspace_file_to_string(&alloc.workspace_key, &filename, 10 * 1024 * 1024)
+            .read_workspace_file_to_string(&alloc.workspace_key, &filename, self.max_subtitle_bytes)
             .await
         {
             Ok(content) => content,
@@ -171,7 +183,27 @@ impl ImportYoutubeSubtitlesUseCase {
             }
         };
 
-        let transcript = match parse_vtt(&vtt_content, &best_track.language) {
+        let parsed = if let Some(cpu) = &self.cpu_executor {
+            let language = best_track.language.clone();
+            let (send, receive) = tokio::sync::oneshot::channel();
+            match cpu
+                .run(Box::new(move || {
+                    let _ = send.send(parse_vtt(&vtt_content, &language));
+                }))
+                .await
+            {
+                Ok(()) => receive
+                    .await
+                    .map_err(|_| ApplicationError::InvalidOperation {
+                        message: "Subtitle parser did not return a result".into(),
+                    })
+                    .and_then(|result| result),
+                Err(error) => Err(error.into()),
+            }
+        } else {
+            parse_vtt(&vtt_content, &best_track.language)
+        };
+        let transcript = match parsed {
             Ok(t) => t,
             Err(e) => {
                 return Err(self
@@ -295,6 +327,20 @@ impl ImportYoutubeSubtitlesUseCase {
                 .cleanup_coordinator
                 .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
                 .await);
+        }
+
+        if self.cpu_executor.is_some() {
+            // Staging and its finalization outbox now own the committed bytes. The
+            // queued worker still joins its temporary workspace cleanup before exit.
+            let cleanup = self
+                .cleanup_coordinator
+                .cleanup_workspace(&alloc.workspace_key)
+                .await;
+            if !cleanup.is_empty() {
+                return Err(cleanup.into_error(ApplicationError::InvalidOperation {
+                    message: "Committed import workspace cleanup needs attention".into(),
+                }));
+            }
         }
 
         Ok(ImportYoutubeSubtitlesResponse { transcript })

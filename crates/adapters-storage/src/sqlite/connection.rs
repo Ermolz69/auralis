@@ -12,7 +12,8 @@ pub(crate) const SCHEMA: &str = concat!(
     include_str!("translation_host_jobs_schema.sql"),
     include_str!("translation_publication_revisions_schema.sql"),
     include_str!("translation_edit_intents_schema.sql"),
-    include_str!("speech_run_schema.sql")
+    include_str!("speech_run_schema.sql"),
+    include_str!("job_executions_schema.sql")
 );
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
@@ -103,8 +104,11 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
             "speech_host_checkpoints",
         ]);
     }
+    if schema_marker >= 12 {
+        expected_tables.push("job_executions");
+    }
     expected_tables.sort_unstable();
-    if table_names != expected_tables || !(1..=11).contains(&schema_marker) {
+    if table_names != expected_tables || !(1..=12).contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -219,6 +223,10 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 11 {
         super::speech_run_migration::migrate(pool).await?;
     }
+    if schema_marker < 12 {
+        super::job_executions::migrate(pool).await?;
+    }
+    validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
     validate_columns(pool, "ui_migrations", &["key"]).await?;

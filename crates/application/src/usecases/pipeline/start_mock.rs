@@ -44,6 +44,7 @@ pub struct StartMockPipelineUseCase<
     S: ArtifactStore + Clone + 'static,
 > {
     dependencies: StartMockPipelineDependencies<R, V, S>,
+    queue: Option<Arc<dyn ports::job_execution::JobQueuePort>>,
 }
 
 impl<
@@ -53,7 +54,19 @@ impl<
 > StartMockPipelineUseCase<R, V, S>
 {
     pub fn new(dependencies: StartMockPipelineDependencies<R, V, S>) -> Self {
-        Self { dependencies }
+        Self {
+            dependencies,
+            queue: None,
+        }
+    }
+
+    pub fn with_queue(mut self, queue: Arc<dyn ports::job_execution::JobQueuePort>) -> Self {
+        self.queue = Some(queue);
+        self
+    }
+
+    pub fn queued_executor(&self) -> Arc<dyn ports::job_execution::JobExecutorPort> {
+        Arc::new(super::queued_subtitle_executor::QueuedSubtitleExecutor::new(&self.dependencies))
     }
 
     pub async fn execute(
@@ -77,6 +90,23 @@ impl<
         );
         let job_id = job.id().clone();
         project.start_processing(job_id.clone())?;
+
+        if let Some(queue) = &self.queue {
+            let job = queue
+                .admit_pipeline(
+                    CommitPipelineStart {
+                        project: project.clone(),
+                        job,
+                    },
+                    ports::job_execution::ExecutionDescriptor::subtitle_import(
+                        project.id().clone(),
+                        request.selected_subtitle_track,
+                    ),
+                )
+                .await?;
+            project.advance_revision()?;
+            return Ok(StartMockPipelineResponse { project, job });
+        }
 
         dependencies
             .storage_uow

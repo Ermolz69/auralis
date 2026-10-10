@@ -16,6 +16,8 @@ pub async fn edit_historical_translation_result_cmd(
     usecases: State<'_, Arc<TranslationUseCases>>,
 ) -> Result<String, CommandError> {
     crate::observability::command::observe("edit_historical_translation_result_cmd", async {
+        #[cfg(feature = "native-e2e")]
+        crate::commands::native_e2e_historical_request::capture(&input).await?;
         let result_id = usecases
             .historical_edit
             .execute(EditHistoricalTranslationRequest {

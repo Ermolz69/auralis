@@ -2,20 +2,28 @@
 
 Desktop production composition always uses SQLite as the durable source of truth.
 
+Schema version 12 adds `job_executions`, keyed to a job with cascading deletion.
+The queue commits the project link, Pending row and frozen execution descriptor
+in one `BEGIN IMMEDIATE` transaction. Its capacity check participates in that
+transaction. Dispatch checks the job revision and owning project's active link;
+terminal writes still commit the lifecycle outbox atomically. See
+[durable dispatch](../architecture/008-job-dispatch.md). Older builds cannot open
+version-12 databases.
+
 - `AURALIS_STORAGE` unset: use SQLite.
 - `AURALIS_STORAGE=sqlite`: use SQLite.
 - Any other value: fail startup with an explicit configuration error.
 
 SQLite owns the persistent project, job, artifact, and outbox state. The outbox worker is part of the production storage graph and is started whenever production storage is initialized.
 
-New databases use schema version 7. Valid version-1 databases gain `projects.revision` with an
+New databases use schema version 12. Valid version-1 databases gain `projects.revision` with an
 initial value of 1, and version-1/version-2 databases gain `projects.avatar_data_url`. Version 3
 gains the `youtube_imports` journal. Version 4 gains `ui_settings`, `project_pins`, and
 `ui_migrations`. Version 6 gains `project_translations` and `translation_publications` for
 stable links to the separate Translate SQLite database. Version 7 adds frozen
 `translation_run_intents` for crash-safe run creation. Each migration is atomic and preserves existing project
 data. Unsupported schemas are rejected at startup without conversion. Older application builds
-cannot open version-7 databases; keep a database backup before downgrading.
+cannot open version-12 databases; keep a database backup before downgrading.
 
 An exclusive OS lease on `.auralis-owner.lock` is acquired before opening SQLite or running
 recovery and retained for the runtime lifetime. Another process using that root is rejected;

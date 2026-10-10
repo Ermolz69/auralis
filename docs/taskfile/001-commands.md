@@ -13,6 +13,8 @@ task desktop:dev
 task desktop:e2e:native
 task check:jobs
 task rs:soak:jobs
+task rs:test:queue
+task rs:bench:queue
 task check:pr
 task check
 task check:all
@@ -149,6 +151,26 @@ repeated after Clippy in the default PR path.
 
 ## Quality
 
+The queue acceptance suite is `task rs:test:queue`: SQLite-backed dispatch,
+resource contention and fairness, real application import cleanup, restart input
+preservation, and managed child-tree cancellation. `task rs:bench:queue` runs a
+bounded comparison declared before measurement: twelve local jobs per run, a
+40 ms asynchronous fixture wait per job, one versus two network slots, and three
+repetitions. CPU/disk/process budgets are two, the window and active cap are 64,
+and Pending capacity is 1024. The report records total wall time (including
+admission), peak execution concurrency and running cancellation latency under
+`target/job-queue/fixture-comparison.json`. It uses no user projects or services
+and does not estimate speedups of real media or model operations.
+
+Protocol 2 adds a channel acknowledgement from inside useful fixture work before
+timing cancellation. It retains the original lifecycle-only baseline and writes
+`target/job-queue/fixture-comparison-started.json`. Workload, budgets, repetitions
+and throughput measurement remain unchanged.
+
+`task rs:fmt:queue` formats the queue's explicit source list with child traversal
+disabled, preserving unrelated concurrent changes. `task rs:fmt` remains the
+workspace formatting verification gate.
+
 ```bash
 task q:file-size
 task q:color-tokens
@@ -250,3 +272,13 @@ protected `NOTE` block. Pause also requires no translated artifact of any state;
 completion checks both original copies against the initial source digest. The
 runner emits a compact record of run/job identity and checkpoint retention for
 local evidence. This is a technical synthetic-file check, not bilingual review.
+
+## Scoped queue verification
+
+`task rs:clippy:queue` checks affected libraries and queue/owned-process tests.
+`task rs:fmt:queue` formats the explicit queue integration file list without
+traversing concurrent changes. The workspace gates remain `task rs:fmt` and
+`task rs:clippy`; scoped checks do not replace their release requirements.
+`task docs:check:queue` checks links and the queue documents without scanning
+unrelated cache worktrees. `task docs:fmt:queue` formats the new queue contract
+and [fixture evidence](../evaluation/job-queue-fixtures.md).

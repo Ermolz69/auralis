@@ -6,7 +6,7 @@ use sqlx::{Sqlite, Transaction};
 
 use crate::sqlite::project_mapper::project_to_row_values;
 
-pub(super) async fn update_project(
+pub(crate) async fn update_project(
     tx: &mut Transaction<'_, Sqlite>,
     project: &Project,
 ) -> Result<(), PortError> {

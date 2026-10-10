@@ -26,9 +26,20 @@ impl JobManager {
         &self,
         job_ids: &[domain::job::JobId],
     ) -> Result<ports::job_runtime_control::RuntimeCleanupReport, ports::error::PortError> {
-        let mut report = ports::job_runtime_control::RuntimeCleanupReport {
-            jobs: std::collections::HashMap::new(),
-        };
+        let managed: Vec<_> = self
+            .managed_job_ids()
+            .into_iter()
+            .filter(|id| job_ids.contains(id))
+            .collect();
+        let timeout = self
+            .queue
+            .as_ref()
+            .map_or(std::time::Duration::from_secs(7), |queue| {
+                queue.config.cleanup_timeout
+            });
+        let mut report = self
+            .cancel_managed_before(&managed, tokio::time::Instant::now() + timeout, true)
+            .await?;
 
         let mut abort_handles = std::collections::HashMap::new();
         let mut reaper = futures::stream::FuturesUnordered::new();
@@ -36,7 +47,13 @@ impl JobManager {
         {
             let mut registry = self.runtime_registry.lock_entries();
             for job_id in job_ids {
+                if managed.contains(job_id) {
+                    continue;
+                }
                 match registry.entries.remove(job_id) {
+                    Some(super::runtime_registry::JobRuntimeEntry::Managed { .. }) => {
+                        unreachable!("managed tasks were excluded")
+                    }
                     Some(super::runtime_registry::JobRuntimeEntry::Attached { task, .. }) => {
                         task.cancel.cancel();
                         let job_id = job_id.clone();
@@ -159,10 +176,17 @@ impl JobManager {
         &self,
         deadline: std::time::Duration,
     ) -> Result<ports::job_runtime_control::RuntimeShutdownReport, ports::error::PortError> {
+        let deadline = self.queue.as_ref().map_or(deadline, |queue| {
+            deadline.min(queue.config.shutdown_timeout)
+        });
         let start_time = std::time::Instant::now();
         let expires_at = tokio::time::Instant::now() + deadline;
         let mut reaper_entries = Vec::new();
         let mut report = ports::job_runtime_control::RuntimeShutdownReport::default();
+
+        if !self.stop_dispatcher(expires_at).await {
+            report.cleanup_deferred_count += 1;
+        }
 
         let entries = match self.runtime_registry.try_close() {
             Some(e) => e,
@@ -171,6 +195,9 @@ impl JobManager {
 
         for (job_id, entry) in entries {
             match entry {
+                super::runtime_registry::JobRuntimeEntry::Managed { .. } => {
+                    unreachable!("managed tasks remain registered")
+                }
                 super::runtime_registry::JobRuntimeEntry::Reserved { .. } => {
                     report.reservation_removed_count += 1;
                     self.cache.remove(&job_id).await;
@@ -192,6 +219,29 @@ impl JobManager {
                 let res = task.join_handle.await;
                 (job_id, res)
             });
+        }
+
+        let managed = self.managed_job_ids();
+        let managed_report = self
+            .cancel_managed_before(&managed, expires_at, false)
+            .await?;
+        if let Some(queue) = &self.queue {
+            queue.cpu.close();
+        }
+        for outcome in managed_report.jobs.values() {
+            use ports::job_runtime_control::RuntimeCleanupOutcome;
+            match outcome {
+                RuntimeCleanupOutcome::Completed => report.completed_count += 1,
+                RuntimeCleanupOutcome::CooperativeCancelled => {
+                    report.cooperative_cancelled_count += 1
+                }
+                RuntimeCleanupOutcome::Panicked => report.panicked_count += 1,
+                RuntimeCleanupOutcome::JoinFailed => report.join_failed_count += 1,
+                RuntimeCleanupOutcome::Unconfirmed => report.unconfirmed_count += 1,
+                RuntimeCleanupOutcome::ReservationRemoved => report.reservation_removed_count += 1,
+                RuntimeCleanupOutcome::ForcedAborted => report.forced_aborted_count += 1,
+                RuntimeCleanupOutcome::Missing => {}
+            }
         }
 
         // 1. Cooperative Wait Phase

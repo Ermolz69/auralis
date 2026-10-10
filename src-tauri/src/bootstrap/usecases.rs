@@ -38,6 +38,31 @@ pub enum RuntimeSubtitleSource {
 
 #[async_trait::async_trait]
 impl SubtitleSourcePort for RuntimeSubtitleSource {
+    async fn list_subtitles_cancellable(
+        &self,
+        source: &domain::media::MediaSource,
+        token: &ports::cancellation::CancellationToken,
+    ) -> Result<Vec<domain::media::SubtitleTrack>, PortError> {
+        match self {
+            Self::Production(adapter) => adapter.list_subtitles_cancellable(source, token).await,
+            #[cfg(feature = "native-e2e")]
+            Self::NativeE2e(adapter) => adapter.list_subtitles_cancellable(source, token).await,
+        }
+    }
+
+    async fn download_subtitle_cancellable(
+        &self,
+        request: DownloadSubtitleRequest,
+        token: &ports::cancellation::CancellationToken,
+    ) -> Result<domain::media::Artifact, PortError> {
+        match self {
+            Self::Production(adapter) => {
+                adapter.download_subtitle_cancellable(request, token).await
+            }
+            #[cfg(feature = "native-e2e")]
+            Self::NativeE2e(adapter) => adapter.download_subtitle_cancellable(request, token).await,
+        }
+    }
     async fn list_subtitles(
         &self,
         source: &domain::media::MediaSource,
@@ -105,6 +130,7 @@ pub(super) struct AppUseCaseDependencies {
     pub(super) artifact_store: RuntimeArtifactStore,
     pub(super) storage_uow: RuntimeStorageUnitOfWork,
     pub(super) job_scheduler: Arc<dyn JobSchedulerPort>,
+    pub(super) job_queue: Arc<dyn ports::job_execution::JobQueuePort>,
     pub(super) workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
     pub(super) job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     pub(super) youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
@@ -125,6 +151,7 @@ pub(super) fn setup_usecases(
         artifact_store,
         storage_uow,
         job_scheduler,
+        job_queue,
         workspace_port,
         job_runtime,
         youtube_imports,
@@ -210,7 +237,8 @@ pub(super) fn setup_usecases(
             workspace_port: workspace_port.clone(),
             locks: locks.clone(),
             job_runtime: job_runtime.clone(),
-        }),
+        })
+        .with_queue(job_queue),
         get_transcript: GetTranscriptUseCase::new(project_repo.clone()),
         list_youtube_subtitle_tracks: ListYoutubeSubtitleTracksUseCase::new(
             project_repo.clone(),

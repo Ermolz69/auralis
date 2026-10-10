@@ -6,12 +6,45 @@ use tokio::process::{Child, ChildStdin, Command};
 
 pub struct OwnedChild {
     child: Child,
-    lifetime: ChildStdin,
+    lifetime: Option<ChildStdin>,
+    group: libc::pid_t,
 }
 
 impl OwnedChild {
+    pub fn stdout(&mut self) -> &mut Option<tokio::process::ChildStdout> {
+        &mut self.child.stdout
+    }
+    pub fn stderr(&mut self) -> &mut Option<tokio::process::ChildStderr> {
+        &mut self.child.stderr
+    }
+    pub fn start_kill(&mut self) -> std::io::Result<()> {
+        // Closing the pipe signals the monitor to kill the entire private group.
+        self.lifetime.take();
+        Ok(())
+    }
+    pub fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>> {
+        self.child.try_wait()
+    }
+    pub async fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
+        self.child.wait().await
+    }
+    pub fn tree_exited(&self) -> io::Result<bool> {
+        // Signal zero observes the private group without delivering a signal.
+        let result = unsafe { libc::kill(-self.group, 0) };
+        if result == 0 {
+            return Ok(false);
+        }
+        let error = io::Error::last_os_error();
+        if error.raw_os_error() == Some(libc::ESRCH) {
+            Ok(true)
+        } else {
+            Err(error)
+        }
+    }
     pub async fn wait_with_output(self) -> io::Result<Output> {
-        let Self { child, lifetime } = self;
+        let Self {
+            child, lifetime, ..
+        } = self;
         let result = child.wait_with_output().await;
         drop(lifetime);
         result
@@ -38,9 +71,17 @@ pub fn spawn(command: Command) -> io::Result<OwnedChild> {
         wrapper.current_dir(dir);
     }
     let mut child = wrapper.spawn()?;
+    let group = child
+        .id()
+        .ok_or_else(|| io::Error::other("Missing process group identity"))?
+        as libc::pid_t;
     let lifetime = child
         .stdin
         .take()
         .ok_or_else(|| io::Error::other("Missing process lifetime pipe"))?;
-    Ok(OwnedChild { child, lifetime })
+    Ok(OwnedChild {
+        child,
+        lifetime: Some(lifetime),
+        group,
+    })
 }

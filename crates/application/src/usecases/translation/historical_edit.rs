@@ -52,6 +52,15 @@ impl EditHistoricalTranslationUseCase {
         intent.request_sha256 =
             edit_fingerprint::digest(&intent, request.segment_id, &request.lines);
         self.intents.record(intent).await?;
+        #[cfg(feature = "native-e2e")]
+        if request.base_result_id != request.expected_head_result_id {
+            super::native_e2e_historical_edit_gap::hold_if_requested(
+                base.intent.run_id,
+                request.result_id,
+                true,
+            )
+            .await?;
+        }
         let result_id = self
             .editor
             .commit_branch_edit(
@@ -78,8 +87,12 @@ impl EditHistoricalTranslationUseCase {
         }
         #[cfg(feature = "native-e2e")]
         if request.base_result_id != request.expected_head_result_id {
-            super::native_e2e_historical_edit_gap::hold_if_requested(base.intent.run_id, result_id)
-                .await?;
+            super::native_e2e_historical_edit_gap::hold_if_requested(
+                base.intent.run_id,
+                result_id,
+                false,
+            )
+            .await?;
         }
         Ok(result_id)
     }

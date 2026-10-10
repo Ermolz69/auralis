@@ -21,6 +21,15 @@ impl NativeE2ePausedSubtitleSource {
 
 #[async_trait]
 impl SubtitleSourcePort for NativeE2ePausedSubtitleSource {
+    async fn download_subtitle_cancellable(
+        &self,
+        _request: DownloadSubtitleRequest,
+        token: &ports::cancellation::CancellationToken,
+    ) -> Result<Artifact, PortError> {
+        PAUSE_REACHED.store(true, Ordering::Release);
+        token.cancelled().await;
+        Err(PortError::Cancelled)
+    }
     async fn list_subtitles(&self, _source: &MediaSource) -> Result<Vec<SubtitleTrack>, PortError> {
         Ok(vec![SubtitleTrack {
             id: "native-e2e-vtt".to_string(),

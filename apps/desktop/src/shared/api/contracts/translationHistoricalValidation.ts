@@ -1,5 +1,6 @@
 import type {
   HistoricalTranslationEditContext,
+  EditHistoricalTranslationResult,
   TranslationPublicationView,
 } from './translationHistoricalEdit';
 import {
@@ -13,6 +14,27 @@ const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 const nonNilUuid = (value: unknown) => isUuid(value) && value !== NIL_UUID;
 const positiveInteger = (value: unknown): value is number =>
   isNonNegativeSafeInteger(value) && value > 0;
+
+export function validateHistoricalTranslationEditRequest(
+  value: unknown,
+): value is EditHistoricalTranslationResult {
+  return (
+    isRecord(value) &&
+    [
+      value.projectId,
+      value.translationId,
+      value.baseResultId,
+      value.resultId,
+      value.expectedHeadResultId,
+    ].every(nonNilUuid) &&
+    positiveInteger(value.expectedLinkRevision) &&
+    positiveInteger(value.segmentId) &&
+    value.segmentId <= 0xffffffff &&
+    Array.isArray(value.lines) &&
+    value.lines.length > 0 &&
+    value.lines.every((line) => typeof line === 'string')
+  );
+}
 
 export function validateHistoricalTranslationEditContext(
   value: unknown,

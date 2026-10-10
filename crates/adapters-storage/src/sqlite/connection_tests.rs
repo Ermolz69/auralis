@@ -42,6 +42,7 @@ mod tests {
             tables,
             [
                 "artifacts",
+                "job_executions",
                 "jobs",
                 "outbox_messages",
                 "project_pins",
@@ -64,7 +65,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            11
+            12
         );
 
         let project_columns: Vec<String> =

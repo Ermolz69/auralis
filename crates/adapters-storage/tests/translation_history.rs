@@ -103,6 +103,7 @@ async fn cursor_history_is_bounded_and_stable_across_new_publications() -> Resul
         [third.result_id, second.result_id]
     );
     assert_eq!(page.next_cursor, Some(second.result_id));
+    assert_eq!(page.ready_count, 3);
     assert_eq!(page.link.selected_result_id, Some(third.result_id));
     fixture.ready(4).await?;
     let older = fixture
@@ -123,6 +124,7 @@ async fn cursor_history_is_bounded_and_stable_across_new_publications() -> Resul
         [first.result_id]
     );
     assert_eq!(older.next_cursor, None);
+    assert_eq!(older.ready_count, 4);
     for limit in [0, 101] {
         assert!(
             fixture

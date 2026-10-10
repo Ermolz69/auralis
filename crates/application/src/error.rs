@@ -44,6 +44,10 @@ pub enum ApplicationError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PortErrorKind {
+    QueueFull,
+    AdmissionClosed,
+    InvalidRuntimeConfiguration,
+    InvalidResourceRequest,
     Storage,
     Io,
     Network,
@@ -63,6 +67,12 @@ pub enum PortErrorKind {
 impl PortErrorKind {
     pub fn from_error(err: &ports::error::PortError) -> Self {
         match err {
+            ports::PortError::QueueFull { .. } => Self::QueueFull,
+            ports::PortError::AdmissionClosed => Self::AdmissionClosed,
+            ports::PortError::InvalidRuntimeConfiguration { .. } => {
+                Self::InvalidRuntimeConfiguration
+            }
+            ports::PortError::InvalidResourceRequest { .. } => Self::InvalidResourceRequest,
             ports::error::PortError::Storage { .. } => Self::Storage,
             ports::error::PortError::Io { .. } => Self::Io,
             ports::error::PortError::Network { .. } => Self::Network,

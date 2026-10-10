@@ -4,7 +4,7 @@ use sqlx::{Sqlite, Transaction};
 
 use crate::sqlite::job_mapper::job_to_row_values;
 
-pub(super) async fn insert_job(
+pub(crate) async fn insert_job(
     tx: &mut Transaction<'_, Sqlite>,
     job: &Job,
 ) -> Result<(), PortError> {
@@ -47,7 +47,7 @@ pub(super) async fn insert_job(
     Ok(())
 }
 
-pub(super) async fn update_job(
+pub(crate) async fn update_job(
     tx: &mut Transaction<'_, Sqlite>,
     job: &Job,
     expected_revision: u64,

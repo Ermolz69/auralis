@@ -26,6 +26,7 @@ import { releaseVerifiedPause, verifyResumedPause } from './translation-pause.mj
 import { releaseVerifiedPreparationPause, verifyResumedPreparation } from './preparation-pause.mjs';
 import { releaseVerifiedWorkerPreflightPause } from './worker-preflight-pause.mjs';
 import { waitForHistoricalEditGap, verifyHistoricalEditGap } from './historical-edit-gap.mjs';
+import { releaseHistoricalJournalRetry } from './historical-journal-gap.mjs';
 import { seedCasterRuntime, verifyCasterArtifact, waitForCasterTitle } from './caster.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
@@ -41,6 +42,10 @@ export async function runNativeE2e(rootDir) {
   const translationEventsEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
   const translationHistoryEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY === '1';
   const historicalGapEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_GAP === '1';
+  const historicalJournalOnly =
+    process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_JOURNAL_GAP === '1';
+  if (historicalJournalOnly && !historicalGapEnabled)
+    throw new Error('Journal-only interruption requires the historical gap mode');
   if (historicalGapEnabled && !translationHistoryEnabled)
     throw new Error('Historical core gap requires the standalone history mode');
   if (
@@ -129,6 +134,8 @@ export async function runNativeE2e(rootDir) {
   const secondOwnerEnabled = process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1';
   const resultCommitMarker = path.join(dataRoot, 'native-result-committed.txt');
   const historicalCommitMarker = path.join(dataRoot, 'native-historical-edit-committed.txt');
+  const historicalRequestPath = path.join(dataRoot, 'native-historical-edit-request.json');
+  const historicalRetryRelease = path.join(dataRoot, 'native-historical-edit-retry.txt');
   let historicalGap;
   let app;
   let fixtureServer;
@@ -195,6 +202,9 @@ export async function runNativeE2e(rootDir) {
       fixtureServer.url,
       translationResultGapEnabled ? resultCommitMarker : null,
       historicalGapEnabled ? historicalCommitMarker : null,
+      historicalJournalOnly
+        ? { requestPath: historicalRequestPath, releasePath: historicalRetryRelease }
+        : null,
     );
     if (casterEnabled) {
       const projectId = await waitForCasterTitle(
@@ -288,14 +298,28 @@ export async function runNativeE2e(rootDir) {
       app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
     }
     if (historicalGapEnabled) {
-      historicalGap = await waitForHistoricalEditGap(dataRoot, historicalCommitMarker, app);
+      historicalGap = await waitForHistoricalEditGap(dataRoot, historicalCommitMarker, app, {
+        journalOnly: historicalJournalOnly,
+        requestPath: historicalRequestPath,
+      });
       assert(
         [...listModelProcessIds()].every((pid) => baselineModelPids.has(pid)),
         'Managed model remained alive before historical commit interruption',
       );
       await killNativeProcess(app.child);
       await verifyHistoricalEditGap(dataRoot, historicalGap, true);
-      app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+      app = launchTestApplication(
+        rootDir,
+        dataRoot,
+        fixtureServer.url,
+        null,
+        null,
+        historicalJournalOnly
+          ? { requestPath: historicalRequestPath, releasePath: historicalRetryRelease }
+          : null,
+      );
+      if (historicalJournalOnly)
+        await releaseHistoricalJournalRetry(dataRoot, historicalGap, app, historicalRetryRelease);
     }
     const result = await waitForResult(
       path.join(dataRoot, 'auralis.sqlite'),
@@ -339,6 +363,7 @@ export async function runNativeE2e(rootDir) {
           runId,
           null,
           historicalGapEnabled,
+          historicalJournalOnly,
         );
         assert(
           [...listModelProcessIds()].every((pid) => baselineModelPids.has(pid)),
@@ -630,6 +655,7 @@ function launchTestApplication(
   ytdlpUrl,
   resultCommitMarker = null,
   historicalCommitMarker = null,
+  historicalJournal = null,
 ) {
   const targetDir = path.resolve(rootDir, process.env.CARGO_TARGET_DIR ?? 'target');
   const executable = path.join(targetDir, 'debug', 'auralis-app.exe');
@@ -650,6 +676,12 @@ function launchTestApplication(
         : {}),
       ...(historicalCommitMarker
         ? { AURALIS_NATIVE_E2E_HISTORICAL_COMMITTED_PATH: historicalCommitMarker }
+        : {}),
+      ...(historicalJournal
+        ? {
+            AURALIS_NATIVE_E2E_HISTORICAL_REQUEST_PATH: historicalJournal.requestPath,
+            AURALIS_NATIVE_E2E_HISTORICAL_RETRY_RELEASE_PATH: historicalJournal.releasePath,
+          }
         : {}),
       AURALIS_OBSERVABILITY_ENABLED: 'false',
       // Some CI hosts already run inside an OS sandbox, which makes WebView2's

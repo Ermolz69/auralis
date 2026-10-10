@@ -8,7 +8,12 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
         project_id: domain::project::ProjectId,
     ) -> Result<(), ports::error::PortError> {
         let mut inner = self.runtime_registry.lock_inner();
-        if inner.closed {
+        if inner.closed
+            || self
+                .queue
+                .as_ref()
+                .is_some_and(|queue| queue.closed.load(std::sync::atomic::Ordering::Acquire))
+        {
             return Err(ports::error::PortError::Unexpected {
                 message: "Admission closed/shutting down".to_string(),
             });
@@ -77,16 +82,45 @@ impl ports::job_runtime_control::JobRuntimeControlPort for JobManager {
     }
 
     fn finish_now(&self, job_id: &domain::job::JobId) {
-        self.runtime_registry.lock_entries().entries.remove(job_id);
+        let mut registry = self.runtime_registry.lock_entries();
+        if !matches!(
+            registry.entries.get(job_id),
+            Some(super::runtime_registry::JobRuntimeEntry::Managed { .. })
+        ) {
+            registry.entries.remove(job_id);
+        }
     }
 
     async fn rollback_runtime_start(
         &self,
         job_id: &domain::job::JobId,
     ) -> Result<ports::job_runtime_control::RuntimeCleanupOutcome, ports::error::PortError> {
+        if self.managed_job_ids().contains(job_id) {
+            let timeout = self
+                .queue
+                .as_ref()
+                .map_or(std::time::Duration::from_secs(7), |queue| {
+                    queue.config.cleanup_timeout
+                });
+            let report = self
+                .cancel_managed_before(
+                    std::slice::from_ref(job_id),
+                    tokio::time::Instant::now() + timeout,
+                    false,
+                )
+                .await?;
+            return Ok(report
+                .jobs
+                .get(job_id)
+                .copied()
+                .unwrap_or(ports::job_runtime_control::RuntimeCleanupOutcome::Missing));
+        }
         let entry_opt = self.runtime_registry.lock_entries().entries.remove(job_id);
 
         match entry_opt {
+            Some(super::runtime_registry::JobRuntimeEntry::Managed { .. }) => {
+                unreachable!("managed task handled before removal")
+            }
             Some(super::runtime_registry::JobRuntimeEntry::Attached { task, .. }) => {
                 task.cancel.cancel();
                 task.join_handle.abort();

@@ -16,11 +16,23 @@ use super::report::{PersistenceFailure, RecoveryReport};
 
 pub struct RecoverInterruptedStateUseCase {
     recovery_storage: Arc<dyn RecoveryStorage>,
+    executions: Option<Arc<dyn ports::job_execution::JobExecutionStore>>,
 }
 
 impl RecoverInterruptedStateUseCase {
     pub fn new(recovery_storage: Arc<dyn RecoveryStorage>) -> Self {
-        Self { recovery_storage }
+        Self {
+            recovery_storage,
+            executions: None,
+        }
+    }
+
+    pub fn with_execution_store(
+        mut self,
+        executions: Arc<dyn ports::job_execution::JobExecutionStore>,
+    ) -> Self {
+        self.executions = Some(executions);
+        self
     }
 
     pub fn execute(
@@ -40,9 +52,10 @@ impl RecoverInterruptedStateUseCase {
         );
 
         let storage = self.recovery_storage.clone();
+        let executions = self.executions.clone();
 
         async move {
-            let res = Self::execute_inner(storage).await;
+            let res = Self::execute_inner(storage, executions).await;
             match &res {
                 Ok(report) => {
                     let failed_count =
@@ -71,6 +84,7 @@ impl RecoverInterruptedStateUseCase {
 
     async fn execute_inner(
         recovery_storage: Arc<dyn RecoveryStorage>,
+        executions: Option<Arc<dyn ports::job_execution::JobExecutionStore>>,
     ) -> Result<RecoveryReport, ApplicationError> {
         let snapshot = recovery_storage.load_snapshot().await?;
 
@@ -100,11 +114,33 @@ impl RecoverInterruptedStateUseCase {
                     let expected_job_revision = job.revision();
                     let expected_last_terminal_job_id = project.last_terminal_job_id().cloned();
 
-                    if let Err(e) = job.mark_failed(JobError::new(
-                        "APP_RESTART",
-                        "Interrupted by application restart",
-                        false,
-                    )) {
+                    let (code, message) = if job.status() == &domain::job::JobStatus::Pending {
+                        if let Some(executions) = &executions {
+                            match executions.descriptor(job.id()).await {
+                                Ok(Some(descriptor))
+                                    if descriptor.validate().is_ok()
+                                        && descriptor.project_id == *project.id() =>
+                                {
+                                    // Preserve only a validated queued request with its owning project link.
+                                    continue;
+                                }
+                                Ok(None) => (
+                                    "EXECUTION_DESCRIPTOR_MISSING",
+                                    "Pending launch has no durable execution descriptor",
+                                ),
+                                Ok(Some(_)) | Err(ports::PortError::InvalidStoredData { .. }) => (
+                                    "EXECUTION_DESCRIPTOR_INVALID",
+                                    "Pending execution descriptor is invalid",
+                                ),
+                                Err(error) => return Err(error.into()),
+                            }
+                        } else {
+                            ("APP_RESTART", "Interrupted by application restart")
+                        }
+                    } else {
+                        ("APP_RESTART", "Interrupted by application restart")
+                    };
+                    if let Err(e) = job.mark_failed(JobError::new(code, message, false)) {
                         Err(e.into())
                     } else if let Err(e) =
                         project.apply_terminal_transition(job.id(), TerminalOutcome::Failed)

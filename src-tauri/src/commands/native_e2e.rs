@@ -25,6 +25,8 @@ const ALLOWED_CHECKPOINTS: &[&str] = &[
     "translation-history-reopened",
     "translation-history-gap-choice",
     "translation-history-gap-recovered",
+    "translation-history-journal-reopened",
+    "translation-history-journal-retried",
     "translation-pause-acknowledged",
     "translation-preparation-started",
     "translation-preparation-paused",

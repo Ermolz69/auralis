@@ -140,9 +140,8 @@ async fn test_cancellation_during_download() {
     };
     assert!(is_cancelled, "Expected Cancelled, got {:?}", err);
 
-    // Workspace should be deleted
-    assert_eq!(deleted_workspace.lock().unwrap().len(), 1);
-    assert_eq!(deleted_workspace.lock().unwrap()[0], "tmp/1/subs");
+    // Cancellation before metadata discovery performs no workspace preparation.
+    assert!(deleted_workspace.lock().unwrap().is_empty());
 }
 
 #[tokio::test]

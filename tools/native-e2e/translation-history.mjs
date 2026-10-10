@@ -21,13 +21,25 @@ export async function waitForTranslationHistoryReopened(dataRoot, app) {
   throw new Error('Timed out waiting for native historical selection after restart');
 }
 
-export async function verifyTranslationHistory(dataRoot, scenarioId, previous = null, gap = false) {
+export async function verifyTranslationHistory(
+  dataRoot,
+  scenarioId,
+  previous = null,
+  gap = false,
+  journalOnly = false,
+) {
   const trace = await fsp.readFile(path.join(dataRoot, 'native-e2e-bootstrap.txt'), 'utf8');
   const markers = [
     'translation-history-manual-ready',
     'translation-history-preview',
     ...(gap
-      ? ['translation-history-gap-choice', 'translation-history-gap-recovered']
+      ? [
+          'translation-history-gap-choice',
+          ...(journalOnly
+            ? ['translation-history-journal-reopened', 'translation-history-journal-retried']
+            : []),
+          'translation-history-gap-recovered',
+        ]
       : ['translation-history-branch-ready', 'translation-history-selected']),
   ];
   if (previous) markers.push('translation-history-reopened');

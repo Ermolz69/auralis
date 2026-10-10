@@ -26,6 +26,19 @@ pub(super) async fn list(
         .ok_or_else(|| PortError::NotFound {
             resource: "project translation".into(),
         })?;
+    let ready_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM translation_publications p JOIN artifacts a ON a.id = p.artifact_id
+         WHERE p.translation_id = ? AND p.source_sha256 = ? AND p.state = 'ready'
+           AND a.project_id = ? AND a.kind = 'TranslatedTranscript' AND a.state = 'ready'",
+    )
+    .bind(translation_id.to_string())
+    .bind(&link.source_sha256)
+    .bind(project_id.to_string())
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(|error| super::super::helpers::map_sqlite_error("count_translation_history", error))?;
+    let ready_count = u64::try_from(ready_count)
+        .map_err(|_| validation::conflict("invalid ready history count"))?;
     let before: Option<i64> = match before_result_id {
         Some(id) => Some(sqlx::query_scalar("SELECT rowid FROM translation_publications WHERE translation_id = ? AND result_id = ?")
             .bind(translation_id.to_string()).bind(id.to_string())
@@ -68,6 +81,7 @@ pub(super) async fn list(
     Ok(TranslationHistoryPage {
         link,
         entries,
+        ready_count,
         next_cursor,
     })
 }

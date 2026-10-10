@@ -32,6 +32,9 @@ pub struct MockDubbingPipelineRunner<
     workspace_port: Arc<dyn TempWorkspacePort>,
     _job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     selected_subtitle_track: Option<domain::media::SubtitleTrack>,
+    execution_inputs: Option<ports::job_execution::ExecutionDescriptor>,
+    cpu_executor: Option<Arc<dyn ports::job_resources::CpuExecutorPort>>,
+    max_subtitle_bytes: u64,
     #[cfg(test)]
     panic_on_run: bool,
 }
@@ -73,6 +76,9 @@ impl<
             workspace_port,
             _job_runtime: job_runtime,
             selected_subtitle_track: None,
+            execution_inputs: None,
+            cpu_executor: None,
+            max_subtitle_bytes: 10 * 1024 * 1024,
             #[cfg(test)]
             panic_on_run: false,
         }
@@ -83,6 +89,19 @@ impl<
         track: Option<domain::media::SubtitleTrack>,
     ) -> Self {
         self.selected_subtitle_track = track;
+        self
+    }
+
+    pub(super) fn with_execution_inputs(
+        mut self,
+        inputs: ports::job_execution::ExecutionDescriptor,
+        cpu: Arc<dyn ports::job_resources::CpuExecutorPort>,
+        max_subtitle_bytes: u64,
+    ) -> Self {
+        self.selected_subtitle_track = inputs.selected_subtitle_track.clone();
+        self.execution_inputs = Some(inputs);
+        self.cpu_executor = Some(cpu);
+        self.max_subtitle_bytes = max_subtitle_bytes;
         self
     }
 
@@ -124,29 +143,46 @@ impl<
             return outcome;
         }
 
-        let import_use_case = ImportYoutubeSubtitlesUseCase::new(
+        let mut import_use_case = ImportYoutubeSubtitlesUseCase::new(
             Arc::new(self.project_repo.clone()),
             Arc::new(self.subtitle_source.clone()),
             Arc::new(self.artifact_store.clone()),
             Arc::new(self.storage_uow.clone()),
             self.workspace_port.clone(),
         );
+        if let Some(cpu) = &self.cpu_executor {
+            import_use_case =
+                import_use_case.with_cpu_executor(cpu.clone(), self.max_subtitle_bytes);
+        }
 
-        match await_or_cancel(
-            &token,
-            import_use_case.execute(ImportYoutubeSubtitlesRequest {
+        match import_use_case
+            .execute(ImportYoutubeSubtitlesRequest {
                 project_id: project_id.clone(),
-                preferred_languages: vec!["ru".to_string(), "en".to_string(), "uk".to_string()],
-                allow_auto_generated: true,
+                preferred_languages: self.execution_inputs.as_ref().map_or_else(
+                    || vec!["ru".into(), "en".into(), "uk".into()],
+                    |inputs| inputs.preferred_languages.clone(),
+                ),
+                allow_auto_generated: self
+                    .execution_inputs
+                    .as_ref()
+                    .is_none_or(|inputs| inputs.allow_auto_generated),
                 cancellation_token: token.clone(),
                 job_id: job_id.clone(),
                 selected_track: self.selected_subtitle_track.clone(),
-            }),
-        )
-        .await
+            })
+            .await
         {
-            Ok(Ok(_)) => {}
-            Ok(Err(e)) => {
+            Ok(_) => {}
+            Err(e) => {
+                if matches!(&e, crate::error::ApplicationError::OperationFailedWithCleanup { cleanup_report, .. } if !cleanup_report.is_empty())
+                    || matches!(
+                        &e,
+                        crate::error::ApplicationError::Port(PortError::CleanupFailed { .. })
+                    )
+                {
+                    guard.summary.update_status("cleanup_unconfirmed");
+                    return RuntimeTaskOutcome::CleanupUnconfirmed;
+                }
                 if token.is_cancelled() {
                     let is_cleanup_fail = match &e {
                         crate::error::ApplicationError::OperationFailedWithCleanup {
@@ -157,7 +193,7 @@ impl<
                     };
                     if is_cleanup_fail {
                         guard.summary.update_status("cleanup_failed");
-                        return RuntimeTaskOutcome::RecoveryRequired;
+                        return RuntimeTaskOutcome::CleanupUnconfirmed;
                     }
                     guard.summary.update_status("cancelled");
                     return RuntimeTaskOutcome::Cancelled;
@@ -193,7 +229,6 @@ impl<
                 )
                 .await;
             }
-            Err(outcome) => return outcome,
         }
 
         if token.is_cancelled() {

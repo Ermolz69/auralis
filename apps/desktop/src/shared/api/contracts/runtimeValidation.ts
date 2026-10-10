@@ -19,6 +19,7 @@ import {
   type Validator,
 } from './validationPrimitives';
 import { isSafeRevision } from './jobValidation';
+import { validateHistoricalTranslationEditRequest } from './translationHistoricalValidation';
 
 type CommandResultValidators = { [K in keyof CommandMap]: Validator };
 type EventPayloadValidators = { [K in keyof EventMap]: Validator };
@@ -138,6 +139,8 @@ const commandResultValidators = {
   native_e2e_checkpoint_cmd: isNull,
   native_e2e_pipeline_pause_reached_cmd: isBoolean,
   native_e2e_historical_edit_held_cmd: isBoolean,
+  native_e2e_historical_retry_input_cmd: (value) =>
+    isNullable(value, validateHistoricalTranslationEditRequest),
   create_project_cmd: validateProject,
   create_project_from_youtube_cmd: validateProject,
   rename_project_cmd: validateProject,

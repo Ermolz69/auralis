@@ -159,6 +159,7 @@ pub fn run() -> Result<(), AppRunError> {
             commands::native_e2e::native_e2e_checkpoint_cmd,
             commands::native_e2e::native_e2e_pipeline_pause_reached_cmd,
             commands::native_e2e_historical_edit::native_e2e_historical_edit_held_cmd,
+            commands::native_e2e_historical_request::native_e2e_historical_retry_input_cmd,
             commands::media::probe_local_media_cmd,
             commands::media::import_local_media_cmd
         ])

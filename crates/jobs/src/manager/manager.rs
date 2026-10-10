@@ -22,10 +22,11 @@ fn is_active_job(job: &Job) -> bool {
 
 #[derive(Clone)]
 pub struct JobManager {
-    pub(super) cache: JobCache,
-    pub(super) repo: Arc<dyn JobRepository>,
+    pub(crate) queue: Option<Arc<crate::queue::state::QueueState>>,
+    pub(crate) cache: JobCache,
+    pub(crate) repo: Arc<dyn JobRepository>,
     pub(crate) runtime_registry: RuntimeRegistry,
-    pub(super) mutation_locks: super::mutation_locks::JobMutationLocks,
+    pub(crate) mutation_locks: super::mutation_locks::JobMutationLocks,
     pub(super) storage_uow: Arc<dyn ports::transaction::StorageUnitOfWork>,
     pub(super) emitter: Option<JobEventEmitter>,
 }
@@ -37,6 +38,7 @@ impl JobManager {
         emitter: Option<JobEventEmitter>,
     ) -> Self {
         Self {
+            queue: None,
             cache: JobCache::new(),
             repo,
             runtime_registry: RuntimeRegistry::new(),
@@ -49,6 +51,9 @@ impl JobManager {
     pub async fn load_recent_jobs(&self, limit: usize) -> Result<(), PortError> {
         let recent = self.repo.list_recent(limit).await?;
         for job in recent {
+            if self.queue.is_some() && job.status() == &JobStatus::Pending {
+                continue;
+            }
             self.cache.track_persisted(&job).await;
         }
         Ok(())
@@ -121,6 +126,14 @@ impl JobManager {
         let mut jobs = self.repo.list_recent(100).await?;
         let mut listed_ids: HashSet<_> = jobs.iter().map(|job| job.id().clone()).collect();
 
+        if self.queue.is_some() {
+            for job in self.repo.list_active().await? {
+                if listed_ids.insert(job.id().clone()) {
+                    jobs.push(job);
+                }
+            }
+        }
+
         for job in &jobs {
             if !is_active_job(job) {
                 self.cache.remove(job.id()).await;
@@ -145,7 +158,7 @@ impl JobManager {
         Ok(jobs)
     }
 
-    pub(super) async fn mutate_job<F>(
+    pub(crate) async fn mutate_job<F>(
         &self,
         job_id: &DomainJobId,
         kind: ports::job_scheduler::JobLifecycleEventKind,
@@ -232,7 +245,7 @@ impl JobManager {
         self.finish_mutation(job_id, &lock, result)
     }
 
-    fn finish_mutation<T>(
+    pub(crate) fn finish_mutation<T>(
         &self,
         job_id: &DomainJobId,
         lock: &Arc<tokio::sync::Mutex<()>>,
@@ -246,7 +259,7 @@ impl JobManager {
     }
 
     pub async fn remove_cancel_handle(&self, id: &DomainJobId) {
-        self.runtime_registry.lock_entries().entries.remove(id);
+        ports::job_runtime_control::JobRuntimeControlPort::finish_now(self, id);
     }
 
     pub(super) async fn cancel_runtime_and_wait(
@@ -258,7 +271,11 @@ impl JobManager {
             match registry.entries.get(job_id) {
                 Some(super::runtime_registry::JobRuntimeEntry::Attached { task, .. }) => {
                     task.cancel.cancel();
-                    Some(task.completion.clone())
+                    Some((task.completion.clone(), false))
+                }
+                Some(super::runtime_registry::JobRuntimeEntry::Managed { task, .. }) => {
+                    task.cancel.cancel();
+                    Some((task.completion.clone(), true))
                 }
                 Some(super::runtime_registry::JobRuntimeEntry::Reserved { .. }) => {
                     registry.entries.remove(job_id);
@@ -269,12 +286,27 @@ impl JobManager {
         };
 
         match completion {
-            Some(completion) => Some(completion.wait().await),
+            Some((completion, true)) => {
+                let timeout = self
+                    .queue
+                    .as_ref()
+                    .map_or(std::time::Duration::from_secs(7), |queue| {
+                        queue.config.cleanup_timeout
+                    });
+                Some(
+                    tokio::time::timeout(timeout, completion.wait())
+                        .await
+                        .unwrap_or(
+                            ports::job_runtime_control::RuntimeTaskOutcome::CleanupUnconfirmed,
+                        ),
+                )
+            }
+            Some((completion, false)) => Some(completion.wait().await),
             None => None,
         }
     }
 
-    pub(super) fn emit_job_event(
+    pub(crate) fn emit_job_event(
         &self,
         job: &Job,
         kind: ports::job_scheduler::JobLifecycleEventKind,
@@ -286,8 +318,10 @@ impl JobManager {
             job: scheduled,
         };
 
-        if let Some(emitter) = &self.emitter {
-            emitter(event);
+        if let Some(emitter) = &self.emitter
+            && std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| emitter(event))).is_err()
+        {
+            tracing::error!("job event subscriber panicked after durable persistence");
         }
     }
 }

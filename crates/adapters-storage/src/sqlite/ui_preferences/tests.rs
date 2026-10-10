@@ -116,7 +116,7 @@ async fn version_four_upgrade_is_atomic_and_preserves_existing_projects() {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            11
+            12
         );
         pool.close().await;
     }

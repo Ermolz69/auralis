@@ -145,6 +145,7 @@ pub fn setup(
         services.job_repo.clone(),
         services.storage_uow.clone(),
         prepared_bridge.emitter(),
+        services.job_executions.clone(),
     )?;
     record_native_e2e_checkpoint("scheduler-ready");
 
@@ -165,6 +166,7 @@ pub fn setup(
             artifact_store: services.artifact_store.clone(),
             storage_uow: services.storage_uow.clone(),
             job_scheduler: job_manager.clone() as Arc<dyn ports::job_scheduler::JobSchedulerPort>,
+            job_queue: job_manager.clone(),
             workspace_port: temp_workspace.clone(),
             job_runtime: job_manager.clone()
                 as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
@@ -174,6 +176,11 @@ pub fn setup(
     )?;
     app.manage(services.job_query.clone());
     record_native_e2e_checkpoint("use-cases-ready");
+
+    let use_cases = app.state::<Arc<usecases::AppUseCases>>();
+    tauri::async_runtime::block_on(
+        job_manager.start_dispatcher(use_cases.start_mock_pipeline.queued_executor()),
+    )?;
 
     // 5. Spawn background workers only after all fallible operations have succeeded
     let publisher = TauriEventPublisher::new(app_handle.clone());

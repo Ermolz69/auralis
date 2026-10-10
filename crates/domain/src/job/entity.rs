@@ -6,6 +6,7 @@ use crate::project::ProjectId;
 
 use super::{JobError, JobId, JobKind, JobProgress, JobSnapshot, JobStatus};
 
+mod cleanup;
 mod speech_progress;
 mod translation_progress;
 
@@ -210,6 +211,7 @@ impl Job {
 
         let now = Utc::now();
         self.status = JobStatus::Cancelled;
+        self.clear_cleanup_attention();
         self.progress.message = "Runtime stopped; job cancelled".to_string();
         self.finished_at = Some(now);
         self.updated_at = now;

@@ -1,5 +1,6 @@
 pub mod artifact_index;
 pub mod connection;
+pub mod job_executions;
 pub mod job_mapper;
 pub mod job_repository;
 pub mod job_row;

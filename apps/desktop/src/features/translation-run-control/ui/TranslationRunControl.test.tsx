@@ -9,6 +9,7 @@ const startTranslationRun = vi.hoisted(() => vi.fn());
 const pauseTranslationRun = vi.hoisted(() => vi.fn());
 const publishTranslationResult = vi.hoisted(() => vi.fn());
 const subscribeTranslationChanges = vi.hoisted(() => vi.fn());
+const listTranslationHistory = vi.hoisted(() => vi.fn());
 let notifyChange: () => void;
 vi.mock('@/entities/translation', () => ({
   listProjectTranslations,
@@ -17,6 +18,7 @@ vi.mock('@/entities/translation', () => ({
   pauseTranslationRun,
   publishTranslationResult,
   subscribeTranslationChanges,
+  listTranslationHistory,
 }));
 
 const projectId = '00000000-0000-4000-8000-000000000001';
@@ -46,6 +48,7 @@ beforeEach(() => {
     return () => {};
   });
   listProjectTranslations.mockResolvedValue([link]);
+  listTranslationHistory.mockResolvedValue({ readyCount: 1 });
   getTranslationRunStatus.mockResolvedValue(requested);
   startTranslationRun.mockResolvedValue({
     state: 'accepted',
@@ -57,6 +60,19 @@ beforeEach(() => {
 });
 
 describe('TranslationRunControl', () => {
+  it('refreshes ready history when a detached result appears without changing the project selection', async () => {
+    const selected = { ...link, activeRunId: null, selectedResultId: '00000000-0000-4000-8000-000000000004', outputArtifactId: '00000000-0000-4000-8000-000000000005' };
+    listProjectTranslations.mockResolvedValue([selected]);
+    listTranslationHistory.mockResolvedValue({ readyCount: 2 });
+    const changed = vi.fn();
+    render(<TranslationRunControl projectId={projectId} onReadyResultsChanged={changed} />);
+    await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+    listTranslationHistory.mockResolvedValue({ readyCount: 3 });
+    await act(async () => notifyChange());
+    expect(changed).toHaveBeenCalledTimes(2);
+    await act(async () => notifyChange());
+    expect(changed).toHaveBeenCalledTimes(2);
+  });
   it('updates committed progress and ready comparison from events before any polling tick', async () => {
     const onReadyResultsChanged = vi.fn();
     render(

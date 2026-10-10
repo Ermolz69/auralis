@@ -51,7 +51,7 @@ export function verifyHistoryEdits(host, translate, link, publications) {
   return observations;
 }
 
-function requestDigest(intent, segmentId, lines) {
+export function requestDigest(intent, segmentId, lines) {
   const hash = crypto.createHash('sha256');
   const integer = (value) => {
     const bytes = Buffer.alloc(8);

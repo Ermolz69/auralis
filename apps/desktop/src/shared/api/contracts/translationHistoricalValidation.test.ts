@@ -39,6 +39,48 @@ const link = {
 const view = { link, publication };
 
 describe('historical translation IPC contracts', () => {
+  it('accepts a nullable frozen retry request without rewriting its observations or lines', () => {
+    const input = {
+      projectId: id(1),
+      translationId: id(2),
+      baseResultId: id(3),
+      resultId: id(6),
+      expectedHeadResultId: id(5),
+      expectedLinkRevision: 3,
+      segmentId: 1,
+      lines: ['  Exact text  '],
+    };
+    expect(parseCommandResult('native_e2e_historical_retry_input_cmd', null)).toBeNull();
+    expect(parseCommandResult('native_e2e_historical_retry_input_cmd', input)).toEqual(input);
+  });
+
+  it('rejects malformed retry fixture IDs, numeric guards and line payloads', () => {
+    const input = {
+      projectId: id(1),
+      translationId: id(2),
+      baseResultId: id(3),
+      resultId: id(6),
+      expectedHeadResultId: id(5),
+      expectedLinkRevision: 3,
+      segmentId: 1,
+      lines: ['Exact text'],
+    };
+    for (const changed of [
+      { resultId: '00000000-0000-0000-0000-000000000000' },
+      { expectedHeadResultId: 'invalid' },
+      { expectedLinkRevision: Number.MAX_SAFE_INTEGER + 1 },
+      { expectedLinkRevision: 0 },
+      { segmentId: 0x100000000 },
+      { segmentId: 0 },
+      { lines: [] },
+      { lines: ['valid', 12] },
+      { lines: 'text' },
+    ])
+      expect(() =>
+        parseCommandResult('native_e2e_historical_retry_input_cmd', { ...input, ...changed }),
+      ).toThrow(IpcContractError);
+  });
+
   it('accepts validated older and current base observations and rejects impossible guards', () => {
     expect(parseCommandResult('get_historical_translation_edit_context_cmd', context)).toEqual(
       context,

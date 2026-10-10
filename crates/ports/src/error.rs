@@ -1,5 +1,16 @@
 #[derive(Debug, thiserror::Error)]
 pub enum PortError {
+    #[error("Job queue is full (capacity {capacity})")]
+    QueueFull { capacity: usize },
+
+    #[error("Job admission is closed")]
+    AdmissionClosed,
+
+    #[error("Invalid job runtime configuration: {message}")]
+    InvalidRuntimeConfiguration { message: String },
+
+    #[error("Impossible resource request: {message}")]
+    InvalidResourceRequest { message: String },
     #[error("Storage operation failed during {operation}: {message}")]
     Storage {
         operation: &'static str,

@@ -6,5 +6,6 @@ pub const MAX_TRANSLATION_HISTORY_PAGE_SIZE: u32 = 100;
 pub struct TranslationHistoryPage {
     pub link: TranslationLink,
     pub entries: Vec<TranslationPublicationRecord>,
+    pub ready_count: u64,
     pub next_cursor: Option<Uuid>,
 }

@@ -22,6 +22,9 @@ url.workspace = true
 process-wrap = { workspace = true, features = ["tokio1", "job-object", "kill-on-drop", "creation-flags"] }
 windows = { workspace = true, features = ["Win32_System_Threading"] }
 
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
 [dev-dependencies]
 tempfile.workspace = true
 

@@ -64,10 +64,13 @@ async fn setup_storage_with_lease(
 
     let recovery_storage =
         Arc::new(adapters_storage::sqlite::recovery::SqliteRecoveryStorage::new(pool.clone()));
+    let job_executions = Arc::new(
+        adapters_storage::sqlite::job_executions::SqliteJobExecutionStore::new(pool.clone()),
+    );
     let use_case =
         application::usecases::system::recover_interrupted::usecase::RecoverInterruptedStateUseCase::new(
             recovery_storage,
-        );
+        ).with_execution_store(job_executions.clone());
     let report = use_case.execute().await?;
 
     if !report.warnings.is_empty() {
@@ -145,6 +148,7 @@ async fn setup_storage_with_lease(
             ),
             project_repo: repo,
             job_repo,
+            job_executions,
             job_query,
             artifact_index: idx,
             artifact_finalization: Arc::new(SqliteArtifactIndex::new(pool.clone())),

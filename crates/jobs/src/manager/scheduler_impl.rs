@@ -21,6 +21,14 @@ impl JobSchedulerPort for JobManager {
     }
 
     async fn enqueue_existing_job(&self, job_id: &DomainJobId) -> Result<ScheduledJob, PortError> {
+        if let Some(queue) = &self.queue
+            && queue.store.descriptor(job_id).await?.is_some()
+        {
+            return Err(PortError::Conflict {
+                resource: format!("Job {job_id}"),
+                message: "Queued executions can only be started by the dispatcher".into(),
+            });
+        }
         let job = self
             .mutate_job(
                 job_id,
@@ -49,7 +57,21 @@ impl JobSchedulerPort for JobManager {
             return Ok(map_job_to_scheduled(&requested));
         }
 
-        let _runtime_outcome = self.cancel_runtime_and_wait(job_id).await;
+        let runtime_outcome = self.cancel_runtime_and_wait(job_id).await;
+        if runtime_outcome
+            == Some(ports::job_runtime_control::RuntimeTaskOutcome::CleanupUnconfirmed)
+        {
+            self.mutate_job(
+                job_id,
+                ports::job_scheduler::JobLifecycleEventKind::Cancelling,
+                |job| job.record_unconfirmed_cleanup(),
+            )
+            .await?;
+            return Err(PortError::CleanupFailed {
+                resource: format!("Job {job_id}"),
+                message: "Executor cleanup is unconfirmed; resources remain reserved".into(),
+            });
+        }
         let job = self
             .mutate_job_terminal(
                 job_id,
@@ -69,6 +91,9 @@ impl JobSchedulerPort for JobManager {
             )
             .await?;
 
+        if let Some(queue) = &self.queue {
+            queue.wake.notify_one();
+        }
         Ok(map_job_to_scheduled(&job))
     }
 

@@ -70,6 +70,10 @@ export interface CommandMap {
     result: boolean;
   };
   native_e2e_historical_edit_held_cmd: { args: undefined; result: boolean };
+  native_e2e_historical_retry_input_cmd: {
+    args: undefined;
+    result: EditHistoricalTranslationResult | null;
+  };
   create_project_cmd: {
     args: { title: string };
     result: Project;

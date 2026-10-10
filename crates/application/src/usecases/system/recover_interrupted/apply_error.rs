@@ -14,6 +14,10 @@ impl ApplyRecoveryActionError {
             Self::Domain => "DomainError",
             Self::InvalidRecoveryAction(_) => "InvalidRecoveryAction",
             Self::Persistence(error) => match error {
+                PortError::QueueFull { .. } => "QueueFull",
+                PortError::AdmissionClosed => "AdmissionClosed",
+                PortError::InvalidRuntimeConfiguration { .. } => "InvalidRuntimeConfiguration",
+                PortError::InvalidResourceRequest { .. } => "InvalidResourceRequest",
                 PortError::Storage { .. } => "Storage",
                 PortError::Io { .. } => "Io",
                 PortError::Network { .. } => "Network",
