@@ -28,13 +28,13 @@ impl ManagedLlamaLease {
     }
 
     pub async fn stop(&mut self) -> io::Result<()> {
-        if let Some(mut child) = self.child.take() {
-            if let Err(error) = child.stop().await {
-                if let Some(admission) = self.admission.take() {
-                    std::mem::forget(admission);
-                }
-                return Err(error);
+        if let Some(mut child) = self.child.take()
+            && let Err(error) = child.stop().await
+        {
+            if let Some(admission) = self.admission.take() {
+                std::mem::forget(admission);
             }
+            return Err(error);
         }
         if let Some(admission) = self.admission.take() {
             admission.release().await?;

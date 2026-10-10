@@ -86,10 +86,10 @@ async fn synthetic_process_rejects_stale_eof_malformed_and_unknown_completion()
             fixtures.clone(),
             Duration::from_secs(2),
         )?;
-        let error = worker
-            .validate_plan(&plan(&fixtures)?)
-            .await
-            .expect_err(mode);
+        let error = match worker.validate_plan(&plan(&fixtures)?).await {
+            Err(error) => error,
+            Ok(_) => return Err(std::io::Error::other(format!("{mode}: expected failure")).into()),
+        };
         let message = error.to_string();
         assert!(
             message.contains("worker") || message.contains("Worker"),
