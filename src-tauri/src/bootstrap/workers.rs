@@ -28,6 +28,7 @@ pub fn spawn_outbox_worker(
     workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
     translate_database: std::path::PathBuf,
     config: OutboxMaintenanceConfig,
+    job_manager: Arc<jobs::manager::JobManager>,
 ) -> OutboxWorkerHandle {
     let worker = OutboxWorker::new(
         outbox_repo,
@@ -40,6 +41,7 @@ pub fn spawn_outbox_worker(
     )
     .with_imports(services.youtube_imports.clone())
     .with_translations(services.translation_links.clone())
+    .with_resource_gate(job_manager)
     .with_translation_cleanup(Arc::new(adapters_translate::TranslateProjectCleanup::new(
         translate_database,
     )));

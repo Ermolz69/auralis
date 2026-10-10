@@ -18,4 +18,5 @@ pub struct ApplyTerminalLifecycle {
     pub project_id: ProjectId,
     pub job_id: domain::job::JobId,
     pub outcome: domain::job::TerminalOutcome,
+    pub attempt: Option<(domain::outbox::OutboxMessageId, String)>,
 }

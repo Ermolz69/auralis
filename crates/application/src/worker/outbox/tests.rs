@@ -48,6 +48,47 @@ use ports::repository::FetchPendingResult;
 
 #[async_trait]
 impl OutboxRepository for MockOutboxRepository {
+    async fn protected_resources(
+        &self,
+    ) -> Result<ports::repository::OutboxProtectedResources, PortError> {
+        Ok(ports::repository::OutboxProtectedResources::default())
+    }
+    async fn claim_ready(
+        &self,
+        limit: usize,
+        _lease_timeout: Duration,
+    ) -> Result<ports::repository::ClaimReadyResult, PortError> {
+        let fetched = self.fetch_pending(limit.min(1)).await?;
+        let mut claims = Vec::new();
+        for message in fetched.messages {
+            let token = uuid::Uuid::new_v4().to_string();
+            if self.mark_processing(&message.id, &token).await? {
+                claims.push(ports::repository::OutboxClaim { message, token });
+            }
+        }
+        Ok(ports::repository::ClaimReadyResult {
+            claims,
+            corrupted_isolated: fetched.corrupted_isolated,
+            isolation_errors: fetched.isolation_errors,
+        })
+    }
+    async fn renew_claim(&self, _: &OutboxMessageId, _: &str) -> Result<bool, PortError> {
+        Ok(true)
+    }
+    async fn claim_is_current(&self, _: &OutboxMessageId, _: &str) -> Result<bool, PortError> {
+        Ok(true)
+    }
+    async fn mark_done_claim(&self, id: &OutboxMessageId, _: &str) -> Result<bool, PortError> {
+        self.mark_done(id).await.map(|_| true)
+    }
+    async fn mark_failed_claim(
+        &self,
+        id: &OutboxMessageId,
+        _: &str,
+        error: &str,
+    ) -> Result<bool, PortError> {
+        self.mark_failed(id, error).await.map(|_| true)
+    }
     async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError> {
         let mut messages = self.messages_to_return.lock().unwrap();
         let count = std::cmp::min(limit, messages.len());
@@ -125,6 +166,8 @@ struct MockStore {
     cleanup_res: Arc<Mutex<Result<(), PortError>>>,
     // Optional Notify gate to pause maintenance in overlap tests
     gate: Option<Arc<Notify>>,
+    delete_started: Option<Arc<Notify>>,
+    delete_gate: Option<Arc<Notify>>,
 }
 
 impl Default for MockStore {
@@ -133,6 +176,8 @@ impl Default for MockStore {
             cleanup_calls: Arc::new(Mutex::new(0)),
             cleanup_res: Arc::new(Mutex::new(Ok(()))),
             gate: None,
+            delete_started: None,
+            delete_gate: None,
         }
     }
 }
@@ -195,6 +240,12 @@ impl ports::storage::ArtifactStore for MockStore {
         &self,
         _project_id: &ProjectId,
     ) -> Result<(), ports::error::PortError> {
+        if let Some(started) = &self.delete_started {
+            started.notify_one();
+        }
+        if let Some(gate) = &self.delete_gate {
+            gate.notified().await;
+        }
         Ok(())
     }
     async fn cleanup_stale_staging(
@@ -492,8 +543,8 @@ async fn worker_handles_claim_conflict() {
     let worker = create_worker(repo.clone());
     let report = worker.process_pending_messages(10).await.unwrap();
 
-    assert_eq!(report.fetched, 1);
-    assert_eq!(report.claim_conflicts, 1);
+    assert_eq!(report.fetched, 0);
+    assert_eq!(report.claim_conflicts, 0);
     assert_eq!(report.claimed, 0);
     assert_eq!(report.completed, 0);
     assert_eq!(report.storage_errors, 0);
@@ -519,11 +570,9 @@ async fn worker_handles_claim_error() {
     });
 
     let worker = create_worker(repo.clone());
-    let report = worker.process_pending_messages(10).await.unwrap();
+    let result = worker.process_pending_messages(10).await;
 
-    assert_eq!(report.fetched, 1);
-    assert_eq!(report.claimed, 0);
-    assert_eq!(report.storage_errors, 1);
+    assert!(result.is_err());
 
     assert_eq!(*repo.mark_done_calls.lock().unwrap(), 0);
     assert_eq!(*repo.mark_failed_calls.lock().unwrap(), 0);
@@ -556,6 +605,59 @@ async fn worker_handles_mark_done_error() {
 
     assert_eq!(*repo.mark_done_calls.lock().unwrap(), 1);
     assert_eq!(*repo.mark_failed_calls.lock().unwrap(), 0);
+}
+
+#[tokio::test]
+async fn shutdown_waits_for_owned_attempt_before_acknowledging_it() {
+    let repo = MockOutboxRepository::default();
+    repo.messages_to_return
+        .lock()
+        .unwrap()
+        .push(OutboxMessage::new(
+            OutboxPayload::DeleteProjectArtifactDir {
+                project_id: ProjectId::new(),
+            },
+        ));
+    let started = Arc::new(Notify::new());
+    let release = Arc::new(Notify::new());
+    let store = MockStore {
+        delete_started: Some(started.clone()),
+        delete_gate: Some(release.clone()),
+        ..Default::default()
+    };
+    let mut config = super::maintenance::OutboxMaintenanceConfig::try_default().unwrap();
+    config.run_on_startup = false;
+    let worker = Arc::new(OutboxWorker::new(
+        repo.clone(),
+        store,
+        MockIndex,
+        MockUow,
+        Arc::new(MockEventPublisher),
+        Arc::new(MockWorkspacePort::default()),
+        config,
+    ));
+    let (shutdown_tx, shutdown_rx) = tokio::sync::mpsc::channel(1);
+    let running = worker.clone();
+    let handle = tokio::spawn(async move { running.run_loop(shutdown_rx).await });
+    tokio::time::timeout(Duration::from_secs(5), started.notified())
+        .await
+        .unwrap();
+    shutdown_tx.send(()).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while !worker.stopping.load(std::sync::atomic::Ordering::Acquire) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(!handle.is_finished());
+    assert_eq!(*repo.mark_done_calls.lock().unwrap(), 0);
+    release.notify_one();
+    tokio::time::timeout(Duration::from_secs(5), handle)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(*repo.mark_done_calls.lock().unwrap(), 1);
 }
 
 // ==========================================

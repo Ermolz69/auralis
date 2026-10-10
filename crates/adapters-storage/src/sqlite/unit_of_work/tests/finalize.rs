@@ -8,6 +8,64 @@ use ports::transaction::{CommitArtifactFinalize, StorageUnitOfWork};
 use sqlx::Row;
 
 #[tokio::test]
+async fn stale_claim_cannot_publish_artifact_metadata() {
+    let pool = setup_db().await;
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
+    let project_id = ProjectId::new();
+    let artifact_id = ArtifactId::new();
+    let message_id = domain::outbox::OutboxMessageId::new();
+    let final_key = format!("{project_id}/source-video/{artifact_id}.mp4");
+    sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'P', 'Draft', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')")
+        .bind(project_id.to_string()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'StorageKey', ?, 'pending_finalize', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')")
+        .bind(artifact_id.to_string()).bind(project_id.to_string()).bind(&final_key)
+        .execute(&pool).await.unwrap();
+    let payload = domain::outbox::OutboxPayload::FinalizeStagedArtifact {
+        project_id: project_id.clone(),
+        artifact_id: artifact_id.clone(),
+        staging_key: ".staging/test/file.mp4".into(),
+        final_key: final_key.clone(),
+    };
+    sqlx::query("INSERT INTO outbox_messages (id, kind, payload_json, status, attempts, next_attempt_at, locked_by, created_at, updated_at) VALUES (?, 'finalize_staged_artifact', ?, 'processing', 0, '2026-01-01T00:00:00Z', 'new-token', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')")
+        .bind(message_id.to_string()).bind(serde_json::to_string(&payload).unwrap())
+        .execute(&pool).await.unwrap();
+    let stale = uow
+        .commit_artifact_finalize(CommitArtifactFinalize {
+            message_id: message_id.clone(),
+            claim_token: Some("old-token".into()),
+            project_id: project_id.clone(),
+            artifact_id: artifact_id.clone(),
+            ready_key: final_key.clone(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        stale,
+        ports::transaction::CommitArtifactFinalizeResult::Conflict
+    );
+    let current = uow
+        .commit_artifact_finalize(CommitArtifactFinalize {
+            message_id,
+            claim_token: Some("new-token".into()),
+            project_id,
+            artifact_id: artifact_id.clone(),
+            ready_key: final_key,
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        current,
+        ports::transaction::CommitArtifactFinalizeResult::Committed
+    );
+    let state: String = sqlx::query_scalar("SELECT state FROM artifacts WHERE id = ?")
+        .bind(artifact_id.to_string())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(state, "ready");
+}
+
+#[tokio::test]
 async fn test_finalize_pending_to_ready_and_check_constraint() {
     let pool = setup_db().await;
     let uow = SqliteStorageUnitOfWork::new(pool.clone());
@@ -43,6 +101,7 @@ async fn test_finalize_pending_to_ready_and_check_constraint() {
 
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),
@@ -103,6 +162,7 @@ async fn test_finalize_retry_idempotency() {
 
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),
@@ -152,6 +212,7 @@ async fn test_finalize_conflict_cases() {
 
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),
@@ -180,6 +241,7 @@ async fn test_finalize_conflict_cases() {
 
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),
@@ -217,6 +279,7 @@ async fn test_finalize_conflict_cases() {
 
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),
@@ -236,6 +299,7 @@ async fn test_finalize_conflict_cases() {
     // 4. Missing artifact, existing project -> Conflict
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),
@@ -284,6 +348,7 @@ async fn test_finalize_project_deleted_or_outbox_dead() {
 
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),
@@ -307,6 +372,7 @@ async fn test_finalize_project_deleted_or_outbox_dead() {
 
     let cmd = CommitArtifactFinalize {
         message_id: message_id.clone(),
+        claim_token: None,
         project_id: project_id.clone(),
         artifact_id: artifact_id.clone(),
         ready_key: ready_key.to_string(),

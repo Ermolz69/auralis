@@ -209,72 +209,15 @@ impl ImportYoutubeSubtitlesUseCase {
                 .await);
         }
 
-        let mut current_project = match self.project_repo.get(&request.project_id).await {
-            Ok(Some(p)) => p,
-            Ok(None) => {
-                let err = ApplicationError::ProjectNotFound(request.project_id.clone());
-                return Err(self
-                    .cleanup_coordinator
-                    .handle_all_failure(&staged.staging_key, &alloc.workspace_key, err)
-                    .await);
-            }
-            Err(e) => {
-                return Err(self
-                    .cleanup_coordinator
-                    .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
-                    .await);
-            }
-        };
-
-        let err_msg = if current_project.status() != &domain::project::ProjectStatus::Processing {
-            Some("Project status is not Processing")
-        } else if current_project.active_job_id() != Some(&request.job_id) {
-            Some("Active job ID mismatch")
-        } else if current_project.source() != Some(source) {
-            Some("Project source changed")
-        } else {
-            None
-        };
-        if let Some(msg) = err_msg {
-            let err = ApplicationError::InvalidOperation {
-                message: msg.to_string(),
-            };
-            return Err(self
-                .cleanup_coordinator
-                .handle_all_failure(&staged.staging_key, &alloc.workspace_key, err)
-                .await);
-        }
-
-        let expected_project_updated_at = current_project.updated_at();
-        let expected_status = current_project.status().clone();
-        let expected_active_job_id = current_project.active_job_id().cloned();
-
-        if let Err(e) = current_project.set_transcript(transcript.clone()) {
-            return Err(self
-                .cleanup_coordinator
-                .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
-                .await);
-        }
-
-        if let Err(e) = self
-            .storage_uow
-            .commit_transcript_import(CommitTranscriptImport {
-                project: current_project,
-                artifact: staged.artifact,
-                staging_key: staged.staging_key.clone(),
-                final_key: staged.final_key,
-                temp_workspace_key: Some(alloc.workspace_key.clone()),
-                expected_project_updated_at,
-                expected_status,
-                expected_active_job_id,
-            })
-            .await
-        {
-            return Err(self
-                .cleanup_coordinator
-                .handle_all_failure(&staged.staging_key, &alloc.workspace_key, e.into())
-                .await);
-        }
+        self.commit_staged_transcript(
+            &request.project_id,
+            &request.job_id,
+            source,
+            &transcript,
+            &staged,
+            &alloc.workspace_key,
+        )
+        .await?;
 
         if self.cpu_executor.is_some() {
             // Staging and its finalization outbox now own the committed bytes. The

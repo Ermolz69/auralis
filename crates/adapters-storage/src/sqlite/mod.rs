@@ -5,6 +5,7 @@ pub mod job_mapper;
 pub mod job_repository;
 pub mod job_row;
 pub mod outbox_mapper;
+mod outbox_parallel_migration;
 pub mod outbox_repository;
 pub mod outbox_row;
 pub mod project_avatar_repository;

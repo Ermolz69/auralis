@@ -1,5 +1,7 @@
 #[path = "support/translation_history_fixture.rs"]
 mod history;
+#[path = "support/legacy_outbox.rs"]
+mod legacy_outbox;
 
 use adapters_storage::sqlite::{SqliteTranslationReviewStore, connect_sqlite};
 use domain::chrono::Utc;
@@ -173,6 +175,7 @@ async fn v10_migration_keeps_ready_result_without_implicit_approval() -> Result<
 {
     let fixture = HistoryFixture::new().await?;
     let publication = fixture.ready(1).await?;
+    legacy_outbox::restore_legacy_outbox_shape(&fixture.pool).await?;
     sqlx::raw_sql("DROP TABLE translation_review_events; DROP TABLE job_executions; DROP TABLE speech_host_checkpoints; DROP TABLE speech_host_attempts; DROP TABLE speech_run_intents;")
         .execute(&fixture.pool)
         .await?;
@@ -189,7 +192,7 @@ async fn v10_migration_keeps_ready_result_without_implicit_approval() -> Result<
     let version: i64 = sqlx::query_scalar("PRAGMA user_version")
         .fetch_one(&pool)
         .await?;
-    assert_eq!(version, 13);
+    assert_eq!(version, 14);
     let store = SqliteTranslationReviewStore::new(pool.clone());
     assert!(
         store

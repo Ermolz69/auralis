@@ -16,6 +16,7 @@ pub mod job_resources;
 pub mod job_runtime_control;
 pub mod job_scheduler;
 pub mod media;
+pub mod outbox_resources;
 pub mod project_avatar;
 pub mod project_update;
 pub mod project_workspace;

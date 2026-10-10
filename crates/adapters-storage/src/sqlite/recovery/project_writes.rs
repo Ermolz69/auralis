@@ -27,11 +27,12 @@ pub async fn commit_failed_project_with_missing_linked_job(
 
     let rows = sqlx::query(
         "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL, revision = revision + 1
-         WHERE id = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
+         WHERE id = ? AND revision = ? AND status = ? AND active_job_id = ? AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status(), "project.status")?)
     .bind(cmd.project.updated_at())
     .bind(cmd.project.id().to_string())
+    .bind(cmd.project.revision() as i64)
     .bind(&expected_project_status)
     .bind(cmd.expected_active_job_id.to_string())
     .bind(&expected_last_terminal)
@@ -88,11 +89,12 @@ pub async fn commit_failed_project_without_active_job(
 
     let rows = sqlx::query(
         "UPDATE projects SET status = ?, updated_at = ?, active_job_id = NULL, revision = revision + 1
-         WHERE id = ? AND status = ? AND active_job_id IS NULL AND last_terminal_job_id IS ?",
+         WHERE id = ? AND revision = ? AND status = ? AND active_job_id IS NULL AND last_terminal_job_id IS ?",
     )
     .bind(serialize_enum(cmd.project.status(), "project.status")?)
     .bind(cmd.project.updated_at())
     .bind(cmd.project.id().to_string())
+    .bind(cmd.project.revision() as i64)
     .bind(&expected_project_status)
     .bind(&expected_last_terminal)
     .execute(&mut *tx)

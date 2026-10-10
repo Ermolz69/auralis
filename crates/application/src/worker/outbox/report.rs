@@ -10,13 +10,14 @@ pub struct OutboxBatchReport {
     pub retry_scheduled: usize,
     pub dead: usize,
     pub storage_errors: usize,
+    pub max_active: usize,
 }
 
 impl fmt::Display for OutboxBatchReport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "OutboxBatchReport {{ fetched: {}, corrupted: {}, claimed: {}, conflicts: {}, completed: {}, retry: {}, dead: {}, errors: {} }}",
+            "OutboxBatchReport {{ fetched: {}, corrupted: {}, claimed: {}, conflicts: {}, completed: {}, retry: {}, dead: {}, errors: {}, max_active: {} }}",
             self.fetched,
             self.corrupted,
             self.claimed,
@@ -24,7 +25,8 @@ impl fmt::Display for OutboxBatchReport {
             self.completed,
             self.retry_scheduled,
             self.dead,
-            self.storage_errors
+            self.storage_errors,
+            self.max_active
         )
     }
 }

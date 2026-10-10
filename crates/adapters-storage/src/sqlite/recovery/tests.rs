@@ -29,6 +29,33 @@ async fn assert_recovery_revision(pool: &SqlitePool, project: &Project) {
     assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), current);
 }
 
+async fn assert_terminal_intent_queued(pool: &SqlitePool, project: &Project, job: &Job) {
+    let current: (String, i64, Option<String>) =
+        sqlx::query_as("SELECT status, revision, active_job_id FROM projects WHERE id = ?")
+            .bind(project.id().to_string())
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        current,
+        (
+            "Processing".into(),
+            project.revision() as i64,
+            Some(job.id().to_string())
+        )
+    );
+    let queued: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM outbox_messages WHERE kind = 'handle_terminal_job_state'
+         AND aggregate_id = ? AND json_extract(payload_json, '$.job_id') = ? AND status = 'pending'",
+    )
+    .bind(project.id().to_string())
+    .bind(job.id().to_string())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(queued, 1);
+}
+
 async fn setup_db() -> SqlitePool {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
@@ -38,6 +65,9 @@ async fn setup_db() -> SqlitePool {
 
     sqlx::raw_sql(crate::sqlite::connection::SCHEMA)
         .execute(&pool)
+        .await
+        .unwrap();
+    crate::sqlite::outbox_parallel_migration::migrate(&pool)
         .await
         .unwrap();
 
@@ -212,9 +242,9 @@ async fn test_already_applied_partial_pair() {
 
     let res = commit_failed_interrupted_pair(&pool, cmd).await.unwrap();
     assert!(matches!(res, RecoveryApplyResult::Applied));
-    assert_recovery_revision(&pool, &project).await;
+    assert_terminal_intent_queued(&pool, &project, &job).await;
 
-    // If we run it AGAIN, BOTH will be 0, and it should return AlreadyApplied.
+    // Replaying recovery keeps the single queued terminal intent.
     let cmd2 = FailInterruptedPairCommand {
         expected_job_revision: job.revision() - 1,
         project: project.clone(),
@@ -226,7 +256,7 @@ async fn test_already_applied_partial_pair() {
     };
     let res2 = commit_failed_interrupted_pair(&pool, cmd2).await.unwrap();
     assert!(matches!(res2, RecoveryApplyResult::AlreadyApplied));
-    assert_recovery_revision(&pool, &project).await;
+    assert_terminal_intent_queued(&pool, &project, &job).await;
 }
 
 #[tokio::test]
@@ -268,8 +298,8 @@ async fn test_snapshot_apply_reload_interrupted_pair() {
 
     let cmd = FailInterruptedPairCommand {
         expected_job_revision: job.revision() - 1,
-        project,
-        job,
+        project: project.clone(),
+        job: job.clone(),
         expected_project_status: ProjectStatus::Processing,
         expected_job_status: JobStatus::Running,
         expected_last_terminal_job_id: None,
@@ -280,9 +310,10 @@ async fn test_snapshot_apply_reload_interrupted_pair() {
     assert!(matches!(res, RecoveryApplyResult::Applied));
 
     let snapshot = load_snapshot(&pool).await.unwrap();
-    assert!(snapshot.processing_projects.is_empty());
-    assert!(snapshot.linked_jobs.is_empty());
+    assert_eq!(snapshot.processing_projects.len(), 1);
+    assert_eq!(snapshot.linked_jobs.len(), 1);
     assert!(snapshot.active_jobs.is_empty());
+    assert_terminal_intent_queued(&pool, &project, &job).await;
 }
 
 #[tokio::test]
@@ -335,10 +366,10 @@ async fn test_second_pair_write_failure_rolls_back_first_write() {
     insert_job(&pool, &job, JobStatus::Running).await;
 
     sqlx::query(
-        "CREATE TRIGGER fail_recovery_project_update
-         BEFORE UPDATE ON projects
+        "CREATE TRIGGER fail_recovery_outbox_insert
+         BEFORE INSERT ON outbox_messages
          BEGIN
-             SELECT RAISE(ABORT, 'forced project update failure');
+             SELECT RAISE(ABORT, 'forced outbox insert failure');
          END;",
     )
     .execute(&pool)
@@ -485,7 +516,53 @@ async fn test_terminal_pair_reconciliation() {
 
     let res = commit_reconciled_terminal_pair(&pool, cmd).await.unwrap();
     assert!(matches!(res, RecoveryApplyResult::Applied));
-    assert_recovery_revision(&pool, &project).await;
+    assert_terminal_intent_queued(&pool, &project, &job).await;
+}
+
+#[tokio::test]
+async fn completed_restart_recovery_queues_publication_without_exposing_pending_artifact() {
+    use crate::sqlite::recovery::pair_writes::commit_reconciled_terminal_pair;
+    use ports::recovery::ReconcileTerminalPairCommand;
+
+    let pool = setup_db().await;
+    let project = Project::new("Pending publication".into()).unwrap();
+    let mut job = Job::new(project.id().clone(), "Work".into(), JobKind::Dubbing);
+    job.start().unwrap();
+    job.mark_completed().unwrap();
+    insert_project(
+        &pool,
+        &project,
+        ProjectStatus::Processing,
+        Some(job.id().to_string()),
+        None,
+    )
+    .await;
+    insert_job(&pool, &job, JobStatus::Completed).await;
+    sqlx::query(
+        "INSERT INTO artifacts (id, project_id, kind, location_value, state, created_at, updated_at)
+         VALUES (?, ?, 'SourceVideo', ?, 'pending_finalize', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+    )
+    .bind(domain::media::ArtifactId::new().to_string())
+    .bind(project.id().to_string())
+    .bind(format!("{}/pending.mp4", project.id()))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let result = commit_reconciled_terminal_pair(
+        &pool,
+        ReconcileTerminalPairCommand {
+            project: project.clone(),
+            job: job.clone(),
+            expected_project_status: ProjectStatus::Processing,
+            expected_active_job_id: job.id().clone(),
+            expected_job_status: JobStatus::Completed,
+            expected_last_terminal_job_id: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(result, RecoveryApplyResult::Applied);
+    assert_terminal_intent_queued(&pool, &project, &job).await;
 }
 
 #[tokio::test]

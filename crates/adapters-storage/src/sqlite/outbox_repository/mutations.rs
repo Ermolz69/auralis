@@ -42,7 +42,7 @@ impl SqliteOutboxRepository {
                 locked_at = NULL,
                 locked_by = NULL,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-            WHERE id = ? AND status = 'processing'
+            WHERE id = ? AND status = 'processing' AND sequence IS NULL
             "#,
         )
         .bind(&id_str)
@@ -87,7 +87,7 @@ impl SqliteOutboxRepository {
                     WHEN attempts + 1 >= 5 THEN next_attempt_at
                     ELSE strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+' || CAST(CAST(1 AS INTEGER) << (attempts + 1) AS TEXT) || ' minutes')
                 END
-            WHERE id = ? AND status = 'processing'
+            WHERE id = ? AND status = 'processing' AND sequence IS NULL
             "#,
         )
         .bind(error)
@@ -116,7 +116,7 @@ impl SqliteOutboxRepository {
                 locked_at = NULL,
                 locked_by = NULL,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-            WHERE id = ?
+            WHERE id = ? AND status IN ('pending', 'failed')
             "#,
         )
         .bind(reason)
@@ -150,10 +150,18 @@ impl SqliteOutboxRepository {
             r#"
             DELETE FROM outbox_messages
             WHERE id IN (
-                SELECT id FROM outbox_messages
-                WHERE status = 'done'
-                  AND updated_at < ?
-                ORDER BY updated_at ASC, id ASC
+                SELECT completed.id FROM outbox_messages completed
+                WHERE completed.status = 'done'
+                  AND completed.updated_at < ?
+                  AND NOT EXISTS (
+                    SELECT 1 FROM outbox_messages dependent
+                    WHERE COALESCE(dependent.sequence, dependent.rowid) > COALESCE(completed.sequence, completed.rowid)
+                      AND dependent.status != 'done'
+                      AND (COALESCE(dependent.conflict_group, '*') = '*'
+                        OR COALESCE(completed.conflict_group, '*') = '*'
+                        OR dependent.conflict_group = completed.conflict_group)
+                  )
+                ORDER BY completed.updated_at ASC, completed.id ASC
                 LIMIT ?
             )
             "#,
@@ -170,21 +178,29 @@ impl SqliteOutboxRepository {
             r#"
             DELETE FROM outbox_messages
             WHERE id IN (
-                SELECT id FROM outbox_messages
-                WHERE status = 'dead'
-                  AND updated_at < ?
-                  AND CASE WHEN kind = 'finalize_staged_artifact' THEN
-                    CASE WHEN json_valid(payload_json) THEN
-                      json_extract(payload_json, '$.artifact_id') IS NOT NULL
+                SELECT dead.id FROM outbox_messages dead
+                WHERE dead.status = 'dead'
+                  AND dead.updated_at < ?
+                  AND NOT EXISTS (
+                    SELECT 1 FROM outbox_messages dependent
+                    WHERE COALESCE(dependent.sequence, dependent.rowid) > COALESCE(dead.sequence, dead.rowid)
+                      AND dependent.status != 'done'
+                      AND (COALESCE(dependent.conflict_group, '*') = '*'
+                        OR COALESCE(dead.conflict_group, '*') = '*'
+                        OR dependent.conflict_group = dead.conflict_group)
+                  )
+                  AND CASE WHEN dead.kind = 'finalize_staged_artifact' THEN
+                    CASE WHEN json_valid(dead.payload_json) THEN
+                      json_extract(dead.payload_json, '$.artifact_id') IS NOT NULL
                       AND NOT EXISTS (
                         SELECT 1 FROM artifacts a
                         JOIN projects p ON p.id = a.project_id
-                        WHERE a.id = json_extract(payload_json, '$.artifact_id')
+                        WHERE a.id = json_extract(dead.payload_json, '$.artifact_id')
                           AND a.state = 'pending_finalize'
                       )
                     ELSE 0 END
                   ELSE 1 END
-                ORDER BY updated_at ASC, id ASC
+                ORDER BY dead.updated_at ASC, dead.id ASC
                 LIMIT ?
             )
             "#,

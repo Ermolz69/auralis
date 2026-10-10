@@ -1,4 +1,5 @@
 mod attempt;
+mod attempt_runner;
 #[cfg(test)]
 mod finalization_tests;
 pub mod maintenance;

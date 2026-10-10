@@ -38,6 +38,23 @@ pub struct FetchPendingResult {
     pub isolation_errors: usize,
 }
 
+pub struct OutboxClaim {
+    pub message: OutboxMessage,
+    pub token: String,
+}
+
+pub struct ClaimReadyResult {
+    pub claims: Vec<OutboxClaim>,
+    pub corrupted_isolated: usize,
+    pub isolation_errors: usize,
+}
+
+#[derive(Default)]
+pub struct OutboxProtectedResources {
+    pub staging_keys: Vec<String>,
+    pub workspace_keys: Vec<domain::outbox::WorkspaceKey>,
+}
+
 pub struct OutboxPruneReport {
     pub done_deleted: usize,
     pub dead_deleted: usize,
@@ -45,6 +62,53 @@ pub struct OutboxPruneReport {
 
 #[async_trait]
 pub trait OutboxRepository: Send + Sync {
+    async fn protected_resources(&self) -> Result<OutboxProtectedResources, PortError> {
+        Err(PortError::Unsupported {
+            message: "Outbox storage must report protected staging and workspace resources".into(),
+        })
+    }
+    async fn claim_ready(
+        &self,
+        _limit: usize,
+        _lease_timeout: std::time::Duration,
+    ) -> Result<ClaimReadyResult, PortError> {
+        Err(PortError::Unsupported {
+            message: "Outbox storage must implement token-fenced claims".into(),
+        })
+    }
+    async fn renew_claim(&self, _id: &OutboxMessageId, _token: &str) -> Result<bool, PortError> {
+        Err(PortError::Unsupported {
+            message: "Outbox storage must implement token-fenced renewal".into(),
+        })
+    }
+    async fn claim_is_current(
+        &self,
+        _id: &OutboxMessageId,
+        _token: &str,
+    ) -> Result<bool, PortError> {
+        Err(PortError::Unsupported {
+            message: "Outbox storage must implement token-fenced ownership checks".into(),
+        })
+    }
+    async fn mark_done_claim(
+        &self,
+        _id: &OutboxMessageId,
+        _token: &str,
+    ) -> Result<bool, PortError> {
+        Err(PortError::Unsupported {
+            message: "Outbox storage must implement token-fenced acknowledgement".into(),
+        })
+    }
+    async fn mark_failed_claim(
+        &self,
+        _id: &OutboxMessageId,
+        _token: &str,
+        _error: &str,
+    ) -> Result<bool, PortError> {
+        Err(PortError::Unsupported {
+            message: "Outbox storage must implement token-fenced failure writes".into(),
+        })
+    }
     async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError>;
     async fn mark_processing(
         &self,
@@ -103,6 +167,33 @@ impl<T> OutboxRepository for Arc<T>
 where
     T: OutboxRepository + ?Sized,
 {
+    async fn protected_resources(&self) -> Result<OutboxProtectedResources, PortError> {
+        (**self).protected_resources().await
+    }
+    async fn claim_ready(
+        &self,
+        limit: usize,
+        lease_timeout: std::time::Duration,
+    ) -> Result<ClaimReadyResult, PortError> {
+        (**self).claim_ready(limit, lease_timeout).await
+    }
+    async fn renew_claim(&self, id: &OutboxMessageId, token: &str) -> Result<bool, PortError> {
+        (**self).renew_claim(id, token).await
+    }
+    async fn claim_is_current(&self, id: &OutboxMessageId, token: &str) -> Result<bool, PortError> {
+        (**self).claim_is_current(id, token).await
+    }
+    async fn mark_done_claim(&self, id: &OutboxMessageId, token: &str) -> Result<bool, PortError> {
+        (**self).mark_done_claim(id, token).await
+    }
+    async fn mark_failed_claim(
+        &self,
+        id: &OutboxMessageId,
+        token: &str,
+        error: &str,
+    ) -> Result<bool, PortError> {
+        (**self).mark_failed_claim(id, token, error).await
+    }
     async fn fetch_pending(&self, limit: usize) -> Result<FetchPendingResult, PortError> {
         (**self).fetch_pending(limit).await
     }

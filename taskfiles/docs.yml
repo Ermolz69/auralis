@@ -1,6 +1,18 @@
 version: '3'
 
 tasks:
+  fmt:outbox:
+    desc: Format the project-state and outbox concurrency contract
+    cmds:
+      - pnpm prettier --write "docs/architecture/009-outbox-concurrency.md" "docs/taskfile/001-commands.md"
+
+  check:outbox:
+    desc: Validate affected outbox architecture and storage documentation
+    cmds:
+      - task: check
+      - pnpm markdownlint-cli2 "docs/architecture/009-outbox-concurrency.md" "docs/storage/production-storage.md" "docs/taskfile/001-commands.md" "docs/README.md"
+      - pnpm prettier --check "docs/architecture/009-outbox-concurrency.md" "docs/storage/production-storage.md" "docs/taskfile/001-commands.md" "docs/README.md"
+
   check:queue:
     desc: Validate queue architecture, task commands and evidence without scanning unrelated worktrees
     cmds:

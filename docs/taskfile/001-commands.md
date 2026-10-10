@@ -15,6 +15,8 @@ task check:jobs
 task rs:soak:jobs
 task rs:test:queue
 task rs:bench:queue
+task rs:test:outbox
+task rs:bench:outbox
 task check:pr
 task check
 task check:all
@@ -274,6 +276,16 @@ runner emits a compact record of run/job identity and checkpoint retention for
 local evidence. This is a technical synthetic-file check, not bilingual review.
 
 ## Scoped queue verification
+
+`task rs:test:outbox` runs the SQLite storage suite and focused application
+worker checks, including real artifact publication and cleanup. `task
+rs:bench:outbox` runs the ignored local file benchmark with one and two
+executors under the same disk budget. `task rs:clippy:outbox` checks the changed
+libraries; `task rs:fmt:outbox` formats the Rust workspace before `task rs:fmt`
+verifies it.
+`task docs:fmt:outbox` formats the outbox architecture contract, and
+`task docs:check:outbox` checks the affected architecture, storage, command,
+and index documents without scanning unrelated local caches.
 
 `task rs:clippy:queue` checks affected libraries and queue/owned-process tests.
 `task rs:fmt:queue` formats the explicit queue integration file list without

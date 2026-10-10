@@ -13,6 +13,7 @@ use ports::{
 };
 use std::sync::Arc;
 
+mod commit;
 mod execute;
 
 pub struct ImportYoutubeSubtitlesUseCase {

@@ -138,11 +138,14 @@ async fn sqlite_filesystem_worker_validates_pending_bytes_and_replay() {
             } else {
                 assert!(!final_path.exists());
             }
-            worker
-                .handler
-                .process_payload(&message.id, &message.payload)
-                .await
-                .unwrap();
+            if scenario != "deleted" {
+                sqlx::query("UPDATE outbox_messages SET status = 'pending', locked_by = NULL, locked_at = NULL, next_attempt_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?")
+                    .bind(message.id.to_string()).execute(&pool).await.unwrap();
+                assert_eq!(
+                    worker.process_pending_messages(1).await.unwrap().completed,
+                    1
+                );
+            }
             assert_eq!(
                 worker.process_pending_messages(20).await.unwrap().fetched,
                 0

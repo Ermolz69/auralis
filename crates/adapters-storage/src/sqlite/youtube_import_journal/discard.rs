@@ -33,7 +33,7 @@ pub(crate) async fn discard_in_transaction(
             .map_err(|_| super::mapping::invalid())?;
         save_outbox_message(
             tx,
-            &OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key }),
+            &OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key }).for_project(id),
         )
         .await?;
     }
@@ -41,7 +41,8 @@ pub(crate) async fn discard_in_transaction(
         tx,
         &OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation {
             workspace_key: session.workspace_key,
-        }),
+        })
+        .for_project(id),
     )
     .await?;
     sqlx::query("DELETE FROM youtube_imports WHERE project_id = ?")

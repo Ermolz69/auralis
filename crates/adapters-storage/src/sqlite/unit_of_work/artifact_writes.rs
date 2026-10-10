@@ -84,34 +84,67 @@ pub(crate) async fn insert_new_artifact(
 pub(super) async fn finalize_artifact(
     tx: &mut Transaction<'_, Sqlite>,
     message_id: &str,
+    claim_token: Option<&str>,
     project_id: &domain::project::ProjectId,
     artifact_id: &domain::media::ArtifactId,
     ready_key: &str,
 ) -> Result<ports::transaction::CommitArtifactFinalizeResult, PortError> {
     // 1. Check outbox status
-    let outbox_row = sqlx::query("SELECT status FROM outbox_messages WHERE id = ?")
-        .bind(message_id)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(|e| {
-            crate::sqlite::helpers::map_sqlite_error("Failed to query outbox message status", e)
-        })?;
+    let outbox_row =
+        sqlx::query("SELECT status, locked_by, payload_json FROM outbox_messages WHERE id = ?")
+            .bind(message_id)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(|e| {
+                crate::sqlite::helpers::map_sqlite_error("Failed to query outbox message status", e)
+            })?;
 
-    let outbox_status = match outbox_row {
-        Some(row) => {
-            use sqlx::Row;
-            row.try_get::<String, _>("status")
-                .map_err(|e| PortError::InvalidStoredData {
-                    entity_type: "outbox".to_string(),
-                    entity_id: message_id.to_string(),
-                    field: "status".to_string(),
-                    message: format!("Failed to decode status: {}", e),
-                })?
-        }
-        None => {
+    let (outbox_status, locked_by, payload_json): (String, Option<String>, String) =
+        match outbox_row {
+            Some(row) => {
+                use sqlx::Row;
+                (
+                    row.try_get("status").map_err(|error| {
+                        crate::sqlite::helpers::map_sqlite_error(
+                            "Decode finalization status",
+                            error,
+                        )
+                    })?,
+                    row.try_get("locked_by").map_err(|error| {
+                        crate::sqlite::helpers::map_sqlite_error("Decode finalization owner", error)
+                    })?,
+                    row.try_get("payload_json").map_err(|error| {
+                        crate::sqlite::helpers::map_sqlite_error(
+                            "Decode finalization payload",
+                            error,
+                        )
+                    })?,
+                )
+            }
+            None => {
+                return Ok(ports::transaction::CommitArtifactFinalizeResult::Conflict);
+            }
+        };
+
+    if claim_token.is_some() {
+        let intent: domain::outbox::OutboxPayload =
+            serde_json::from_str(&payload_json).map_err(|error| PortError::InvalidStoredData {
+                entity_type: "outbox".into(),
+                entity_id: message_id.into(),
+                field: "payload_json".into(),
+                message: error.to_string(),
+            })?;
+        if !matches!(intent,
+            domain::outbox::OutboxPayload::FinalizeStagedArtifact {
+                project_id: intent_project, artifact_id: intent_artifact, final_key, ..
+            } if intent_project == *project_id && intent_artifact == *artifact_id && final_key == ready_key)
+        {
             return Ok(ports::transaction::CommitArtifactFinalizeResult::Conflict);
         }
-    };
+    }
+    if claim_token.is_some_and(|token| locked_by.as_deref() != Some(token)) {
+        return Ok(ports::transaction::CommitArtifactFinalizeResult::Conflict);
+    }
 
     if outbox_status == "dead" {
         return Ok(ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted);

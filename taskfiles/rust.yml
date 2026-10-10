@@ -1,6 +1,28 @@
 version: '3'
 
 tasks:
+  test:outbox:
+    desc: Verify project CAS, outbox ordering, ownership and publication
+    cmds:
+      - cargo test --locked -p adapters-storage {{.CLI_ARGS}}
+      - cargo test --locked -p application outbox {{.CLI_ARGS}}
+
+  bench:outbox:
+    desc: Compare real local artifact publication with one and two outbox executors
+    cmds:
+      - cargo test --locked -p application --test outbox_benchmark -- --ignored --nocapture
+
+  clippy:outbox:
+    desc: Lint the changed outbox libraries and worker
+    cmds:
+      - cargo clippy --locked -p domain -p ports -p adapters-storage -p application --lib -- -D warnings
+      - cargo clippy --locked -p application --test outbox_parallel --test outbox_benchmark -- -D warnings
+
+  fmt:outbox:
+    desc: Format the Auralis Rust workspace after outbox changes
+    cmds:
+      - cargo fmt --all
+
   clippy:queue:
     desc: Check queue libraries and their integration tests independently of unrelated adapters
     cmds:

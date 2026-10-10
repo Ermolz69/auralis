@@ -145,6 +145,7 @@ impl CommitStagedArtifactWrite {
 
 pub struct CommitArtifactFinalize {
     pub message_id: domain::outbox::OutboxMessageId,
+    pub claim_token: Option<String>,
     pub project_id: ProjectId,
     pub artifact_id: domain::media::ArtifactId,
     pub ready_key: String,

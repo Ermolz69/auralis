@@ -10,6 +10,10 @@ pub struct OutboxMaintenanceConfig {
     pub per_status_batch_limit: u32,
     pub max_batches: u32,
     pub run_on_startup: bool,
+    pub max_active: usize,
+    pub fetch_batch: usize,
+    pub lease_timeout: Duration,
+    pub heartbeat_interval: Duration,
     pub shutdown_timeout: Duration,
 }
 
@@ -28,6 +32,10 @@ impl OutboxMaintenanceConfig {
             per_status_batch_limit: 500,
             max_batches: 10,
             run_on_startup: true,
+            max_active: 2,
+            fetch_batch: 32,
+            lease_timeout: Duration::from_secs(300),
+            heartbeat_interval: Duration::from_secs(30),
             shutdown_timeout: Duration::from_secs(30),
         })
     }
@@ -76,6 +84,19 @@ impl OutboxMaintenanceConfig {
         if self.shutdown_timeout.is_zero() {
             return Err(crate::error::ApplicationError::Configuration(
                 "shutdown_timeout must be non-zero".to_string(),
+            ));
+        }
+        if self.max_active == 0
+            || self.max_active > 16
+            || self.fetch_batch == 0
+            || self.fetch_batch > 1024
+            || self.fetch_batch < self.max_active
+            || self.heartbeat_interval.is_zero()
+            || self.lease_timeout <= self.heartbeat_interval * 2
+            || self.lease_timeout > Duration::from_secs(3600)
+        {
+            return Err(crate::error::ApplicationError::Configuration(
+                "Invalid outbox concurrency or lease bounds".to_string(),
             ));
         }
         Ok(())

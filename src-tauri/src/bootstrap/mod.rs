@@ -197,6 +197,7 @@ pub fn setup(
         temp_workspace,
         app_paths.translate_database(),
         outbox_config,
+        job_manager.clone(),
     );
     app.manage(crate::state::ManagedOutboxWorker(std::sync::Mutex::new(
         Some(outbox_shutdown),

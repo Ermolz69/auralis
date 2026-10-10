@@ -131,7 +131,7 @@ async fn pipeline_insert_failure_rolls_back_project_revision() {
 async fn transcript_and_terminal_writes_invalidate_stale_renames() {
     let pool = setup_db().await;
     let repo = SqliteProjectRepository::new(pool.clone());
-    let uow = SqliteStorageUnitOfWork::new(pool);
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
     let mut project = repo.create(ready_project()).await.unwrap();
     let job = Job::new(
         project.id().clone(),
@@ -163,10 +163,23 @@ async fn transcript_and_terminal_writes_invalidate_stale_renames() {
         .await,
         Err(PortError::Conflict { .. })
     ));
+    assert!(matches!(
+        uow.apply_terminal_lifecycle_conditionally(ApplyTerminalLifecycle {
+            project_id: project.id().clone(),
+            job_id: job.id().clone(),
+            outcome: domain::job::TerminalOutcome::Completed,
+            attempt: None,
+        })
+        .await,
+        Err(PortError::Conflict { .. })
+    ));
+    sqlx::query("UPDATE artifacts SET state = 'ready', ready_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE project_id = ? AND state = 'pending_finalize'")
+        .bind(project.id().to_string()).execute(&pool).await.unwrap();
     let command = ApplyTerminalLifecycle {
         project_id: project.id().clone(),
         job_id: job.id().clone(),
         outcome: domain::job::TerminalOutcome::Completed,
+        attempt: None,
     };
     uow.apply_terminal_lifecycle_conditionally(command)
         .await
@@ -190,10 +203,127 @@ async fn transcript_and_terminal_writes_invalidate_stale_renames() {
         project_id: project.id().clone(),
         job_id: job.id().clone(),
         outcome: domain::job::TerminalOutcome::Completed,
+        attempt: None,
     })
     .await
     .unwrap();
     assert_eq!(repo.get(project.id()).await.unwrap().unwrap(), completed);
+}
+
+#[tokio::test]
+async fn terminal_transition_preserves_a_concurrent_rename() {
+    let pool = setup_db().await;
+    let repo = SqliteProjectRepository::new(pool.clone());
+    let uow = SqliteStorageUnitOfWork::new(pool);
+    let mut project = repo.create(ready_project()).await.unwrap();
+    let job = Job::new(
+        project.id().clone(),
+        project.title().into(),
+        JobKind::Dubbing,
+    );
+    project.start_processing(job.id().clone()).unwrap();
+    uow.commit_pipeline_start(CommitPipelineStart {
+        project: project.clone(),
+        job: job.clone(),
+    })
+    .await
+    .unwrap();
+    let processing = repo.get(project.id()).await.unwrap().unwrap();
+    let renamed = repo
+        .update(
+            project.id(),
+            processing.revision(),
+            ProjectUpdate::Rename {
+                title: "Renamed during job".into(),
+            },
+            processing.updated_at(),
+        )
+        .await
+        .unwrap();
+    let outcome = uow
+        .apply_terminal_lifecycle_conditionally(ApplyTerminalLifecycle {
+            project_id: project.id().clone(),
+            job_id: job.id().clone(),
+            outcome: domain::job::TerminalOutcome::Failed,
+            attempt: None,
+        })
+        .await
+        .unwrap();
+    assert!(matches!(
+        outcome,
+        domain::project::status::TerminalTransitionResult::Applied { .. }
+    ));
+    let completed = repo.get(project.id()).await.unwrap().unwrap();
+    assert_eq!(completed.title(), "Renamed during job");
+    assert_eq!(completed.revision(), renamed.revision() + 1);
+    assert_eq!(completed.status(), &domain::project::ProjectStatus::Failed);
+}
+
+#[tokio::test]
+async fn old_terminal_event_cannot_finish_a_new_job_or_restore_deleted_project() {
+    let pool = setup_db().await;
+    let repo = SqliteProjectRepository::new(pool.clone());
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
+    let mut project = repo.create(ready_project()).await.unwrap();
+    let old_job = Job::new(
+        project.id().clone(),
+        project.title().into(),
+        JobKind::Dubbing,
+    );
+    project.start_processing(old_job.id().clone()).unwrap();
+    uow.commit_pipeline_start(CommitPipelineStart {
+        project: project.clone(),
+        job: old_job.clone(),
+    })
+    .await
+    .unwrap();
+    let new_job_id = domain::job::JobId::new();
+    sqlx::query("UPDATE projects SET active_job_id = ?, revision = revision + 1 WHERE id = ?")
+        .bind(new_job_id.to_string())
+        .bind(project.id().to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let stale = uow
+        .apply_terminal_lifecycle_conditionally(ApplyTerminalLifecycle {
+            project_id: project.id().clone(),
+            job_id: old_job.id().clone(),
+            outcome: domain::job::TerminalOutcome::Failed,
+            attempt: None,
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        stale,
+        domain::project::status::TerminalTransitionResult::IgnoredStale
+    );
+    assert_eq!(
+        repo.get(project.id())
+            .await
+            .unwrap()
+            .unwrap()
+            .active_job_id(),
+        Some(&new_job_id)
+    );
+    uow.commit_project_delete(ports::transaction::CommitProjectDelete {
+        project_id: project.id().clone(),
+    })
+    .await
+    .unwrap();
+    let missing = uow
+        .apply_terminal_lifecycle_conditionally(ApplyTerminalLifecycle {
+            project_id: project.id().clone(),
+            job_id: old_job.id().clone(),
+            outcome: domain::job::TerminalOutcome::Failed,
+            attempt: None,
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        missing,
+        domain::project::status::TerminalTransitionResult::ProjectMissing
+    );
+    assert!(repo.get(project.id()).await.unwrap().is_none());
 }
 
 #[tokio::test]

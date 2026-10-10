@@ -33,17 +33,39 @@ pub(crate) async fn save_outbox_message(
         domain::outbox::OutboxMessageStatus::Dead => "dead",
     };
 
+    let sequence: i64 = sqlx::query_scalar(
+        "UPDATE outbox_sequence SET value = value + 1 WHERE singleton = 1 RETURNING value",
+    )
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(|error| crate::sqlite::helpers::map_sqlite_error("Allocate outbox sequence", error))?;
+    let payload_group = msg.payload.conflict_group();
+    let conflict_group = msg
+        .aggregate_id
+        .as_ref()
+        .filter(|_| msg.aggregate_type.as_deref() == Some("project"))
+        .map_or_else(|| payload_group.clone(), |id| format!("project:{id}"));
+    if payload_group != "*" && payload_group != conflict_group {
+        return Err(PortError::Conflict {
+            resource: "OutboxMessage".into(),
+            message: "Payload project and committed resource origin disagree".into(),
+        });
+    }
+
     let result = sqlx::query(
         r#"
         INSERT INTO outbox_messages (
             id, kind, payload_json, status, attempts, next_attempt_at,
             locked_at, locked_by, last_error, deduplication_key, created_at, updated_at,
-            aggregate_type, aggregate_id
+            aggregate_type, aggregate_id, sequence, conflict_group
         ) 
-        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         WHERE 
             (? IS NOT 'project' AND ? IS NOT 'job')
             OR (? = 'project' AND EXISTS (SELECT 1 FROM projects WHERE id = ?))
+            OR (? = 'project' AND ? IN (
+                'delete_storage_key', 'delete_workspace_allocation',
+                'delete_project_artifact_dir', 'delete_project_translation'))
             OR (? = 'job' AND EXISTS (SELECT 1 FROM jobs WHERE id = ?))
         ON CONFLICT(id) DO NOTHING
         "#,
@@ -62,10 +84,14 @@ pub(crate) async fn save_outbox_message(
     .bind(format_db_timestamp(msg.updated_at))
     .bind(msg.aggregate_type.clone())
     .bind(msg.aggregate_id.clone())
+    .bind(sequence)
+    .bind(conflict_group)
     .bind(msg.aggregate_type.clone())
     .bind(msg.aggregate_type.clone())
     .bind(msg.aggregate_type.clone())
     .bind(msg.aggregate_id.clone())
+    .bind(msg.aggregate_type.clone())
+    .bind(kind_str)
     .bind(msg.aggregate_type.clone())
     .bind(msg.aggregate_id.clone())
     .execute(&mut **tx)

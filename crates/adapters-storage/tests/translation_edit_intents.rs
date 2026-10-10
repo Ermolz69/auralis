@@ -1,5 +1,7 @@
 #[path = "support/translation_history_fixture.rs"]
 mod fixture;
+#[path = "support/legacy_outbox.rs"]
+mod legacy_outbox;
 
 use adapters_storage::sqlite::{SqliteTranslationEditIntentStore, connect_sqlite};
 use domain::chrono::Utc;
@@ -195,6 +197,7 @@ async fn v9_upgrade_is_idempotent_preserves_history_and_rejects_corrupt_intent_m
         sqlx::query_scalar("SELECT file FROM pragma_database_list WHERE name = 'main'")
             .fetch_one(&f.pool)
             .await?;
+    legacy_outbox::restore_legacy_outbox_shape(&f.pool).await?;
     sqlx::raw_sql(
         "DROP TABLE translation_review_events; DROP TABLE job_executions; DROP TABLE speech_host_checkpoints; DROP TABLE speech_host_attempts; DROP TABLE speech_run_intents; DROP TABLE translation_edit_intents; PRAGMA user_version = 9;",
     )
@@ -202,7 +205,7 @@ async fn v9_upgrade_is_idempotent_preserves_history_and_rejects_corrupt_intent_m
         .await?;
     f.pool.close().await;
     let pool = connect_sqlite(&database).await?;
-    assert_eq!(version(&pool).await?, 13);
+    assert_eq!(version(&pool).await?, 14);
     let links = adapters_storage::sqlite::SqliteTranslationLinkStore::new(pool.clone());
     assert_eq!(links.get(intent.translation_id).await?, Some(before));
     let store = SqliteTranslationEditIntentStore::new(pool.clone());
@@ -219,8 +222,8 @@ async fn v9_upgrade_is_idempotent_preserves_history_and_rejects_corrupt_intent_m
     ));
     pool.close().await;
     let reopened = connect_sqlite(&database).await?;
-    assert_eq!(version(&reopened).await?, 13);
-    sqlx::query("PRAGMA user_version = 14")
+    assert_eq!(version(&reopened).await?, 14);
+    sqlx::query("PRAGMA user_version = 15")
         .execute(&reopened)
         .await?;
     reopened.close().await;

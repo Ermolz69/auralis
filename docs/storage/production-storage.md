@@ -19,7 +19,7 @@ version-13 databases.
 
 SQLite owns the persistent project, job, artifact, and outbox state. The outbox worker is part of the production storage graph and is started whenever production storage is initialized.
 
-New databases use schema version 13. Valid version-1 databases gain `projects.revision` with an
+New databases use schema version 14. Valid version-1 databases gain `projects.revision` with an
 initial value of 1, and version-1/version-2 databases gain `projects.avatar_data_url`. Version 3
 gains the `youtube_imports` journal. Version 4 gains `ui_settings`, `project_pins`, and
 `ui_migrations`. Version 6 gains `project_translations` and `translation_publications` for

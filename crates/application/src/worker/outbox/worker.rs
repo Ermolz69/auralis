@@ -1,5 +1,7 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
+use futures::{StreamExt, stream::FuturesUnordered};
 use ports::artifact_finalization::ArtifactFinalizationLookup;
 use ports::events::AppEventPublisher;
 use ports::repository::OutboxRepository;
@@ -8,12 +10,12 @@ use ports::transaction::StorageUnitOfWork;
 use ports::translation_cleanup::TranslationCleanupPort;
 use ports::translation_links::TranslationLinkStore;
 use ports::workspace::TempWorkspacePort;
+use tracing::Instrument;
 
+use super::maintenance::OutboxMaintenanceConfig;
 use super::payload_handler::PayloadHandler;
 use super::report::OutboxBatchReport;
 use crate::error::ApplicationError;
-
-use super::maintenance::OutboxMaintenanceConfig;
 
 pub struct OutboxWorker<O, S, I, U>
 where
@@ -27,6 +29,10 @@ where
     pub(super) config: OutboxMaintenanceConfig,
     pub(super) imports: Option<Arc<dyn ports::youtube_import::YoutubeImportJournal>>,
     pub(super) translations: Option<Arc<dyn TranslationLinkStore>>,
+    pub(super) resources: Option<Arc<dyn ports::outbox_resources::OutboxResourceGate>>,
+    pub(super) stopping: AtomicBool,
+    pub(super) active_attempts: AtomicUsize,
+    pub(super) peak_active: AtomicUsize,
 }
 
 impl<O, S, I, U> OutboxWorker<O, S, I, U>
@@ -53,13 +59,16 @@ where
             workspace_port,
             translation_cleanup: None,
         };
-
         Self {
             outbox_repo,
             handler,
             config,
             imports: None,
             translations: None,
+            resources: None,
+            stopping: AtomicBool::new(false),
+            active_attempts: AtomicUsize::new(0),
+            peak_active: AtomicUsize::new(0),
         }
     }
 
@@ -81,6 +90,14 @@ where
         self
     }
 
+    pub fn with_resource_gate(
+        mut self,
+        gate: Arc<dyn ports::outbox_resources::OutboxResourceGate>,
+    ) -> Self {
+        self.resources = Some(gate);
+        self
+    }
+
     pub fn process_pending_messages<'a>(
         &'a self,
         limit: usize,
@@ -90,32 +107,31 @@ where
             span.clone(),
             crate::observability::execution_summary::OperationSummary::OutboxBatch {
                 action: "process_pending_messages",
-                status: "aborted".to_string(),
+                status: "aborted".into(),
                 failed_count: 0,
             },
         );
-
         async move {
-            let res = self.process_pending_messages_inner(limit).await;
-            match &res {
+            let result = self.process_pending_messages_inner(limit).await;
+            match &result {
                 Ok(report) => {
-                    let failed_count = report.corrupted + report.storage_errors + report.dead;
-                    let status = if failed_count > 0 {
-                        "completed_with_errors"
-                    } else {
-                        "completed"
-                    };
+                    let failed = report.corrupted + report.storage_errors + report.dead;
                     guard.update_summary(
                         crate::observability::execution_summary::OperationSummary::OutboxBatch {
                             action: "process_pending_messages",
-                            status: status.to_string(),
-                            failed_count: failed_count as u64,
+                            status: if failed > 0 {
+                                "completed_with_errors"
+                            } else {
+                                "completed"
+                            }
+                            .into(),
+                            failed_count: failed as u64,
                         },
                     );
                 }
                 Err(_) => guard.summary.update_status("failed"),
             }
-            res
+            result
         }
         .instrument(span)
     }
@@ -124,143 +140,72 @@ where
         &self,
         limit: usize,
     ) -> Result<OutboxBatchReport, ApplicationError> {
-        let fetch_result = self.outbox_repo.fetch_pending(limit).await?;
-        let messages = fetch_result.messages;
-        let count = messages.len();
-
-        let mut report = OutboxBatchReport {
-            fetched: count,
-            corrupted: fetch_result.corrupted_isolated,
-            storage_errors: fetch_result.isolation_errors,
-            ..Default::default()
-        };
-
-        if count == 0 {
-            self.reconcile_ready_publications(limit).await?;
-            return Ok(report);
-        }
-
-        let worker_id = uuid::Uuid::new_v4().to_string();
-
-        for message in messages {
-            // Lock the message strictly
-            let claim_result = self
-                .outbox_repo
-                .mark_processing(&message.id, &worker_id)
-                .await;
-
-            let claimed = match claim_result {
-                Ok(c) => c,
-                Err(_e) => {
-                    tracing::error!(
-                        error = %common::observability::redaction::DiagnosticError {
-                            kind: "OutboxClaimFailed",
-                            code: None,
-                            retryable: true,
-                        },
-                        message_id = %message.id,
-                        "OutboxWorker: Failed to claim message"
-                    );
-                    report.storage_errors += 1;
-                    continue;
-                }
-            };
-
-            if !claimed {
-                // Legitimate claim conflict
-                report.claim_conflicts += 1;
-                continue;
-            }
-
-            report.claimed += 1;
-            let started = std::time::Instant::now();
-
-            let result = self
-                .handler
-                .process_payload(&message.id, &message.payload)
-                .instrument(tracing::info_span!("outbox_attempt", operation_id = %message.id, attempt = message.attempts + 1))
-                .await;
-
-            match result {
-                Ok(_) => match self.outbox_repo.mark_done(&message.id).await {
-                    Ok(_) => {
-                        report.completed += 1;
-                        super::attempt::completed(&message, "completed", "None", started);
+        self.config.validate()?;
+        let limit = limit.min(self.config.fetch_batch);
+        let mut report = OutboxBatchReport::default();
+        let mut pending = FuturesUnordered::new();
+        let mut claim_failure = None;
+        loop {
+            if report.claimed < limit
+                && claim_failure.is_none()
+                && !self.stopping.load(Ordering::Acquire)
+            {
+                let capacity = (limit - report.claimed).min(self.config.max_active - pending.len());
+                if capacity > 0 {
+                    let mut leases = Vec::with_capacity(capacity);
+                    if let Some(gate) = &self.resources {
+                        for _ in 0..capacity {
+                            let Some(lease) = gate.try_acquire_disk() else {
+                                break;
+                            };
+                            leases.push(lease);
+                        }
                     }
-                    Err(_e) => {
-                        super::attempt::completed(
-                            &message,
-                            "acknowledgement_failed",
-                            "OutboxMarkDone",
-                            started,
-                        );
-                        tracing::error!(
-                            error = %common::observability::redaction::DiagnosticError {
-                                kind: "OutboxMarkDoneFailed",
-                                code: None,
-                                retryable: true,
-                            },
-                            message_id = %message.id,
-                            "OutboxWorker: Failed to mark message as done"
-                        );
-                        report.storage_errors += 1;
-                    }
-                },
-                Err(e) => {
-                    let err_str = e.to_string();
-                    match self.outbox_repo.mark_failed(&message.id, &err_str).await {
-                        Ok(_) => {
-                            // Can't trivially know if it became dead or retry_scheduled just from mark_failed Ok,
-                            // but we record that an error was handled correctly by storage.
-                            // We will increment retry_scheduled as an approximation, or both.
-                            // If attempts >= 4 previously, it's dead, else retry_scheduled.
-                            if message.attempts >= 4
-                                && !matches!(
-                                    message.payload,
-                                    domain::outbox::OutboxPayload::DeleteProjectTranslation { .. }
-                                )
-                            {
-                                report.dead += 1;
-                                super::attempt::completed(
-                                    &message,
-                                    "dead",
-                                    &super::attempt::error_code(&e),
-                                    started,
-                                );
-                            } else {
-                                report.retry_scheduled += 1;
-                                super::attempt::completed(
-                                    &message,
-                                    "retry_scheduled",
-                                    &super::attempt::error_code(&e),
-                                    started,
-                                );
+                    let available = if self.resources.is_some() {
+                        leases.len()
+                    } else {
+                        capacity
+                    };
+                    if available > 0 {
+                        let ready = self
+                            .outbox_repo
+                            .claim_ready(available, self.config.lease_timeout)
+                            .await;
+                        match ready {
+                            Ok(ready) => {
+                                report.corrupted += ready.corrupted_isolated;
+                                report.storage_errors += ready.isolation_errors;
+                                report.fetched += ready.claims.len();
+                                report.claimed += ready.claims.len();
+                                let mut lease_iter = leases.into_iter();
+                                for claim in ready.claims {
+                                    let lease = lease_iter.next();
+                                    pending.push(async move {
+                                        let result = self.process_claim(claim).await;
+                                        drop(lease);
+                                        result
+                                    });
+                                }
                             }
-                        }
-                        Err(_db_err) => {
-                            super::attempt::completed(
-                                &message,
-                                "retry_persistence_failed",
-                                "OutboxMarkFailed",
-                                started,
-                            );
-                            tracing::error!(
-                                error = %common::observability::redaction::DiagnosticError {
-                                    kind: "OutboxMarkFailedError",
-                                    code: None,
-                                    retryable: true,
-                                },
-                                message_id = %message.id,
-                                "OutboxWorker: Failed to mark message as failed"
-                            );
-                            report.storage_errors += 1;
+                            Err(error) => claim_failure = Some(error),
                         }
                     }
                 }
             }
+            let Some(attempt) = pending.next().await else {
+                break;
+            };
+            report.completed += attempt.completed;
+            report.retry_scheduled += attempt.retry_scheduled;
+            report.dead += attempt.dead;
+            report.storage_errors += attempt.storage_errors;
+            report.claim_conflicts += attempt.claim_conflicts;
         }
-
+        if let Some(error) = claim_failure {
+            return Err(error.into());
+        }
         self.reconcile_ready_publications(limit).await?;
+        report.max_active = self.peak_active.load(Ordering::Acquire);
         Ok(report)
     }
 
@@ -277,22 +222,14 @@ where
                 )
                 .await
             {
-                Ok(_) => tracing::info!(
-                    translation_id = %publication.translation_id,
-                    result_id = %publication.result_id,
-                    "ready translation publication finalized"
-                ),
-                Err(ports::error::PortError::Conflict { .. }) => {
-                    tracing::debug!(
-                        translation_id = %publication.translation_id,
-                        result_id = %publication.result_id,
-                        "translation publication changed during reconciliation"
-                    );
-                }
+                Ok(_) => tracing::info!(translation_id = %publication.translation_id,
+                    result_id = %publication.result_id, "ready translation publication finalized"),
+                Err(ports::error::PortError::Conflict { .. }) => tracing::debug!(
+                    translation_id = %publication.translation_id, result_id = %publication.result_id,
+                    "translation publication changed during reconciliation"),
                 Err(error) => return Err(error.into()),
             }
         }
         Ok(())
     }
 }
-use tracing::Instrument;

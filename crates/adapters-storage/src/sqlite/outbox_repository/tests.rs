@@ -38,6 +38,9 @@ async fn setup_db() -> SqlitePool {
     .execute(&pool)
     .await
     .unwrap();
+    crate::sqlite::outbox_parallel_migration::migrate(&pool)
+        .await
+        .unwrap();
     pool
 }
 
@@ -411,9 +414,11 @@ async fn stale_lock_reclaim() {
     .await
     .unwrap();
 
-    // fetch_pending reclaims stale locks implicitly
-    let pending = repo.fetch_pending(10).await.unwrap();
-    assert_eq!(pending.messages.len(), 1);
+    let claims = repo
+        .claim_ready(10, std::time::Duration::from_secs(300))
+        .await
+        .unwrap();
+    assert_eq!(claims.claims.len(), 1);
 
     use sqlx::Row;
     let row = sqlx::query("SELECT status, attempts, last_error FROM outbox_messages WHERE id = ?")
@@ -421,11 +426,11 @@ async fn stale_lock_reclaim() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(row.get::<String, _>("status"), "pending");
+    assert_eq!(row.get::<String, _>("status"), "processing");
     assert_eq!(row.get::<i64, _>("attempts"), 1);
     assert_eq!(
         row.get::<String, _>("last_error"),
-        "Timeout during processing (stale lock reclaimed)"
+        "Processing lease expired"
     );
 }
 
@@ -542,8 +547,8 @@ async fn outbox_prune_terminal_rows_comprehensive() {
         .await
         .unwrap();
     assert_eq!(
-        report.done_deleted, 1,
-        "done1 should be deleted (15:00 < 16:00)"
+        report.done_deleted, 0,
+        "done1 is retained while a later legacy dead operation is unresolved"
     );
     assert_eq!(
         report.dead_deleted, 0,
@@ -579,10 +584,10 @@ async fn outbox_prune_terminal_rows_comprehensive() {
 
     // limit = 1 per status
     let report = repo.prune_terminal_rows(cutoff, cutoff, 1).await.unwrap();
-    assert_eq!(report.done_deleted, 1);
+    assert_eq!(report.done_deleted, 0);
     assert_eq!(report.dead_deleted, 1);
 
-    // Verify deterministic order: smallest ID has been deleted
+    // Done predecessors remain available while later dead work is unresolved.
     let remaining_done: Vec<String> = sqlx::query_as::<_, (String,)>(
         "SELECT id FROM outbox_messages WHERE status = 'done' ORDER BY id ASC",
     )
@@ -594,8 +599,12 @@ async fn outbox_prune_terminal_rows_comprehensive() {
     .collect();
     assert_eq!(
         remaining_done,
-        vec!["done_b".to_string(), "done_c".to_string()]
-    ); // done_a deleted!
+        vec![
+            "done_a".to_string(),
+            "done_b".to_string(),
+            "done_c".to_string()
+        ]
+    );
 
     let remaining_dead: Vec<String> = sqlx::query_as::<_, (String,)>(
         "SELECT id FROM outbox_messages WHERE status = 'dead' ORDER BY id ASC",
@@ -786,9 +795,11 @@ async fn outbox_prune_terminal_rows_comprehensive() {
     .await
     .unwrap();
 
-    // Reclaim should trigger
-    let pending = repo.fetch_pending(10).await.unwrap();
-    assert_eq!(pending.messages.len(), 1);
+    let claims = repo
+        .claim_ready(10, std::time::Duration::from_secs(300))
+        .await
+        .unwrap();
+    assert_eq!(claims.claims.len(), 1);
 
     let (status, updated_at): (String, String) =
         sqlx::query_as("SELECT status, updated_at FROM outbox_messages WHERE id = ?")
@@ -796,6 +807,6 @@ async fn outbox_prune_terminal_rows_comprehensive() {
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(status, "pending");
+    assert_eq!(status, "processing");
     assert_ne!(updated_at, "2020-01-01T12:00:00Z");
 }

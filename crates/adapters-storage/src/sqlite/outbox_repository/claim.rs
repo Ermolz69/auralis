@@ -18,7 +18,7 @@ impl SqliteOutboxRepository {
                 locked_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
                 updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
             WHERE id = ? 
-              AND status IN ('pending', 'failed') 
+              AND status IN ('pending', 'failed') AND sequence IS NULL
               AND next_attempt_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
             "#,
         )

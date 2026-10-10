@@ -39,6 +39,9 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     if schema_marker >= 10 {
         expected_tables.push("translation_edit_intents");
     }
+    if schema_marker >= 14 {
+        expected_tables.push("outbox_sequence");
+    }
     let has_speech = table_names
         .iter()
         .any(|table| table == "speech_run_intents");
@@ -64,6 +67,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
+        14 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();
@@ -141,7 +145,11 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         "aggregate_type",
         "aggregate_id",
     ];
-    validate_columns(pool, "outbox_messages", &FINAL_OUTBOX_COLUMNS).await?;
+    let mut outbox_columns = FINAL_OUTBOX_COLUMNS.to_vec();
+    if schema_marker >= 14 {
+        outbox_columns.extend(["sequence", "conflict_group"]);
+    }
+    validate_columns(pool, "outbox_messages", &outbox_columns).await?;
 
     let artifact_sql: String = sqlx::query_scalar(
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'artifacts'",
@@ -188,13 +196,16 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     if !has_reviews {
         crate::sqlite::translation_reviews_migration::migrate(pool).await?;
     }
-    if schema_marker != 13 {
+    if schema_marker < 13 {
         sqlx::query("PRAGMA user_version = 13")
             .execute(pool)
             .await
             .map_err(|error| {
                 crate::sqlite::helpers::map_sqlite_error("finalize_sqlite_schema_marker", error)
             })?;
+    }
+    if schema_marker < 14 {
+        crate::sqlite::outbox_parallel_migration::migrate(pool).await?;
     }
     validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;

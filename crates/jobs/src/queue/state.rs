@@ -117,3 +117,17 @@ impl JobManager {
         true
     }
 }
+
+impl ports::outbox_resources::OutboxResourceGate for JobManager {
+    fn try_acquire_disk(&self) -> Option<Arc<dyn Send + Sync>> {
+        let queue = self.queue.as_ref()?;
+        let demand = ports::job_resources::ResourceDemand {
+            disk: 1,
+            ..Default::default()
+        };
+        queue
+            .resources
+            .reserve(demand)
+            .map(|lease| lease as Arc<dyn Send + Sync>)
+    }
+}

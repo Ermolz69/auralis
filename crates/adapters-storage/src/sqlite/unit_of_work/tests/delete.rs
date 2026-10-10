@@ -5,7 +5,89 @@ use crate::sqlite::unit_of_work::SqliteStorageUnitOfWork;
 use domain::media::ArtifactId;
 use domain::outbox::OutboxPayload;
 use domain::project::ProjectId;
+use ports::repository::OutboxRepository;
 use ports::transaction::{CommitProjectDelete, StorageUnitOfWork};
+
+#[tokio::test]
+async fn deletion_waits_for_a_claimed_finalization_before_cleanup() {
+    let pool = setup_db().await;
+    let project_id = ProjectId::new();
+    let artifact_id = ArtifactId::new();
+    let stage = format!(".staging/{artifact_id}/source.mp4");
+    let final_key = format!("{project_id}/source-video/{artifact_id}.mp4");
+    sqlx::query("INSERT INTO projects (id, title, status, created_at, updated_at) VALUES (?, 'P', 'Draft', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')")
+        .bind(project_id.to_string()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO artifacts (id, project_id, kind, location_kind, location_value, state, created_at, updated_at) VALUES (?, ?, 'SourceVideo', 'StorageKey', ?, 'pending_finalize', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')")
+        .bind(artifact_id.to_string()).bind(project_id.to_string()).bind(&final_key)
+        .execute(&pool).await.unwrap();
+    let payload = OutboxPayload::FinalizeStagedArtifact {
+        project_id: project_id.clone(),
+        artifact_id,
+        staging_key: stage.clone(),
+        final_key,
+    };
+    let message_id = domain::outbox::OutboxMessageId::new();
+    sqlx::query("INSERT INTO outbox_messages (id, kind, payload_json, status, attempts, next_attempt_at, created_at, updated_at, aggregate_type, aggregate_id, sequence, conflict_group) VALUES (?, 'finalize_staged_artifact', ?, 'pending', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 'project', ?, 1, ?)")
+        .bind(message_id.to_string()).bind(serde_json::to_string(&payload).unwrap())
+        .bind(project_id.to_string()).bind(format!("project:{project_id}"))
+        .execute(&pool).await.unwrap();
+    sqlx::query("UPDATE outbox_sequence SET value = 1 WHERE singleton = 1")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let repo = crate::sqlite::SqliteOutboxRepository::new(pool.clone());
+    let claimed = repo
+        .claim_ready(1, std::time::Duration::from_secs(300))
+        .await
+        .unwrap()
+        .claims
+        .remove(0);
+    let uow = SqliteStorageUnitOfWork::new(pool.clone());
+    uow.commit_project_delete(CommitProjectDelete { project_id })
+        .await
+        .unwrap();
+    let status: String = sqlx::query_scalar("SELECT status FROM outbox_messages WHERE id = ?")
+        .bind(message_id.to_string())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(status, "processing");
+    assert!(
+        repo.claim_ready(10, std::time::Duration::from_secs(300))
+            .await
+            .unwrap()
+            .claims
+            .is_empty()
+    );
+    assert!(
+        repo.mark_done_claim(&message_id, &claimed.token)
+            .await
+            .unwrap()
+    );
+    let cleanup = repo
+        .claim_ready(10, std::time::Duration::from_secs(300))
+        .await
+        .unwrap()
+        .claims;
+    assert_eq!(cleanup.len(), 1);
+    assert!(matches!(
+        &cleanup[0].message.payload,
+        OutboxPayload::DeleteStorageKey { .. }
+    ));
+    assert!(
+        repo.mark_done_claim(&cleanup[0].message.id, &cleanup[0].token)
+            .await
+            .unwrap()
+    );
+    let staging_cleanup = repo
+        .claim_ready(10, std::time::Duration::from_secs(300))
+        .await
+        .unwrap()
+        .claims;
+    assert_eq!(staging_cleanup.len(), 1);
+    assert!(matches!(&staging_cleanup[0].message.payload,
+        OutboxPayload::DeleteStorageKey { storage_key } if storage_key == &stage));
+}
 
 #[tokio::test]
 async fn test_project_delete_order_and_filtering() {
@@ -74,14 +156,14 @@ async fn test_project_delete_order_and_filtering() {
     assert_eq!(a_count, 0);
 
     // Verify outbox messages:
-    // - The old message should be 'dead'
+    // - The old message is resolved as obsolete by project deletion.
     let old_msg_status: String =
         sqlx::query_scalar("SELECT status FROM outbox_messages WHERE id = ?")
             .bind(old_msg_id.to_string())
             .fetch_one(&pool)
             .await
             .unwrap();
-    assert_eq!(old_msg_status, "dead");
+    assert_eq!(old_msg_status, "done");
 
     // - There should be exactly 2 new messages in status 'pending':
     //   1. DeleteStorageKey for 'project/art-A'

@@ -56,6 +56,7 @@ pub(crate) async fn update_project(
 pub(super) async fn update_project_conditional(
     tx: &mut Transaction<'_, Sqlite>,
     project: &Project,
+    expected_revision: u64,
     expected_updated_at: chrono::DateTime<chrono::Utc>,
     expected_status: &domain::project::ProjectStatus,
     expected_active_job_id: Option<&domain::job::JobId>,
@@ -112,7 +113,7 @@ pub(super) async fn update_project_conditional(
     .bind(row.last_terminal_job_id)
     .bind(row.updated_at)
     .bind(row.id.clone())
-    .bind(row.revision)
+    .bind(expected_revision as i64)
     .bind(expected_updated_at.to_rfc3339())
     .bind(expected_status_str)
     .bind(expected_active_job_id_str.clone())
@@ -243,13 +244,29 @@ pub(super) async fn delete_project(
         storage_keys_to_delete.push(storage_key);
     }
 
-    // 4. Cancel existing outbox messages for this project (done BEFORE creating new outbox messages)
+    let staging_keys: Vec<String> = sqlx::query_scalar(
+        "SELECT DISTINCT json_extract(payload_json, '$.staging_key') FROM outbox_messages
+         WHERE aggregate_type = 'project' AND aggregate_id = ?
+           AND kind = 'finalize_staged_artifact' AND status != 'done'
+           AND json_valid(payload_json) AND json_type(payload_json, '$.staging_key') = 'text'",
+    )
+    .bind(project_id.to_string())
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(|error| {
+        crate::sqlite::helpers::map_sqlite_error("List project staging keys", error)
+    })?;
+    for key in staging_keys {
+        storage_keys_to_delete.push(key);
+    }
+
+    // 4. Resolve unclaimed project work as obsolete in the same transaction that enqueues cleanup.
     let now = domain::chrono::Utc::now();
     let timestamp = crate::sqlite::helpers::format_db_timestamp(now);
-    let error_json = r#"{"reason": "obsolete due to project deletion"}"#;
+    let error_json = r#"{"reason": "obsolete due to project deletion; cleanup enqueued"}"#;
 
     sqlx::query(
-        "UPDATE outbox_messages SET status = 'dead', updated_at = ?, last_error = ? WHERE aggregate_type = 'project' AND aggregate_id = ? AND status IN ('pending', 'processing')"
+        "UPDATE outbox_messages SET status = 'done', updated_at = ?, last_error = ? WHERE aggregate_type = 'project' AND aggregate_id = ? AND status IN ('pending', 'failed', 'dead')"
     )
     .bind(timestamp)
     .bind(error_json)
@@ -262,7 +279,8 @@ pub(super) async fn delete_project(
 
     // 5. Insert outbox DeleteStorageKey for each StorageKey artifact
     for storage_key in storage_keys_to_delete {
-        let msg = OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key });
+        let msg = OutboxMessage::new(OutboxPayload::DeleteStorageKey { storage_key })
+            .for_project(project_id);
         save_outbox_message(tx, &msg).await?;
     }
 

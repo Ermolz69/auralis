@@ -154,7 +154,7 @@ async fn assert_download_cleanup(extension: &'static str) {
         translation_cleanup: None,
     };
     replay
-        .process_payload(&cleanup.id, &cleanup.payload)
+        .process_payload(&cleanup.id, "test-attempt", &cleanup.payload)
         .await
         .unwrap();
     assert!(!allocation_dir.exists());

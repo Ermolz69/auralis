@@ -43,6 +43,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         update_project_conditional(
             &mut tx,
             &command.project,
+            command.project.revision(),
             command.expected_project_updated_at,
             &command.expected_status,
             command.expected_active_job_id.as_ref(),
@@ -60,7 +61,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         if let Some(key) = command.temp_workspace_key {
             let del_msg =
-                OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key: key });
+                OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key: key })
+                    .for_project(command.project.id());
             save_outbox_message(&mut tx, &del_msg).await?;
         }
 
@@ -93,7 +95,8 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
 
         if let Some(key) = command.temp_workspace_key {
             let del_msg =
-                OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key: key });
+                OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key: key })
+                    .for_project(&command.project_id);
             save_outbox_message(&mut tx, &del_msg).await?;
         }
 
@@ -117,6 +120,7 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         update_project_conditional(
             &mut tx,
             &command.project,
+            command.project.revision(),
             command.original_updated_at,
             &domain::project::ProjectStatus::Draft,
             None,
@@ -237,9 +241,29 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: ports::transaction::ApplyTerminalLifecycle,
     ) -> Result<domain::project::status::TerminalTransitionResult, PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| {
+        let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await.map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
+
+        if let Some((message_id, token)) = &command.attempt {
+            let owned: i64 = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM outbox_messages WHERE id = ?
+                 AND status = 'processing' AND locked_by = ?)",
+            )
+            .bind(message_id.to_string())
+            .bind(token)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|error| {
+                crate::sqlite::helpers::map_sqlite_error("Check terminal attempt", error)
+            })?;
+            if owned != 1 {
+                return Err(PortError::Conflict {
+                    resource: "Terminal outbox attempt".into(),
+                    message: "The attempt no longer owns the terminal transition".into(),
+                });
+            }
+        }
 
         let row = sqlx::query_as::<_, crate::sqlite::project_row::ProjectRow>(
             "SELECT * FROM projects WHERE id = ?",
@@ -249,19 +273,15 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         .await
         .map_err(|e| crate::sqlite::helpers::map_sqlite_error("Failed to fetch project", e))?;
 
-        let row = match row {
-            Some(r) => r,
-            None => {
-                return Err(PortError::NotFound {
-                    resource: format!("Project {}", command.project_id),
-                });
-            }
+        let Some(row) = row else {
+            return Ok(domain::project::status::TerminalTransitionResult::ProjectMissing);
         };
 
         let mut project = crate::sqlite::project_mapper::row_to_project(row)?;
+        let expected_revision = project.revision();
 
         let res = project
-            .apply_terminal_transition(&command.job_id, command.outcome)
+            .apply_terminal_transition(&command.job_id, command.outcome.clone())
             .map_err(|e| PortError::Conflict {
                 resource: "Project Transition".to_string(),
                 message: e.to_string(),
@@ -271,7 +291,51 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
             res,
             domain::project::status::TerminalTransitionResult::Applied { .. }
         ) {
-            update_project(&mut tx, &project).await?;
+            let values = crate::sqlite::project_mapper::project_to_row_values(&project)?;
+            let terminal_job_status = match command.outcome {
+                domain::job::TerminalOutcome::Completed => "completed",
+                domain::job::TerminalOutcome::Failed => "failed",
+                domain::job::TerminalOutcome::Cancelled => "cancelled",
+            };
+            let require_ready = matches!(command.outcome, domain::job::TerminalOutcome::Completed);
+            let attempt_id = command.attempt.as_ref().map(|(id, _)| id.to_string());
+            let attempt_token = command.attempt.as_ref().map(|(_, token)| token.as_str());
+            let result = sqlx::query(
+                "UPDATE projects SET revision = revision + 1, status = ?, active_job_id = NULL,
+                 last_terminal_job_id = ?, updated_at = ?
+                 WHERE id = ? AND revision = ? AND revision < 9223372036854775807
+                   AND status = 'Processing' AND active_job_id = ?
+                   AND (? IS NULL OR EXISTS (
+                     SELECT 1 FROM outbox_messages o JOIN jobs j ON j.id = ?
+                     WHERE o.id = ? AND o.status = 'processing' AND o.locked_by = ?
+                       AND j.project_id = projects.id AND j.status = ?))
+                   AND (? = 0 OR NOT EXISTS (
+                     SELECT 1 FROM artifacts a WHERE a.project_id = projects.id
+                       AND a.state = 'pending_finalize'))",
+            )
+            .bind(values.status)
+            .bind(command.job_id.to_string())
+            .bind(values.updated_at)
+            .bind(command.project_id.to_string())
+            .bind(expected_revision as i64)
+            .bind(command.job_id.to_string())
+            .bind(attempt_id.as_deref())
+            .bind(command.job_id.to_string())
+            .bind(attempt_id.as_deref())
+            .bind(attempt_token)
+            .bind(terminal_job_status)
+            .bind(require_ready)
+            .execute(&mut *tx)
+            .await
+            .map_err(|error| {
+                crate::sqlite::helpers::map_sqlite_error("Apply terminal project state", error)
+            })?;
+            if result.rows_affected() != 1 {
+                return Err(PortError::Conflict {
+                    resource: "Project terminal transition".into(),
+                    message: "Revision, job, attempt, or publication prerequisites changed".into(),
+                });
+            }
         }
 
         tx.commit().await.map_err(|e| {
@@ -285,13 +349,14 @@ impl StorageUnitOfWork for SqliteStorageUnitOfWork {
         &self,
         command: CommitArtifactFinalize,
     ) -> Result<ports::transaction::CommitArtifactFinalizeResult, PortError> {
-        let mut tx = self.pool.begin().await.map_err(|e| {
+        let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await.map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to begin transaction", e)
         })?;
 
         let result = finalize_artifact(
             &mut tx,
             &command.message_id.to_string(),
+            command.claim_token.as_deref(),
             &command.project_id,
             &command.artifact_id,
             &command.ready_key,

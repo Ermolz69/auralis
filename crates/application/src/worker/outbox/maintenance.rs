@@ -137,7 +137,7 @@ where
             },
             None => Vec::new(),
         };
-        let staging = match &self.imports {
+        let mut staging = match &self.imports {
             Some(imports) => match imports.protected_staging_keys().await {
                 Ok(keys) => keys,
                 Err(_) => {
@@ -148,10 +148,20 @@ where
             },
             None => Vec::new(),
         };
-        let workspaces: Vec<_> = sessions
+        let mut workspaces: Vec<_> = sessions
             .into_iter()
             .map(|session| session.workspace_key)
             .collect();
+        let protected = match self.outbox_repo.protected_resources().await {
+            Ok(protected) => protected,
+            Err(_) => {
+                report.staging_cleanup = MaintenanceStepOutcome::Failed;
+                report.workspace_cleanup = MaintenanceStepOutcome::Failed;
+                return report;
+            }
+        };
+        staging.extend(protected.staging_keys);
+        workspaces.extend(protected.workspace_keys);
 
         if *cancel_token.borrow() {
             report.cancelled = true;

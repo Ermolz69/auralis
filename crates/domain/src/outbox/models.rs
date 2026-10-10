@@ -81,6 +81,27 @@ pub enum OutboxPayload {
 }
 
 impl OutboxPayload {
+    pub fn conflict_group(&self) -> String {
+        let project = match self {
+            Self::FinalizeStagedArtifact { project_id, .. }
+            | Self::DeleteProjectArtifactDir { project_id }
+            | Self::DeleteProjectTranslation { project_id, .. }
+            | Self::HandleTerminalJobState { project_id, .. } => Some(project_id.clone()),
+            Self::DeleteStorageKey { storage_key } => storage_key
+                .split('/')
+                .next()
+                .and_then(|part| part.parse::<ProjectId>().ok()),
+            Self::DeleteWorkspaceAllocation { workspace_key } => {
+                let mut parts = workspace_key.as_str().split('/');
+                match (parts.next(), parts.next(), parts.next(), parts.next()) {
+                    (Some("tmp"), Some(project), Some(_), None) => project.parse().ok(),
+                    _ => None,
+                }
+            }
+        };
+        project.map_or_else(|| "*".to_string(), |id| format!("project:{id}"))
+    }
+
     pub fn aggregate_info(&self) -> (Option<String>, Option<String>) {
         match self {
             OutboxPayload::FinalizeStagedArtifact { project_id, .. } => {
@@ -119,6 +140,11 @@ pub struct OutboxMessage {
 }
 
 impl OutboxMessage {
+    pub fn for_project(mut self, project_id: &ProjectId) -> Self {
+        self.aggregate_type = Some("project".to_string());
+        self.aggregate_id = Some(project_id.to_string());
+        self
+    }
     pub fn new(payload: OutboxPayload) -> Self {
         let now = Utc::now();
         let (aggregate_type, aggregate_id) = payload.aggregate_info();

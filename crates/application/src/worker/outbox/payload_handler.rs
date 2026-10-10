@@ -33,6 +33,7 @@ where
     pub async fn process_payload(
         &self,
         message_id: &domain::outbox::OutboxMessageId,
+        claim_token: &str,
         payload: &OutboxPayload,
     ) -> Result<(), ApplicationError> {
         match payload {
@@ -71,6 +72,7 @@ where
                 // 2. Commit transaction with CAS
                 let cmd = ports::transaction::CommitArtifactFinalize {
                     message_id: message_id.clone(),
+                    claim_token: Some(claim_token.to_string()),
                     project_id: project_id.clone(),
                     artifact_id: artifact_id.clone(),
                     ready_key: final_key.clone(),
@@ -139,6 +141,7 @@ where
                     project_id: project_id.clone(),
                     job_id: job_id.clone(),
                     outcome: outcome.clone(),
+                    attempt: Some((message_id.clone(), claim_token.to_string())),
                 };
                 let res = self
                     .uow
@@ -152,17 +155,28 @@ where
                     "terminal lifecycle evaluated"
                 );
 
-                if let domain::project::status::TerminalTransitionResult::Applied {
-                    transcript_ready,
-                } = res
-                {
-                    super::notifications::publish_terminal_notifications(
-                        self.event_publisher.as_ref(),
-                        &project_id.to_string(),
-                        &job_id.to_string(),
+                match res {
+                    domain::project::status::TerminalTransitionResult::Applied {
                         transcript_ready,
-                    )
-                    .await;
+                    } => {
+                        super::notifications::publish_terminal_notifications(
+                            self.event_publisher.as_ref(),
+                            &project_id.to_string(),
+                            &job_id.to_string(),
+                            transcript_ready,
+                        )
+                        .await;
+                    }
+                    domain::project::status::TerminalTransitionResult::AlreadyApplied => {
+                        super::notifications::publish_terminal_notifications(
+                            self.event_publisher.as_ref(),
+                            &project_id.to_string(),
+                            &job_id.to_string(),
+                            false,
+                        )
+                        .await;
+                    }
+                    _ => {}
                 }
             }
         }

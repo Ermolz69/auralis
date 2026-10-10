@@ -27,14 +27,19 @@ async fn youtube_dead_finalize_survives_two_retention_cycles_and_can_be_retried(
     .await
     .unwrap();
     for _ in 0..5 {
-        sqlx::query("UPDATE outbox_messages SET status = 'processing' WHERE id = ?")
-            .bind(&id)
-            .execute(&fixture.pool)
+        sqlx::query("UPDATE outbox_messages SET next_attempt_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?")
+            .bind(&id).execute(&fixture.pool).await.unwrap();
+        let claim = repo
+            .claim_ready(1, std::time::Duration::from_secs(300))
             .await
-            .unwrap();
-        repo.mark_failed(&id.parse().unwrap(), "FINALIZE_IO")
-            .await
-            .unwrap();
+            .unwrap()
+            .claims
+            .remove(0);
+        assert!(
+            repo.mark_failed_claim(&claim.message.id, &claim.token, "FINALIZE_IO")
+                .await
+                .unwrap()
+        );
     }
     sqlx::query("UPDATE outbox_messages SET updated_at = '2000-01-01T00:00:00Z' WHERE id = ?")
         .bind(&id)

@@ -35,6 +35,7 @@ pub(crate) async fn write(
             update_project_conditional(
                 tx,
                 &command.project,
+                command.project.revision(),
                 updated_at,
                 &ProjectStatus::Draft,
                 None,
@@ -58,7 +59,8 @@ pub(crate) async fn write(
     if let Some(workspace_key) = write.temp_workspace_key {
         save_outbox_message(
             tx,
-            &OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key }),
+            &OutboxMessage::new(OutboxPayload::DeleteWorkspaceAllocation { workspace_key })
+                .for_project(command.project.id()),
         )
         .await?;
     }

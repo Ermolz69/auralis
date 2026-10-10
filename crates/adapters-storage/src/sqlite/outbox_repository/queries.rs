@@ -10,27 +10,6 @@ impl SqliteOutboxRepository {
         &self,
         limit: usize,
     ) -> Result<FetchPendingResult, PortError> {
-        // Reclaim stale locks: messages in 'processing' state for more than 5 minutes
-        sqlx::query(
-            r#"
-            UPDATE outbox_messages
-            SET status = 'pending',
-                attempts = attempts + 1,
-                last_error = 'Timeout during processing (stale lock reclaimed)',
-                locked_at = NULL,
-                locked_by = NULL,
-                next_attempt_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
-                updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-            WHERE status = 'processing' 
-              AND locked_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-5 minutes')
-            "#,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| PortError::Io {
-            message: format!("Failed to reclaim stale outbox locks: {}", e),
-        })?;
-
         let mut valid_messages = Vec::with_capacity(limit);
         let mut corrupted_isolated = 0;
         let mut isolation_errors = 0;
@@ -50,7 +29,7 @@ impl SqliteOutboxRepository {
                     created_at, updated_at, aggregate_type, aggregate_id
                 FROM outbox_messages
                 WHERE status IN ('pending', 'failed') AND next_attempt_at <= strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-                ORDER BY created_at ASC
+                ORDER BY created_at ASC, id ASC
                 LIMIT ?
                 "#,
             )

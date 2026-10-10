@@ -11,6 +11,7 @@
 - [Runtime data layout](./architecture/006-runtime-data.md)
 - [Job runtime and cancellation](./architecture/007-job-runtime.md)
 - [Translation review decisions](./architecture/008-translation-review-decision.md)
+- [Project state and outbox concurrency](./architecture/009-outbox-concurrency.md)
 - [Production storage contract](./storage/production-storage.md)
 - [Translate integration status](./translation/README.md)
 - [Module integration architecture and goal prompts](./integration/README.md)

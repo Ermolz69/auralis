@@ -89,19 +89,19 @@ async fn youtube_resume_crash_child() {
         .await
         .unwrap();
     let outbox = SqliteOutboxRepository::new(fixture.pool.clone());
-    for message in outbox.fetch_pending(10).await.unwrap().messages {
+    for claim in outbox
+        .claim_ready(10, std::time::Duration::from_secs(300))
+        .await
+        .unwrap()
+        .claims
+    {
+        let message = claim.message;
         if let OutboxPayload::FinalizeStagedArtifact {
             staging_key,
             final_key,
             ..
         } = message.payload
         {
-            assert!(
-                outbox
-                    .mark_processing(&message.id, "crash-child")
-                    .await
-                    .unwrap()
-            );
             fixture
                 .store
                 .finalize_staged_artifact(&staging_key, &final_key, None)
@@ -174,7 +174,13 @@ async fn youtube_resume_recovers_after_real_process_kills_without_partial_projec
             );
             let outbox = SqliteOutboxRepository::new(fixture.pool.clone());
             if phase == "outbox-before-ack" {
-                assert_eq!(outbox.fetch_pending(10).await.unwrap().messages.len(), 1);
+                let processing: i64 = sqlx::query_scalar(
+                    "SELECT COUNT(*) FROM outbox_messages WHERE status = 'processing'",
+                )
+                .fetch_one(&fixture.pool)
+                .await
+                .unwrap();
+                assert_eq!(processing, 1);
                 sqlx::query("UPDATE outbox_messages SET locked_at = '2000-01-01T00:00:00Z' WHERE status = 'processing'").execute(&fixture.pool).await.unwrap();
             }
             let worker = OutboxWorker::new(
