@@ -1,4 +1,5 @@
 import type { Project, CreateProjectResponse } from './project';
+import type { CastResult, LogicalCast, ManualSelection, ReferencePlayback, VoiceCatalogPage, VoiceCompatibility, VoiceDetails } from './caster';
 import type { StoredTheme, ProjectPin, ProjectPins, LegacyPin } from './uiPreferences';
 import type { Transcript } from './transcript';
 import type { Job, JobHistoryCursor, JobHistoryPage } from './job';
@@ -28,6 +29,13 @@ import type {
 } from './translation';
 
 export interface CommandMap {
+  list_voice_catalog_cmd: { args: { projectId: string; after?: string | null; limit: number }; result: VoiceCatalogPage };
+  inspect_voice_cmd: { args: { projectId: string; voiceId: string; afterReference?: string | null; limit: number }; result: VoiceDetails };
+  inspect_voice_reference_cmd: { args: { projectId: string; voiceId: string; referenceId: string }; result: ReferencePlayback };
+  check_voice_compatibility_cmd: { args: { projectId: string; voiceId: string; engineId: string; emotionId: string }; result: VoiceCompatibility };
+  get_manual_cast_cmd: { args: { projectId: string }; result: CastResult | null };
+  assign_manual_cast_cmd: { args: { projectId: string; cast: LogicalCast; selections: Record<string, ManualSelection>; expectedRevision: string | null; requestId: string }; result: CastResult };
+  recover_manual_cast_cmd: { args: { projectId: string }; result: string };
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
   set_color_theme_cmd: { args: { value: string; expectedRevision: number }; result: StoredTheme };
   import_color_theme_cmd: { args: { value: string }; result: StoredTheme };

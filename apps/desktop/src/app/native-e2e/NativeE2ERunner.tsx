@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { cancelJob, subscribeJobEvents } from '@/entities/job';
 import { importLocalMedia } from '@/entities/media';
 import {
@@ -11,6 +11,8 @@ import {
 import type { Artifact } from '@/shared/api/contracts';
 import { invoke } from '@/shared/api/tauri';
 import { TranslationModelSetup } from '@/features/translation-model-setup';
+import { VoiceCatalog } from '@/features/voice-catalog';
+import { runCasterScenario } from './casterScenario';
 import { prepareTranslationPackage } from './prepareTranslationPackage';
 import { resumeTranslationScenario, runTranslationScenario } from './runTranslationScenario';
 import { reopenTranslationHistory } from './reopenTranslationHistory';
@@ -23,12 +25,22 @@ const FAILURE_REASON_MAX_UTF16_UNITS = 80;
 let started = false;
 
 export function NativeE2ERunner() {
+  const [casterProjectId, setCasterProjectId] = useState<string | null>(null);
   useEffect(() => {
     if (started) return;
     started = true;
+    if (__NATIVE_E2E_CASTER__) {
+      void runCasterScenario(__NATIVE_E2E_RUN_ID__, setCasterProjectId).catch((error) =>
+        console.error('Native Caster E2E failed', error),
+      );
+      return;
+    }
     void runNativeScenario();
   }, []);
 
+  if (__NATIVE_E2E_CASTER__) {
+    return casterProjectId ? <VoiceCatalog projectId={casterProjectId} /> : null;
+  }
   return __NATIVE_E2E_TRANSLATION_PACKAGE__ ? <TranslationModelSetup /> : null;
 }
 

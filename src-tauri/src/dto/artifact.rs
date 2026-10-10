@@ -24,6 +24,7 @@ pub enum ArtifactKindDto {
     GeneratedTranscript,
     NormalizedTranscript,
     TranslatedTranscript,
+    ManualCast,
     GeneratedSpeechSegment,
     MixedAudio,
     PreviewVideo,
@@ -71,6 +72,7 @@ impl From<&ArtifactKind> for ArtifactKindDto {
             ArtifactKind::GeneratedTranscript => Self::GeneratedTranscript,
             ArtifactKind::NormalizedTranscript => Self::NormalizedTranscript,
             ArtifactKind::TranslatedTranscript => Self::TranslatedTranscript,
+            ArtifactKind::ManualCast => Self::ManualCast,
             ArtifactKind::GeneratedSpeechSegment => Self::GeneratedSpeechSegment,
             ArtifactKind::MixedAudio => Self::MixedAudio,
             ArtifactKind::PreviewVideo => Self::PreviewVideo,
@@ -89,6 +91,7 @@ impl From<ArtifactKindDto> for ArtifactKind {
             ArtifactKindDto::GeneratedTranscript => Self::GeneratedTranscript,
             ArtifactKindDto::NormalizedTranscript => Self::NormalizedTranscript,
             ArtifactKindDto::TranslatedTranscript => Self::TranslatedTranscript,
+            ArtifactKindDto::ManualCast => Self::ManualCast,
             ArtifactKindDto::GeneratedSpeechSegment => Self::GeneratedSpeechSegment,
             ArtifactKindDto::MixedAudio => Self::MixedAudio,
             ArtifactKindDto::PreviewVideo => Self::PreviewVideo,
@@ -143,5 +146,9 @@ mod tests {
         assert_eq!(value["location"]["value"], "project/source/video.mp4");
         assert_eq!(value["sizeBytes"], 42);
         assert!(value.get("size_bytes").is_none());
+        assert_eq!(
+            serde_json::to_value(ArtifactKindDto::from(&ArtifactKind::ManualCast)).unwrap(),
+            "manualCast"
+        );
     }
 }

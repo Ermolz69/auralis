@@ -92,6 +92,17 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:caster:
+    desc: Exercise installed Caster through native catalog controls, typed IPC, audio and managed cast restart
+    requires:
+      vars: [PYTHON, VOICE_STORE]
+    env:
+      AURALIS_NATIVE_E2E_CASTER: '1'
+      AURALIS_TEST_CASTER_PYTHON: '{{.PYTHON}}'
+      AURALIS_TEST_CASTER_VOICE_STORE: '{{.VOICE_STORE}}'
+    cmds:
+      - node tools/native-e2e/run.mjs
+
   desktop:e2e:native:translation:
     desc: Run native Tauri translation acceptance with an installed checked llama.cpp model
     env:

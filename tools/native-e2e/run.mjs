@@ -26,6 +26,7 @@ import { releaseVerifiedPause, verifyResumedPause } from './translation-pause.mj
 import { releaseVerifiedPreparationPause, verifyResumedPreparation } from './preparation-pause.mjs';
 import { releaseVerifiedWorkerPreflightPause } from './worker-preflight-pause.mjs';
 import { waitForHistoricalEditGap, verifyHistoricalEditGap } from './historical-edit-gap.mjs';
+import { seedCasterRuntime, verifyCasterArtifact, waitForCasterTitle } from './caster.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
 const TRANSLATION_RESULT_TIMEOUT_MS = 600_000;
@@ -34,6 +35,9 @@ const POLL_INTERVAL_MS = 100;
 export async function runNativeE2e(rootDir) {
   assertSupportedPlatform();
   const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
+  const casterEnabled = process.env.AURALIS_NATIVE_E2E_CASTER === '1';
+  if (casterEnabled && translationEnabled)
+    throw new Error('Caster native E2E runs without Translate');
   const translationEventsEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
   const translationHistoryEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY === '1';
   const historicalGapEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_GAP === '1';
@@ -138,6 +142,7 @@ export async function runNativeE2e(rootDir) {
   try {
     await fsp.mkdir(dataRoot, { recursive: true });
     await fsp.mkdir(fixtureRoot, { recursive: true });
+    if (casterEnabled) await seedCasterRuntime(dataRoot);
     prepareMediaTools(rootDir);
     generateVideo(rootDir, sourcePath);
     if (translationEnabled) {
@@ -163,6 +168,7 @@ export async function runNativeE2e(rootDir) {
     }
     fixtureServer = await startFixtureServer(sourcePath);
     buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
+      casterEnabled,
       translationEnabled,
       translationCrashEnabled,
       translationPauseEnabled,
@@ -190,6 +196,29 @@ export async function runNativeE2e(rootDir) {
       translationResultGapEnabled ? resultCommitMarker : null,
       historicalGapEnabled ? historicalCommitMarker : null,
     );
+    if (casterEnabled) {
+      const projectId = await waitForCasterTitle(
+        dataRoot,
+        app,
+        `native-e2e-caster-complete:${runId}`,
+        runId,
+      );
+      const revision = await verifyCasterArtifact(dataRoot, projectId);
+      await terminate(app.child);
+      app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+      const reopenedId = await waitForCasterTitle(
+        dataRoot,
+        app,
+        `native-e2e-caster-reopened:${runId}`,
+        runId,
+      );
+      assert(reopenedId === projectId, 'Caster restart changed the project identity');
+      assert(
+        (await verifyCasterArtifact(dataRoot, projectId)) === revision,
+        'Caster restart changed the active revision',
+      );
+      return;
+    }
     if (translationPackageEnabled) {
       await waitForPackageSelection(dataRoot, app);
       await terminate(app.child);
@@ -562,6 +591,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_MEDIA_PATH: sourcePath,
     AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
     AURALIS_NATIVE_E2E_RUN_ID: runId,
+    AURALIS_NATIVE_E2E_CASTER: translation.casterEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_VTT: translation.translationVttEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE: translation.translationPackageEnabled ? '1' : '0',
@@ -1160,7 +1190,9 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
                                   ? 'Native Tauri WebVTT E2E passed: checked local translation preserved the separate source, protected spans, and both databases; sandbox cleaned.\n'
                                   : process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1'
                                     ? 'Native Tauri E2E passed: React -> IPC -> Rust -> checked local translation -> two SQLite files -> separate output; sandbox cleaned.\n'
-                                    : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
+                                    : process.env.AURALIS_NATIVE_E2E_CASTER === '1'
+                                      ? 'Native Caster E2E passed: React catalog controls -> typed IPC -> installed worker -> managed cast and prepared WAV -> restart; sandbox cleaned.\n'
+                                      : 'Native Tauri E2E passed: React -> IPC -> Rust -> SQLite -> ffprobe/yt-dlp -> filesystem; sandbox cleaned.\n',
       ),
     )
     .catch((error) => {

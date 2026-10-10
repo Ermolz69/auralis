@@ -16,6 +16,7 @@ const desktopPackage = JSON.parse(
   version: string;
 };
 const nativeE2e = process.env.AURALIS_NATIVE_E2E === '1';
+const nativeE2eCaster = nativeE2e && process.env.AURALIS_NATIVE_E2E_CASTER === '1';
 const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH : '';
 const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
 const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL : '';
@@ -69,6 +70,7 @@ export default defineConfig({
     __NATIVE_E2E_TRANSLATION_START_RACE__: JSON.stringify(nativeE2eTranslationStartRace),
     __APP_VERSION__: JSON.stringify(desktopPackage.version),
     __NATIVE_E2E__: JSON.stringify(nativeE2e),
+    __NATIVE_E2E_CASTER__: JSON.stringify(nativeE2eCaster),
     __NATIVE_E2E_MEDIA_PATH__: JSON.stringify(nativeE2eMediaPath ?? ''),
     __NATIVE_E2E_RUN_ID__: JSON.stringify(nativeE2eRunId ?? ''),
     __NATIVE_E2E_YTDLP_URL__: JSON.stringify(nativeE2eYtdlpUrl ?? ''),

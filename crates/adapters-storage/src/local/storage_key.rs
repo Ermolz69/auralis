@@ -11,6 +11,7 @@ pub fn kind_slug(kind: &ArtifactKind) -> &'static str {
         ArtifactKind::GeneratedTranscript => "generated-transcript",
         ArtifactKind::NormalizedTranscript => "generated-transcript",
         ArtifactKind::TranslatedTranscript => "translated-transcript",
+        ArtifactKind::ManualCast => "manual-cast",
         ArtifactKind::GeneratedSpeechSegment => "generated-speech-segment",
         ArtifactKind::MixedAudio => "mixed-audio",
         ArtifactKind::PreviewVideo => "preview-video",
@@ -42,6 +43,7 @@ mod tests {
             (ArtifactKind::GeneratedTranscript, "generated-transcript"),
             (ArtifactKind::NormalizedTranscript, "generated-transcript"),
             (ArtifactKind::TranslatedTranscript, "translated-transcript"),
+            (ArtifactKind::ManualCast, "manual-cast"),
             (
                 ArtifactKind::GeneratedSpeechSegment,
                 "generated-speech-segment",

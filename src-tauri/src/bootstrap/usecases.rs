@@ -108,6 +108,7 @@ pub(super) struct AppUseCaseDependencies {
     pub(super) workspace_port: Arc<dyn ports::workspace::TempWorkspacePort>,
     pub(super) job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     pub(super) youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
+    pub(super) project_locks: Arc<application::usecases::project::lifecycle::ProjectLifecycleLocks>,
 }
 
 pub(super) fn setup_usecases(
@@ -127,6 +128,7 @@ pub(super) fn setup_usecases(
         workspace_port,
         job_runtime,
         youtube_imports,
+        project_locks,
     } = dependencies;
     let ytdlp_candidates = crate::bootstrap::media_tools::resolve_ytdlp_candidates(app);
     let ytdlp_adapter = YtDlpAdapter::new(ytdlp_candidates).with_ffmpeg_candidates(
@@ -151,7 +153,7 @@ pub(super) fn setup_usecases(
         app,
     ));
 
-    let locks = Arc::new(application::usecases::project::lifecycle::ProjectLifecycleLocks::new());
+    let locks = project_locks;
     let project_workspace = adapters_tauri::ProjectWorkspaceOpener::new(app.clone(), projects_root);
 
     let usecases = AppUseCases {

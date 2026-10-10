@@ -1,10 +1,37 @@
 version: '3'
 
 tasks:
+  fmt:caster:
+    desc: Format only Caster integration Rust sources without touching other work
+    cmds:
+      - rustfmt --edition 2024 crates/ports/src/caster.rs crates/application/src/usecases/caster.rs crates/application/tests/caster_artifact.rs crates/application/tests/caster_installed.rs crates/adapters-caster/src/worker.rs src-tauri/src/bootstrap/caster.rs src-tauri/src/commands/caster.rs src-tauri/src/commands/caster_audio.rs src-tauri/src/dto/artifact.rs src-tauri/tests/caster_manifest.rs
+
+  test:caster:
+    desc: Verify typed Caster worker transport and project-scoped use cases without models
+    cmds:
+      - cargo test --locked -p adapters-caster {{.CLI_ARGS}}
+      - cargo test --locked -p application caster {{.CLI_ARGS}}
+      - cargo test --locked -p auralis-app --test caster_manifest {{.CLI_ARGS}}
+
+  test:caster:installed:
+    desc: Exercise the installed Caster worker through Auralis project use cases and restart reads
+    requires:
+      vars: [PYTHON, VOICE_STORE]
+    env:
+      AURALIS_TEST_CASTER_PYTHON: '{{.PYTHON}}'
+      AURALIS_TEST_CASTER_VOICE_STORE: '{{.VOICE_STORE}}'
+    cmds:
+      - cargo test --locked -p application --test caster_installed -- --ignored --nocapture
+
   lock:refresh:
     desc: Refresh workspace dependency metadata using the offline package cache
     cmds:
       - cargo update --offline --workspace
+
+  lock:refresh:online:
+    desc: Resolve an explicitly introduced crate absent from the offline cache
+    cmds:
+      - cargo update --workspace
 
   test:translation-events:
     desc: Verify committed translation lifecycle events against real SQLite state

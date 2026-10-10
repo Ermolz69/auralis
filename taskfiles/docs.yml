@@ -1,6 +1,11 @@
 version: '3'
 
 tasks:
+  fmt:caster:
+    desc: Format only the Caster integration execution record
+    cmds:
+      - pnpm prettier --write "docs/integration/caster-execution.md"
+
   all:
     cmds:
       - task: check

@@ -7,6 +7,7 @@ const TRANSLATION_RUNTIME_CONFIG_FILE_NAME: &str = "translation-runtime.json";
 const TRANSLATION_PACKAGES_DIRECTORY_NAME: &str = "translation-packages";
 const TRANSLATION_DOWNLOAD_CACHE_DIRECTORY_NAME: &str = "translation-downloads";
 const TRANSLATION_PACKAGE_SELECTION_FILE_NAME: &str = "translation-package-selection.json";
+const CASTER_RUNTIME_CONFIG_FILE_NAME: &str = "caster-runtime.json";
 const PROJECTS_DIRECTORY_NAME: &str = "projects";
 const LOGS_DIRECTORY_NAME: &str = "logs";
 const CACHE_DIRECTORY_NAME: &str = "cache";
@@ -73,6 +74,14 @@ impl AppPaths {
 
     pub fn translation_package_selection(&self) -> PathBuf {
         self.root.join(TRANSLATION_PACKAGE_SELECTION_FILE_NAME)
+    }
+
+    pub fn caster_runtime_config(&self) -> PathBuf {
+        self.root.join(CASTER_RUNTIME_CONFIG_FILE_NAME)
+    }
+
+    pub fn caster_audio_cache(&self) -> PathBuf {
+        self.root.join(CACHE_DIRECTORY_NAME).join("caster-audio")
     }
 
     pub fn projects(&self) -> PathBuf {

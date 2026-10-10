@@ -1,4 +1,5 @@
 import type { Artifact } from './artifact';
+import { validateCastResult, validateReferencePlayback, validateVoiceCatalogPage, validateVoiceCompatibility, validateVoiceDetails } from './casterValidation';
 import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
 import type { Project } from './project';
@@ -38,6 +39,7 @@ const artifactKinds = new Set([
   'generatedTranscript',
   'normalizedTranscript',
   'translatedTranscript',
+  'manualCast',
   'generatedSpeechSegment',
   'mixedAudio',
   'previewVideo',
@@ -102,6 +104,13 @@ export function validateArtifact(value: unknown): value is Artifact {
 }
 
 const commandResultValidators = {
+  list_voice_catalog_cmd: validateVoiceCatalogPage,
+  inspect_voice_cmd: validateVoiceDetails,
+  inspect_voice_reference_cmd: validateReferencePlayback,
+  check_voice_compatibility_cmd: validateVoiceCompatibility,
+  get_manual_cast_cmd: (value) => isNullable(value, validateCastResult),
+  assign_manual_cast_cmd: validateCastResult,
+  recover_manual_cast_cmd: isString,
   list_pending_youtube_imports_cmd: (value) =>
     isArrayOf(value, (entry) =>
       isRecord(entry)

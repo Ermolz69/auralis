@@ -1,6 +1,12 @@
 version: '3'
 
 tasks:
+  fmt:caster:
+    desc: Format only the Caster catalog component and its interaction test
+    cmds:
+      - pnpm prettier --write "apps/desktop/src/features/voice-catalog/ui/VoiceCatalog.tsx" "apps/desktop/src/features/voice-catalog/ui/VoiceCatalog.test.tsx" "apps/desktop/src/app/native-e2e/casterScenario.ts" "tools/native-e2e/caster.mjs"
+      - pnpm prettier --check "apps/desktop/src/app/native-e2e/NativeE2ERunner.tsx" "apps/desktop/src/vite-env.d.ts" "apps/desktop/vite.config.ts" "tools/native-e2e/run.mjs"
+
   dev:
     cmds:
       - pnpm --filter desktop dev

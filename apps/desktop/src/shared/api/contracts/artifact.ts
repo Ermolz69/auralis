@@ -6,6 +6,7 @@ export type ArtifactKind =
   | 'generatedTranscript'
   | 'normalizedTranscript'
   | 'translatedTranscript'
+  | 'manualCast'
   | 'generatedSpeechSegment'
   | 'mixedAudio'
   | 'previewVideo'

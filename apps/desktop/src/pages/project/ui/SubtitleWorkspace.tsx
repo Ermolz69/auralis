@@ -6,6 +6,7 @@ import { TranslationReview } from '@/features/translation-review';
 import { TranslationModelSetup } from '@/features/translation-model-setup';
 import { TranslationRunControl } from '@/features/translation-run-control';
 import { TranslationSourceImport } from '@/features/translation-source-import';
+import { VoiceCatalog } from '@/features/voice-catalog';
 import { filterTracks } from './subtitle-workspace/model';
 import { SubtitleActivityLog } from './subtitle-workspace/SubtitleActivityLog';
 import { SubtitleMethods } from './subtitle-workspace/SubtitleMethods';
@@ -44,6 +45,7 @@ export function SubtitleWorkspace() {
     >
       <div className="space-y-5">
         <TranslationReview refreshRevision={readyResultsRevision} />
+        {project && <VoiceCatalog key={project.id} projectId={project.id} />}
         <SubtitleMethods />
         <TranslationModelSetup />
         {project && (

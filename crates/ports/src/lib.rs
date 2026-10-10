@@ -3,6 +3,7 @@ pub mod artifact_finalization;
 pub mod artifact_index;
 pub mod artifact_recovery;
 pub mod cancellation;
+pub mod caster;
 pub mod committed_translation_progress;
 pub mod control;
 pub mod engine;

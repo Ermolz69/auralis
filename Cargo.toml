@@ -11,6 +11,7 @@ members = [
   "crates/adapters-ffmpeg",
   "crates/adapters-model",
   "crates/adapters-translate",
+  "crates/adapters-caster",
   "crates/jobs",
   "crates/common",
   "tools/glib-backport/regression"
@@ -26,6 +27,7 @@ authors = ["Auralis Contributors"]
 adapters-ffmpeg = { path = "crates/adapters-ffmpeg" }
 adapters-model = { path = "crates/adapters-model" }
 adapters-translate = { path = "crates/adapters-translate" }
+adapters-caster = { path = "crates/adapters-caster" }
 adapters-storage = { path = "crates/adapters-storage" }
 adapters-tauri = { path = "crates/adapters-tauri" }
 adapters-ytdlp = { path = "crates/adapters-ytdlp" }

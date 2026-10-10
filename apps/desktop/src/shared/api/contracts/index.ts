@@ -1,4 +1,5 @@
 export * from './artifact';
+export * from './caster';
 export * from './media';
 export * from './job';
 export * from './jobValidation';

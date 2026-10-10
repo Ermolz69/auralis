@@ -1,4 +1,5 @@
 mod app_root_lease;
+pub mod caster;
 pub mod media_tools;
 #[cfg(feature = "native-e2e")]
 pub mod native_e2e_subtitle_source;
@@ -119,6 +120,18 @@ pub fn setup(
         }
     }
     app.manage(Arc::new(translations));
+    let project_locks =
+        Arc::new(application::usecases::project::lifecycle::ProjectLifecycleLocks::new());
+    let (caster_usecases, caster_runtime) = caster::setup(
+        &app_paths,
+        services.project_repo.clone(),
+        services.artifact_index.clone(),
+        project_locks.clone(),
+    );
+    app.manage(caster_usecases);
+    if let Some(runtime) = caster_runtime {
+        app.manage(runtime);
+    }
     record_native_e2e_checkpoint("translations-ready");
 
     let temp_workspace = Arc::new(adapters_storage::local::LocalTempWorkspace::new(
@@ -154,6 +167,7 @@ pub fn setup(
             job_runtime: job_manager.clone()
                 as Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
             youtube_imports: services.youtube_imports.clone(),
+            project_locks,
         },
     )?;
     app.manage(services.job_query.clone());

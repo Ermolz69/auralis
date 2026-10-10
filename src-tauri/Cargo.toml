@@ -12,7 +12,7 @@ native-e2e = ["adapters-ytdlp/native-e2e", "application/native-e2e"]
 tauri-build = { workspace = true, features = [] }
 
 [dependencies]
-tauri = { workspace = true, features = [] }
+tauri = { workspace = true, features = ["protocol-asset"] }
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -24,6 +24,7 @@ adapters-storage.workspace = true
 adapters-ytdlp.workspace = true
 adapters-model.workspace = true
 adapters-translate.workspace = true
+adapters-caster.workspace = true
 adapters-ffmpeg.workspace = true
 adapters-tauri.workspace = true
 tokio = { workspace = true, features = ["rt", "time", "macros", "sync"] }
@@ -37,6 +38,7 @@ uuid.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "json"] }
 tracing-appender.workspace = true
+sha2.workspace = true
 common.workspace = true
 
 [dev-dependencies]
