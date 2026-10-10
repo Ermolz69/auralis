@@ -32,13 +32,15 @@ impl RuntimePreparation {
 impl PreparationControl for RuntimePreparation {
     fn check(&self) -> Result<(), ProviderError> {
         if self.cancellation.is_cancelled() {
-            return Err(ProviderError("model preparation cancelled".into()));
+            return Err(ProviderError::Permanent(
+                "model preparation cancelled".into(),
+            ));
         }
         if self
             .deadline
             .is_some_and(|deadline| Instant::now() >= deadline)
         {
-            return Err(ProviderError(
+            return Err(ProviderError::Permanent(
                 "model preparation exceeded startup timeout".into(),
             ));
         }
