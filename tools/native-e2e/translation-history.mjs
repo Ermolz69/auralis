@@ -3,6 +3,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { verifyHistoryResults } from './translation-history-results.mjs';
 import { verifyHistoryEdits } from './translation-history-edits.mjs';
+import { verifyHistoryExports } from './translation-history-exports.mjs';
 
 const REOPEN_TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 100;
@@ -21,14 +22,24 @@ export async function waitForTranslationHistoryReopened(dataRoot, app) {
   throw new Error('Timed out waiting for native historical selection after restart');
 }
 
-export async function verifyTranslationHistory(dataRoot, scenarioId, previous = null, gap = false) {
+export async function verifyTranslationHistory(
+  dataRoot,
+  scenarioId,
+  previous = null,
+  gap = false,
+  exportEnabled = false,
+) {
   const trace = await fsp.readFile(path.join(dataRoot, 'native-e2e-bootstrap.txt'), 'utf8');
   const markers = [
     'translation-history-manual-ready',
     'translation-history-preview',
     ...(gap
       ? ['translation-history-gap-choice', 'translation-history-gap-recovered']
-      : ['translation-history-branch-ready', 'translation-history-selected']),
+      : [
+          'translation-history-branch-ready',
+          ...(exportEnabled ? ['translation-history-exported'] : []),
+          'translation-history-selected',
+        ]),
   ];
   if (previous) markers.push('translation-history-reopened');
   let offset = -1;
@@ -72,6 +83,14 @@ export async function verifyTranslationHistory(dataRoot, scenarioId, previous = 
         throw new Error('History includes a foreign, nonready or mismatched publication');
     }
     const verified = await verifyHistoryResults(dataRoot, translate, publications);
+    if (exportEnabled) {
+      await verifyHistoryExports(dataRoot, publications, verified.outputs, Boolean(previous));
+      const reviewCount = host
+        .prepare('SELECT COUNT(*) AS count FROM translation_review_events WHERE translation_id = ?')
+        .get(link.translation_id);
+      if (Number(reviewCount.count) !== 0)
+        throw new Error('Draft export unexpectedly created a review decision');
+    }
     const edits = verifyHistoryEdits(host, translate, link, publications);
     const attempts = translate
       .prepare('SELECT COUNT(*) AS count FROM run_attempts WHERE run_id = ?')

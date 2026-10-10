@@ -9,6 +9,7 @@ import { invoke } from '@/shared/api/tauri';
 import { mountTranslationReview } from './translationReviewScenarioView';
 import { TranslationHistoryControls } from './translationHistoryControls';
 import { LATER_SECOND_LINE } from './translationHistoryFixture';
+import { exportHistoryResult } from './translationHistoryExport';
 
 export async function reopenTranslationHistory(scenarioId: string): Promise<boolean> {
   const project = (await listProjects()).find(
@@ -58,6 +59,10 @@ export async function reopenTranslationHistory(scenarioId: string): Promise<bool
       throw new Error('Reopened historical editor did not observe the newer run head');
     if ((await listProjectTranslations(project.id))[0].selectedResultId !== resultId)
       throw new Error('Opening a verified editor mutated selection');
+    if (__NATIVE_E2E_TRANSLATION_HISTORY_EXPORT__) {
+      await exportHistoryResult(project.id, links[0].translationId, resultId, 'native-export');
+      await exportHistoryResult(project.id, links[0].translationId, resultId, 'native-reexport');
+    }
     await invoke('native_e2e_checkpoint_cmd', { checkpoint: 'translation-history-reopened' });
     return true;
   } finally {

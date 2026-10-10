@@ -33,9 +33,9 @@ pub async fn get_translation_review_cmd(
     .await
 }
 
+#[allow(clippy::too_many_arguments)] // Tauri binds stable top-level IPC fields and injected state separately.
 #[tauri::command]
 #[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
-#[allow(clippy::too_many_arguments)] // Tauri binds stable top-level IPC fields and injected state separately.
 pub async fn record_translation_review_cmd(
     request: tauri::ipc::Request<'_>,
     project_id: String,

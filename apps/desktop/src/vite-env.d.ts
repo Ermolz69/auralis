@@ -17,4 +17,5 @@ declare const __NATIVE_E2E_TRANSLATION_DELETE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_PACKAGE__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_EVENTS__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_HISTORY__: boolean;
+declare const __NATIVE_E2E_TRANSLATION_HISTORY_EXPORT__: boolean;
 declare const __NATIVE_E2E_TRANSLATION_HISTORY_GAP__: boolean;

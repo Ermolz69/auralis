@@ -37,6 +37,11 @@ export async function runNativeE2e(rootDir) {
   const translationEventsEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
   const translationHistoryEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY === '1';
   const historicalGapEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_GAP === '1';
+  const historicalExportRequested =
+    process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_EXPORT === '1';
+  if (historicalExportRequested && (!translationHistoryEnabled || historicalGapEnabled))
+    throw new Error('Historical export requires the ordinary SRT history mode');
+  const historicalExportEnabled = translationHistoryEnabled && historicalExportRequested;
   if (historicalGapEnabled && !translationHistoryEnabled)
     throw new Error('Historical core gap requires the standalone history mode');
   if (
@@ -310,6 +315,7 @@ export async function runNativeE2e(rootDir) {
           runId,
           null,
           historicalGapEnabled,
+          historicalExportEnabled,
         );
         assert(
           [...listModelProcessIds()].every((pid) => baselineModelPids.has(pid)),
@@ -321,7 +327,7 @@ export async function runNativeE2e(rootDir) {
           await terminate(app.child);
           app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
           await waitForTranslationHistoryReopened(dataRoot, app);
-          await verifyTranslationHistory(dataRoot, runId, beforeRestart);
+          await verifyTranslationHistory(dataRoot, runId, beforeRestart, false, historicalExportEnabled);
           await verifyTranslationResult(dataRoot, subtitlePath, runId, null, 'srt', 4);
         }
       }
@@ -354,7 +360,7 @@ export async function runNativeE2e(rootDir) {
         cleanupErrors.push(error);
       }
     }
-    if (process.env.AURALIS_NATIVE_E2E_KEEP_TEMP === '1') {
+    if (process.env.AURALIS_NATIVE_E2E_KEEP_TEMP === '1' || (failure && historicalExportEnabled)) {
       process.stdout.write(`Native E2E data kept at ${testRoot}\n`);
     } else {
       try {
@@ -1131,8 +1137,10 @@ if (path.resolve(process.argv[1] ?? '') === currentFile) {
   runNativeE2e(rootDir)
     .then(() =>
       process.stdout.write(
-        process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY === '1'
-          ? 'Native Tauri history E2E passed: actual editing, historical preview and selection, retained attachment after restart and immutable outputs; sandbox cleaned.\n'
+        process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY_EXPORT === '1'
+          ? 'Native Tauri history export E2E passed: exact historical IPC exports, cold retry and offline re-export; sandbox cleaned.\n'
+          : process.env.AURALIS_NATIVE_E2E_TRANSLATION_HISTORY === '1'
+            ? 'Native Tauri history E2E passed: actual editing, historical preview and selection, retained attachment after restart and immutable outputs; sandbox cleaned.\n'
           : process.env.AURALIS_NATIVE_E2E_SECOND_OWNER === '1'
             ? 'Native Tauri single-owner E2E passed: a second process was rejected before storage setup, while the first completed its workflow; sandbox cleaned.\n'
             : process.env.AURALIS_NATIVE_E2E_TRANSLATION_START_RACE === '1'
