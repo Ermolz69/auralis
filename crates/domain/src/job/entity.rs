@@ -6,6 +6,7 @@ use crate::project::ProjectId;
 
 use super::{JobError, JobId, JobKind, JobProgress, JobSnapshot, JobStatus};
 
+mod speech_progress;
 mod translation_progress;
 
 #[derive(Debug, Clone, PartialEq)]

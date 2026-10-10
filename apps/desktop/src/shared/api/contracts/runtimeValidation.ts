@@ -41,6 +41,7 @@ const artifactKinds = new Set([
   'translatedTranscript',
   'manualCast',
   'generatedSpeechSegment',
+  'generatedSpeech',
   'mixedAudio',
   'previewVideo',
   'finalVideo',
