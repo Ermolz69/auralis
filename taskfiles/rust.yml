@@ -1,6 +1,16 @@
 version: '3'
 
 tasks:
+  fmt:tts:
+    desc: Format only TTS integration Rust sources without touching concurrent work
+    cmds:
+      - rustfmt --edition 2024 crates/adapters-tts/src/lib.rs crates/adapters-tts/src/client.rs crates/adapters-tts/src/execute.rs crates/adapters-tts/src/framed.rs crates/adapters-tts/src/owned_process.rs crates/adapters-tts/src/preflight.rs crates/adapters-tts/src/protocol.rs crates/adapters-tts/tests/protocol.rs crates/adapters-tts/tests/framed.rs
+
+  test:tts:
+    desc: Verify the model-free TTS worker transport adapter
+    cmds:
+      - cargo test --locked -p adapters-tts {{.CLI_ARGS}}
+
   fmt:caster:
     desc: Format only Caster integration Rust sources without touching other work
     cmds:

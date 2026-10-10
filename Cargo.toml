@@ -12,6 +12,7 @@ members = [
   "crates/adapters-model",
   "crates/adapters-translate",
   "crates/adapters-caster",
+  "crates/adapters-tts",
   "crates/jobs",
   "crates/common",
   "tools/glib-backport/regression"
@@ -28,6 +29,7 @@ adapters-ffmpeg = { path = "crates/adapters-ffmpeg" }
 adapters-model = { path = "crates/adapters-model" }
 adapters-translate = { path = "crates/adapters-translate" }
 adapters-caster = { path = "crates/adapters-caster" }
+adapters-tts = { path = "crates/adapters-tts" }
 adapters-storage = { path = "crates/adapters-storage" }
 adapters-tauri = { path = "crates/adapters-tauri" }
 adapters-ytdlp = { path = "crates/adapters-ytdlp" }

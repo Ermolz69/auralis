@@ -108,6 +108,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "adapters-tts"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "domain",
+ "ports",
+ "process-wrap",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "uuid",
+ "windows 0.62.2",
+]
+
+[[package]]
 name = "adapters-ytdlp"
 version = "0.1.0"
 dependencies = [
