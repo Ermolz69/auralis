@@ -43,7 +43,7 @@ async fn strict_inspection_preserves_original_and_opens_second_database()
         &directory.path().join("auralis-translate.sqlite"),
         SqliteConfig::default(),
     )?;
-    assert_eq!(db.schema_version()?, 5);
+    assert_eq!(db.schema_version()?, 6);
     Ok(())
 }
 

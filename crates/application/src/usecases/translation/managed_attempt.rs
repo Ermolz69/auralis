@@ -46,7 +46,9 @@ impl ManagedTranslationAttempt {
     }
 
     pub async fn execute(self) -> Result<TranslationPublicationRecord, ApplicationError> {
-        let result_id = self
+        #[cfg(feature = "native-e2e")]
+        let run_id = self.start_guard.run_id;
+        let run_result = self
             .run_job
             .execute(
                 ExecuteTranslationRequest {
@@ -57,10 +59,11 @@ impl ManagedTranslationAttempt {
                 },
                 self.job.id(),
             )
-            .await?;
-        drop(self.lease);
+            .await;
+        self.lease.stop().await?;
+        let result_id = run_result?;
         #[cfg(feature = "native-e2e")]
-        super::native_e2e_result_gap::hold_if_requested(self.start_guard.run_id, result_id).await?;
+        super::native_e2e_result_gap::hold_if_requested(run_id, result_id).await?;
         self.publish
             .execute(PublishTranslationRequest {
                 project_id: self.request.project_id,

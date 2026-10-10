@@ -6,6 +6,15 @@ edition.workspace = true
 
 [dependencies]
 url.workspace = true
+tokio = { workspace = true, features = ["process", "sync", "rt"] }
+
+[target.'cfg(windows)'.dependencies]
+process-wrap = { workspace = true, features = ["tokio1", "job-object", "kill-on-drop", "creation-flags"] }
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
 
 [lints]
 workspace = true

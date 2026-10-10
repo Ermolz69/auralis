@@ -258,6 +258,13 @@ tasks:
       - task: rs:test:jobs
       - task: fe:test:jobs
 
+  check:integration:contract:
+    desc: Verify typed speech boundaries and synthetic model-free adapter checks
+    cmds:
+      - task: rs:test:ports
+      - task: rs:test:contract-adapter
+      - task: rs:test:model-admission
+
   check:rust:pr:
     desc: Run the Rust gates required for pull requests without release-only regressions
     cmds:

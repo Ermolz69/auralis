@@ -1,6 +1,5 @@
 use super::config::ManagedRuntimeConfig;
 use super::lease::ManagedLlamaLease;
-use super::owned_process;
 use super::preparation::RuntimePreparation;
 use async_trait::async_trait;
 use auralis_translation::SourceHash;
@@ -8,6 +7,8 @@ use auralis_translation_llamacpp::{
     LlamaCppProvider, ModelProfile, PreparationControl, hash_file_with_control,
     verify_server_with_control,
 };
+use common::model_admission::MachineAdmission;
+use common::owned_process;
 use ports::cancellation::CancellationToken;
 use ports::error::PortError;
 use ports::translation_links::TranslationRunIntent;
@@ -15,26 +16,29 @@ use ports::translation_model_runtime::{TranslationModelLease, TranslationModelRu
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::sync::Arc;
 use std::time::Instant;
 use tokio::process::Command;
-use tokio::sync::Semaphore;
 
 const LOOPBACK_HOST: &str = "127.0.0.1";
 const SERVER_TOOL: &str = "managed llama.cpp server";
 
 pub struct ManagedLlamaRuntime {
     config: ManagedRuntimeConfig,
-    slot: Arc<Semaphore>,
+    admission: MachineAdmission,
 }
 
 impl ManagedLlamaRuntime {
     pub fn new(config: ManagedRuntimeConfig) -> Result<Self, PortError> {
+        let admission = MachineAdmission::system().map_err(io_error)?;
+        Self::with_admission(config, admission)
+    }
+
+    pub fn with_admission(
+        config: ManagedRuntimeConfig,
+        admission: MachineAdmission,
+    ) -> Result<Self, PortError> {
         config.validate()?;
-        Ok(Self {
-            config,
-            slot: Arc::new(Semaphore::new(1)),
-        })
+        Ok(Self { config, admission })
     }
 
     async fn verify_model(
@@ -157,15 +161,26 @@ impl TranslationModelRuntimePort for ManagedLlamaRuntime {
         cancellation: CancellationToken,
     ) -> Result<Box<dyn TranslationModelLease>, PortError> {
         let cancel_on_drop = cancellation.clone().drop_guard();
-        let permit = self
-            .slot
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| PortError::Busy {
-                message: "a managed translation model is already active".into(),
-            })?;
         let control = RuntimePreparation::new(cancellation.clone(), None);
         let (profile, model_path) = self.verify_model(intent, &control).await?;
+        control.check().map_err(|cause| control.error(cause))?;
+        let admission = tokio::select! {
+            _ = cancellation.cancelled() => return Err(PortError::Cancelled),
+            result = tokio::time::timeout(self.config.startup_timeout, self.admission.acquire()) => {
+                result.map_err(|_| PortError::Busy {
+                    message: "model admission exceeded the configured startup timeout".into(),
+                })?
+            }
+        };
+        let permit = admission.map_err(|error| {
+            if error.kind() == std::io::ErrorKind::WouldBlock {
+                PortError::Busy {
+                    message: error.to_string(),
+                }
+            } else {
+                io_error(error)
+            }
+        })?;
         control.check().map_err(|cause| control.error(cause))?;
         let listener = TcpListener::bind((LOOPBACK_HOST, 0)).map_err(io_error)?;
         let port = listener.local_addr().map_err(io_error)?.port();

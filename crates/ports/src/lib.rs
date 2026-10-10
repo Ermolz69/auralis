@@ -21,6 +21,8 @@ pub mod recovery;
 pub mod repository;
 mod scheduled_job_conversion;
 pub mod source;
+pub mod speech_contract;
+pub mod speech_execution;
 pub mod storage;
 pub mod transaction;
 pub mod translation_branch_edit;
