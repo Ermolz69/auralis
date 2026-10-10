@@ -11,7 +11,8 @@ pub(crate) const SCHEMA: &str = concat!(
     include_str!("translation_run_intents_schema.sql"),
     include_str!("translation_host_jobs_schema.sql"),
     include_str!("translation_publication_revisions_schema.sql"),
-    include_str!("translation_edit_intents_schema.sql")
+    include_str!("translation_edit_intents_schema.sql"),
+    include_str!("speech_run_schema.sql")
 );
 
 pub(crate) async fn create_pool(db_path: &Path) -> Result<SqlitePool, PortError> {
@@ -95,8 +96,15 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker >= 10 {
         expected_tables.push("translation_edit_intents");
     }
+    if schema_marker >= 11 {
+        expected_tables.extend([
+            "speech_run_intents",
+            "speech_host_attempts",
+            "speech_host_checkpoints",
+        ]);
+    }
     expected_tables.sort_unstable();
-    if table_names != expected_tables || !(1..=10).contains(&schema_marker) {
+    if table_names != expected_tables || !(1..=11).contains(&schema_marker) {
         return Err(non_final_schema_error("database"));
     }
 
@@ -208,6 +216,9 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
     if schema_marker < 10 {
         super::translation_edit_intents_migration::migrate(pool).await?;
     }
+    if schema_marker < 11 {
+        super::speech_run_migration::migrate(pool).await?;
+    }
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
     validate_columns(pool, "ui_migrations", &["key"]).await?;
@@ -292,6 +303,45 @@ async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError
             "expected_link_revision",
             "request_sha256",
             "created_at",
+        ],
+    )
+    .await?;
+    validate_columns(
+        pool,
+        "speech_run_intents",
+        &[
+            "run_id",
+            "project_id",
+            "plan_json",
+            "plan_sha256",
+            "profile_id",
+            "profile_sha256",
+            "expected_utterances",
+            "expected_chunks",
+            "created_at",
+        ],
+    )
+    .await?;
+    validate_columns(
+        pool,
+        "speech_host_attempts",
+        &["attempt_id", "run_id", "job_id", "created_at", "ended_at"],
+    )
+    .await?;
+    validate_columns(
+        pool,
+        "speech_host_checkpoints",
+        &[
+            "attempt_id",
+            "sequence",
+            "utterance_id",
+            "cue_id",
+            "chunk_id",
+            "cache_key",
+            "audio_sha256",
+            "duration_ms",
+            "origin",
+            "saved_at",
         ],
     )
     .await?;

@@ -13,6 +13,10 @@ mod project_revision_migration;
 pub mod project_row;
 mod project_updates;
 pub mod recovery;
+mod speech_run_migration;
+#[cfg(test)]
+mod speech_run_migration_tests;
+pub mod speech_run_repository;
 pub mod translation_edit_intents;
 mod translation_edit_intents_migration;
 pub mod translation_host_job_repository;
@@ -32,6 +36,7 @@ pub use job_repository::SqliteJobRepository;
 pub use outbox_repository::SqliteOutboxRepository;
 pub use project_avatar_repository::SqliteProjectAvatarRepository;
 pub use project_repository::SqliteProjectRepository;
+pub use speech_run_repository::SqliteSpeechRunStore;
 pub use translation_edit_intents::SqliteTranslationEditIntentStore;
 pub use translation_host_job_repository::SqliteTranslationHostJobStore;
 pub use translation_links::SqliteTranslationLinkStore;

@@ -7,15 +7,15 @@ and separate evidence. Source cue windows are lineage, not automatic duration fi
 
 ## Task and gate map
 
-| ID      | Deliverable                                                          | Required evidence                                                                           | Current status                                                                                           |
-| ------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| INT-T01 | Reusable installed library, legacy CLI and worker on one render core | Installed wheel, baseline comparison, exact profile/model pins                              | Candidate TTS commit `99f2979`; installed import smoke passed; baseline comparison open                  |
-| INT-T02 | Canonical plan, strict references and complete lineage               | CONTRACT fixtures, malformed plan/profile/reference/split rejection, manifest coverage      | Model-free CONTRACT checks and independent Rust result verifier pass; real plan candidate open           |
-| INT-T03 | Owned sequential execution and recovery                              | Admission, process exit, durable progress, cancel, crash, exact resume, stale attempt tests | Bounded worker transport and speech job progress compile; host admission and native lifecycle tests open |
-| INT-T04 | Verified cache reuse                                                 | Changed input identity and corruption matrix with unaffected cache entries retained         | Audio/metadata corruption covered; full matrix open                                                      |
-| INT-T05 | Real audio from both engines                                         | Short and longer cases, hashes, measured durations, actual listening                        | Four real legacy CLI probes passed technical verification; speech-plan cases and listening open          |
-| INT-T06 | Auralis desktop workflow                                             | React, Tauri, Rust, worker, managed publication, restart, cancel, resume and playback       | Rust worker transport compiles; host and desktop flow open                                               |
-| INT-T07 | Installed offline Windows delivery                                   | Exact wheels/runtime/assets, interrupted acquisition recovery and clean install             | Local wheel import smoke only; clean install open                                                        |
+| ID      | Deliverable                                                          | Required evidence                                                                           | Current status                                                                                                                                |
+| ------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| INT-T01 | Reusable installed library, legacy CLI and worker on one render core | Installed wheel, baseline comparison, exact profile/model pins                              | Candidate TTS commit `99f2979`; installed import smoke passed; baseline comparison open                                                       |
+| INT-T02 | Canonical plan, strict references and complete lineage               | CONTRACT fixtures, malformed plan/profile/reference/split rejection, manifest coverage      | Model-free CONTRACT checks and independent Rust result verifier pass; real plan candidate open                                                |
+| INT-T03 | Owned sequential execution and recovery                              | Admission, process exit, durable progress, cancel, crash, exact resume, stale attempt tests | Bounded worker transport and durable speech attempt/checkpoint fencing pass model-free checks; host admission and native lifecycle tests open |
+| INT-T04 | Verified cache reuse                                                 | Changed input identity and corruption matrix with unaffected cache entries retained         | Audio/metadata corruption covered; full matrix open                                                                                           |
+| INT-T05 | Real audio from both engines                                         | Short and longer cases, hashes, measured durations, actual listening                        | Four real legacy CLI probes passed technical verification; speech-plan cases and listening open                                               |
+| INT-T06 | Auralis desktop workflow                                             | React, Tauri, Rust, worker, managed publication, restart, cancel, resume and playback       | Rust worker transport compiles; host and desktop flow open                                                                                    |
+| INT-T07 | Installed offline Windows delivery                                   | Exact wheels/runtime/assets, interrupted acquisition recovery and clean install             | Local wheel import smoke only; clean install open                                                                                             |
 
 The current new worker operations are `capabilities`, `catalog`, `compose`,
 `validate`, `execute` and `cancel`. Worker frames are limited to 1 MiB and
@@ -26,7 +26,14 @@ and publish only after verifying the full manifest and final WAV. The Rust
 adapter now independently rechecks plan and profile hashes, utterance and chunk
 order, exact text concatenation, cue and role lineage, reference IDs, segment
 audio hashes, model revision, final output hashes, and PCM16 WAV measurements.
-The host publication path has not been implemented yet. Semantic,
+The host now has a version 11 SQLite run-intent, attempt and checkpoint
+migration. Run intents preserve exact plan bytes and their digest, profile
+identity and expected counts. A host attempt and its job are admitted in one
+transaction, and saved checkpoint progress is written with its attempt ID and
+job revision in one transaction. Closed and superseded attempts reject late
+events. Completion deliberately remains unavailable in this store until the
+managed artifact publication transaction is implemented. The host publication
+path has not been implemented yet. Semantic,
 identity and quality failures have zero automatic retries. A transient
 transport or storage failure permits at most two retries after reconciliation
 of the prior attempt; each retry gets a fresh attempt ID. No model job may
@@ -105,7 +112,8 @@ not satisfy the required speech-plan short and longer cases.
 - Auralis `task rs:fmt:tts`: passed for the isolated adapter sources.
 - Auralis `task rs:lock:refresh`: passed offline after adding adapter dependencies.
 - Auralis `task rs:test:tts`: protocol, framing, lineage tampering and WAV
-  verification tests, speech job progress and a SQLite round trip passed on
+  verification tests, speech job progress, SQLite attempt fencing and version
+  10 migration tests passed on
   native Windows; the execution path compiled but has not run a model or native
   lifecycle test.
 - Auralis `task rs:check`: passed for the workspace after a sandbox access denial
