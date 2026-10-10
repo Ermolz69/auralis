@@ -15,6 +15,7 @@ pub mod package_status;
 pub mod pause;
 pub mod publication_view;
 pub mod publish;
+pub mod review;
 pub mod select_result;
 pub mod start;
 pub mod status;

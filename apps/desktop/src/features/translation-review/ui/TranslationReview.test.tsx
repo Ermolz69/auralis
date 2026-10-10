@@ -12,6 +12,8 @@ const getHistoricalTranslationEditContext = vi.hoisted(() => vi.fn());
 const editHistoricalTranslationResult = vi.hoisted(() => vi.fn());
 const publishTranslationResult = vi.hoisted(() => vi.fn());
 const getTranslationPublication = vi.hoisted(() => vi.fn());
+const getTranslationReview = vi.hoisted(() => vi.fn());
+const recordTranslationReview = vi.hoisted(() => vi.fn());
 
 vi.mock('@/entities/project', () => ({
   useProjectContext: () => ({ project: { id: '00000000-0000-4000-8000-000000000001' } }),
@@ -25,6 +27,8 @@ vi.mock('@/entities/translation', () => ({
   editHistoricalTranslationResult,
   publishTranslationResult,
   getTranslationPublication,
+  getTranslationReview,
+  recordTranslationReview,
 }));
 
 const projectId = '00000000-0000-4000-8000-000000000001';
@@ -67,6 +71,16 @@ beforeEach(() => {
     selectedResultId: olderResultId,
     revision: 3,
   });
+  getTranslationReview.mockImplementation(
+    async (_projectId, _translationId, requestedResultId) => ({
+      resultId: requestedResultId,
+      resultSha256: 'b'.repeat(64),
+      linkRevision: 2,
+      needsReview: true,
+      selected: requestedResultId === resultId,
+      latest: null,
+    }),
+  );
   getTranslationComparison.mockImplementation(
     async (_projectId, _translationId, requestedResultId, offset) => ({
       resultId: requestedResultId,
@@ -199,7 +213,7 @@ describe('TranslationReview', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Обновить переводы' }));
     await screen.findByRole('option', { name: /версия 3/ });
-    await screen.findByText(/выбрана для проекта/);
+    await screen.findByText('Новая версия готова и выбрана для проекта. Требует проверки.');
     fireEvent.change(screen.getByRole('combobox', { name: 'Версия для сравнения' }), {
       target: { value: editedId },
     });

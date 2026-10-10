@@ -14,7 +14,8 @@ use application::usecases::translation::{
     PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
     RecoverTranslationHostJobsUseCase, RecoverTranslationPublicationsUseCase,
     RunManagedTranslationUseCase, RunTranslationHostJobUseCase, SelectTranslationResultUseCase,
-    StartTranslationJobUseCase, TranslationRunUseCase, VerifyTranslationHistoryUseCase,
+    StartTranslationJobUseCase, TranslationReviewUseCase, TranslationRunUseCase,
+    VerifyTranslationHistoryUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -36,6 +37,7 @@ pub struct TranslationUseCases {
     pub comparison: GetTranslationComparisonUseCase,
     pub history: ListTranslationHistoryUseCase,
     pub select_result: SelectTranslationResultUseCase,
+    pub review: TranslationReviewUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
     pub historical_edit: EditHistoricalTranslationUseCase,
@@ -62,7 +64,12 @@ impl TranslationUseCases {
         stores: super::translation_stores::TranslationStores,
         database_path: PathBuf,
     ) -> Self {
-        let super::translation_stores::TranslationStores { links, jobs, edits } = stores;
+        let super::translation_stores::TranslationStores {
+            links,
+            jobs,
+            edits,
+            reviews,
+        } = stores;
         let inspect = Arc::new(InspectTranslationSourceUseCase::new(
             projects.clone(),
             artifacts.clone(),
@@ -108,7 +115,7 @@ impl TranslationUseCases {
                 Arc::new(TranslateResultEditor::new(database_path.clone())),
             ),
             edit_context: GetHistoricalTranslationEditContextUseCase::new(
-                history_verifier,
+                history_verifier.clone(),
                 control.clone(),
                 Arc::new(TranslateResultReader::new(database_path.clone())),
             ),
@@ -126,6 +133,7 @@ impl TranslationUseCases {
                 artifacts,
                 artifact_store.clone(),
             ),
+            review: TranslationReviewUseCase::new(history_verifier, reviews),
             comparison: GetTranslationComparisonUseCase::new(
                 inspect.clone(),
                 links.clone(),

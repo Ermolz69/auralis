@@ -72,6 +72,7 @@ pub fn setup(
             links: services.translation_links.clone(),
             jobs: translation_jobs,
             edits: services.translation_edit_intents.clone(),
+            reviews: services.translation_reviews.clone(),
         },
         app_paths.translate_database(),
     );

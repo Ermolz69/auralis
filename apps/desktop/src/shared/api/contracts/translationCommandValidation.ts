@@ -12,6 +12,7 @@ import {
   isUuid,
 } from './translationValidation';
 import { validateTranslationHistoryPage } from './translationHistoryValidation';
+import { validateTranslationReviewView } from './translationReviewValidation';
 import {
   validateHistoricalTranslationEditContext,
   validateTranslationPublicationView,
@@ -34,5 +35,7 @@ export const translationCommandResultValidators = {
   get_translation_run_status_cmd: validateTranslationRunSnapshot,
   list_translation_history_cmd: validateTranslationHistoryPage,
   select_translation_result_cmd: validateTranslationLink,
+  get_translation_review_cmd: validateTranslationReviewView,
+  record_translation_review_cmd: validateTranslationReviewView,
   pause_translation_run_cmd: isNull,
 } satisfies Partial<Record<keyof CommandMap, Validator>>;

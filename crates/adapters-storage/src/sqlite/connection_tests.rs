@@ -50,6 +50,7 @@ mod tests {
                 "translation_edit_intents",
                 "translation_host_jobs",
                 "translation_publications",
+                "translation_review_events",
                 "translation_run_intents",
                 "ui_migrations",
                 "ui_settings",
@@ -61,7 +62,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            10
+            11
         );
 
         let project_columns: Vec<String> =

@@ -195,12 +195,14 @@ async fn v9_upgrade_is_idempotent_preserves_history_and_rejects_corrupt_intent_m
         sqlx::query_scalar("SELECT file FROM pragma_database_list WHERE name = 'main'")
             .fetch_one(&f.pool)
             .await?;
-    sqlx::raw_sql("DROP TABLE translation_edit_intents; PRAGMA user_version = 9;")
+    sqlx::raw_sql(
+        "DROP TABLE translation_review_events; DROP TABLE translation_edit_intents; PRAGMA user_version = 9;",
+    )
         .execute(&f.pool)
         .await?;
     f.pool.close().await;
     let pool = connect_sqlite(&database).await?;
-    assert_eq!(version(&pool).await?, 10);
+    assert_eq!(version(&pool).await?, 11);
     let links = adapters_storage::sqlite::SqliteTranslationLinkStore::new(pool.clone());
     assert_eq!(links.get(intent.translation_id).await?, Some(before));
     let store = SqliteTranslationEditIntentStore::new(pool.clone());
@@ -217,8 +219,8 @@ async fn v9_upgrade_is_idempotent_preserves_history_and_rejects_corrupt_intent_m
     ));
     pool.close().await;
     let reopened = connect_sqlite(&database).await?;
-    assert_eq!(version(&reopened).await?, 10);
-    sqlx::query("PRAGMA user_version = 11")
+    assert_eq!(version(&reopened).await?, 11);
+    sqlx::query("PRAGMA user_version = 12")
         .execute(&reopened)
         .await?;
     reopened.close().await;

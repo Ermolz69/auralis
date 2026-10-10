@@ -20,6 +20,21 @@ pub struct VerifyTranslationHistoryUseCase {
 }
 
 impl VerifyTranslationHistoryUseCase {
+    pub async fn link_for_project(
+        &self,
+        project_id: &domain::project::ProjectId,
+        translation_id: uuid::Uuid,
+    ) -> Result<ports::translation_links::TranslationLink, ApplicationError> {
+        self.links
+            .get(translation_id)
+            .await?
+            .filter(|link| &link.project_id == project_id)
+            .ok_or_else(|| PortError::NotFound {
+                resource: "project translation".into(),
+            })
+            .map_err(Into::into)
+    }
+
     pub fn new(
         inspector: Arc<InspectTranslationSourceUseCase>,
         links: Arc<dyn TranslationLinkStore>,

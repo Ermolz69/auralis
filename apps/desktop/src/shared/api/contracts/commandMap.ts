@@ -1,12 +1,11 @@
 import type { Project, CreateProjectResponse } from './project';
 import type { StoredTheme, ProjectPin, ProjectPins, LegacyPin } from './uiPreferences';
 import type { Transcript } from './transcript';
-import type { Job, JobHistoryCursor, JobHistoryPage } from './job';
+import type { Job, JobEvent, JobHistoryCursor, JobHistoryPage } from './job';
 import type { MediaMetadata } from './media';
 import type { SubtitleTrack } from './subtitle';
 import type { ProjectAvatar } from './projectAvatar';
 import type { PendingYoutubeImport } from './youtubeImport';
-import type { JobEvent } from './job';
 import type { Artifact, ArtifactKind } from './artifact';
 import type {
   HistoricalTranslationEditContext,
@@ -24,6 +23,8 @@ import type {
   TranslationPackageStatus,
   TranslationPublication,
   TranslationRunSnapshot,
+  TranslationReviewDecision,
+  TranslationReviewView,
   TranslationStart,
 } from './translation';
 
@@ -47,18 +48,9 @@ export interface CommandMap {
     args: { projectId: string; dataUrl?: string | null; onlyIfMissing: boolean };
     result: ProjectAvatar;
   };
-  health_check: {
-    args: undefined;
-    result: string;
-  };
-  native_e2e_checkpoint_cmd: {
-    args: { checkpoint: string };
-    result: null;
-  };
-  native_e2e_pipeline_pause_reached_cmd: {
-    args: undefined;
-    result: boolean;
-  };
+  health_check: { args: undefined; result: string };
+  native_e2e_checkpoint_cmd: { args: { checkpoint: string }; result: null };
+  native_e2e_pipeline_pause_reached_cmd: { args: undefined; result: boolean };
   native_e2e_historical_edit_held_cmd: { args: undefined; result: boolean };
   create_project_cmd: {
     args: { title: string };
@@ -196,6 +188,23 @@ export interface CommandMap {
       expectedLinkRevision: number;
     };
     result: TranslationLink;
+  };
+  get_translation_review_cmd: {
+    args: { projectId: string; translationId: string; resultId: string };
+    result: TranslationReviewView;
+  };
+  record_translation_review_cmd: {
+    args: {
+      projectId: string;
+      translationId: string;
+      resultId: string;
+      expectedResultSha256: string;
+      expectedLinkRevision: number;
+      decision: TranslationReviewDecision;
+      reviewerLabel: string;
+      note: string;
+    };
+    result: TranslationReviewView;
   };
   pause_translation_run_cmd: {
     args: { projectId: string; translationId: string };
