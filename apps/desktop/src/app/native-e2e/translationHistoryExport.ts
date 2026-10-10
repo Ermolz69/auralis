@@ -9,9 +9,9 @@ export async function exportHistoryResult(
   prefix: ExportPrefix,
 ): Promise<string> {
   const source = __NATIVE_E2E_SUBTITLE_PATH__;
-  if (!/[\\/]source\.srt$/i.test(source))
-    throw new Error('Native history export requires the owned SRT fixture');
-  const destination = source.replace(/source\.srt$/i, `${prefix}-${resultId}.srt`);
+  const format = /[\\/]source\.(srt|vtt)$/i.exec(source)?.[1]?.toLowerCase();
+  if (!format) throw new Error('Native history export requires an owned subtitle fixture');
+  const destination = source.replace(/source\.(srt|vtt)$/i, `${prefix}-${resultId}.${format}`);
   const review = await getTranslationReview(projectId, translationId, resultId);
   if (!review.needsReview || review.latest)
     throw new Error('Native history export must retain an unapproved draft');

@@ -82,9 +82,20 @@ export async function verifyTranslationHistory(
       )
         throw new Error('History includes a foreign, nonready or mismatched publication');
     }
-    const verified = await verifyHistoryResults(dataRoot, translate, publications);
+    const verified = await verifyHistoryResults(
+      dataRoot,
+      translate,
+      publications,
+      link.source_format,
+    );
     if (exportEnabled) {
-      await verifyHistoryExports(dataRoot, publications, verified.outputs, Boolean(previous));
+      await verifyHistoryExports(
+        dataRoot,
+        publications,
+        verified.outputs,
+        Boolean(previous),
+        link.source_format,
+      );
       const reviewCount = host
         .prepare('SELECT COUNT(*) AS count FROM translation_review_events WHERE translation_id = ?')
         .get(link.translation_id);
