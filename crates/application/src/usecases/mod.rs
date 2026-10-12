@@ -5,6 +5,7 @@ pub mod job;
 pub mod media;
 pub mod pipeline;
 pub mod project;
+pub mod speech;
 pub mod speech_catalog;
 pub mod system;
 pub mod transcript;

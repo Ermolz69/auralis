@@ -9,6 +9,7 @@ use crate::error::ApplicationError;
 pub struct SpeechCatalogUseCase {
     projects: Arc<dyn ProjectRepository>,
     catalog: Option<Arc<dyn SpeechCatalogPort>>,
+    unavailable_reason: String,
 }
 
 impl SpeechCatalogUseCase {
@@ -16,7 +17,16 @@ impl SpeechCatalogUseCase {
         projects: Arc<dyn ProjectRepository>,
         catalog: Option<Arc<dyn SpeechCatalogPort>>,
     ) -> Self {
-        Self { projects, catalog }
+        Self {
+            projects,
+            catalog,
+            unavailable_reason: "TTS component is not installed".into(),
+        }
+    }
+
+    pub fn with_unavailable_reason(mut self, reason: String) -> Self {
+        self.unavailable_reason = reason;
+        self
     }
 
     pub async fn execute(
@@ -31,7 +41,7 @@ impl SpeechCatalogUseCase {
             .catalog
             .as_ref()
             .ok_or_else(|| PortError::Unsupported {
-                message: "TTS component is not installed".into(),
+                message: self.unavailable_reason.clone(),
             })?;
         Ok(catalog.snapshot(project).await?)
     }

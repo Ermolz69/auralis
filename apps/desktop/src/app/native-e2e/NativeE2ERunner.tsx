@@ -13,6 +13,8 @@ import { invoke } from '@/shared/api/tauri';
 import { TranslationModelSetup } from '@/features/translation-model-setup';
 import { VoiceCatalog } from '@/features/voice-catalog';
 import { runCasterScenario } from './casterScenario';
+import { SpeechCatalog } from '@/features/speech-catalog';
+import { runSpeechScenario } from './speechScenario';
 import { prepareTranslationPackage } from './prepareTranslationPackage';
 import { resumeTranslationScenario, runTranslationScenario } from './runTranslationScenario';
 import { reopenTranslationHistory } from './reopenTranslationHistory';
@@ -29,6 +31,12 @@ export function NativeE2ERunner() {
   useEffect(() => {
     if (started) return;
     started = true;
+    if (__NATIVE_E2E_SPEECH__) {
+      void runSpeechScenario(__NATIVE_E2E_RUN_ID__, setCasterProjectId).catch((error) =>
+        console.error('Native Speech E2E failed', error),
+      );
+      return;
+    }
     if (__NATIVE_E2E_CASTER__) {
       void runCasterScenario(__NATIVE_E2E_RUN_ID__, setCasterProjectId).catch((error) =>
         console.error('Native Caster E2E failed', error),
@@ -38,6 +46,8 @@ export function NativeE2ERunner() {
     void runNativeScenario();
   }, []);
 
+  if (__NATIVE_E2E_SPEECH__)
+    return casterProjectId ? <SpeechCatalog projectId={casterProjectId} /> : null;
   if (__NATIVE_E2E_CASTER__) {
     return casterProjectId ? <VoiceCatalog projectId={casterProjectId} /> : null;
   }

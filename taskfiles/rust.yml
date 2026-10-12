@@ -1,6 +1,33 @@
 version: '3'
 
 tasks:
+  test:desktop-manifest:
+    desc: Verify the desktop's installed-runtime receipt fixture without loading models
+    cmds:
+      - cargo test --locked -p auralis-app --test caster_manifest
+  test:speech-workflow:
+    cmds:
+      - cargo test --locked -p application --test speech_workflow {{.CLI_ARGS}}
+  clippy:speech:
+    desc: Lint speech workflow, persistence and shared model admission
+    cmds:
+      - cargo clippy --locked -p common -p adapters-tts -p application -p adapters-storage -p adapters-translate -p jobs --lib -- -D warnings
+  fmt:speech:
+    desc: Format speech integration sources
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/application/src/usecases/speech/progress.rs crates/application/src/usecases/speech/ownership.rs crates/adapters-storage/src/sqlite/connection/speech_workflow.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/application/src/usecases/artifact/resolve_path.rs src-tauri/src/commands/artifact.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/artifact_finalization/metadata.rs crates/ports/src/transaction/artifact.rs crates/adapters-storage/src/sqlite/artifact_index/finalization.rs crates/adapters-storage/src/sqlite/unit_of_work/artifact_writes.rs crates/adapters-storage/src/sqlite/unit_of_work/tests/mod.rs crates/application/src/worker/outbox/payload_handler.rs crates/adapters-storage/src/sqlite/project_revision_migration_tests.rs crates/adapters-storage/src/sqlite/translation_host_jobs_migration_tests.rs crates/adapters-storage/src/sqlite/translation_links_migration_tests.rs crates/adapters-storage/src/sqlite/translation_publication_revisions_migration_tests.rs crates/adapters-storage/src/sqlite/translation_run_intents_migration_tests.rs crates/adapters-storage/src/sqlite/ui_preferences/tests.rs crates/adapters-storage/src/sqlite/youtube_import_journal/tests.rs crates/adapters-storage/tests/merge_schema_upgrade.rs crates/adapters-storage/tests/support/legacy_outbox.rs crates/adapters-storage/tests/translation_edit_intents.rs crates/adapters-storage/tests/translation_reviews.rs
+      - rustfmt --edition 2024 crates/application/src/usecases/speech/service.rs crates/application/src/usecases/speech/error.rs crates/application/src/usecases/speech/digest.rs crates/adapters-tts/src/integrity_tests.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/speech_workflow.rs crates/ports/src/lib.rs crates/common/src/model_admission.rs crates/common/src/lib.rs crates/domain/src/media/artifact.rs crates/application/src/usecases/mod.rs crates/application/src/usecases/speech/mod.rs crates/application/src/usecases/speech/source.rs crates/application/src/usecases/speech/prepare.rs crates/application/src/usecases/speech/run.rs crates/application/src/usecases/speech/state.rs crates/application/src/usecases/speech_catalog.rs crates/application/tests/speech_workflow.rs crates/adapters-tts/src/client.rs crates/adapters-tts/src/execute.rs crates/adapters-tts/src/workflow.rs crates/adapters-tts/src/integrity.rs crates/adapters-tts/src/catalog.rs crates/adapters-tts/src/lib.rs crates/adapters-tts/tests/installed_catalog.rs crates/adapters-storage/src/local/storage_key.rs crates/adapters-storage/src/sqlite/artifact_index/queries.rs crates/adapters-storage/src/sqlite/connection/validation.rs crates/adapters-storage/src/sqlite/connection_tests.rs crates/adapters-storage/src/sqlite/speech_run_migration_tests.rs crates/adapters-storage/src/sqlite/speech_run_repository.rs crates/adapters-storage/src/sqlite/speech_run_repository/workflow.rs crates/adapters-storage/tests/speech_publication.rs crates/adapters-translate/src/managed_runtime/lease.rs crates/adapters-translate/src/managed_runtime/runtime.rs crates/jobs/src/manager/manager.rs src-tauri/src/bootstrap/mod.rs src-tauri/src/bootstrap/services.rs src-tauri/src/bootstrap/storage.rs src-tauri/src/bootstrap/translation.rs src-tauri/src/bootstrap/tts.rs src-tauri/src/commands/tts.rs src-tauri/src/dto/artifact.rs src-tauri/src/lib.rs
+  check:speech:
+    desc: Check the local speech workflow and refresh workspace dependency edges
+    cmds:
+      - cargo check -p application -p adapters-tts -p adapters-storage -p adapters-translate
+  check:speech:desktop:
+    desc: Check the Windows speech commands
+    cmds:
+      - cargo check --locked -p auralis-app
   test:outbox:
     desc: Verify project CAS, outbox ordering, ownership and publication
     cmds:
@@ -59,13 +86,14 @@ tasks:
   test:tts-catalog:installed:
     desc: Read selected Ciri and Geralt copies through the installed TTS worker without model loading
     requires:
-      vars: [PYTHON, PACKAGE_ROOT, VOICE_STORE, PROFILE_ROOT, MODEL_CACHE]
+      vars: [PYTHON, PACKAGE_ROOT, VOICE_STORE, PROFILE_ROOT, MODEL_CACHE, INTEGRITY_SHA256]
     env:
       AURALIS_TEST_TTS_PYTHON: '{{.PYTHON}}'
       AURALIS_TEST_TTS_PACKAGE_ROOT: '{{.PACKAGE_ROOT}}'
       AURALIS_TEST_TTS_VOICE_STORE: '{{.VOICE_STORE}}'
       AURALIS_TEST_TTS_PROFILE_ROOT: '{{.PROFILE_ROOT}}'
       AURALIS_TEST_TTS_MODEL_CACHE: '{{.MODEL_CACHE}}'
+      AURALIS_TEST_TTS_INTEGRITY_SHA256: '{{.INTEGRITY_SHA256}}'
     cmds:
       - cargo test --locked -p adapters-tts --test installed_catalog -- --ignored --nocapture
 
@@ -82,7 +110,10 @@ tasks:
       - cargo test --locked -p domain --test speech_job {{.CLI_ARGS}}
       - cargo test --locked -p adapters-storage --test speech_job_kind {{.CLI_ARGS}}
       - cargo test --locked -p adapters-storage --test speech_runs {{.CLI_ARGS}}
+      - cargo test --locked -p adapters-storage --test speech_publication {{.CLI_ARGS}}
+      - cargo test --locked -p adapters-storage --lib sqlite::connection_tests {{.CLI_ARGS}}
       - cargo test --locked -p adapters-storage --lib sqlite::speech_run_migration_tests {{.CLI_ARGS}}
+      - cargo test --locked -p application --test speech_workflow {{.CLI_ARGS}}
 
   fmt:caster:
     desc: Format only Caster integration Rust sources without touching other work

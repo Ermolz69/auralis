@@ -20,6 +20,8 @@ tempfile.workspace = true
 bytes.workspace = true
 tracing.workspace = true
 sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 futures.workspace = true
 tokio-util.workspace = true
 

@@ -25,6 +25,7 @@ pub struct TtsRuntimeConfig {
     pub model_cache: PathBuf,
     pub managed_root: PathBuf,
     pub voxcpm_revision: String,
+    pub integrity_sha256: String,
 }
 
 #[derive(Clone, Copy)]
@@ -70,6 +71,7 @@ impl TtsWorkerClient {
             || !runtime.model_cache.is_absolute()
             || !runtime.managed_root.is_absolute()
             || runtime.voxcpm_revision != PINNED_VOXCPM_REVISION
+            || runtime.integrity_sha256.len() != 64
         {
             return Err(PortError::InvalidSource {
                 message: "Invalid pinned TTS runtime configuration".into(),
@@ -92,6 +94,9 @@ impl TtsWorkerClient {
             .env("TTS_VOXCPM_REVISION", &self.runtime.voxcpm_revision)
             .env("PUZA_TTS_PROFILE_DIR", &self.runtime.profile_root)
             .env("HF_HOME", &self.runtime.model_cache)
+            .env("HF_HUB_CACHE", self.runtime.model_cache.join("hub"))
+            .env("HF_HUB_OFFLINE", "1")
+            .current_dir(&self.runtime.package_root)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());

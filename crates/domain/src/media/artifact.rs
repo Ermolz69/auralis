@@ -48,6 +48,7 @@ pub enum ArtifactKind {
     ManualCast,
     GeneratedSpeechSegment,
     GeneratedSpeech,
+    SpeechManifest,
     MixedAudio,
     PreviewVideo,
     FinalVideo,

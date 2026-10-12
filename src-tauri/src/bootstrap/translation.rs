@@ -37,7 +37,7 @@ pub struct TranslationUseCases {
     pub comparison: GetTranslationComparisonUseCase,
     pub history: ListTranslationHistoryUseCase,
     pub select_result: SelectTranslationResultUseCase,
-    pub review: TranslationReviewUseCase,
+    pub review: Arc<TranslationReviewUseCase>,
     pub export: ExportTranslationResultUseCase,
     pub begin: BeginTranslationUseCase,
     pub edit: EditTranslationResultUseCase,
@@ -135,7 +135,10 @@ impl TranslationUseCases {
                 artifacts,
                 artifact_store.clone(),
             ),
-            review: TranslationReviewUseCase::new(history_verifier.clone(), reviews),
+            review: Arc::new(TranslationReviewUseCase::new(
+                history_verifier.clone(),
+                reviews,
+            )),
             export: ExportTranslationResultUseCase::new(history_verifier, app_root),
             comparison: GetTranslationComparisonUseCase::new(
                 inspect.clone(),

@@ -23,6 +23,13 @@ pub(super) async fn setup_db() -> SqlitePool {
     crate::sqlite::outbox_parallel_migration::migrate(&pool)
         .await
         .unwrap();
+    sqlx::raw_sql(concat!(
+        include_str!("../../speech_workflow_schema.sql"),
+        include_str!("../../speech_discard_schema.sql")
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
 
     sqlx::query("PRAGMA foreign_keys = ON")
         .execute(&pool)

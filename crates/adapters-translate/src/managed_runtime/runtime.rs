@@ -165,6 +165,13 @@ impl TranslationModelRuntimePort for ManagedLlamaRuntime {
                 message: "a managed translation model is already active".into(),
             })?;
         let control = RuntimePreparation::new(cancellation.clone(), None);
+        let admission =
+            tokio::task::spawn_blocking(common::model_admission::ModelAdmissionLease::acquire)
+                .await
+                .map_err(|e| unexpected(&e.to_string()))?
+                .map_err(|e| PortError::Busy {
+                    message: e.to_string(),
+                })?;
         let (profile, model_path) = self.verify_model(intent, &control).await?;
         control.check().map_err(|cause| control.error(cause))?;
         let listener = TcpListener::bind((LOOPBACK_HOST, 0)).map_err(io_error)?;
@@ -195,7 +202,7 @@ impl TranslationModelRuntimePort for ManagedLlamaRuntime {
             .stderr(Stdio::null());
         let child = owned_process::spawn(command).map_err(io_error)?;
         let url = format!("http://{LOOPBACK_HOST}:{port}/");
-        let mut lease = ManagedLlamaLease::new(url, child, permit);
+        let mut lease = ManagedLlamaLease::new(url, child, permit, admission);
         let result = self
             .wait_until_ready(&mut lease, profile, model_path, cancellation)
             .await;

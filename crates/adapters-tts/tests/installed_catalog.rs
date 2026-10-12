@@ -22,6 +22,7 @@ async fn installed_worker_lists_ciri_and_geralt_for_both_engines()
         model_cache: required_path("AURALIS_TEST_TTS_MODEL_CACHE")?,
         managed_root: std::env::temp_dir(),
         voxcpm_revision: VOX_REVISION.into(),
+        integrity_sha256: std::env::var("AURALIS_TEST_TTS_INTEGRITY_SHA256")?,
     })?;
     let snapshot = client.snapshot(&ProjectId::new()).await?;
     assert_eq!(snapshot.profiles.len(), 2);

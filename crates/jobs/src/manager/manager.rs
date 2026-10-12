@@ -232,7 +232,11 @@ impl JobManager {
                     outcome,
                 };
 
-                self.storage_uow.commit_terminal_job_update(command).await?;
+                if job.kind() == &domain::job::JobKind::Speech {
+                    self.repo.save(&job, expected_revision).await?;
+                } else {
+                    self.storage_uow.commit_terminal_job_update(command).await?;
+                }
                 self.cache.track_persisted(&job).await;
                 self.emit_job_event(&job, kind);
             }

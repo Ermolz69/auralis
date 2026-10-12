@@ -161,6 +161,9 @@ async fn setup_storage_with_lease(
             translation_reviews: Arc::new(
                 adapters_storage::sqlite::SqliteTranslationReviewStore::new(pool.clone()),
             ),
+            speech: Arc::new(adapters_storage::sqlite::SqliteSpeechRunStore::new(
+                pool.clone(),
+            )),
             translation_host_jobs: Arc::new(SqliteTranslationHostJobStore::new(pool)),
         },
         outbox_repo,

@@ -21,6 +21,62 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  desktop:build:local:
+    desc: Build the local Windows application without an installer or native test runner
+    cmds:
+      - pnpm tauri build --no-bundle --debug
+  tts:native:inspect:
+    requires:
+      vars: [DATA_ROOT]
+    cmds:
+      - node tools/tts/inspect_native.mjs "{{.DATA_ROOT}}" {{.CLI_ARGS}}
+  tts:native:verify:
+    requires:
+      vars: [DATA_ROOT, EXPECTED_RUNS]
+    cmds:
+      - node tools/tts/verify_native.mjs "{{.DATA_ROOT}}" "{{.EXPECTED_RUNS}}"
+  tts:test:admission:
+    desc: Verify competing model leases are refused without loading a model
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/test_admission.ps1
+  desktop:e2e:native:speech:
+    desc: Sequential real Windows speech acceptance with qualified installed voices and local GPU models
+    env:
+      AURALIS_NATIVE_E2E_SPEECH: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION: '0'
+      AURALIS_NATIVE_E2E_CASTER: '0'
+      AURALIS_NATIVE_E2E_KEEP_TEMP: '1'
+    cmds:
+      - node --check tools/native-e2e/speech.mjs
+      - node tools/native-e2e/run.mjs
+  desktop:e2e:native:speech:resume:
+    desc: Explicitly continue cancellation and crash acceptance from a retained completed matrix
+    requires:
+      vars: [SANDBOX]
+    env:
+      AURALIS_NATIVE_E2E_SPEECH_RECOVERY_ROOT: '{{.SANDBOX}}'
+      AURALIS_NATIVE_E2E_SPEECH: '1'
+      AURALIS_NATIVE_E2E_TRANSLATION: '0'
+      AURALIS_NATIVE_E2E_CASTER: '0'
+      AURALIS_NATIVE_E2E_KEEP_TEMP: '1'
+    cmds:
+      - node --check tools/native-e2e/speech.mjs
+      - node tools/native-e2e/run.mjs
+  tts:qualification:prepare:
+    desc: Verify the four real probes and retain unscored reports for this installation
+    cmds:
+      - '"../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" tools/tts/qualification.py prepare {{.CLI_ARGS}}'
+  tts:qualification:apply:
+    desc: Record explicit human decisions through CONTRACT
+    cmds:
+      - '"../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" tools/tts/qualification.py apply {{.CLI_ARGS}}'
+  setup:tts:local:
+    desc: Install pinned local PUZA wheels, voice copies and runtime configuration without model loading
+    vars:
+      PYTHON: '{{default "../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" .PYTHON}}'
+    cmds:
+      - '"{{.PYTHON}}" tools/tts/setup_local.py {{.CLI_ARGS}}'
+
   setup:media-tools:
     desc: Alias for media:setup-tools
     cmds:

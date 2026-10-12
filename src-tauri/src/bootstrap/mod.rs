@@ -122,6 +122,8 @@ pub fn setup(
             );
         }
     }
+    let speech_review = translations.review.clone();
+    let speech_subtitles = translations.inspect.clone();
     app.manage(Arc::new(translations));
     let project_locks =
         Arc::new(application::usecases::project::lifecycle::ProjectLifecycleLocks::new());
@@ -132,7 +134,6 @@ pub fn setup(
         project_locks.clone(),
     );
     app.manage(caster_usecases);
-    app.manage(tts::setup(&app_paths, services.project_repo.clone()));
     if let Some(runtime) = caster_runtime {
         app.manage(runtime);
     }
@@ -150,6 +151,17 @@ pub fn setup(
         services.job_executions.clone(),
     )?;
     record_native_e2e_checkpoint("scheduler-ready");
+    let (speech_catalog, speech) = tts::setup(
+        &app_paths,
+        &services,
+        job_manager.clone(),
+        speech_review,
+        speech_subtitles,
+        prepared_bridge.emitter(),
+    );
+    tauri::async_runtime::block_on(speech.recover())?;
+    app.manage(speech_catalog);
+    app.manage(speech);
 
     // 4. Register all static Tauri state & use cases BEFORE spawning any tasks
     app.manage(crate::state::ManagedJobRuntime(

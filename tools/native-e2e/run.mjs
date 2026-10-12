@@ -28,6 +28,12 @@ import { releaseVerifiedWorkerPreflightPause } from './worker-preflight-pause.mj
 import { waitForHistoricalEditGap, verifyHistoricalEditGap } from './historical-edit-gap.mjs';
 import { releaseHistoricalJournalRetry } from './historical-journal-gap.mjs';
 import { seedCasterRuntime, verifyCasterArtifact, waitForCasterTitle } from './caster.mjs';
+import {
+  seedSpeechRuntime,
+  verifySpeechArtifacts,
+  waitForSpeechTitle,
+  waitForSpeechRelease,
+} from './speech.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
 const TRANSLATION_RESULT_TIMEOUT_MS = 600_000;
@@ -37,6 +43,9 @@ export async function runNativeE2e(rootDir) {
   assertSupportedPlatform();
   const translationEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION === '1';
   const casterEnabled = process.env.AURALIS_NATIVE_E2E_CASTER === '1';
+  const speechEnabled = process.env.AURALIS_NATIVE_E2E_SPEECH === '1';
+  if (speechEnabled && (casterEnabled || translationEnabled))
+    throw new Error('Speech native E2E runs separately from Caster and Translate');
   if (casterEnabled && translationEnabled)
     throw new Error('Caster native E2E runs without Translate');
   const translationEventsEnabled = process.env.AURALIS_NATIVE_E2E_TRANSLATION_EVENTS === '1';
@@ -129,7 +138,17 @@ export async function runNativeE2e(rootDir) {
   ) {
     throw new Error('Native package acceptance runs as a standalone translation mode');
   }
-  const testRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-native-e2e-'));
+  const recoveryRoot = process.env.AURALIS_NATIVE_E2E_SPEECH_RECOVERY_ROOT;
+  if (recoveryRoot && !speechEnabled) throw new Error('A retained sandbox requires Speech mode');
+  const testRoot = recoveryRoot
+    ? await fsp.realpath(recoveryRoot)
+    : await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-native-e2e-'));
+  if (
+    recoveryRoot &&
+    (path.dirname(testRoot).toLowerCase() !== (await fsp.realpath(os.tmpdir())).toLowerCase() ||
+      !path.basename(testRoot).startsWith('auralis-native-e2e-'))
+  )
+    throw new Error('Speech recovery requires a retained native E2E sandbox under TEMP');
   const dataRoot = path.join(testRoot, 'app-data');
   const fixtureRoot = path.join(testRoot, 'fixture');
   const sourcePath = path.join(fixtureRoot, 'source.mp4');
@@ -150,11 +169,45 @@ export async function runNativeE2e(rootDir) {
   let subtitleDigest;
   let packageRelease;
   let preparationPause;
+  let speechRecoveryStage = 'new';
+  let retainedSpeechHashes;
 
   try {
     await fsp.mkdir(dataRoot, { recursive: true });
     await fsp.mkdir(fixtureRoot, { recursive: true });
     if (casterEnabled) await seedCasterRuntime(dataRoot);
+    if (speechEnabled && !recoveryRoot) await seedSpeechRuntime(dataRoot, subtitlePath);
+    if (recoveryRoot) {
+      const recovery = new DatabaseSync(path.join(dataRoot, 'auralis.sqlite'));
+      try {
+        const count = recovery
+          .prepare('SELECT COUNT(*) AS count FROM speech_publications WHERE ready=1')
+          .get().count;
+        const project = recovery.prepare('SELECT title FROM projects').get();
+        retainedSpeechHashes = await verifySpeechArtifacts(dataRoot, count);
+        if (count === 8 && project.title === `native-e2e-speech-failed:${runId}`) {
+          recovery
+            .prepare('UPDATE projects SET title=?,revision=revision+1 WHERE title=?')
+            .run(`native-e2e-speech-running:${runId}`, project.title);
+        } else if (count === 9 && project.title === `native-e2e-speech-interrupt-ready:${runId}`) {
+          speechRecoveryStage = 'interrupted';
+        } else if (
+          count === 10 &&
+          [`native-e2e-speech-complete:${runId}`, `native-e2e-speech-reopened:${runId}`].includes(
+            project.title,
+          )
+        ) {
+          speechRecoveryStage = 'completed';
+          if (project.title === `native-e2e-speech-reopened:${runId}`) {
+            recovery
+              .prepare('UPDATE projects SET title=?,revision=revision+1 WHERE title=?')
+              .run(`native-e2e-speech-complete:${runId}`, project.title);
+          }
+        } else throw new Error('Speech sandbox is not at a supported retained acceptance boundary');
+      } finally {
+        recovery.close();
+      }
+    }
     prepareMediaTools(rootDir);
     generateVideo(rootDir, sourcePath);
     if (translationEnabled) {
@@ -181,6 +234,7 @@ export async function runNativeE2e(rootDir) {
     fixtureServer = await startFixtureServer(sourcePath);
     buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
       casterEnabled,
+      speechEnabled,
       translationEnabled,
       translationCrashEnabled,
       translationPauseEnabled,
@@ -211,6 +265,55 @@ export async function runNativeE2e(rootDir) {
         ? { requestPath: historicalRequestPath, releasePath: historicalRetryRelease }
         : null,
     );
+    if (speechEnabled) {
+      if (speechRecoveryStage === 'completed') {
+        await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-reopened:${runId}`, runId);
+        assert(
+          (await verifySpeechArtifacts(dataRoot, 10)) === retainedSpeechHashes,
+          'Reopening changed ready speech bytes',
+        );
+        process.stdout.write(
+          'Native Speech retained result reopening and managed WAV playback passed.\n',
+        );
+        return;
+      }
+      if (speechRecoveryStage !== 'interrupted') {
+        const projectId = await waitForSpeechTitle(
+          dataRoot,
+          app,
+          `native-e2e-speech-cancelled:${runId}`,
+          runId,
+        );
+        await verifySpeechArtifacts(dataRoot, 8);
+        await terminate(app.child);
+        await waitForSpeechRelease(rootDir);
+        app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+        const interruptedId = await waitForSpeechTitle(
+          dataRoot,
+          app,
+          `native-e2e-speech-interrupt-ready:${runId}`,
+          runId,
+        );
+        assert(interruptedId === projectId, 'Speech restart changed project identity');
+        await terminate(app.child);
+        await waitForSpeechRelease(rootDir);
+        app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+      }
+      await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-complete:${runId}`, runId);
+      const before = await verifySpeechArtifacts(dataRoot, 10);
+      await terminate(app.child);
+      await waitForSpeechRelease(rootDir);
+      app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+      await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-reopened:${runId}`, runId);
+      assert(
+        (await verifySpeechArtifacts(dataRoot, 10)) === before,
+        'Restart changed retained speech bytes',
+      );
+      process.stdout.write(
+        'Native Speech acceptance passed: both engines and voices, text/subtitles, split cues, cancellation, crash, resume, managed WAV playback and unchanged results after restart.\n',
+      );
+      return;
+    }
     if (casterEnabled) {
       const projectId = await waitForCasterTitle(
         dataRoot,
@@ -428,7 +531,11 @@ export async function runNativeE2e(rootDir) {
         cleanupErrors.push(error);
       }
     }
-    if (process.env.AURALIS_NATIVE_E2E_KEEP_TEMP === '1' || (failure && historicalExportEnabled)) {
+    if (
+      recoveryRoot ||
+      process.env.AURALIS_NATIVE_E2E_KEEP_TEMP === '1' ||
+      (failure && historicalExportEnabled)
+    ) {
       process.stdout.write(`Native E2E data kept at ${testRoot}\n`);
     } else {
       try {
@@ -637,6 +744,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_YTDLP_URL: ytdlpUrl,
     AURALIS_NATIVE_E2E_RUN_ID: runId,
     AURALIS_NATIVE_E2E_CASTER: translation.casterEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_SPEECH: translation.speechEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_VTT: translation.translationVttEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE: translation.translationPackageEnabled ? '1' : '0',

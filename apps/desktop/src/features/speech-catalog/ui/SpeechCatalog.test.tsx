@@ -52,7 +52,9 @@ afterEach(() => cleanup());
 
 describe('SpeechCatalog', () => {
   it('filters references by engine and resets voice selection when the profile changes', async () => {
-    invoke.mockResolvedValue(catalog);
+    invoke.mockImplementation((command: string) =>
+      Promise.resolve(command === 'get_speech_catalog_cmd' ? catalog : []),
+    );
     render(<SpeechCatalog projectId="project-one" />);
     expect(await screen.findByRole('option', { name: 'Голос Один' })).not.toBeNull();
     expect(screen.queryByRole('option', { name: 'Голос Два' })).toBeNull();

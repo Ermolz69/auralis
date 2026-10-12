@@ -14,6 +14,7 @@ pub fn kind_slug(kind: &ArtifactKind) -> &'static str {
         ArtifactKind::ManualCast => "manual-cast",
         ArtifactKind::GeneratedSpeechSegment => "generated-speech-segment",
         ArtifactKind::GeneratedSpeech => "generated-speech",
+        ArtifactKind::SpeechManifest => "speech-manifest",
         ArtifactKind::MixedAudio => "mixed-audio",
         ArtifactKind::PreviewVideo => "preview-video",
         ArtifactKind::FinalVideo => "final-video",

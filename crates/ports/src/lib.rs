@@ -27,6 +27,7 @@ mod scheduled_job_conversion;
 pub mod source;
 pub mod speech_catalog;
 pub mod speech_run;
+pub mod speech_workflow;
 pub mod storage;
 pub mod transaction;
 pub mod translation_branch_edit;

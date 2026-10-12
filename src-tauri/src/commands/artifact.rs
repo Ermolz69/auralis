@@ -4,7 +4,7 @@ use crate::dto::error::{CommandError, parse_artifact_id, parse_project_id};
 use application::usecases::artifact::list_project_artifacts::ListProjectArtifactsRequest;
 use application::usecases::artifact::resolve_path::ResolveArtifactPathRequest;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 #[tauri::command]
 #[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
@@ -35,6 +35,7 @@ pub async fn list_project_artifacts_cmd(
 #[tracing::instrument(skip_all, fields(request_id = %crate::observability::request::request_id(&request)))]
 pub async fn resolve_artifact_path_cmd(
     request: tauri::ipc::Request<'_>,
+    app: AppHandle,
     artifact_id: String,
     usecases: State<'_, Arc<AppUseCases>>,
 ) -> Result<String, CommandError> {
@@ -49,6 +50,11 @@ pub async fn resolve_artifact_path_cmd(
             .await
             .map_err(CommandError::from)?;
 
+        if res.managed_ready {
+            app.asset_protocol_scope()
+                .allow_file(&res.absolute_path)
+                .map_err(|_| CommandError::Io("Audio playback permission failed".into()))?;
+        }
         Ok(res.absolute_path.to_string_lossy().into_owned())
     })
     .await

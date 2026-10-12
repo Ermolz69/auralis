@@ -1,5 +1,5 @@
 use crate::error::ApplicationError;
-use domain::media::ArtifactId;
+use domain::media::{ArtifactId, ArtifactLocation, ArtifactState};
 use ports::artifact_index::ArtifactIndex;
 use ports::storage::ArtifactStore;
 use std::path::PathBuf;
@@ -10,6 +10,7 @@ pub struct ResolveArtifactPathRequest {
 
 pub struct ResolveArtifactPathResponse {
     pub absolute_path: PathBuf,
+    pub managed_ready: bool,
 }
 
 pub struct ResolveArtifactPathUseCase<I: ArtifactIndex, S: ArtifactStore> {
@@ -34,6 +35,11 @@ impl<I: ArtifactIndex, S: ArtifactStore> ResolveArtifactPathUseCase<I, S> {
 
         let absolute_path = self.store.resolve_artifact(&artifact).await?;
 
-        Ok(ResolveArtifactPathResponse { absolute_path })
+        let managed_ready = artifact.state == ArtifactState::Ready
+            && matches!(artifact.location, ArtifactLocation::StorageKey(_));
+        Ok(ResolveArtifactPathResponse {
+            absolute_path,
+            managed_ready,
+        })
     }
 }

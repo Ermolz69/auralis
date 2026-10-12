@@ -2,11 +2,15 @@ mod catalog;
 mod client;
 mod execute;
 mod framed;
+mod integrity;
+#[cfg(test)]
+mod integrity_tests;
 mod owned_process;
 mod preflight;
 mod protocol;
 mod result_verification;
 mod wav_verification;
+mod workflow;
 
 pub use client::{TtsRuntimeConfig, TtsWorkerClient};
 pub use execute::{

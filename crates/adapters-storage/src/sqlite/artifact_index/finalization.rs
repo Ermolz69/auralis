@@ -35,10 +35,17 @@ impl ArtifactFinalizationLookup for SqliteArtifactIndex {
         .bind(project_id.to_string())
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| map_sqlite_error("finalization_artifact", e))?
-        .ok_or_else(|| PortError::NotFound {
-            resource: "Finalization artifact".into(),
-        })?;
+        .map_err(|e| map_sqlite_error("finalization_artifact", e))?;
+        let Some(row) = row else {
+            let discarded: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM speech_discarded_artifacts d JOIN speech_run_intents i ON i.run_id=d.run_id WHERE d.artifact_id=? AND i.project_id=?)")
+                .bind(artifact_id.to_string()).bind(project_id.to_string()).fetch_one(&mut *tx).await.map_err(|e| map_sqlite_error("discarded_speech_artifact", e))?;
+            if discarded {
+                return Ok(FinalizationMetadata::ArtifactDiscarded);
+            }
+            return Err(PortError::NotFound {
+                resource: "Finalization artifact".into(),
+            });
+        };
         Ok(FinalizationMetadata::Artifact(row_to_artifact(row)?))
     }
 }
