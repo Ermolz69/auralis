@@ -21,7 +21,7 @@ struct InstalledTtsRuntime {
     integrity_sha256: String,
 }
 
-fn load(paths: &AppPaths) -> Result<TtsWorkerClient, String> {
+pub(crate) fn load(paths: &AppPaths) -> Result<TtsWorkerClient, String> {
     let bytes = std::fs::read(paths.tts_runtime_config())
         .map_err(|e| format!("tts-runtime.json unavailable: {e}; run task setup:tts:local"))?;
     let config: InstalledTtsRuntime =
@@ -67,6 +67,13 @@ pub fn setup(
     subtitles: Arc<application::usecases::translation::InspectTranslationSourceUseCase>,
     emitter: Arc<dyn Fn(ports::job_scheduler::JobLifecycleEvent) + Send + Sync>,
 ) -> (Arc<SpeechCatalogUseCase>, Arc<SpeechUseCases>) {
+    let marker = std::fs::read(paths.root().join("puza-marker-runtime.json"))
+        .map_err(|error| format!("Маркировщик не настроен: {error}"))
+        .and_then(|bytes| {
+            serde_json::from_slice::<adapters_tts::MarkerRuntimeConfig>(&bytes)
+                .map_err(|error| error.to_string())
+        });
+    let marker_error = marker.as_ref().err().cloned();
     let loaded = load(paths).map(Arc::new);
     let runtime_error = loaded.as_ref().err().cloned();
     let catalog = loaded
@@ -76,13 +83,31 @@ pub fn setup(
     let engine = loaded
         .ok()
         .map(|client| client as Arc<dyn SpeechExecutionPort>);
+    let contract = Arc::new(
+        application::usecases::project::contract::ProjectContractUseCase {
+            projects: services.project_repo.clone(),
+            runtime: load(paths)
+                .ok()
+                .map(|client| Arc::new(client) as Arc<dyn ports::puza_contract::PuzaContractPort>),
+            unavailable_reason: runtime_error
+                .clone()
+                .map(|error| format!("CONTRACT недоступен: {error}"))
+                .unwrap_or_else(|| "CONTRACT недоступен".into()),
+        },
+    );
     let catalog_cases = SpeechCatalogUseCase::new(services.project_repo.clone(), catalog.clone())
+        .with_contract(contract.clone())
         .with_unavailable_reason(
             runtime_error
                 .clone()
                 .unwrap_or_else(|| "TTS runtime unavailable".into()),
         );
     let cases = SpeechUseCases {
+        marker: marker.ok().map(|config| {
+            Arc::new(adapters_tts::MarkerClient { config }) as Arc<dyn ports::marker::MarkerPort>
+        }),
+        marker_error,
+        contract: Some(contract),
         projects: services.project_repo.clone(),
         store: services.speech.clone(),
         engine,

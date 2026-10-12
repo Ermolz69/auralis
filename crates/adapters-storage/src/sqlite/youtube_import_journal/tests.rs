@@ -77,6 +77,7 @@ async fn session(root: &Path, original: Option<Project>) -> YoutubeImportSession
 
 fn command(session: &YoutubeImportSession) -> CommitYoutubeImport {
     CommitYoutubeImport {
+        puza_contract: None,
         project: Project::from_snapshot(session.project.clone()).unwrap(),
         write: session.write.clone().unwrap(),
         original_updated_at: session.original_updated_at,
@@ -206,7 +207,7 @@ async fn youtube_journal_v3_migration_preserves_projects_and_is_idempotent() {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            16
+            17
         );
         assert_eq!(
             SqliteProjectRepository::new(pool.clone())

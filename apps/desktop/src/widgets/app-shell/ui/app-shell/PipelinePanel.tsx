@@ -25,7 +25,7 @@ export function PipelinePanel(props: Props) {
         />
         <PipelineItem
           index={2}
-          label="Субтитры"
+          label="Текст, субтитры и озвучка"
           status={props.status.subtitles}
           active={props.currentView === 'project' && props.pipelineStep === 'subtitles'}
           disabled={!props.hasProject}

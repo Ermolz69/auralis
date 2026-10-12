@@ -1,4 +1,6 @@
 use super::*;
+#[path = "puza_project.rs"]
+mod puza_project;
 #[path = "speech_workflow.rs"]
 mod speech_workflow;
 /// Returns `true` only when a new database still needs its one-time initialization.
@@ -43,16 +45,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     if schema_marker >= 14 {
         expected_tables.push("outbox_sequence");
     }
-    if schema_marker >= 15 {
-        expected_tables.extend([
-            "speech_text_reviews",
-            "speech_publications",
-            "speech_run_reviews",
-        ]);
-    }
-    if schema_marker >= 16 {
-        expected_tables.push("speech_discarded_artifacts");
-    }
+    puza_project::extend_expected_tables(&mut expected_tables, schema_marker);
     let has_speech = table_names
         .iter()
         .any(|table| table == "speech_run_intents");
@@ -78,7 +71,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
-        14..=16 => has_speech && has_queue && has_reviews,
+        14..=17 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();
@@ -219,6 +212,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         crate::sqlite::outbox_parallel_migration::migrate(pool).await?;
     }
     speech_workflow::migrate_and_validate(pool, schema_marker).await?;
+    puza_project::migrate_and_validate(pool, schema_marker).await?;
     validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;

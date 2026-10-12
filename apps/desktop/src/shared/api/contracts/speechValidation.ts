@@ -37,6 +37,8 @@ export function validateSpeechReview(value: unknown): boolean {
     isRecord(value) &&
     isString(value.decision_id) &&
     isString(value.project_id) &&
+    (value.original_source === undefined ||
+      isNullable(value.original_source, validateSpeechSource)) &&
     validateSpeechSource(value.source)
   );
 }
@@ -86,6 +88,10 @@ export function validateSpeechRun(value: unknown): boolean {
 }
 
 export const speechCommandResultValidators = {
+  get_speech_voice_selection_cmd: (value) => isNullable(value, validateVoiceBinding),
+  save_speech_voice_selection_cmd: validateVoiceBinding,
+  prepare_speech_text_cmd: validateMarkerPreparation,
+  review_prepared_speech_text_cmd: validateSpeechReview,
   get_speech_catalog_cmd: validateSpeechCatalog,
   get_speech_source_cmd: validateSpeechSource,
   review_speech_text_cmd: validateSpeechReview,
@@ -95,3 +101,24 @@ export const speechCommandResultValidators = {
   get_speech_run_cmd: validateSpeechRun,
   list_speech_runs_cmd: (value) => isArrayOf(value, validateSpeechRun),
 } satisfies Record<keyof SpeechCommandMap | 'get_speech_catalog_cmd', Validator>;
+
+function validateMarkerPreparation(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    value.version === '1.0.0' &&
+    validateSpeechSource(value.original) &&
+    validateSpeechSource(value.prepared) &&
+    isNonNegativeSafeInteger(value.changed_targets) &&
+    isNonNegativeSafeInteger(value.unresolved_targets)
+  );
+}
+function validateVoiceBinding(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.role_id) &&
+    isString(value.display_name) &&
+    isString(value.voice_id) &&
+    isString(value.reference_id) &&
+    isString(value.engine_id)
+  );
+}

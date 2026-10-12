@@ -1,5 +1,6 @@
 mod digest;
 mod error;
+mod marker;
 mod ownership;
 mod prepare;
 mod progress;
@@ -7,6 +8,7 @@ mod run;
 mod service;
 mod source;
 mod state;
+mod voices;
 
 use digest::hash;
 use error::{conflict, invalid};

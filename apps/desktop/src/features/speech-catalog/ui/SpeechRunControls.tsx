@@ -22,7 +22,7 @@ export function SpeechRunControls({ run, busy, active, audio, start, cancel, pla
           <div className="flex flex-wrap gap-2">
             {!run.job && (
               <button className={button} disabled={busy} onClick={() => void start(false)}>
-                Запустить
+                Озвучить
               </button>
             )}
             {run.job && ['failed', 'cancelled'].includes(run.job.status) && !run.result && (
@@ -46,10 +46,7 @@ export function SpeechRunControls({ run, busy, active, audio, start, cancel, pla
             )}
           </div>
           {run.result && (
-            <p>
-              Готово · {(run.result.duration_ms / 1000).toFixed(2)} с · WAV, части и manifest
-              сохранены
-            </p>
+            <p>Готово · {(run.result.duration_ms / 1000).toFixed(2)} с · аудио сохранено</p>
           )}
           {audio && <audio controls autoPlay src={audio} aria-label="Готовая озвучка" />}
         </div>

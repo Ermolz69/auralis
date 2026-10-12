@@ -181,6 +181,7 @@ impl SpeechUseCases {
         }
         let source = self.source(&project, request).await?;
         let review = SpeechReview {
+            original_source: None,
             decision_id: Uuid::new_v4(),
             project_id: project,
             source,
@@ -190,7 +191,8 @@ impl SpeechUseCases {
     }
 
     pub(super) async fn check_source(&self, review: &SpeechReview) -> Result<(), ApplicationError> {
-        let artifact = review.source.kind.starts_with("artifact_");
+        let source = review.original_source.as_ref().unwrap_or(&review.source);
+        let artifact = source.kind.starts_with("artifact_");
         let current = self
             .source(
                 &review.project_id,
@@ -198,32 +200,24 @@ impl SpeechUseCases {
                     kind: if artifact {
                         "subtitles".into()
                     } else {
-                        review.source.kind.clone()
+                        source.kind.clone()
                     },
-                    translation_id: if artifact {
-                        None
-                    } else {
-                        review.source.source_id
-                    },
-                    text: Some(review.source.text.clone()),
+                    translation_id: if artifact { None } else { source.source_id },
+                    text: Some(source.text.clone()),
                     artifact_id: if artifact {
-                        review.source.source_id.map(domain::media::ArtifactId)
+                        source.source_id.map(domain::media::ArtifactId)
                     } else {
                         None
                     },
                     format: if artifact {
-                        review
-                            .source
-                            .kind
-                            .strip_prefix("artifact_")
-                            .map(str::to_owned)
+                        source.kind.strip_prefix("artifact_").map(str::to_owned)
                     } else {
                         None
                     },
                 },
             )
             .await?;
-        if current != review.source {
+        if &current != source {
             return Err(conflict(
                 "Text or selected translation changed; review it again and prepare a new run",
             )

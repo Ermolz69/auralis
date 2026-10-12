@@ -171,6 +171,13 @@ pub fn setup(
     usecases::setup_usecases(
         app.handle(),
         usecases::AppUseCaseDependencies {
+            puza_contract: tts::load(&app_paths)
+                .ok()
+                .map(|client| Arc::new(client) as Arc<dyn ports::puza_contract::PuzaContractPort>),
+            puza_contract_error: tts::load(&app_paths)
+                .err()
+                .map(|reason| format!("CONTRACT недоступен: {reason}"))
+                .unwrap_or_else(|| "CONTRACT недоступен".into()),
             ui_preferences: services.ui_preferences.clone(),
             artifact_recovery: Arc::new(outbox_repo.clone()),
             projects_root: app_paths.projects(),

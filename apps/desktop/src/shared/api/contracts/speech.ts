@@ -23,6 +23,7 @@ export type SpeechSourceSnapshot = {
   cues: SpeechCue[];
 };
 export type SpeechReview = {
+  original_source: SpeechSourceSnapshot | null;
   decision_id: string;
   project_id: string;
   source: SpeechSourceSnapshot;
@@ -58,6 +59,24 @@ export type SpeechRunView = {
 };
 
 export interface SpeechCommandMap {
+  get_speech_voice_selection_cmd: { args: { projectId: string }; result: PuzaVoiceBinding | null };
+  save_speech_voice_selection_cmd: {
+    args: { projectId: string; profileId: string; voiceId: string; referenceId: string };
+    result: PuzaVoiceBinding;
+  };
+  prepare_speech_text_cmd: {
+    args: { projectId: string; source: SpeechSourceRequest };
+    result: MarkerPreparation;
+  };
+  review_prepared_speech_text_cmd: {
+    args: {
+      projectId: string;
+      source: SpeechSourceRequest;
+      preparation: MarkerPreparation;
+      confirmed: boolean;
+    };
+    result: SpeechReview;
+  };
   get_speech_source_cmd: {
     args: { projectId: string; source: SpeechSourceRequest };
     result: SpeechSourceSnapshot;
@@ -75,3 +94,18 @@ export interface SpeechCommandMap {
   get_speech_run_cmd: { args: { projectId: string; runId: string }; result: SpeechRunView };
   list_speech_runs_cmd: { args: { projectId: string }; result: SpeechRunView[] };
 }
+
+export type MarkerPreparation = {
+  version: string;
+  original: SpeechSourceSnapshot;
+  prepared: SpeechSourceSnapshot;
+  changed_targets: number;
+  unresolved_targets: number;
+};
+export type PuzaVoiceBinding = {
+  role_id: string;
+  display_name: string;
+  voice_id: string;
+  reference_id: string;
+  engine_id: string;
+};

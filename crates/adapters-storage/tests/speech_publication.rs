@@ -33,6 +33,7 @@ async fn publication_is_atomic_fenced_and_hidden_until_every_file_is_ready()
     let artifacts = LocalArtifactStore::new(dir.path().join("projects"));
     let digest = format!("{:x}", Sha256::digest(b"Fixture text"));
     let review = SpeechReview {
+        original_source: None,
         decision_id: Uuid::new_v4(),
         project_id: project.id().clone(),
         source: SpeechSourceSnapshot {

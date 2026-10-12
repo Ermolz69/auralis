@@ -7,18 +7,24 @@ pub struct ModelAdmissionLease {
 
 impl ModelAdmissionLease {
     pub fn acquire() -> io::Result<Self> {
+        Self::acquire_mode(false)
+    }
+    pub fn acquire_model_free() -> io::Result<Self> {
+        Self::acquire_mode(true)
+    }
+    fn acquire_mode(model_free: bool) -> io::Result<Self> {
         if !cfg!(windows) {
             return Err(io::Error::other(
                 "PUZA model admission requires Windows process inspection",
             ));
         }
         let mut command = Command::new("powershell.exe");
-        command.args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            include_str!("model_admission.ps1"),
-        ]);
+        command.args(["-NoProfile", "-NonInteractive", "-Command"]);
+        command.arg(if model_free {
+            format!("& {{ {} }} -ModelFree", include_str!("model_admission.ps1"))
+        } else {
+            include_str!("model_admission.ps1").into()
+        });
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

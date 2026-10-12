@@ -2,10 +2,21 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 const database = new DatabaseSync(path.join(process.argv[2], 'auralis.sqlite'), { readOnly: true });
 try {
+  const hasContract = database
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='puza_contract_projects'")
+    .get();
   if (process.argv.includes('--summary')) {
     process.stdout.write(
       JSON.stringify(
         {
+          schema: database.prepare('PRAGMA user_version').get(),
+          contract: hasContract
+            ? database
+                .prepare(
+                  "SELECT project_id,json_extract(snapshot_json,'$.contract_version') AS version FROM puza_contract_projects",
+                )
+                .all()
+            : [],
           projects: database.prepare('SELECT title FROM projects').all(),
           runs: database
             .prepare(

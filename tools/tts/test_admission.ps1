@@ -1,9 +1,11 @@
+param([switch]$ModelFree)
 $ErrorActionPreference = 'Stop'
 $admissionScript = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../crates/common/src/model_admission.ps1'))
 function Start-Admission {
     $admissionStart = New-Object Diagnostics.ProcessStartInfo
     $admissionStart.FileName = 'powershell.exe'
     $admissionStart.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $admissionScript + '"'
+    if ($ModelFree) { $admissionStart.Arguments += ' -ModelFree' }
     $admissionStart.UseShellExecute = $false
     $admissionStart.CreateNoWindow = $true
     $admissionStart.RedirectStandardInput = $true

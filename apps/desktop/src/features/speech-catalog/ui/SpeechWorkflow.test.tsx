@@ -59,15 +59,57 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+it('requires applying and checking marker output and discards it after a user edit', async () => {
+  const original = { ...source, text: 'Два проекта.' };
+  const preparation = {
+    version: '1.0.0',
+    original,
+    prepared: { ...source, text: 'Два проверенных проекта.' },
+    changed_targets: 1,
+    unresolved_targets: 0,
+  };
+  const previous = invoke.getMockImplementation()!;
+  invoke.mockImplementation((command, args) =>
+    command === 'prepare_speech_text_cmd'
+      ? Promise.resolve(preparation)
+      : command === 'review_prepared_speech_text_cmd'
+        ? Promise.resolve({ ...review, source: preparation.prepared, original_source: original })
+        : previous(command, args),
+  );
+  render(<SpeechWorkflow {...props} />);
+  const text = screen.getByLabelText('Русский текст для озвучки');
+  fireEvent.change(text, { target: { value: original.text } });
+  fireEvent.click(screen.getByRole('button', { name: 'Подготовить текст' }));
+  await screen.findByRole('button', { name: 'Использовать подготовленный текст' });
+  expect(screen.getByRole('button', { name: 'Подготовить озвучку' })).toHaveProperty(
+    'disabled',
+    true,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Использовать подготовленный текст' }));
+  expect(text).toHaveProperty('value', preparation.prepared.text);
+  fireEvent.click(screen.getByRole('button', { name: 'Текст проверен' }));
+  await screen.findByText('Снимок проверенного текста сохранён.');
+  expect(invoke).toHaveBeenCalledWith(
+    'review_prepared_speech_text_cmd',
+    expect.objectContaining({ preparation, confirmed: true }),
+  );
+  fireEvent.change(text, { target: { value: 'Другой текст.' } });
+  expect(screen.queryByText('Снимок проверенного текста сохранён.')).toBeNull();
+  expect(screen.queryByText(/Предлагаемый вариант/)).toBeNull();
+});
+
 it('requires explicit text review and clears that review when text changes', async () => {
   render(<SpeechWorkflow {...props} />);
   fireEvent.click(screen.getByRole('button', { name: /^Текст$/ }));
   const text = screen.getByLabelText('Русский текст для озвучки');
   fireEvent.change(text, { target: { value: 'Проверенный текст.' } });
-  expect(screen.getByRole('button', { name: 'Подготовить план' })).toHaveProperty('disabled', true);
+  expect(screen.getByRole('button', { name: 'Подготовить озвучку' })).toHaveProperty(
+    'disabled',
+    true,
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Текст проверен' }));
   await screen.findByText('Снимок проверенного текста сохранён.');
-  fireEvent.click(screen.getByRole('button', { name: 'Подготовить план' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Подготовить озвучку' }));
   await waitFor(() =>
     expect(invoke).toHaveBeenCalledWith('prepare_speech_plan_cmd', {
       projectId: 'project-1',
@@ -83,7 +125,10 @@ it('requires explicit text review and clears that review when text changes', asy
   );
   fireEvent.change(text, { target: { value: 'Изменённый текст.' } });
   expect(screen.queryByText('Снимок проверенного текста сохранён.')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Подготовить план' })).toHaveProperty('disabled', true);
+  expect(screen.getByRole('button', { name: 'Подготовить озвучку' })).toHaveProperty(
+    'disabled',
+    true,
+  );
 });
 
 it('retains the common voice while sending separate role and cue assignments', async () => {
@@ -105,12 +150,13 @@ it('retains the common voice while sending separate role and cue assignments', a
     ),
   );
   render(<SpeechWorkflow {...props} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Субтитры' }));
   fireEvent.click(screen.getByRole('button', { name: 'Текст проверен' }));
   fireEvent.change(await screen.findByLabelText('Голос роли Narrator'), {
     target: { value: 'geralt' },
   });
   fireEvent.change(screen.getByLabelText('Голос реплики cue-2'), { target: { value: 'ciri' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Подготовить план' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Подготовить озвучку' }));
   await waitFor(() =>
     expect(invoke).toHaveBeenCalledWith('prepare_speech_plan_cmd', {
       projectId: 'project-1',

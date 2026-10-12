@@ -12,6 +12,9 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SpeechUseCases {
+    pub marker: Option<Arc<dyn ports::marker::MarkerPort>>,
+    pub marker_error: Option<String>,
+    pub contract: Option<Arc<super::super::project::contract::ProjectContractUseCase>>,
     pub projects: Arc<dyn ProjectRepository>,
     pub store: Arc<dyn SpeechWorkflowStore>,
     pub engine: Option<Arc<dyn SpeechExecutionPort>>,

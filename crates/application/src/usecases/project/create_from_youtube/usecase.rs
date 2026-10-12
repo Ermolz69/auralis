@@ -31,6 +31,8 @@ pub struct CreateProjectFromYoutubeUseCase<R, V, S> {
     pub(super) journal: Arc<dyn YoutubeImportJournal>,
     pub(super) workspace_port: Arc<dyn TempWorkspacePort>,
     pub(super) locks: Arc<ProjectLifecycleLocks>,
+    pub(super) contract: Option<Arc<dyn ports::puza_contract::PuzaContractPort>>,
+    pub(super) required_contract: Option<String>,
 }
 
 impl<R: ProjectRepository, V: VideoSourcePort + Clone, S: ArtifactStore + Clone>
@@ -51,6 +53,36 @@ impl<R: ProjectRepository, V: VideoSourcePort + Clone, S: ArtifactStore + Clone>
             journal,
             workspace_port,
             locks,
+            contract: None,
+            required_contract: None,
+        }
+    }
+
+    pub fn with_contract(
+        mut self,
+        contract: Option<Arc<dyn ports::puza_contract::PuzaContractPort>>,
+        reason: String,
+    ) -> Self {
+        self.contract = contract;
+        self.required_contract = Some(reason);
+        self
+    }
+
+    pub(super) async fn contract_snapshot(
+        &self,
+        id: &ProjectId,
+    ) -> Result<Option<ports::puza_contract::PuzaContractSnapshot>, ApplicationError> {
+        match &self.required_contract {
+            None => Ok(None),
+            Some(reason) => {
+                let runtime = self
+                    .contract
+                    .as_ref()
+                    .ok_or_else(|| PortError::Unsupported {
+                        message: reason.clone(),
+                    })?;
+                Ok(Some(runtime.prepare_project(id, None, Vec::new()).await?))
+            }
         }
     }
 
@@ -185,6 +217,7 @@ impl<R: ProjectRepository, V: VideoSourcePort + Clone, S: ArtifactStore + Clone>
         session: &mut YoutubeImportSession,
     ) -> Result<CreateProjectFromYoutubeResponse, ApplicationError> {
         self.revalidate(session).await?;
+        let puza_contract = self.contract_snapshot(&session.project.id).await?;
         self.stage(session).await?;
         let lock = self.locks.get_lock(&session.project.id)?;
         let _guard = lock.lock().await;
@@ -198,6 +231,7 @@ impl<R: ProjectRepository, V: VideoSourcePort + Clone, S: ArtifactStore + Clone>
             .commit(
                 session,
                 CommitYoutubeImport {
+                    puza_contract,
                     project: project.clone(),
                     write,
                     original_updated_at: session.original_updated_at,

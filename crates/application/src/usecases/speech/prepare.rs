@@ -73,6 +73,14 @@ impl SpeechUseCases {
         let run_id = Uuid::new_v4();
         let mut cast = Vec::new();
         let mut utterances = Vec::new();
+        let mut contract_bindings = Vec::new();
+        contract_bindings.push(ports::puza_contract::PuzaVoiceBinding {
+            role_id: "narrator".into(),
+            display_name: "Рассказчик".into(),
+            voice_id: request.voice_id.clone(),
+            reference_id: request.reference_id.clone(),
+            engine_id: profile.engine_id.clone(),
+        });
         let inputs = if review.source.kind == "text" {
             vec![(
                 "text-1".into(),
@@ -124,6 +132,13 @@ impl SpeechUseCases {
                 .into());
             }
             let role_id = format!("role-{:04}", q + 1);
+            contract_bindings.push(ports::puza_contract::PuzaVoiceBinding {
+                role_id: role_id.clone(),
+                display_name: role.clone(),
+                voice_id: voice_id.into(),
+                reference_id: reference_id.into(),
+                engine_id: profile.engine_id.clone(),
+            });
             cast.push(json!({"role_id": role_id,"voice_id": voice_id,"manifest_sha256": voice.manifest_sha256}));
             utterances.push(json!({"utterance_id": format!("utterance-{:04}", q+1), "cue_id": window.map(|_| id.clone()),
                 "text_range": if window.is_none() { json!({"start":0,"end":text.chars().count()}) } else { serde_json::Value::Null },
@@ -136,10 +151,15 @@ impl SpeechUseCases {
             _ => return Err(invalid("Unsupported speech engine").into()),
         };
         let draft = json!({"version":1,"plan_id":run_id,"project_id":project,"mode":if review.source.kind=="text" {"continuous"} else {"subtitle_utterances"},
-            "source":{"source_sha256":review.source.sha256,"text_revision":review.source.revision,"reviewed_text":if review.source.kind=="text" {Some(review.source.text)}else{None}},
+            "source":{"source_sha256":review.source.sha256,"text_revision":review.source.revision,"reviewed_text":if review.source.kind=="text" {Some(review.source.text.clone())}else{None}},
             "review":{"decision_id":review.decision_id,"status":"approved"},
             "profile":{"profile_id":profile.profile_id,"profile_sha256":profile.profile_sha256,"engine_id":profile.engine_id,"model_revision":revision},
             "cast":cast,"utterances":utterances}).to_string();
+        if let Some(contract) = &self.contract {
+            contract
+                .configure(&project, review.source.text.clone(), contract_bindings)
+                .await?;
+        }
         let engine = self
             .engine
             .as_ref()

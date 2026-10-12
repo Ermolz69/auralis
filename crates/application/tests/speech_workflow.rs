@@ -211,6 +211,9 @@ async fn fixture() -> Result<
         invalid: AtomicBool::new(false),
     });
     let cases = SpeechUseCases {
+        marker: None,
+        marker_error: None,
+        contract: None,
         projects: Arc::new(SqliteProjectRepository::new(fixture.pool.clone())),
         store: Arc::new(SqliteSpeechRunStore::new(fixture.pool.clone())),
         engine: Some(engine.clone()),
@@ -489,6 +492,67 @@ async fn reviewed_text_cancels_via_common_jobs_and_resumes_a_new_attempt_to_read
             .fetch_one(&fixture.pool)
             .await?;
     assert_eq!(attempts, 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn prepared_text_requires_confirmation_and_keeps_an_immutable_original()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (fixture, cases, _, _) = fixture().await?;
+    let original = cases.source(&fixture.project_id, source()).await?;
+    let mut prepared = original.clone();
+    prepared.text = "Подготовленный русский текст.".into();
+    let preparation = ports::marker::MarkerPreparation {
+        version: "1.0.0".into(),
+        original: original.clone(),
+        prepared,
+        changed_targets: 1,
+        unresolved_targets: 0,
+    };
+    assert!(
+        cases
+            .review_prepared(
+                fixture.project_id.clone(),
+                source(),
+                preparation.clone(),
+                false
+            )
+            .await
+            .is_err()
+    );
+    let mut changed_source = preparation.clone();
+    changed_source.original.sha256 = "f".repeat(64);
+    assert!(
+        cases
+            .review_prepared(fixture.project_id.clone(), source(), changed_source, true)
+            .await
+            .is_err()
+    );
+    let mut changed_structure = preparation.clone();
+    changed_structure.prepared.kind = "subtitles".into();
+    assert!(
+        cases
+            .review_prepared(
+                fixture.project_id.clone(),
+                source(),
+                changed_structure,
+                true
+            )
+            .await
+            .is_err()
+    );
+    let review = cases
+        .review_prepared(fixture.project_id.clone(), source(), preparation, true)
+        .await?;
+    assert_eq!(review.original_source, Some(original));
+    assert_eq!(review.source.text, "Подготовленный русский текст.");
+    let saved = cases
+        .store
+        .get_review(review.decision_id)
+        .await?
+        .ok_or("missing reviewed preparation")?;
+    assert_eq!(saved.source, review.source);
+    assert_eq!(saved.original_source, review.original_source);
     Ok(())
 }
 

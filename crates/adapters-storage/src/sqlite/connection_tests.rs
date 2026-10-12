@@ -49,6 +49,7 @@ mod tests {
                 "project_pins",
                 "project_translations",
                 "projects",
+                "puza_contract_projects",
                 "speech_discarded_artifacts",
                 "speech_host_attempts",
                 "speech_host_checkpoints",
@@ -71,7 +72,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            16
+            17
         );
 
         let project_columns: Vec<String> =

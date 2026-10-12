@@ -38,6 +38,7 @@ pub(super) fn validate(session: &YoutubeImportSession) -> Result<(), PortError> 
     if let Some(write) = &session.write {
         write.validate()?;
         CommitYoutubeImport {
+            puza_contract: None,
             project,
             write: write.clone(),
             original_updated_at: session.original_updated_at,

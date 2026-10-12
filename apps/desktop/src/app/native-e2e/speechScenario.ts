@@ -42,7 +42,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
       await playback();
       await configure('voxcpm2', 'geralt');
       const interrupted = await prepareText(projectId, longText);
-      await click('Запустить');
+      await click('Озвучить');
       await checkpoint(projectId, interrupted.run_id);
       await title(projectId, `native-e2e-speech-interrupt-ready:${runId}`);
       return;
@@ -83,18 +83,18 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
             projectId,
             'Добрый вечер. Мы проверяем ясность русской речи.',
           );
-          await click('Запустить');
+          await click('Озвучить');
           await ready(projectId, text.run_id);
           await playback();
           await click('Субтитры');
           await click('Обновить источники');
           await select('Источник субтитров', `artifact:${imported.id}`);
           await click('Текст проверен');
-          await click('Подготовить план');
+          await click('Подготовить озвучку');
           const subtitles = await newest(projectId);
           if (subtitles.utterance_count !== 3 || subtitles.chunk_count <= 3)
             throw new Error('Subtitle plan did not preserve cues and split the long cue');
-          await click('Запустить');
+          await click('Озвучить');
           await ready(projectId, subtitles.run_id);
           await playback();
         }
@@ -102,7 +102,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
     }
     await configure('voxcpm2', 'ciri');
     const cancelled = await prepareText(projectId, longText);
-    await click('Запустить');
+    await click('Озвучить');
     await checkpoint(projectId, cancelled.run_id);
     await click('Отменить');
     await waitForAsync(
@@ -139,7 +139,7 @@ async function prepareText(projectId: string, text: string) {
   );
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
   await click('Текст проверен');
-  await click('Подготовить план');
+  await click('Подготовить озвучку');
   return newest(projectId);
 }
 async function newest(projectId: string) {
@@ -187,6 +187,8 @@ async function select(label: string, value: string) {
     const el = document.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`);
     return el && [...el.options].some((o) => o.value === value) ? el : null;
   });
+  const details = element.closest('details');
+  if (details) details.open = true;
   Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(element, value);
   element.dispatchEvent(new Event('change', { bubbles: true }));
   await delay(50);

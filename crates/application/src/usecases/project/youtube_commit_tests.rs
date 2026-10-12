@@ -41,6 +41,7 @@ async fn prepare(fixture: &Fixture, mut project: Project, existing: bool) -> Com
         .await
         .unwrap();
     CommitYoutubeImport {
+        puza_contract: None,
         project,
         write,
         original_updated_at,

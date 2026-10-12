@@ -1,6 +1,34 @@
 version: '3'
 
 tasks:
+  test:puza:
+    cmds:
+      - cargo test --locked -p adapters-tts marker_tests
+      - cargo test --locked -p application --test puza_contract
+      - task: test:speech-workflow
+  test:puza:installed:
+    env:
+      AURALIS_TEST_PUZA_RUNTIME: '{{.RUNTIME}}'
+    requires:
+      vars: [RUNTIME]
+    cmds:
+      - cargo test --locked -p adapters-tts --test installed_contract -- --ignored --test-threads=1
+  test:marker:installed:
+    env:
+      AURALIS_TEST_MARKER_RUNTIME: '{{.RUNTIME}}'
+      AURALIS_TEST_MARKER_EVIDENCE: '{{.EVIDENCE}}'
+    requires:
+      vars: [RUNTIME, EVIDENCE]
+    cmds:
+      - cargo test --locked -p adapters-tts --test installed_marker -- --ignored --test-threads=1
+  fmt:puza-tests:
+    cmds:
+      - rustfmt --edition 2024 crates/adapters-tts/src/marker_lock.rs crates/adapters-tts/src/marker_tests.rs crates/adapters-tts/tests/installed_marker.rs
+      - rustfmt --edition 2024 crates/application/tests/puza_contract.rs crates/adapters-tts/tests/installed_contract.rs crates/application/src/usecases/speech/voices.rs
+  fmt:puza:
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/puza_contract.rs crates/ports/src/marker.rs crates/ports/src/repository.rs crates/ports/src/lib.rs crates/ports/src/transaction/youtube_import.rs crates/ports/src/speech_workflow.rs crates/adapters-tts/src/contract.rs crates/adapters-tts/src/marker.rs crates/adapters-tts/src/lib.rs crates/adapters-storage/src/sqlite/project_contract.rs crates/adapters-storage/src/sqlite/project_repository.rs crates/adapters-storage/src/sqlite/mod.rs crates/adapters-storage/src/sqlite/connection/puza_project.rs crates/adapters-storage/src/sqlite/connection/validation.rs crates/adapters-storage/src/sqlite/youtube_import_journal/mapping.rs crates/adapters-storage/src/sqlite/unit_of_work/youtube_import.rs crates/application/src/usecases/project/contract.rs crates/application/src/usecases/project/create.rs crates/application/src/usecases/project/mod.rs crates/application/src/usecases/project/create_from_youtube/usecase.rs crates/application/src/usecases/project/create_from_youtube/preparation.rs crates/application/src/usecases/speech/marker.rs crates/application/src/usecases/speech/service.rs crates/application/src/usecases/speech/source.rs crates/application/src/usecases/speech/prepare.rs crates/application/src/usecases/speech/mod.rs crates/application/src/usecases/speech_catalog.rs src-tauri/src/bootstrap/mod.rs src-tauri/src/bootstrap/tts.rs src-tauri/src/bootstrap/usecases.rs src-tauri/src/commands/tts.rs src-tauri/src/lib.rs crates/application/src/usecases/project/youtube_commit_tests.rs
+      - task: fmt:speech
   test:desktop-manifest:
     desc: Verify the desktop's installed-runtime receipt fixture without loading models
     cmds:

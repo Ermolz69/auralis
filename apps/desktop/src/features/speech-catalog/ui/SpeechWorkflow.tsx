@@ -1,8 +1,21 @@
 import { useSpeechWorkflow, type SpeechWorkflowOptions } from '../model/useSpeechWorkflow';
 import { SpeechSourcePreview } from './SpeechSourcePreview';
 import { SpeechRunControls } from './SpeechRunControls';
+import type { ReactNode } from 'react';
+import { MarkerPreview } from './MarkerPreview';
 const button = 'rounded border border-border px-3 py-2 text-xs text-text disabled:opacity-40';
-export function SpeechWorkflow(options: SpeechWorkflowOptions) {
+const runStatus = {
+  pending: 'в очереди',
+  running: 'озвучивается',
+  cancelling: 'останавливается',
+  completed: 'готово',
+  failed: 'ошибка',
+  cancelled: 'отменён',
+};
+export function SpeechWorkflow({
+  renderVoiceSettings,
+  ...options
+}: SpeechWorkflowOptions & { renderVoiceSettings?: (disabled: boolean) => ReactNode }) {
   const { profileId, voiceId, referenceId } = options;
   const {
     mode,
@@ -35,12 +48,17 @@ export function SpeechWorkflow(options: SpeechWorkflowOptions) {
     play,
     assign,
     cancel,
+    markerPreparation,
+    markerApplied,
+    normalize,
+    applyPreparation,
   } = useSpeechWorkflow(options);
   return (
     <div className="mt-4 space-y-3 border-t border-border pt-3 text-xs">
+      <h3 className="text-sm font-medium text-text">1. Текст и подготовка</h3>
       <div role="group" aria-label="Источник озвучки" className="flex gap-2">
         <button
-          className={button}
+          className={`${button} ${mode === 'subtitles' ? 'bg-surface-raised border-primary' : ''}`}
           aria-pressed={mode === 'subtitles'}
           onClick={() => {
             changed();
@@ -50,7 +68,7 @@ export function SpeechWorkflow(options: SpeechWorkflowOptions) {
           Субтитры
         </button>
         <button
-          className={button}
+          className={`${button} ${mode === 'text' ? 'bg-surface-raised border-primary' : ''}`}
           aria-pressed={mode === 'text'}
           onClick={() => {
             changed();
@@ -108,42 +126,63 @@ export function SpeechWorkflow(options: SpeechWorkflowOptions) {
         </label>
       )}
       <div className="flex flex-wrap gap-2">
+        <button
+          className={button}
+          disabled={busy || !!active || (mode === 'text' && !text.trim())}
+          onClick={() => void normalize()}
+        >
+          Подготовить текст
+        </button>
         {mode === 'subtitles' && (
           <button className={button} disabled={busy} onClick={() => void refreshSources()}>
             Обновить источники
           </button>
         )}
-        <button className={button} disabled={busy} onClick={() => void load()}>
-          Показать текст
-        </button>
+        {mode === 'subtitles' && (
+          <button className={button} disabled={busy} onClick={() => void load()}>
+            Показать текст
+          </button>
+        )}
         <button
           className={button}
           disabled={busy || (mode === 'text' && !text.trim())}
           onClick={() => void confirm()}
         >
-          {translationId && mode === 'subtitles'
+          {translationId && mode === 'subtitles' && !markerApplied
             ? 'Использовать одобренный перевод'
             : 'Текст проверен'}
         </button>
-        <button
-          className={button}
-          disabled={busy || !review || !profileId || !voiceId || !referenceId}
-          onClick={() => void prepare()}
-        >
-          Подготовить план
-        </button>
       </div>
+      {markerPreparation && (
+        <MarkerPreview
+          preparation={markerPreparation}
+          applied={markerApplied}
+          apply={applyPreparation}
+          busy={busy || !!active}
+        />
+      )}
       {review && (
         <p role="status" className="text-muted">
           Снимок проверенного текста сохранён.
         </p>
       )}
-      <SpeechSourcePreview
-        source={source}
-        voices={options.voices}
-        assignments={assignments}
-        assign={assign}
-      />
+      {mode === 'subtitles' && (
+        <SpeechSourcePreview
+          source={source}
+          voices={options.voices}
+          assignments={assignments}
+          assign={assign}
+        />
+      )}
+      {renderVoiceSettings?.(busy || !!active)}
+      <h3 className="text-sm font-medium text-text">3. Озвучка и результат</h3>
+      <button
+        className={button}
+        disabled={busy || !review || !profileId || !voiceId || !referenceId}
+        onClick={() => void prepare()}
+      >
+        Подготовить озвучку
+      </button>
       {error && (
         <p role="alert" className="text-text">
           {error}
@@ -159,9 +198,10 @@ export function SpeechWorkflow(options: SpeechWorkflowOptions) {
             onChange={(e) => setSelected(e.target.value)}
           >
             <option value="">Выберите запуск</option>
-            {runs.map((item) => (
+            {runs.map((item, q) => (
               <option key={item.run_id} value={item.run_id}>
-                {item.profile_id} · {item.run_id.slice(0, 8)} · {item.job?.status ?? 'план готов'}
+                Запуск {q + 1} · {item.profile_id.includes('espeech') ? 'ESpeech' : 'VoxCPM2'} ·{' '}
+                {item.job ? runStatus[item.job.status] : 'план готов'}
               </option>
             ))}
           </select>

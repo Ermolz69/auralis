@@ -20,3 +20,9 @@ pub use framed::WorkerFrameReader;
 pub use preflight::{TtsCapabilities, TtsCatalog, TtsComposed, TtsValidated};
 pub use protocol::{WorkerEvent, WorkerIdentity, WorkerProtocol};
 pub use result_verification::verify_result_files;
+mod contract;
+mod marker;
+mod marker_lock;
+#[cfg(test)]
+mod marker_tests;
+pub use marker::{MarkerClient, MarkerRuntimeConfig};

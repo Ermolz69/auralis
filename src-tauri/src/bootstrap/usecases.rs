@@ -135,6 +135,8 @@ pub(super) struct AppUseCaseDependencies {
     pub(super) job_runtime: Arc<dyn ports::job_runtime_control::JobRuntimeControlPort>,
     pub(super) youtube_imports: Arc<dyn ports::youtube_import::YoutubeImportJournal>,
     pub(super) project_locks: Arc<application::usecases::project::lifecycle::ProjectLifecycleLocks>,
+    pub(super) puza_contract: Option<Arc<dyn ports::puza_contract::PuzaContractPort>>,
+    pub(super) puza_contract_error: String,
 }
 
 pub(super) fn setup_usecases(
@@ -142,6 +144,8 @@ pub(super) fn setup_usecases(
     dependencies: AppUseCaseDependencies,
 ) -> Result<(), PortError> {
     let AppUseCaseDependencies {
+        puza_contract,
+        puza_contract_error,
         ui_preferences,
         artifact_recovery,
         projects_root,
@@ -206,7 +210,8 @@ pub(super) fn setup_usecases(
             artifact_store.clone(),
             locks.clone(),
         ),
-        create_project: CreateProjectUseCase::new(project_repo.clone()),
+        create_project: CreateProjectUseCase::new(project_repo.clone())
+            .with_contract(puza_contract.clone(), puza_contract_error.clone()),
         create_project_from_youtube: CreateProjectFromYoutubeUseCase::new(
             project_repo.clone(),
             ytdlp_adapter.clone(),
@@ -214,7 +219,8 @@ pub(super) fn setup_usecases(
             youtube_imports,
             workspace_port.clone(),
             locks.clone(),
-        ),
+        )
+        .with_contract(puza_contract, puza_contract_error),
         get_project: GetProjectUseCase::new(project_repo.clone()),
         list_projects: ListProjectsUseCase::new(project_repo.clone()),
         open_project_folder: OpenProjectFolderUseCase::new(

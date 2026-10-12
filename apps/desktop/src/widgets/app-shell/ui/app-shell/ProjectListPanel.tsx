@@ -33,11 +33,11 @@ export function ProjectListPanel({ height }: { height: number }) {
       const project = await createProject(title);
       if (!validateToken(token)) return;
       setProject(project);
-      setPipelineStep('source');
+      setPipelineStep('subtitles');
       setCurrentView('project');
       setName('');
       setRequired(false);
-      toast.success('Project created');
+      toast.success('Проект создан. Добавьте текст или субтитры.');
     } catch (error) {
       if (!validateToken(token)) return;
       toast.error(toCommandError(error).message);

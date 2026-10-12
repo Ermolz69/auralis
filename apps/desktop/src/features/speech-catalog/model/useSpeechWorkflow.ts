@@ -9,8 +9,9 @@ import type {
   SpeechSourceRequest,
 } from '@/shared/api/contracts/speech';
 import type { SpeechVoiceOption } from '@/shared/api/contracts/speechCatalog';
-import type { TranslationLink } from '@/shared/api/contracts/translation';
-import type { Artifact } from '@/shared/api/contracts/artifact';
+import { describeCommandError } from '@/shared/api/contracts/error';
+import { useSpeechSources } from './useSpeechSources';
+import { useMarkerPreparation } from './useMarkerPreparation';
 
 export type SpeechWorkflowOptions = {
   projectId: string;
@@ -20,7 +21,7 @@ export type SpeechWorkflowOptions = {
   voices: SpeechVoiceOption[];
   engineId: string;
 };
-const describe = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason));
+const describe = describeCommandError;
 
 export function useSpeechWorkflow({
   projectId,
@@ -30,12 +31,12 @@ export function useSpeechWorkflow({
   voices,
   engineId,
 }: SpeechWorkflowOptions) {
-  const [mode, setMode] = useState<'text' | 'subtitles'>('subtitles');
+  const [mode, setMode] = useState<'text' | 'subtitles'>('text');
   const [text, setText] = useState('');
   const [translationId, setTranslationId] = useState('');
   const [subtitleId, setSubtitleId] = useState('');
-  const [subtitleFiles, setSubtitleFiles] = useState<Artifact[]>([]);
-  const [translations, setTranslations] = useState<TranslationLink[]>([]);
+  const { subtitleFiles, translations, refreshSources } = useSpeechSources(projectId);
+  const marker = useMarkerPreparation(projectId);
   const [source, setSource] = useState<SpeechSourceSnapshot | null>(null);
   const [review, setReview] = useState<SpeechReview | null>(null);
   const [assignments, setAssignments] = useState<SpeechAssignment[]>([]);
@@ -66,16 +67,6 @@ export function useSpeechWorkflow({
     setSelected('');
     setAudio(null);
     setError(null);
-    void invoke('list_project_translations_cmd', { projectId })
-      .then((items) => {
-        if (active) setTranslations(items);
-      })
-      .catch(() => {});
-    void invoke('list_project_artifacts_cmd', { projectId, kind: 'originalSubtitle' })
-      .then((items) => {
-        if (active) setSubtitleFiles(items);
-      })
-      .catch(() => {});
     const refresh = () => {
       void invoke('list_speech_runs_cmd', { projectId })
         .then((items) => {
@@ -113,6 +104,7 @@ export function useSpeechWorkflow({
     }
   };
   const changed = () => {
+    marker.clear();
     setSource(null);
     setReview(null);
     setAssignments([]);
@@ -125,11 +117,13 @@ export function useSpeechWorkflow({
     });
   const confirm = () =>
     action(async () => {
-      const result = await invoke('review_speech_text_cmd', {
-        projectId,
-        source: request,
-        confirmed: true,
-      });
+      const result = marker.applied
+        ? await marker.confirm()
+        : await invoke('review_speech_text_cmd', {
+            projectId,
+            source: request,
+            confirmed: true,
+          });
       setReview(result);
       setSource(result.source);
     });
@@ -180,6 +174,23 @@ export function useSpeechWorkflow({
   const active = run?.job && ['pending', 'running', 'cancelling'].includes(run.job.status);
 
   return {
+    markerPreparation: marker.preparation,
+    markerApplied: marker.applied,
+    normalize: () =>
+      action(async () => {
+        await marker.normalize(request);
+        setReview(null);
+        setSelected('');
+      }),
+    applyPreparation: () => {
+      marker.apply();
+      if (marker.preparation) {
+        setSource(marker.preparation.prepared);
+        if (mode === 'text') setText(marker.preparation.prepared.text);
+      }
+      setReview(null);
+      setSelected('');
+    },
     mode,
     setMode,
     text,
@@ -208,13 +219,7 @@ export function useSpeechWorkflow({
     start,
     play,
     assign,
-    refreshSources: () =>
-      action(async () => {
-        setSubtitleFiles(
-          await invoke('list_project_artifacts_cmd', { projectId, kind: 'originalSubtitle' }),
-        );
-        setTranslations(await invoke('list_project_translations_cmd', { projectId }));
-      }),
+    refreshSources: () => action(refreshSources),
     cancel: () =>
       action(async () => {
         if (run?.job) await invoke('cancel_job_cmd', { jobId: run.job.id });

@@ -26,6 +26,7 @@ mod youtube_cleanup;
 mod concurrency_support;
 #[cfg(test)]
 mod concurrency_tests;
+pub mod contract;
 #[cfg(test)]
 mod youtube_atomic_support;
 #[cfg(test)]

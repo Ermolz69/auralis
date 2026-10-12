@@ -4,6 +4,8 @@ tasks:
   fmt:speech:
     desc: Format speech UI and its native acceptance harness
     cmds:
+      - pnpm prettier --write "apps/desktop/scripts/production-puza-speech.test.mjs" "apps/desktop/src/widgets/app-shell/ui/AppShell.test.tsx"
+      - pnpm prettier --write "apps/desktop/src/pages/project/ui/SubtitleWorkspace.tsx" "apps/desktop/src/widgets/app-shell/ui/app-shell/ProjectListPanel.tsx" "apps/desktop/src/widgets/app-shell/ui/app-shell/PipelinePanel.tsx" "apps/desktop/src/widgets/project-header/ui/ProjectHeader.tsx" "apps/desktop/src/shared/api/contracts/error.ts" "apps/desktop/src/features/voice-catalog/ui/useVoiceCatalog.ts"
       - pnpm prettier --write "apps/desktop/src/main.tsx"
       - pnpm prettier --write "apps/desktop/src/features/speech-catalog/model/*.ts" "tools/tts/*.mjs"
       - pnpm prettier --write "apps/desktop/src/features/speech-catalog/ui/*.{ts,tsx}" "apps/desktop/src/shared/api/contracts/speech*.ts" "apps/desktop/src/shared/api/contracts/artifact.ts" "apps/desktop/src/shared/api/contracts/commandMap.ts" "apps/desktop/src/shared/api/contracts/runtimeValidation.ts" "apps/desktop/src/app/native-e2e/speechScenario.ts" "apps/desktop/src/app/native-e2e/NativeE2ERunner.tsx" "apps/desktop/src/vite-env.d.ts" "apps/desktop/vite.config.ts" "tools/native-e2e/speech.mjs" "tools/native-e2e/run.mjs"
@@ -103,6 +105,14 @@ tasks:
     desc: Test the production build under CSP in Chromium with a mocked IPC boundary
     cmds:
       - pnpm --filter desktop exec node --test scripts/production-smoke.test.mjs
+  smoke:puza:
+    desc: Verify the production speech panel under CSP with a fixture IPC boundary
+    env:
+      AURALIS_PUZA_SCREENSHOT: '{{.SCREENSHOT}}'
+    requires:
+      vars: [SCREENSHOT]
+    cmds:
+      - pnpm --filter desktop exec node --test scripts/production-puza-speech.test.mjs
 
   storybook:
     desc: Build the production-static design-system catalog

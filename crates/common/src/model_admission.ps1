@@ -1,10 +1,11 @@
-param([string]$ProbePython, [string]$ProbeScript, [string]$CaseId)
+param([string]$ProbePython, [string]$ProbeScript, [string]$CaseId, [switch]$ModelFree)
 $ErrorActionPreference = 'Stop'
 $modelMutex = [Threading.Mutex]::new($false, 'Global\PUZA_TTS_NATIVE_RENDER')
 $modelLocked = $false
 $modelAdmitted = $false
 $modelFile = $null
 try {
+    if ($ModelFree -and $ProbeScript) { throw 'Model-free admission cannot execute a model probe.' }
     try { $modelLocked = $modelMutex.WaitOne(0) }
     catch [Threading.AbandonedMutexException] { $modelLocked = $true }
     if (-not $modelLocked) { throw 'Another PUZA model job holds the shared mutex.' }
@@ -26,17 +27,20 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'GPU process inspection failed.' }
     $modelDesktopNames = @('dwm.exe','explorer.exe','searchapp.exe','phoneexperiencehost.exe','vgtray.exe','lghub_system_tray.exe','discord.exe','chrome.exe','msedge.exe','chatgpt.exe','codex-computer-use-swift.exe','msedgewebview2.exe','textinputhost.exe','telegram.exe','steamwebhelper.exe')
     $modelDesktopNames += @('crossdeviceresume.exe','startmenuexperiencehost.exe','searchhost.exe','lockapp.exe','wallpaper64.exe','armourycratekeycontrol.exe','shellexperiencehost.exe','winword.exe','spotify.exe','applicationframehost.exe','systemsettings.exe','shellhost.exe','githubdesktop.exe')
+    $modelDesktopNames += @('taskmgr.exe')
     foreach ($modelGpuJob in $modelGpuJobs) {
         if ($modelGpuJob -match '^\s*(\d+)\s*$') {
             $modelGpuPid = [int]$Matches[1]
             $modelGpuProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$modelGpuPid" -ErrorAction Stop
             $modelSpotifyGamebar = $modelGpuProcess -and $modelGpuProcess.Name -eq 'SpotifyXboxGamebarWebView.exe' -and $modelGpuProcess.ExecutablePath -like (Join-Path $env:ProgramFiles 'WindowsApps\SpotifyAB.SpotifyMusic_*\SpotifyXboxGamebarWebView.exe')
-            if (-not $modelGpuProcess -or ($modelGpuProcess.Name.ToLowerInvariant() -notin $modelDesktopNames -and -not $modelSpotifyGamebar)) { throw ('GPU compute owner is unknown or is a model: ' + $modelGpuPid) }
+            $modelComputerUse = $modelGpuProcess -and $modelGpuProcess.Name -eq 'codex-computer-use.exe' -and $modelGpuProcess.ExecutablePath -like (Join-Path $env:ProgramFiles 'WindowsApps\OpenAI.Codex_*\app\resources\cua_node\bin\node_modules\@oai\sky\bin\windows\codex-computer-use.exe')
+            $modelEditor = $ModelFree -and $modelGpuProcess -and $modelGpuProcess.Name -in @('UnrealEditor.exe','LiveCodingConsole.exe') -and $modelGpuProcess.ExecutablePath -eq (Join-Path $env:ProgramFiles ('Epic Games\UE_5.3\Engine\Binaries\Win64\' + $modelGpuProcess.Name))
+            if (-not $modelGpuProcess -or ($modelGpuProcess.Name.ToLowerInvariant() -notin $modelDesktopNames -and -not $modelSpotifyGamebar -and -not $modelComputerUse -and -not $modelEditor)) { throw ('GPU compute owner is unknown or is a model: ' + $modelGpuPid) }
         }
     }
     $modelGpuUsed = @(& nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>$null)
     if ($LASTEXITCODE -ne 0 -or $modelGpuUsed.Count -ne 1 -or $modelGpuUsed[0] -notmatch '^\s*\d+\s*$') { throw 'GPU memory state cannot be established.' }
-    if ([int]$modelGpuUsed[0] -gt 2048) { throw 'GPU baseline exceeds 2048 MiB; model resources may not have been released.' }
+    if (-not $ModelFree -and [int]$modelGpuUsed[0] -gt 2048) { throw 'GPU baseline exceeds 2048 MiB; model resources may not have been released.' }
     [Console]::Out.WriteLine('READY')
     [Console]::Out.Flush()
     $modelAdmitted = $true
@@ -49,7 +53,7 @@ try {
         $modelRemaining = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $_.Name -match '^(python(w|3(\.\d+)?)?|llama-server|llama-cli|ollama|vllm|text-marker|tts)(\.exe)?$' })
         $modelRemainingGpu = @(& nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>$null)
         if ($LASTEXITCODE -ne 0) { throw 'GPU resource release could not be inspected.' }
-        $modelReleased = $modelRemaining.Count -eq 0 -and $modelRemainingGpu.Count -eq 1 -and $modelRemainingGpu[0] -match '^\s*\d+\s*$' -and [int]$modelRemainingGpu[0] -le 2048
+        $modelReleased = $modelRemaining.Count -eq 0 -and $modelRemainingGpu.Count -eq 1 -and $modelRemainingGpu[0] -match '^\s*\d+\s*$' -and ($ModelFree -or [int]$modelRemainingGpu[0] -le 2048)
         if (-not $modelReleased) { Start-Sleep -Milliseconds 200 }
     } while (-not $modelReleased)
 } catch {
@@ -60,7 +64,7 @@ try {
             try {
                 $modelRecoveryProcesses = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $_.Name -match '^(python(w|3(\.\d+)?)?|llama-server|llama-cli|ollama|vllm|text-marker|tts)(\.exe)?$' })
                 $modelRecoveryGpu = @(& nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>$null)
-                $modelConfirmedReleased = $LASTEXITCODE -eq 0 -and $modelRecoveryProcesses.Count -eq 0 -and $modelRecoveryGpu.Count -eq 1 -and $modelRecoveryGpu[0] -match '^\s*\d+\s*$' -and [int]$modelRecoveryGpu[0] -le 2048
+                $modelConfirmedReleased = $LASTEXITCODE -eq 0 -and $modelRecoveryProcesses.Count -eq 0 -and $modelRecoveryGpu.Count -eq 1 -and $modelRecoveryGpu[0] -match '^\s*\d+\s*$' -and ($ModelFree -or [int]$modelRecoveryGpu[0] -le 2048)
             } catch { $modelConfirmedReleased = $false }
             if (-not $modelConfirmedReleased) { Start-Sleep -Milliseconds 200 }
         } while (-not $modelConfirmedReleased)

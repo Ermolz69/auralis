@@ -53,6 +53,7 @@ mod connection_tests;
 mod driver_compatibility_tests;
 #[cfg(test)]
 mod project_avatar_tests;
+mod project_contract;
 #[cfg(test)]
 mod project_revision_migration_tests;
 #[cfg(test)]

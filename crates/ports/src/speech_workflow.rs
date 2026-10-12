@@ -34,6 +34,8 @@ pub struct SpeechCue {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SpeechReview {
+    #[serde(default)]
+    pub original_source: Option<SpeechSourceSnapshot>,
     pub decision_id: Uuid,
     pub project_id: ProjectId,
     pub source: SpeechSourceSnapshot,

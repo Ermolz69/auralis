@@ -2,11 +2,72 @@ use application::usecases::speech::{
     PrepareSpeechRequest, SpeechRunView, SpeechSourceRequest, SpeechUseCases,
 };
 use application::usecases::speech_catalog::SpeechCatalogUseCase;
+use ports::marker::MarkerPreparation;
+use ports::puza_contract::PuzaVoiceBinding;
+#[command]
+pub async fn get_speech_voice_selection_cmd(
+    project_id: String,
+    speech: State<'_, Arc<SpeechUseCases>>,
+) -> Result<Option<PuzaVoiceBinding>, CommandError> {
+    speech
+        .default_voice(parse_project_id(&project_id)?)
+        .await
+        .map_err(CommandError::from)
+}
+#[command]
+pub async fn save_speech_voice_selection_cmd(
+    project_id: String,
+    profile_id: String,
+    voice_id: String,
+    reference_id: String,
+    speech: State<'_, Arc<SpeechUseCases>>,
+) -> Result<PuzaVoiceBinding, CommandError> {
+    speech
+        .save_voice(
+            parse_project_id(&project_id)?,
+            profile_id,
+            voice_id,
+            reference_id,
+        )
+        .await
+        .map_err(CommandError::from)
+}
 use ports::speech_catalog::SpeechCatalogSnapshot;
 use ports::speech_workflow::{SpeechReview, SpeechSourceSnapshot};
 use std::sync::Arc;
 use tauri::{State, command};
 use uuid::Uuid;
+
+#[command]
+pub async fn prepare_speech_text_cmd(
+    project_id: String,
+    source: SpeechSourceRequest,
+    speech: State<'_, Arc<SpeechUseCases>>,
+) -> Result<MarkerPreparation, CommandError> {
+    speech
+        .prepare_text(parse_project_id(&project_id)?, source)
+        .await
+        .map_err(CommandError::from)
+}
+
+#[command]
+pub async fn review_prepared_speech_text_cmd(
+    project_id: String,
+    source: SpeechSourceRequest,
+    preparation: MarkerPreparation,
+    confirmed: bool,
+    speech: State<'_, Arc<SpeechUseCases>>,
+) -> Result<SpeechReview, CommandError> {
+    speech
+        .review_prepared(
+            parse_project_id(&project_id)?,
+            source,
+            preparation,
+            confirmed,
+        )
+        .await
+        .map_err(CommandError::from)
+}
 
 use crate::dto::error::{CommandError, parse_project_id};
 

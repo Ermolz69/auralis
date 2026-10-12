@@ -60,4 +60,6 @@ pub use repository::*;
 pub use source::*;
 pub use storage::*;
 pub use workspace::*;
+pub mod marker;
+pub mod puza_contract;
 pub mod youtube_import;

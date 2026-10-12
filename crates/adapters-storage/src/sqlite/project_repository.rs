@@ -21,6 +21,27 @@ impl SqliteProjectRepository {
 
 #[async_trait]
 impl ProjectRepository for SqliteProjectRepository {
+    async fn create_with_contract(
+        &self,
+        project: Project,
+        contract: ports::puza_contract::PuzaContractSnapshot,
+    ) -> Result<Project, PortError> {
+        super::project_contract::create(&self.pool, project, contract).await
+    }
+    async fn contract_project(
+        &self,
+        id: &ProjectId,
+    ) -> Result<Option<ports::puza_contract::PuzaContractSnapshot>, PortError> {
+        super::project_contract::read(&self.pool, id).await
+    }
+    async fn save_contract_project(
+        &self,
+        id: &ProjectId,
+        expected: Option<&str>,
+        contract: &ports::puza_contract::PuzaContractSnapshot,
+    ) -> Result<(), PortError> {
+        super::project_contract::save(&self.pool, id, expected, contract).await
+    }
     async fn create(&self, project: Project) -> Result<Project, PortError> {
         let values = project_to_row_values(&project)?;
 
