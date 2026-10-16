@@ -1,8 +1,4 @@
-import {
-  getTranslationRunStatus,
-  listProjectTranslations,
-  subscribeTranslationChanges,
-} from '@/entities/translation';
+import { getProjectTranslationSnapshot, subscribeTranslationChanges } from '@/entities/translation';
 import type { TranslationLink, TranslationRunSnapshot } from '@/shared/api/contracts/translation';
 
 const RECOVERY_INTERVAL_MS = 3000;
@@ -27,20 +23,17 @@ export function observeTranslationRuns(projectId: string, handlers: Handlers): (
 
   async function read() {
     try {
-      const links = await listProjectTranslations(projectId);
-      const entries = await Promise.all(
-        links.map(async (link) => {
-          if (!link.activeRunId) return null;
-          return [
-            link.translationId,
-            await getTranslationRunStatus(projectId, link.translationId),
-          ] as const;
-        }),
-      );
-      if (active)
-        handlers.onSnapshot(links, Object.fromEntries(entries.filter((item) => item !== null)));
+      const snapshot = await getProjectTranslationSnapshot(projectId);
+      if (active && !pending)
+        handlers.onSnapshot(
+          snapshot.entries.map((entry) => entry.link),
+          snapshot.entries.reduce<Record<string, TranslationRunSnapshot>>((runs, entry) => {
+            if (entry.run) runs[entry.link.translationId] = entry.run;
+            return runs;
+          }, {}),
+        );
     } catch (reason) {
-      if (active) handlers.onError(reason);
+      if (active && !pending) handlers.onError(reason);
     } finally {
       reading = false;
       if (active && pending) {

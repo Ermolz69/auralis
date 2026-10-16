@@ -16,7 +16,7 @@ export async function checkFileContent(fullPath, content) {
             console.error(`Error: Found println!, eprintln! or dbg! in ${fullPath}:${i + 1}`);
             console.error(`  ${line.trim()}`);
             hasError = true;
-        } else if (!isDiagnosticFile && (line.includes('std::io::stderr') || line.includes('io::stderr') || line.includes('stderr()'))) {
+        } else if (!isDiagnosticFile && (line.includes('std::io::stderr') || line.includes('io::stderr') || /(?:^|[^.\w:])stderr\s*\(\)/.test(line))) {
             console.error(`Error: Found direct stderr access in non-diagnostic file ${fullPath}:${i + 1}`);
             console.error(`  ${line.trim()}`);
             hasError = true;

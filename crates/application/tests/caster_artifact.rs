@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use adapters_storage::memory::{
     InMemoryArtifactIndex, InMemoryDatabase, InMemoryProjectRepository,
 };

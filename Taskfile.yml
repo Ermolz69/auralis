@@ -21,6 +21,23 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  perf:translation-observer:measure:
+    desc: Measure translation screen IPC calls and committed-progress DOM latency with fixed fixture IPC
+    env:
+      AURALIS_TRANSLATION_OBSERVER_REPORT: '{{default "target/translation-observer/latest.json" .REPORT}}'
+    cmds:
+      - pnpm --filter desktop exec vitest run --project component src/app/tests/translationObserverMeasure.test.tsx --reporter=default
+
+  check:translation-observer:
+    desc: Check translation observer, publication, typed IPC and two-database behavior
+    cmds:
+      - pnpm --filter desktop exec vitest run --project unit --project component src/entities/translation src/features/translation-run-control src/features/translation-review/ui/TranslationPublicationNotice.test.tsx src/shared/api/contracts/runtimeValidation.test.ts src/shared/api/contracts/translationHistoricalValidation.test.ts src/shared/api/contracts/translationProjectSnapshotValidation.test.ts --reporter=default
+      - task: rs:test:translate
+      - task: rs:test:application
+      - task: rs:test:storage
+      - task: rs:test:desktop
+      - task: rs:test:translation-events
+
   setup:media-tools:
     desc: Alias for media:setup-tools
     cmds:

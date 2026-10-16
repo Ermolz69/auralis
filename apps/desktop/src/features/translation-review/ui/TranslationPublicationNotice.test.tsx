@@ -6,7 +6,11 @@ import { context, deferred, id, publication, view } from './tests/support/histor
 import type { TranslationPublicationView } from '@/shared/api/contracts/translationHistoricalEdit';
 
 const getTranslationPublication = vi.hoisted(() => vi.fn());
-vi.mock('@/entities/translation', () => ({ getTranslationPublication }));
+const subscribeTranslationPublicationChanges = vi.hoisted(() => vi.fn());
+vi.mock('@/entities/translation', () => ({
+  getTranslationPublication,
+  subscribeTranslationPublicationChanges,
+}));
 const props = {
   projectId: context.projectId,
   translationId: context.translationId,
@@ -24,6 +28,8 @@ const ready = {
 };
 beforeEach(() => {
   getTranslationPublication.mockReset();
+  subscribeTranslationPublicationChanges.mockReset();
+  subscribeTranslationPublicationChanges.mockImplementation(() => new Promise(() => {}));
 });
 afterEach(() => {
   cleanup();
@@ -31,6 +37,33 @@ afterEach(() => {
 });
 
 describe('historical publication notice', () => {
+  it('shows committed readiness on a project event and disposes its listener', async () => {
+    let notify: () => void = () => {};
+    const dispose = vi.fn();
+    subscribeTranslationPublicationChanges.mockImplementation(async (_projectId, refresh) => {
+      notify = refresh;
+      return dispose;
+    });
+    getTranslationPublication.mockResolvedValue(view);
+    const rendered = render(<TranslationPublicationNotice {...props} />);
+    await screen.findByText(/Ожидаем готовности/);
+    getTranslationPublication.mockResolvedValue(ready);
+    await act(async () => notify());
+    expect(await screen.findByText(/выбрана для проекта/)).not.toBeNull();
+    rendered.unmount();
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+  it('keeps polling after subscription failure and a lost publication event', async () => {
+    vi.useFakeTimers();
+    subscribeTranslationPublicationChanges.mockRejectedValue(new Error('No listener'));
+    getTranslationPublication.mockResolvedValueOnce(view).mockResolvedValue(ready);
+    render(<TranslationPublicationNotice {...props} />);
+    await act(async () => {});
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(screen.getByRole('status').textContent).toContain('выбрана для проекта');
+  });
   it('polls pending publication and stops after readiness or unmount', async () => {
     vi.useFakeTimers();
     getTranslationPublication.mockResolvedValueOnce(view).mockResolvedValue(ready);

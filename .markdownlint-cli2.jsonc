@@ -15,6 +15,8 @@
     "src-tauri/target",
     "crates/**/target",
     "apps/desktop/dist",
+    ".cache/worktrees",
+    ".pnpm-store",
     "vendor/glib-0.18.5",
     "modules/auralis-translate",
   ],

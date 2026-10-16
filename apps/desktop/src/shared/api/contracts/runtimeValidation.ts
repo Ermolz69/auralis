@@ -1,5 +1,11 @@
 import type { Artifact } from './artifact';
-import { validateCastResult, validateReferencePlayback, validateVoiceCatalogPage, validateVoiceCompatibility, validateVoiceDetails } from './casterValidation';
+import {
+  validateCastResult,
+  validateReferencePlayback,
+  validateVoiceCatalogPage,
+  validateVoiceCompatibility,
+  validateVoiceDetails,
+} from './casterValidation';
 import type { CommandMap, EventMap } from './commandMap';
 import { validateJobDto, validateJobEventDto, validateJobSnapshot } from './jobValidation';
 import type { Project } from './project';

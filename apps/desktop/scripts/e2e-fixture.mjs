@@ -314,6 +314,22 @@ export function installE2EFixture(seed) {
         if (!project) throw { code: 'NOT_FOUND', message: 'Project not found' };
         return copy(project);
       }
+      if (command === 'list_voice_catalog_cmd') return { items: [], next_after: null };
+      if (command === 'get_manual_cast_cmd') return null;
+      if (command === 'get_speech_catalog_cmd') return { profiles: [], voices: [] };
+      if (command === 'get_translation_package_status_cmd')
+        return {
+          schemaVersion: 1,
+          releaseId: 'e2e-unavailable',
+          backend: 'cpu',
+          supported: false,
+          installed: false,
+          selected: false,
+        };
+      if (command === 'list_project_artifacts_cmd' || command === 'list_project_translations_cmd')
+        return [];
+      if (command === 'get_project_translation_snapshot_cmd')
+        return { projectId: args.projectId, entries: [] };
       if (command === 'get_project_avatar_cmd') {
         return copy(state.avatars[args.projectId] ?? { dataUrl: null, initialized: true });
       }

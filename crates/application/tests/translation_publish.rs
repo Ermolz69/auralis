@@ -38,6 +38,7 @@ use std::error::Error;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
@@ -45,14 +46,19 @@ const PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.experimental.json"
 );
 
-struct NoEvents;
+#[derive(Clone, Default)]
+struct RecordingEvents(Arc<Mutex<Vec<String>>>);
 
 #[async_trait::async_trait]
-impl ports::events::AppEventPublisher for NoEvents {
-    async fn publish_project_updated(&self, _: &str) -> Result<(), ports::PortError> {
-        Err(ports::PortError::Unexpected {
-            message: "unexpected event".into(),
-        })
+impl ports::events::AppEventPublisher for RecordingEvents {
+    async fn publish_project_updated(&self, project_id: &str) -> Result<(), ports::PortError> {
+        self.0
+            .lock()
+            .map_err(|_| ports::PortError::Unexpected {
+                message: "event lock poisoned".into(),
+            })?
+            .push(project_id.into());
+        Ok(())
     }
 
     async fn publish_transcript_ready(&self, _: &str, _: &str) -> Result<(), ports::PortError> {
@@ -305,17 +311,22 @@ async fn verified_result_publishes_as_separate_ready_artifact_with_review_flag()
     assert_eq!(pending.artifact_id, repeated.artifact_id);
     assert_eq!(std::fs::read(&source_path)?, source);
 
+    let events = RecordingEvents::default();
     let worker = OutboxWorker::new(
         SqliteOutboxRepository::new(pool.clone()),
         file_store.clone(),
         artifacts.clone(),
         Arc::new(SqliteStorageUnitOfWork::new(pool.clone())),
-        Arc::new(NoEvents),
+        Arc::new(events.clone()),
         Arc::new(LocalTempWorkspace::new(directory.path())),
         OutboxMaintenanceConfig::try_default()?,
     )
     .with_translations(links.clone());
     assert_eq!(worker.process_pending_messages(10).await?.fetched, 2);
+    assert_eq!(
+        *events.0.lock().map_err(|_| "event lock poisoned")?,
+        vec![project.id().to_string()]
+    );
     let selected = links.get(translation_id).await?.ok_or("missing link")?;
     assert_eq!(selected.selected_result_id, Some(result_id));
     assert_eq!(

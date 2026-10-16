@@ -38,3 +38,31 @@ export async function subscribeTranslationChanges(
   );
   return dispose;
 }
+
+export async function subscribeTranslationPublicationChanges(
+  projectId: string,
+  refresh: () => void,
+  signal?: AbortSignal,
+): Promise<() => void> {
+  if (signal?.aborted) return () => {};
+  const dispose = await listen(
+    'project-updated',
+    ({ payload }) => {
+      if (payload.projectId === projectId) refresh();
+    },
+    { onInvalidPayload: refresh },
+  );
+  let disposed = false;
+  const stop = () => {
+    if (disposed) return;
+    disposed = true;
+    signal?.removeEventListener('abort', stop);
+    dispose();
+  };
+  if (signal?.aborted) {
+    stop();
+    return stop;
+  }
+  signal?.addEventListener('abort', stop, { once: true });
+  return stop;
+}
