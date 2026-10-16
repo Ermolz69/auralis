@@ -8,14 +8,15 @@ use adapters_translate::{
 use application::usecases::translation::{
     BeginTranslationUseCase, EditHistoricalTranslationUseCase, EditTranslationResultUseCase,
     ExecuteTranslationUseCase, ExportTranslationResultUseCase,
-    GetHistoricalTranslationEditContextUseCase, GetTranslationComparisonUseCase,
-    GetTranslationPublicationUseCase, GetTranslationRunStatusUseCase,
-    ImportTranslationSourceUseCase, InspectTranslationSourceUseCase,
-    ListProjectTranslationsUseCase, ListTranslationHistoryUseCase, PublishTranslationResultUseCase,
-    ReconcileTranslationRunsUseCase, RecoverTranslationHostJobsUseCase,
-    RecoverTranslationPublicationsUseCase, RunManagedTranslationUseCase,
-    RunTranslationHostJobUseCase, SelectTranslationResultUseCase, StartTranslationJobUseCase,
-    TranslationReviewUseCase, TranslationRunUseCase, VerifyTranslationHistoryUseCase,
+    GetHistoricalTranslationEditContextUseCase, GetProjectTranslationSnapshotUseCase,
+    GetTranslationComparisonUseCase, GetTranslationPublicationUseCase,
+    GetTranslationRunStatusUseCase, ImportTranslationSourceUseCase,
+    InspectTranslationSourceUseCase, ListProjectTranslationsUseCase, ListTranslationHistoryUseCase,
+    PublishTranslationResultUseCase, ReconcileTranslationRunsUseCase,
+    RecoverTranslationHostJobsUseCase, RecoverTranslationPublicationsUseCase,
+    RunManagedTranslationUseCase, RunTranslationHostJobUseCase, SelectTranslationResultUseCase,
+    StartTranslationJobUseCase, TranslationReviewUseCase, TranslationRunUseCase,
+    VerifyTranslationHistoryUseCase,
 };
 use ports::translation_host_job::TranslationHostJobStore;
 use ports::translation_links::TranslationLinkStore;
@@ -34,6 +35,7 @@ pub struct TranslationUseCases {
     pub inspect: Arc<InspectTranslationSourceUseCase>,
     pub import_source: ImportTranslationSourceUseCase,
     pub list: ListProjectTranslationsUseCase,
+    pub snapshot: GetProjectTranslationSnapshotUseCase,
     pub comparison: GetTranslationComparisonUseCase,
     pub history: ListTranslationHistoryUseCase,
     pub select_result: SelectTranslationResultUseCase,
@@ -126,7 +128,15 @@ impl TranslationUseCases {
             jobs: jobs.clone(),
             inspect: inspect.clone(),
             import_source,
-            list: ListProjectTranslationsUseCase::new(projects, links.clone()),
+            list: ListProjectTranslationsUseCase::new(projects.clone(), links.clone()),
+            snapshot: GetProjectTranslationSnapshotUseCase::new(
+                ListProjectTranslationsUseCase::new(projects.clone(), links.clone()),
+                GetTranslationRunStatusUseCase::new(
+                    TranslationRunUseCase::new(links.clone(), control.clone()),
+                    jobs.clone(),
+                ),
+                links.clone(),
+            ),
             history: ListTranslationHistoryUseCase::new(links.clone()),
             select_result: SelectTranslationResultUseCase::new(
                 inspect.clone(),

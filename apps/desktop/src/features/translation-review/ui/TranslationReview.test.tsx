@@ -12,6 +12,7 @@ const getHistoricalTranslationEditContext = vi.hoisted(() => vi.fn());
 const editHistoricalTranslationResult = vi.hoisted(() => vi.fn());
 const publishTranslationResult = vi.hoisted(() => vi.fn());
 const getTranslationPublication = vi.hoisted(() => vi.fn());
+const subscribeTranslationPublicationChanges = vi.hoisted(() => vi.fn());
 const getTranslationReview = vi.hoisted(() => vi.fn());
 const recordTranslationReview = vi.hoisted(() => vi.fn());
 const exportTranslationResult = vi.hoisted(() => vi.fn());
@@ -28,6 +29,7 @@ vi.mock('@/entities/translation', () => ({
   editHistoricalTranslationResult,
   publishTranslationResult,
   getTranslationPublication,
+  subscribeTranslationPublicationChanges,
   getTranslationReview,
   recordTranslationReview,
   exportTranslationResult,
@@ -109,6 +111,7 @@ beforeEach(() => {
       ],
     }),
   );
+  subscribeTranslationPublicationChanges.mockResolvedValue(() => {});
 });
 
 describe('TranslationReview', () => {

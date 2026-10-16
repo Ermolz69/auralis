@@ -5,6 +5,7 @@ import { TranslationRunControl } from './TranslationRunControl';
 
 const listProjectTranslations = vi.hoisted(() => vi.fn());
 const getTranslationRunStatus = vi.hoisted(() => vi.fn());
+const getProjectTranslationSnapshot = vi.hoisted(() => vi.fn());
 const startTranslationRun = vi.hoisted(() => vi.fn());
 const pauseTranslationRun = vi.hoisted(() => vi.fn());
 const publishTranslationResult = vi.hoisted(() => vi.fn());
@@ -14,6 +15,7 @@ let notifyChange: () => void;
 vi.mock('@/entities/translation', () => ({
   listProjectTranslations,
   getTranslationRunStatus,
+  getProjectTranslationSnapshot,
   startTranslationRun,
   pauseTranslationRun,
   publishTranslationResult,
@@ -50,6 +52,20 @@ beforeEach(() => {
   listProjectTranslations.mockResolvedValue([link]);
   listTranslationHistory.mockResolvedValue({ entries: [], nextCursor: null });
   getTranslationRunStatus.mockResolvedValue(requested);
+  getProjectTranslationSnapshot.mockImplementation(async (requestedProjectId: string) => {
+    const links = await listProjectTranslations(requestedProjectId);
+    return {
+      projectId: requestedProjectId,
+      entries: await Promise.all(
+        links.map(async (item: typeof link) => ({
+          link: item,
+          run: item.activeRunId
+            ? await getTranslationRunStatus(requestedProjectId, item.translationId)
+            : null,
+        })),
+      ),
+    };
+  });
   startTranslationRun.mockResolvedValue({
     state: 'accepted',
     runId: link.activeRunId,

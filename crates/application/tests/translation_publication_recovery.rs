@@ -17,15 +17,17 @@ use ports::{
     storage::ArtifactStore,
     translation_links::{PublicationIntent, TranslationIntent, TranslationLinkStore},
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-struct NoEvents;
+#[derive(Clone, Default)]
+struct RecordingEvents(Arc<Mutex<Vec<String>>>);
 
 #[async_trait::async_trait]
-impl ports::events::AppEventPublisher for NoEvents {
-    async fn publish_project_updated(&self, _: &str) -> Result<(), ports::PortError> {
-        panic!("unexpected project event")
+impl ports::events::AppEventPublisher for RecordingEvents {
+    async fn publish_project_updated(&self, project_id: &str) -> Result<(), ports::PortError> {
+        self.0.lock().unwrap().push(project_id.into());
+        Ok(())
     }
 
     async fn publish_transcript_ready(&self, _: &str, _: &str) -> Result<(), ports::PortError> {
@@ -125,12 +127,13 @@ async fn selects_ready_translation_after_finalization_and_after_restart_gap() {
             assert_eq!(links.list_ready_publications(10).await.unwrap().len(), 1);
         }
 
+        let events = RecordingEvents::default();
         let worker = OutboxWorker::new(
             SqliteOutboxRepository::new(pool.clone()),
             store,
             Arc::new(SqliteArtifactIndex::new(pool.clone())),
             Arc::new(SqliteStorageUnitOfWork::new(pool.clone())),
-            Arc::new(NoEvents),
+            Arc::new(events.clone()),
             Arc::new(LocalTempWorkspace::new(root.path())),
             OutboxMaintenanceConfig::try_default().unwrap(),
         )
@@ -138,6 +141,7 @@ async fn selects_ready_translation_after_finalization_and_after_restart_gap() {
         let report = worker.process_pending_messages(10).await.unwrap();
         assert_eq!(report.fetched, usize::from(!recovered_gap));
         let link = links.get(translation_id).await.unwrap().unwrap();
+        assert_eq!(*events.0.lock().unwrap(), vec![project.id().to_string()]);
         assert_eq!(link.selected_result_id, Some(result_id));
         assert_eq!(link.output_artifact_id, Some(artifact_id));
         assert!(link.active_run_id.is_none());

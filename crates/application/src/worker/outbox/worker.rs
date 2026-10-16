@@ -222,8 +222,15 @@ where
                 )
                 .await
             {
-                Ok(_) => tracing::info!(translation_id = %publication.translation_id,
-                    result_id = %publication.result_id, "ready translation publication finalized"),
+                Ok(link) => {
+                    tracing::info!(translation_id = %publication.translation_id,
+                        result_id = %publication.result_id, "ready translation publication finalized");
+                    super::notifications::publish_project_updated(
+                        self.handler.event_publisher.as_ref(),
+                        &link.project_id.to_string(),
+                    )
+                    .await;
+                }
                 Err(ports::error::PortError::Conflict { .. }) => tracing::debug!(
                     translation_id = %publication.translation_id, result_id = %publication.result_id,
                     "translation publication changed during reconciliation"),

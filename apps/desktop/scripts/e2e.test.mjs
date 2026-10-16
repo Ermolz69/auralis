@@ -508,7 +508,7 @@ e2e('27 refreshes subtitle tracks after a temporary backend failure', async () =
       await page
         .getByText('Subtitle catalog is temporarily unavailable', { exact: true })
         .waitFor();
-      await page.getByRole('button', { name: 'Обновить' }).click();
+      await page.getByRole('button', { name: 'Обновить', exact: true }).click();
 
       await page.getByText('Русский (ru)', { exact: true }).waitFor();
       assert.equal((await callsFor(page, 'list_youtube_subtitle_tracks_cmd')).length, 2);

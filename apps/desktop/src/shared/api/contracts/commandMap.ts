@@ -9,29 +9,10 @@ import type { SubtitleTrack } from './subtitle';
 import type { ProjectAvatar } from './projectAvatar';
 import type { PendingYoutubeImport } from './youtubeImport';
 import type { Artifact, ArtifactKind } from './artifact';
-import type {
-  HistoricalTranslationEditContext,
-  EditHistoricalTranslationResult,
-  TranslationPublicationView,
-} from './translationHistoricalEdit';
-import type {
-  BeginTranslationRun,
-  EditTranslationResult,
-  TranslationComparisonPage,
-  TranslationHistoryPage,
-  TranslationFormat,
-  TranslationInspection,
-  TranslationLink,
-  TranslationPackageStatus,
-  TranslationPublication,
-  TranslationRunSnapshot,
-  TranslationReviewDecision,
-  TranslationReviewView,
-  TranslationExportReceipt,
-  TranslationStart,
-} from './translation';
+import type { EditHistoricalTranslationResult } from './translationHistoricalEdit';
+import type { TranslationCommandMap } from './translationCommandMap';
 
-export interface CommandMap extends VoiceCommandMap {
+export interface CommandMap extends VoiceCommandMap, TranslationCommandMap {
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
   set_color_theme_cmd: { args: { value: string; expectedRevision: number }; result: StoredTheme };
   import_color_theme_cmd: { args: { value: string }; result: StoredTheme };
@@ -106,122 +87,6 @@ export interface CommandMap extends VoiceCommandMap {
     args: { artifactId: string };
     result: string;
   };
-  inspect_translation_source_cmd: {
-    args: { projectId: string; sourceArtifactId: string; format: TranslationFormat };
-    result: TranslationInspection;
-  };
-  import_translation_source_cmd: {
-    args: { projectId: string; path: string; format: TranslationFormat };
-    result: Artifact;
-  };
-  begin_translation_run_cmd: {
-    args: { input: BeginTranslationRun };
-    result: TranslationLink;
-  };
-  start_translation_run_cmd: {
-    args: { projectId: string; translationId: string };
-    result: TranslationStart;
-  };
-  get_translation_package_status_cmd: {
-    args: undefined;
-    result: TranslationPackageStatus;
-  };
-  install_translation_package_cmd: {
-    args: undefined;
-    result: TranslationPackageStatus;
-  };
-  select_translation_package_cmd: {
-    args: { releaseId: string; backend: string };
-    result: TranslationPackageStatus;
-  };
-  edit_translation_result_cmd: {
-    args: { input: EditTranslationResult };
-    result: string;
-  };
-  get_historical_translation_edit_context_cmd: {
-    args: { projectId: string; translationId: string; baseResultId: string };
-    result: HistoricalTranslationEditContext;
-  };
-  edit_historical_translation_result_cmd: {
-    args: { input: EditHistoricalTranslationResult };
-    result: string;
-  };
-  get_translation_publication_cmd: {
-    args: { projectId: string; translationId: string; resultId: string };
-    result: TranslationPublicationView;
-  };
-  publish_translation_result_cmd: {
-    args: { projectId: string; translationId: string; resultId: string };
-    result: TranslationPublication;
-  };
-  list_project_translations_cmd: {
-    args: { projectId: string };
-    result: TranslationLink[];
-  };
-  get_translation_comparison_cmd: {
-    args: {
-      projectId: string;
-      translationId: string;
-      resultId: string;
-      offset: number;
-      limit: number;
-    };
-    result: TranslationComparisonPage;
-  };
-  get_translation_run_status_cmd: {
-    args: { projectId: string; translationId: string };
-    result: TranslationRunSnapshot;
-  };
-  list_translation_history_cmd: {
-    args: {
-      projectId: string;
-      translationId: string;
-      beforeResultId?: string | null;
-      limit: number;
-    };
-    result: TranslationHistoryPage;
-  };
-  select_translation_result_cmd: {
-    args: {
-      projectId: string;
-      translationId: string;
-      resultId: string;
-      expectedLinkRevision: number;
-    };
-    result: TranslationLink;
-  };
-  get_translation_review_cmd: {
-    args: { projectId: string; translationId: string; resultId: string };
-    result: TranslationReviewView;
-  };
-  record_translation_review_cmd: {
-    args: {
-      projectId: string;
-      translationId: string;
-      resultId: string;
-      expectedResultSha256: string;
-      expectedLinkRevision: number;
-      decision: TranslationReviewDecision;
-      reviewerLabel: string;
-      note: string;
-    };
-    result: TranslationReviewView;
-  };
-  export_translation_result_cmd: {
-    args: {
-      projectId: string;
-      translationId: string;
-      resultId: string;
-      expectedResultSha256: string;
-      destination: string;
-    };
-    result: TranslationExportReceipt;
-  };
-  pause_translation_run_cmd: {
-    args: { projectId: string; translationId: string };
-    result: null;
-  };
-
   list_jobs_cmd: {
     args: undefined;
     result: Job[];

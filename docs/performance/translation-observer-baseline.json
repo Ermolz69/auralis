@@ -1,0 +1,331 @@
+{
+  "protocol": "translation-observer-v2",
+  "ipcDelayMs": 20,
+  "windowMs": 10000,
+  "samples": [
+    {
+      "scenario": "empty",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 0,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 0,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "empty",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 0,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 0,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "empty",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 0,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 0,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "one-active",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "one-active",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "one-active",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "four-active",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 16,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 16,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "four-active",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 16,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 16,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "four-active",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 16,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 16,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": null
+    },
+    {
+      "scenario": "empty-added",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 3,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 3,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "empty-added",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 3,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 3,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "empty-added",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 3,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 3,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "one-progress",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "one-progress",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "one-progress",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "four-progress",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 16,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 16,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "four-progress",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 16,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 16,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "four-progress",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 16,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 16,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "event-burst",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 5,
+        "get_translation_run_status_cmd": 20,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 20,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "event-burst",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 5,
+        "get_translation_run_status_cmd": 20,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 20,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "event-burst",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 5,
+        "get_translation_run_status_cmd": 20,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 20,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 40
+    },
+    {
+      "scenario": "lost-event",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 2080
+    },
+    {
+      "scenario": "lost-event",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 2080
+    },
+    {
+      "scenario": "lost-event",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 4,
+        "get_translation_run_status_cmd": 4,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 4,
+        "get_translation_publication_cmd": 0
+      },
+      "latencyMs": 2080
+    },
+    {
+      "scenario": "publication",
+      "repetition": 1,
+      "calls": {
+        "list_project_translations_cmd": 0,
+        "get_translation_run_status_cmd": 0,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 0,
+        "get_translation_publication_cmd": 2
+      },
+      "latencyMs": 2040
+    },
+    {
+      "scenario": "publication",
+      "repetition": 2,
+      "calls": {
+        "list_project_translations_cmd": 0,
+        "get_translation_run_status_cmd": 0,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 0,
+        "get_translation_publication_cmd": 2
+      },
+      "latencyMs": 2040
+    },
+    {
+      "scenario": "publication",
+      "repetition": 3,
+      "calls": {
+        "list_project_translations_cmd": 0,
+        "get_translation_run_status_cmd": 0,
+        "get_project_translation_snapshot_cmd": 0,
+        "list_translation_history_cmd": 0,
+        "get_translation_publication_cmd": 2
+      },
+      "latencyMs": 2040
+    }
+  ]
+}

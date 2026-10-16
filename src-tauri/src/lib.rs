@@ -144,6 +144,7 @@ pub fn run() -> Result<(), AppRunError> {
             commands::translation::edit_context::get_historical_translation_edit_context_cmd,
             commands::translation::historical_edit::edit_historical_translation_result_cmd,
             commands::translation::publication_view::get_translation_publication_cmd,
+            commands::translation::project_snapshot::get_project_translation_snapshot_cmd,
             commands::translation::list::list_project_translations_cmd,
             commands::translation::comparison::get_translation_comparison_cmd,
             commands::translation::history::list_translation_history_cmd,

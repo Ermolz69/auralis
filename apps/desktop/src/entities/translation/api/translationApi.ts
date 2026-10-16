@@ -9,6 +9,7 @@ import type {
   TranslationPackageStatus,
   TranslationPublication,
   TranslationRunSnapshot,
+  ProjectTranslationSnapshot,
   TranslationStart,
 } from '@/shared/api/contracts/translation';
 
@@ -63,6 +64,15 @@ export function listOriginalSubtitles(projectId: string): Promise<Artifact[]> {
 
 export function listProjectTranslations(projectId: string): Promise<TranslationLink[]> {
   return invoke('list_project_translations_cmd', { projectId });
+}
+
+export async function getProjectTranslationSnapshot(
+  projectId: string,
+): Promise<ProjectTranslationSnapshot> {
+  const snapshot = await invoke('get_project_translation_snapshot_cmd', { projectId });
+  if (snapshot.projectId !== projectId)
+    throw new Error('Translation snapshot belongs to another project');
+  return snapshot;
 }
 
 export function getTranslationComparison(

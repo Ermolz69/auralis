@@ -148,3 +148,8 @@ export interface TranslationRunSnapshot {
   needsReview: boolean | null;
   activeHostJobId: string | null;
 }
+
+export interface ProjectTranslationSnapshot {
+  projectId: string;
+  entries: Array<{ link: TranslationLink; run: TranslationRunSnapshot | null }>;
+}

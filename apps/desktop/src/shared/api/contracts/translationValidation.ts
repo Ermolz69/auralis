@@ -159,7 +159,7 @@ const runPhases = new Set(['requested', 'running', 'paused', 'failed', 'validate
 export function validateTranslationRunSnapshot(value: unknown): value is TranslationRunSnapshot {
   if (
     !isRecord(value) ||
-    !isString(value.runId) ||
+    !isUuid(value.runId) ||
     !isString(value.phase) ||
     !runPhases.has(value.phase) ||
     typeof value.pauseRequested !== 'boolean' ||

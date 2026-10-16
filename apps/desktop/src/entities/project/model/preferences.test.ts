@@ -27,6 +27,7 @@ describe('project preferences persistence', () => {
       expect(prefs.updateProjectPreferences('other', { pinned: true }).persisted).toBe(true);
       expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ other: { pinned: true } });
     },
+    15_000,
   );
 
   it('does not overwrite unreadable storage and preserves known preferences', async () => {

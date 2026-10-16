@@ -13,6 +13,10 @@ pub(super) async fn publish_terminal_notifications(
         })
         .await;
     }
+    publish_project_updated(publisher, project_id).await;
+}
+
+pub(super) async fn publish_project_updated(publisher: &dyn AppEventPublisher, project_id: &str) {
     publish_with_retry("project-updated", || {
         publisher.publish_project_updated(project_id)
     })

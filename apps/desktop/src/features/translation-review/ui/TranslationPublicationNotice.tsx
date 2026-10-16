@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { getTranslationPublication } from '@/entities/translation';
+import {
+  getTranslationPublication,
+  subscribeTranslationPublicationChanges,
+} from '@/entities/translation';
 import type { TranslationPublicationView } from '@/shared/api/contracts/translationHistoricalEdit';
 import { toCommandError } from '@/shared/api/contracts';
 import { Button } from '@/shared/ui/button';
@@ -23,26 +26,70 @@ export function TranslationPublicationNotice({
   useEffect(() => {
     let current = true;
     let timeout: ReturnType<typeof setTimeout> | undefined;
+    let reading = false;
+    let pending = false;
+    let unsubscribe: (() => void) | undefined;
+    const subscriptions = new AbortController();
     setView(null);
     setError(null);
-    const refresh = async () => {
+
+    const scheduleRecovery = () => {
+      clearTimeout(timeout);
+      if (current) timeout = setTimeout(refresh, PUBLICATION_POLL_MS);
+    };
+
+    const read = async () => {
       try {
         const found = await getTranslationPublication(projectId, translationId, resultId);
-        if (!current) return;
-        setView(found);
-        setError(null);
-        if (found.publication.state === 'pending')
-          timeout = setTimeout(() => void refresh(), PUBLICATION_POLL_MS);
+        if (current && !pending) {
+          setView(found);
+          setError(null);
+          if (found.publication.state === 'pending') scheduleRecovery();
+        }
       } catch (reason) {
-        if (!current) return;
-        setError(reason instanceof Error ? reason.message : toCommandError(reason).message);
-        timeout = setTimeout(() => void refresh(), PUBLICATION_POLL_MS);
+        if (current && !pending) {
+          setView(null);
+          setError(reason instanceof Error ? reason.message : toCommandError(reason).message);
+          scheduleRecovery();
+        }
+      } finally {
+        reading = false;
+        if (current && pending) {
+          pending = false;
+          refresh();
+        }
       }
     };
-    void refresh();
+
+    function refresh() {
+      if (!current) return;
+      clearTimeout(timeout);
+      if (reading) {
+        pending = true;
+        return;
+      }
+      reading = true;
+      void read();
+    }
+
+    refresh();
+    void subscribeTranslationPublicationChanges(projectId, refresh, subscriptions.signal).then(
+      (dispose) => {
+        if (!current) dispose();
+        else {
+          unsubscribe = dispose;
+          refresh();
+        }
+      },
+      () => {
+        if (current) scheduleRecovery();
+      },
+    );
     return () => {
       current = false;
+      subscriptions.abort();
       clearTimeout(timeout);
+      unsubscribe?.();
     };
   }, [projectId, translationId, resultId, refreshRevision, revision]);
   const observed =

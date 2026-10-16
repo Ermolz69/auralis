@@ -14,6 +14,7 @@ pub mod package_install;
 pub mod package_select;
 pub mod package_status;
 pub mod pause;
+pub mod project_snapshot;
 pub mod publication_view;
 pub mod publish;
 pub mod review;

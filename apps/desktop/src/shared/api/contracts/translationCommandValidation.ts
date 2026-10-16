@@ -14,6 +14,7 @@ import {
 import { validateTranslationHistoryPage } from './translationHistoryValidation';
 import { validateTranslationReviewView } from './translationReviewValidation';
 import { validateTranslationExportReceipt } from './translationExportValidation';
+import { validateProjectTranslationSnapshot } from './translationProjectSnapshotValidation';
 import {
   validateHistoricalTranslationEditContext,
   validateTranslationPublicationView,
@@ -32,6 +33,7 @@ export const translationCommandResultValidators = {
   get_translation_publication_cmd: validateTranslationPublicationView,
   publish_translation_result_cmd: validateTranslationPublication,
   list_project_translations_cmd: (value) => isArrayOf(value, validateTranslationLink),
+  get_project_translation_snapshot_cmd: validateProjectTranslationSnapshot,
   get_translation_comparison_cmd: validateTranslationComparisonPage,
   get_translation_run_status_cmd: validateTranslationRunSnapshot,
   list_translation_history_cmd: validateTranslationHistoryPage,

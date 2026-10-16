@@ -4,19 +4,10 @@ import { useVoiceCatalog } from './useVoiceCatalog';
 type Props = { projectId: string };
 
 export function VoiceCatalog({ projectId }: Props) {
+  const catalog = useVoiceCatalog(projectId);
+  const { voices, nextVoice, voice, playback, cast, roles, selections } = catalog;
+  const { roleId, roleName, busy, error, notice } = catalog;
   const {
-    voices,
-    nextVoice,
-    voice,
-    playback,
-    cast,
-    roles,
-    selections,
-    roleId,
-    roleName,
-    busy,
-    error,
-    notice,
     setRoleId,
     setRoleName,
     loadMoreVoices,
@@ -25,7 +16,7 @@ export function VoiceCatalog({ projectId }: Props) {
     chooseReference,
     saveCast,
     recover,
-  } = useVoiceCatalog(projectId);
+  } = catalog;
   return (
     <section
       className="rounded-md border border-border bg-surface p-4"

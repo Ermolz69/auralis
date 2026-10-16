@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { subscribeTranslationChanges } from './translationEvents';
+import {
+  subscribeTranslationChanges,
+  subscribeTranslationPublicationChanges,
+} from './translationEvents';
 
 const listen = vi.hoisted(() => vi.fn());
 vi.mock('@/shared/api/tauri', () => ({ listen }));
@@ -22,6 +25,41 @@ beforeEach(() => {
 });
 
 describe('translation change subscriptions', () => {
+  it('subscribes publication reads only to matching project updates and invalidation', async () => {
+    const refresh = vi.fn();
+    const stop = await subscribeTranslationPublicationChanges('project', refresh);
+    expect(registrations.map((item) => item.event)).toEqual(['project-updated']);
+    registrations[0].handler({ payload: { projectId: 'other' } });
+    expect(refresh).not.toHaveBeenCalled();
+    registrations[0].handler({ payload: { projectId: 'project' } });
+    registrations[0].onInvalidPayload();
+    expect(refresh).toHaveBeenCalledTimes(2);
+    stop();
+    stop();
+    expect(registrations[0].dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes a publication listener that registers after unmount', async () => {
+    let resolve: (value: () => void) => void = () => {};
+    listen.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    const controller = new AbortController();
+    const subscribing = subscribeTranslationPublicationChanges(
+      'project',
+      vi.fn(),
+      controller.signal,
+    );
+    controller.abort();
+    const late = vi.fn();
+    resolve(late);
+    const stop = await subscribing;
+    stop();
+    expect(late).toHaveBeenCalledTimes(1);
+  });
   it('filters job kind and project, and includes ready-publication notifications', async () => {
     const refresh = vi.fn();
     const stop = await subscribeTranslationChanges('project', refresh);
