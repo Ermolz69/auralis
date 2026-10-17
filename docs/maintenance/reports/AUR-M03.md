@@ -4,7 +4,7 @@
 
 - Repository: Auralis. Branch: `refactor/auralis-translation-executor` in `.cache/worktrees/auralis-translation-executor`.
 - Recorded base: `43136f3fc00d0ad5754f293d7a535dfc47f75739`, containing the maintenance packet. Source candidate: `10e3c521e4a3c2fe541e5ac42bd34c06c9204ca8`.
-- Remote: `origin` at `git@github.com-personal:Ermolz69/auralis.git`. Branch publication follows this report commit; no PR was requested.
+- Remote: `origin` at `git@github.com-personal:Ermolz69/auralis.git`. The branch was pushed successfully with report commit `e5a8606`; no PR was requested.
 - Owned changes: `crates/adapters-translate/src/run_executor.rs`, private `run_executor/{frozen_input,attempt}.rs`, focused `crates/adapters-translate/tests/run_registration.rs`, and this report. No application, port, storage, root Taskfile, nested Translate, sibling Translate or other project files were edited.
 - The Auralis gitlink and initialized embedded checkout both remain at `44e7d4f3c6ce2443279f5d0d3acd07cbb931476e`. The checked model/runtime was not installed or started for this assignment.
 - Verified global author and committer: `Ermolz <00ermzahar@gmail.com>`, with no local or environment identity override.
