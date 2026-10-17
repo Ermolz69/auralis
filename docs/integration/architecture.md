@@ -1,7 +1,9 @@
 # Auralis module integration architecture
 
-Updated: 10 October 2026. Status: requested integration design; implementation
-and acceptance are governed by the separate [goal prompts](README.md).
+Updated: 10 October 2026. This is the requested integration design and a dated
+starting-point record. Current implementation and acceptance boundaries are
+summarized in the [integration index](README.md) and its execution records;
+the [goal prompts](README.md) remain delivery requirements.
 
 ## Delivery scope
 
@@ -24,7 +26,7 @@ operations inside Auralis. Existing TTS engines and synthesis behavior are the
 baseline. Changes to input, lifecycle and packaging are allowed where needed;
 algorithm or model changes require a separately declared comparison.
 
-## Observed starting point
+## Observed starting point on 10 October 2026
 
 The following commits were inspected on 10 October. Auralis, Translate and
 CONTRACT also contained local changes; these hashes do not identify a clean
@@ -38,11 +40,11 @@ tested candidate. Reinspect their diffs and record code hashes at execution.
 | TTS        | f23224510d3b04718a1636a816c3d387be0d0a3f | Python render pipeline, VoxCPM2 and ESpeech engines, cache and manifests     |
 | Caster     | e5030f53bc20e6e6e0e7d35b9acec6ee253c56b7 | Python voice operations, WPF editor and command wrappers                     |
 
-Auralis currently compiles Translate libraries through adapters-translate and
-owns a separate model process. Its adapters-model crate exposes test doubles;
-the current TtsEnginePort is a coarse interface without the complete production
-control and lineage contract required here. Extend or replace that boundary
-with typed operations rather than fitting production work into the mock shape.
+At this starting point, Auralis compiled Translate libraries through
+`adapters-translate` and owned a separate model process. Its `adapters-model`
+crate exposed test doubles; the then-current `TtsEnginePort` lacked the complete
+production control and lineage contract required by this design. The goal calls
+for typed operations instead of fitting production work into the mock shape.
 
 TTS preflight validates the shared project layout, while render consumes the
 legacy source.md and cast.json v1 layout. Successful preflight alone therefore

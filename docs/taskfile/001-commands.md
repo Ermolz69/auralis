@@ -198,11 +198,15 @@ formatting, runtime output policy, storage fallbacks, and CI bootstrap validatio
 ```bash
 task check:docs
 task check:quality:docs
+task docs:integration
 ```
 
 `task check:docs` runs fixture tests, verifies that mandatory project and design
 documents exist, validates relative Markdown links, and applies Markdown linting.
 `task check:quality:docs` verifies Markdown formatting without rewriting files.
+`task docs:integration` additionally checks links, lint and formatting for the
+integration guides and index. These tasks require frontend/documentation tooling
+from `task install:frontend`, not models or a native desktop build.
 
 ## Dependency security
 
