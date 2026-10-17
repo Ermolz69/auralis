@@ -1,5 +1,8 @@
 # Auralis agent entrypoint
 
+The existing [project rules](.agents/AGENTS.md) govern architecture, task
+execution, and code changes. Preserve any user-provided instructions as well.
+
 Read the [project documentation index](docs/README.md) and the relevant contract
 before changing code. The [architecture overview](docs/architecture/001-overview.md)
 maps current ownership; [Rust workspace](docs/architecture/003-rust-workspace.md)
