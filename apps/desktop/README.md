@@ -5,6 +5,33 @@ document is the frontend contributor entrypoint. The canonical rules live in
 [Auralis Design System](../../docs/architecture/004-design-system.md) and
 [Storybook Conventions](../../docs/architecture/005-storybook-conventions.md).
 
+## Change map and first checks
+
+Pages compose features and entities; feature code owns its UI state and actions;
+`src/shared/ui` holds reusable presentation only. Follow the
+[FSD import contract](../../docs/architecture/002-frontend-fsd.md). The Rust
+backend keeps business operations in `crates/application`, concrete I/O in
+`crates/adapters-*`, and Tauri command registration in `src-tauri/src/lib.rs`.
+
+For a new IPC operation, update the Rust command and DTO, register the command
+in `src-tauri/src/lib.rs`, then update the matching TypeScript command/event map
+and runtime validator in `src/shared/api/contracts`. Invoke it through
+`src/shared/api/tauri`; add a public-boundary test. Run `task q:ipc-contract`
+for command/event parity and the focused component or Rust tests before the
+appropriate full gate. For persistent state, read the
+[storage contract](../../docs/storage/production-storage.md),
+[durable dispatch](../../docs/architecture/008-job-dispatch.md), and
+[outbox concurrency](../../docs/architecture/009-outbox-concurrency.md) before
+changing schemas, job admission, or artifact publication.
+
+The first frontend check after `task install:frontend` is
+`task fe:test:components` for a component change; `task check:frontend` is the
+full gate and needs the explicit Playwright setup below. Native fixture checks
+run through the scenario-specific `task desktop:e2e:native...` commands listed
+in the [Taskfile guide](../../docs/taskfile/001-commands.md). They use isolated
+test data but do not establish real-model or clean-install acceptance; consult
+the [integration records](../../docs/integration/README.md) for those gates.
+
 ## Design System & UI Components
 
 Our design system uses semantic tokens, production-backed stories, and strictly
