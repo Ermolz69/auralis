@@ -6,7 +6,13 @@ Tauri for the `com.auralis.desktop` bundle identifier.
 ```text
 <app-data>/
 ├── auralis.sqlite
+├── auralis-translate.sqlite
 ├── .auralis-owner.lock
+├── translation-runtime.json
+├── translation-package-selection.json
+├── translation-packages/
+├── caster-runtime.json
+├── tts-runtime.json
 ├── projects/
 │   ├── .staging/
 │   └── <project-id>/
@@ -25,7 +31,14 @@ Tauri for the `com.auralis.desktop` bundle identifier.
     └── workspaces/
 ```
 
-- `auralis.sqlite` is the only source of truth for projects, jobs, artifacts, outbox, theme, and pins.
+- `auralis.sqlite` owns projects, host jobs, artifacts, outbox, theme, pins,
+  translation links, and speech attempt records. The separate
+  `auralis-translate.sqlite` owns detailed translation runs, checkpoints,
+  edits, and results; cross-database publication is reconciled through the
+  [storage contract](../storage/production-storage.md).
+- Runtime configuration and package-selection files appear only when their
+  separately installed component is configured. They are not bundled model
+  weights or evidence of completed synthesis.
 - `.auralis-owner.lock` carries an exclusive OS lease before migrations and startup recovery.
 - `projects/` contains only physical project files addressed by managed storage keys.
 - `projects/.staging/` contains artifact files waiting for atomic finalization.

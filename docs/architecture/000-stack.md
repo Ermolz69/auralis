@@ -28,8 +28,13 @@ implementation and planned media/model capabilities.
   finalized by an idempotent outbox worker.
 - **Current external tools**: Pinned FFmpeg, ffprobe, and yt-dlp executables are
   bundled with desktop builds and launched only through Rust adapters.
-- **Model processing**: The model adapter currently contains test/mock behavior.
-  Production ASR, translation, and TTS execution remains planned work.
+- **Model processing**: `adapters-model` contains ASR/TTS test doubles. A separate
+  installed, checked llama.cpp runtime supports experimental subtitle translation;
+  its language and delivery gates remain open. `adapters-tts` currently exposes
+  the installed voice/profile catalog and a model-free worker transport candidate,
+  but desktop synthesis and publication are incomplete. `adapters-caster` exposes
+  installed voice and manual assignment operations without model inference.
+  Production ASR and the complete speech/media pipeline remain planned work.
 
 ### 2.4. Tooling & DevOps
 
