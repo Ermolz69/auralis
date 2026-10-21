@@ -1,0 +1,21 @@
+[package]
+name = "adapters-contract"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+common.workspace = true
+domain.workspace = true
+ports.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["io-util", "process", "rt", "time", "macros"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+tempfile.workspace = true
+
+[lints]
+workspace = true

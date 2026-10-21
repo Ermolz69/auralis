@@ -26,6 +26,8 @@ pub mod repository;
 mod scheduled_job_conversion;
 pub mod source;
 pub mod speech_catalog;
+pub mod speech_contract;
+pub mod speech_execution;
 pub mod speech_run;
 pub mod speech_workflow;
 pub mod storage;

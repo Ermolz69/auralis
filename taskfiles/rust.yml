@@ -189,6 +189,45 @@ tasks:
     cmds:
       - cargo test --locked -p ports {{.CLI_ARGS}}
 
+  test:contract-adapter:
+    desc: Exercise the installed model-free CONTRACT worker and synthetic process failures
+    cmds:
+      - cargo test --locked -p adapters-contract {{.CLI_ARGS}}
+
+  test:contract-adapter:installed:
+    desc: Run installed-wheel and synthetic owned-process acceptance
+    requires:
+      vars: [WORKER_EXE, FIXTURES]
+    env:
+      AURALIS_CONTRACT_WORKER: '{{.WORKER_EXE}}'
+      AURALIS_CONTRACT_FIXTURES: '{{.FIXTURES}}'
+    cmds:
+      - cargo test --locked -p adapters-contract --test installed_worker -- --ignored
+
+  test:model-admission:
+    desc: Prove shared native admission and crash recovery with synthetic processes
+    cmds:
+      - cargo test --locked -p common --test model_admission
+
+  test:model-admission:interop:
+    desc: Verify Rust admission interoperates with Caster's installed portalocker primitive
+    requires:
+      vars: [PYTHON_BIN]
+    env:
+      AURALIS_CONTRACT_PYTHON: '{{.PYTHON_BIN}}'
+    cmds:
+      - cargo test --locked -p common --test model_admission portalocker_interoperability -- --ignored
+
+  resolve:model-admission:
+    desc: Lock the synthetic machine-admission test dependencies offline
+    cmds:
+      - cargo check --offline -p common --tests
+
+  resolve:contract-adapter:
+    desc: Add the concrete CONTRACT adapter to the offline Cargo lock graph
+    cmds:
+      - cargo check --offline -p adapters-contract
+
   test:storage:
     desc: Run SQLite storage regressions against the locked dependency graph
     cmds:

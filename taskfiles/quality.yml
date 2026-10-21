@@ -34,6 +34,13 @@ tasks:
     cmds:
       - pnpm prettier --check "**/*.md"
 
+  docs:format-file:
+    desc: Format one changed Markdown file before the documentation quality gate
+    requires:
+      vars: [FILE]
+    cmds:
+      - pnpm prettier --write "{{.FILE}}"
+
   global:
     cmds:
       - task: :media:check
