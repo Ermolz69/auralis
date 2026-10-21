@@ -16,6 +16,13 @@ The voice manifests are real but remain `unverified`. The UI and application rej
 
 Four sequential real model probes from this installation (short and multi-sentence for each engine) reproduced the original WAV bytes exactly. `task tts:bundle:verify` checked their complete input identity, output hashes, durations, and WAV headers against the frozen source evidence. Its versioned record is `CONTRACT/VOXSCRIPT_CONTRACT/tests/evidence/STANDALONE_BUNDLE_20261021.json`.
 
+The installed bundle's actual speech-plan renderer also passed twelve sequential technical cases, six per engine, with `task tts:bundle:renderer` and `task tts:bundle:renderer:verify`. The versioned record is `CONTRACT/VOXSCRIPT_CONTRACT/tests/evidence/RENDERER_CACHE_20261021.json` (SHA-256 `bd856028de9acbefd8a6f982ce1c8f9470ebec61ca5046de2fd5a023798b42a7`). For both engines, the baseline generated two segments, repeat reused both, a corrupted first cache file regenerated only that segment and reproduced the baseline WAV bytes, and changed text regenerated only its segment. Cancellation stopped after one durable checkpoint without a final manifest; a new worker process reused the saved first segment and generated the second. These are direct renderer evaluations with an explicitly unverified reference. They do not exercise native Auralis jobs or qualify the voice.
+
+| Engine | Baseline WAV | Repeat / corrupt | Changed text | Cancel / resume |
+| --- | --- | --- | --- | --- |
+| VoxCPM2 | 5,920 ms, `8bbe9b05ba3ddb9fd71787783e7cf2e4ef4a7a28d65fe76255da4ca5adb0dfc6` | Byte identical to baseline | 5,440 ms, first segment only | One checkpoint; resumed WAV 5,440 ms |
+| ESpeech | 5,739 ms, `9e928aba4be5e6fddc16e73d411de28627a4f140aaa5c4a9c106eeef38c2cf15` | Byte identical to baseline | 5,739 ms, first segment only | One checkpoint; resumed WAV 6,464 ms |
+
 ## Verification commands and limits
 
 | Check | Result |
@@ -25,6 +32,7 @@ Four sequential real model probes from this installation (short and multi-senten
 | `task rs:test:tts-catalog:installed` | Passed against copied runtime and eight real voice manifests. |
 | `task rs:test:contract-adapter:installed` | Passed all three installed and synthetic worker tests after installing current wheels into the copied runtime. |
 | `task tts:bundle:install` and `task tts:bundle:verify` | Passed; four standalone real WAVs matched the frozen source hashes. |
+| `task tts:bundle:renderer:verify` | Passed; twelve real renderer outcomes cover both engines, two-utterance WAVs, verified cache reuse, corruption, changed text, cancellation, and cross-process resume. |
 | `task tts:test:admission` and `task tts:test:admission:metadata` | Passed with Translate/TTS shared Windows admission idle. |
 | `task fe:test:components` | 57 files, 275 tests passed. |
 | `task fe:build` and `task fe:smoke:puza` | Passed with a synthetic qualified UI fixture; this does not qualify a real voice. |

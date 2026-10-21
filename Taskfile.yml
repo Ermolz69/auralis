@@ -126,6 +126,20 @@ tasks:
     cmds:
       - 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/run_bundle_probe.ps1 -DataRoot "{{.DATA_ROOT}}" -CaseId "{{.CASE}}"'
 
+  tts:bundle:renderer:
+    desc: Exercise real renderer cache, corruption, changed input, cancellation and resume under shared admission
+    requires:
+      vars: [DATA_ROOT, CASE]
+    cmds:
+      - 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/run_bundle_probe.ps1 -DataRoot "{{.DATA_ROOT}}" -CaseId "{{.CASE}}" -ProbeKind renderer'
+
+  tts:bundle:renderer:verify:
+    desc: Verify all twelve real renderer recovery outcomes and export frozen evidence
+    requires:
+      vars: [DATA_ROOT, OUTPUT]
+    cmds:
+      - 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/run_renderer_evidence.ps1 -DataRoot "{{.DATA_ROOT}}" -Output "{{.OUTPUT}}"'
+
   tts:bundle:verify:
     desc: Compare four standalone model WAVs with frozen source hashes and retain evidence
     requires:
