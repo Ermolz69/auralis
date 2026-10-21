@@ -55,6 +55,22 @@ tasks:
       vars: [DATA_ROOT, EXPECTED_RUNS]
     cmds:
       - node tools/tts/verify_native.mjs "{{.DATA_ROOT}}" "{{.EXPECTED_RUNS}}"
+  tts:test:native-voice-selection:
+    desc: Verify native speech selects and freezes qualified new voices without loading models
+    cmds:
+      - node --test --test-isolation=none tools/native-e2e/speech-voice-selection.test.mjs
+  tts:test:native-voice-build:
+    desc: Compile the native Speech UI scenario with two build-only voice identifiers
+    env:
+      AURALIS_NATIVE_E2E: '1'
+      AURALIS_NATIVE_E2E_SPEECH: '1'
+      AURALIS_NATIVE_E2E_MEDIA_PATH: 'fixture.mp4'
+      AURALIS_NATIVE_E2E_YTDLP_URL: 'http://127.0.0.1/fixture'
+      AURALIS_NATIVE_E2E_RUN_ID: 'build-check'
+      AURALIS_NATIVE_E2E_SUBTITLE_PATH: 'fixture.srt'
+      AURALIS_NATIVE_E2E_SPEECH_VOICES: '["anastasiya_kim_elevenlabs_ru","rina_elevenlabs_ru"]'
+    cmds:
+      - pnpm --filter desktop exec vite build
   tts:test:admission:
     desc: Verify competing model leases are refused without loading a model
     cmds:

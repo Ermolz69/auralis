@@ -9,6 +9,7 @@ const longText =
   );
 
 export async function runSpeechScenario(runId: string, showProject: (id: string) => void) {
+  const [primaryVoice, secondaryVoice] = __NATIVE_E2E_SPEECH_VOICES__;
   let project = (await listProjects()).find((p) => p.title.startsWith('native-e2e-speech-'));
   project ??= await createProject(`native-e2e-speech-running:${runId}`);
   const projectId = project.id;
@@ -40,7 +41,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
       await click('Продолжить');
       await ready(projectId, cancelled.run_id);
       await playback();
-      await configure('voxcpm2', 'alex_analyst_elevenlabs_ru');
+      await configure('voxcpm2', secondaryVoice);
       const interrupted = await prepareText(projectId, longText);
       await click('Озвучить');
       await checkpoint(projectId, interrupted.run_id);
@@ -77,7 +78,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
         ),
       );
       for (const engine of ['voxcpm2', 'espeech']) {
-        for (const character of ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru']) {
+        for (const character of [primaryVoice, secondaryVoice]) {
           await configure(engine, character);
           const text = await prepareText(
             projectId,
@@ -100,7 +101,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
         }
       }
     }
-    await configure('voxcpm2', 'marina_elevenlabs_ru');
+    await configure('voxcpm2', primaryVoice);
     const cancelled = await prepareText(projectId, longText);
     await click('Озвучить');
     await checkpoint(projectId, cancelled.run_id);

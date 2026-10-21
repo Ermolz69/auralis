@@ -5,17 +5,100 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { spawn } from 'node:child_process';
 
+export const NEW_SPEECH_VOICES = Object.freeze([
+  'marina_elevenlabs_ru',
+  'alex_analyst_elevenlabs_ru',
+  'anastasiya_kim_elevenlabs_ru',
+  'artur_denophine_elevenlabs_ru',
+  'denis_elevenlabs_ru',
+  'nastya_elevenlabs_ru',
+  'rina_elevenlabs_ru',
+  'stanislav_elevenlabs_ru',
+]);
+
+export function chooseQualifiedSpeechVoices(manifests) {
+  const available = NEW_SPEECH_VOICES.filter((voiceId) => {
+    const manifest = manifests.get(voiceId);
+    return (
+      manifest?.voice_id === voiceId &&
+      ['voxcpm2', 'espeech'].every((engine) =>
+        manifest.references?.some(
+          (reference) =>
+            reference.engine_id === engine &&
+            reference.emotion_id === 'neutral' &&
+            reference.qualification?.status === 'qualified' &&
+            reference.qualification.report,
+        ),
+      )
+    );
+  });
+  if (available.length < 2)
+    throw new Error(
+      `Human qualification missing: two new voices must have qualified neutral references for VoxCPM2 and ESpeech; found ${available.length}`,
+    );
+  return available.slice(0, 2);
+}
+
 export async function seedSpeechRuntime(dataRoot, subtitlePath) {
+  const started = performance.now();
   const original = path.join(process.env.APPDATA, 'com.auralis.desktop', 'tts-runtime.json');
   const config = JSON.parse(await fsp.readFile(original, 'utf8'));
-  for (const voice of ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru']) {
-    const manifest = JSON.parse(
-      await fsp.readFile(path.join(config.voice_store, voice, 'voice.json'), 'utf8'),
-    );
-    if (!['voxcpm2', 'espeech'].every((engine) => manifest.references.some((reference) =>
-      reference.engine_id === engine && reference.emotion_id === 'neutral' && reference.qualification.status === 'qualified')))
-      throw new Error(`Human qualification missing: ${voice}`);
+  const manifests = new Map();
+  const manifestHashes = {};
+  for (const voice of NEW_SPEECH_VOICES) {
+    const bytes = await fsp.readFile(path.join(config.voice_store, voice, 'voice.json'));
+    manifests.set(voice, JSON.parse(bytes.toString('utf8')));
+    manifestHashes[voice] = digest(bytes);
   }
+  const qualification = Object.fromEntries(
+    NEW_SPEECH_VOICES.map((voice) => [
+      voice,
+      Object.fromEntries(
+        ['voxcpm2', 'espeech'].map((engine) => [
+          engine,
+          manifests
+            .get(voice)
+            .references.filter(
+              (reference) => reference.engine_id === engine && reference.emotion_id === 'neutral',
+            )
+            .map((reference) => reference.qualification?.status ?? 'missing'),
+        ]),
+      ),
+    ]),
+  );
+  const preflight = {
+    version: 1,
+    node_version: process.version,
+    probe_script_sha256: digest(await fsp.readFile(new URL(import.meta.url))),
+    config_sha256: digest(await fsp.readFile(original)),
+    manifest_sha256: manifestHashes,
+    qualification,
+  };
+  let voices;
+  try {
+    voices = chooseQualifiedSpeechVoices(manifests);
+    preflight.status = 'ready';
+    preflight.selected_voice_ids = voices;
+  } catch (error) {
+    preflight.status = 'blocked_unqualified';
+    preflight.error = error instanceof Error ? error.message : String(error);
+    preflight.elapsed_ms = Math.round(performance.now() - started);
+    await fsp.writeFile(
+      path.join(dataRoot, 'speech-e2e-preflight.json'),
+      JSON.stringify(preflight, null, 2),
+    );
+    throw error;
+  }
+  preflight.elapsed_ms = Math.round(performance.now() - started);
+  await fsp.writeFile(
+    path.join(dataRoot, 'speech-e2e-preflight.json'),
+    JSON.stringify(preflight, null, 2),
+  );
+  const selectedHashes = Object.fromEntries(voices.map((voice) => [voice, manifestHashes[voice]]));
+  await fsp.writeFile(
+    path.join(dataRoot, 'speech-e2e-voices.json'),
+    JSON.stringify({ version: 1, voice_ids: voices, manifest_sha256: selectedHashes }, null, 2),
+  );
   await fsp.copyFile(original, path.join(dataRoot, 'tts-runtime.json'));
   const longCue =
     'Мы читаем русские субтитры спокойно и последовательно. Каждая реплика сохраняет своё время, голос и порядок. Проверенный текст остаётся неизменным, даже когда длинная реплика разделяется на несколько небольших частей. Эти части звучат подряд и сохраняются вместе с общим результатом. После остановки можно продолжить работу с сохранённого места.';
@@ -24,6 +107,28 @@ export async function seedSpeechRuntime(dataRoot, subtitlePath) {
     `1\n00:00:01,000 --> 00:00:04,000\nДобрый вечер.\n\n2\n00:00:05,000 --> 00:00:09,000\nМы проверяем русскую речь.\n\n3\n00:00:10,000 --> 00:00:35,000\n${longCue}\n`,
     'utf8',
   );
+  return voices;
+}
+
+export async function readSpeechVoices(dataRoot) {
+  const selected = JSON.parse(
+    await fsp.readFile(path.join(dataRoot, 'speech-e2e-voices.json'), 'utf8'),
+  );
+  if (
+    selected.version !== 1 ||
+    !Array.isArray(selected.voice_ids) ||
+    selected.voice_ids.length !== 2 ||
+    selected.voice_ids[0] === selected.voice_ids[1] ||
+    selected.voice_ids.some((id) => !NEW_SPEECH_VOICES.includes(id))
+  )
+    throw new Error('Retained native speech voice selection is invalid');
+  const config = JSON.parse(await fsp.readFile(path.join(dataRoot, 'tts-runtime.json'), 'utf8'));
+  for (const voice of selected.voice_ids) {
+    const bytes = await fsp.readFile(path.join(config.voice_store, voice, 'voice.json'));
+    if (digest(bytes) !== selected.manifest_sha256?.[voice])
+      throw new Error(`Retained native speech voice changed: ${voice}`);
+  }
+  return selected.voice_ids;
 }
 
 export async function waitForSpeechTitle(dataRoot, app, title, runId) {

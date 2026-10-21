@@ -18,6 +18,16 @@ const desktopPackage = JSON.parse(
 const nativeE2e = process.env.AURALIS_NATIVE_E2E === '1';
 const nativeE2eCaster = nativeE2e && process.env.AURALIS_NATIVE_E2E_CASTER === '1';
 const nativeE2eSpeech = nativeE2e && process.env.AURALIS_NATIVE_E2E_SPEECH === '1';
+const nativeE2eSpeechVoices = nativeE2eSpeech
+  ? (JSON.parse(process.env.AURALIS_NATIVE_E2E_SPEECH_VOICES ?? '[]') as unknown)
+  : [];
+if (
+  nativeE2eSpeech &&
+  (!Array.isArray(nativeE2eSpeechVoices) ||
+    nativeE2eSpeechVoices.length !== 2 ||
+    nativeE2eSpeechVoices.some((id) => typeof id !== 'string' || !/^[a-z0-9_]+$/.test(id)))
+)
+  throw new Error('Native speech E2E requires two pinned qualified voice IDs');
 const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH : '';
 const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
 const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL : '';
@@ -79,6 +89,7 @@ export default defineConfig({
     __NATIVE_E2E__: JSON.stringify(nativeE2e),
     __NATIVE_E2E_CASTER__: JSON.stringify(nativeE2eCaster),
     __NATIVE_E2E_SPEECH__: JSON.stringify(nativeE2eSpeech),
+    __NATIVE_E2E_SPEECH_VOICES__: JSON.stringify(nativeE2eSpeechVoices),
     __NATIVE_E2E_MEDIA_PATH__: JSON.stringify(nativeE2eMediaPath ?? ''),
     __NATIVE_E2E_RUN_ID__: JSON.stringify(nativeE2eRunId ?? ''),
     __NATIVE_E2E_YTDLP_URL__: JSON.stringify(nativeE2eYtdlpUrl ?? ''),

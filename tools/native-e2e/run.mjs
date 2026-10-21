@@ -30,6 +30,7 @@ import { releaseHistoricalJournalRetry } from './historical-journal-gap.mjs';
 import { seedCasterRuntime, verifyCasterArtifact, waitForCasterTitle } from './caster.mjs';
 import {
   seedSpeechRuntime,
+  readSpeechVoices,
   verifySpeechArtifacts,
   waitForSpeechTitle,
   waitForSpeechRelease,
@@ -170,13 +171,16 @@ export async function runNativeE2e(rootDir) {
   let packageRelease;
   let preparationPause;
   let speechRecoveryStage = 'new';
+  let speechVoices = [];
   let retainedSpeechHashes;
 
   try {
     await fsp.mkdir(dataRoot, { recursive: true });
     await fsp.mkdir(fixtureRoot, { recursive: true });
     if (casterEnabled) await seedCasterRuntime(dataRoot);
-    if (speechEnabled && !recoveryRoot) await seedSpeechRuntime(dataRoot, subtitlePath);
+    if (speechEnabled && !recoveryRoot)
+      speechVoices = await seedSpeechRuntime(dataRoot, subtitlePath);
+    if (speechEnabled && recoveryRoot) speechVoices = await readSpeechVoices(dataRoot);
     if (recoveryRoot) {
       const recovery = new DatabaseSync(path.join(dataRoot, 'auralis.sqlite'));
       try {
@@ -235,6 +239,7 @@ export async function runNativeE2e(rootDir) {
     buildTestApplication(rootDir, dataRoot, sourcePath, fixtureServer.url, runId, {
       casterEnabled,
       speechEnabled,
+      speechVoices,
       translationEnabled,
       translationCrashEnabled,
       translationPauseEnabled,
@@ -745,6 +750,7 @@ function buildTestApplication(rootDir, dataRoot, sourcePath, ytdlpUrl, runId, tr
     AURALIS_NATIVE_E2E_RUN_ID: runId,
     AURALIS_NATIVE_E2E_CASTER: translation.casterEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_SPEECH: translation.speechEnabled ? '1' : '0',
+    AURALIS_NATIVE_E2E_SPEECH_VOICES: JSON.stringify(translation.speechVoices ?? []),
     AURALIS_NATIVE_E2E_TRANSLATION: translation.translationEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_VTT: translation.translationVttEnabled ? '1' : '0',
     AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE: translation.translationPackageEnabled ? '1' : '0',
