@@ -32,6 +32,7 @@ impl SpeechCatalogPort for TtsWorkerClient {
         let voices = catalog
             .voices
             .into_iter()
+            .filter(|voice| !matches!(voice.voice_id.as_str(), "ciri" | "geralt"))
             .map(|voice| SpeechVoiceOption {
                 voice_id: voice.voice_id,
                 display_name: voice.display_name,

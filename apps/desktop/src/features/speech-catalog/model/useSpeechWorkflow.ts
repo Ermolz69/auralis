@@ -160,10 +160,25 @@ export function useSpeechWorkflow({
       const path = await invoke('resolve_artifact_path_cmd', { artifactId: file.artifact_id });
       setAudio(convertFileSrc(path));
     });
-  const assign = (scope: 'role' | 'cue', target: string, assignedVoice: string) => {
-    const reference = voices
+  const assign = (
+    scope: 'role' | 'cue',
+    target: string,
+    assignedVoice: string,
+    assignedReference?: string,
+  ) => {
+    const preferredEmotion = voices
+      .find((v) => v.voice_id === voiceId)
+      ?.references.find((r) => r.reference_id === referenceId)?.emotion_id;
+    const compatible = voices
       .find((v) => v.voice_id === assignedVoice)
-      ?.references.find((r) => r.engine_id === engineId && r.emotion_id === 'neutral');
+      ?.references.filter(
+        (r) => r.engine_id === engineId && r.qualification_status === 'qualified',
+      );
+    const reference = assignedReference
+      ? compatible?.find((r) => r.reference_id === assignedReference)
+      : (compatible?.find((r) => r.emotion_id === preferredEmotion) ??
+        compatible?.find((r) => r.emotion_id === 'neutral') ??
+        compatible?.[0]);
     setAssignments((items) => [
       ...items.filter((a) => a.scope !== scope || a.target !== target),
       ...(reference

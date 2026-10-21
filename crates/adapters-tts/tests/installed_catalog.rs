@@ -26,6 +26,27 @@ async fn installed_worker_lists_new_voices_for_both_engines()
     })?;
     let snapshot = client.snapshot(&ProjectId::new()).await?;
     assert_eq!(snapshot.profiles.len(), 2);
+    assert_eq!(snapshot.voices.len(), 8);
+    assert!(
+        snapshot
+            .voices
+            .iter()
+            .all(|voice| voice.voice_id != "ciri" && voice.voice_id != "geralt")
+    );
+    let emotions = [
+        "neutral",
+        "joy",
+        "sadness",
+        "anger",
+        "fear",
+        "surprise",
+        "question",
+        "whisper",
+        "mysterious",
+        "serious",
+        "excited",
+        "disgust",
+    ];
     for (engine, profile) in [
         ("voxcpm2", "native-plan-voxcpm2"),
         ("espeech", "native-plan-espeech"),
@@ -51,12 +72,19 @@ async fn installed_worker_lists_new_voices_for_both_engines()
                 .iter()
                 .find(|item| item.voice_id == voice_id)
                 .ok_or_else(|| std::io::Error::other("Selected voice missing in TTS catalog"))?;
-            assert!(voice.references.iter().any(|item| {
-                item.engine_id == engine
-                    && item.emotion_id == "neutral"
-                    && item.audio_sha256.len() == 64
-                    && item.reference_id == format!("ref-{engine}-neutral")
-            }));
+            assert_eq!(voice.references.len(), 24);
+            for emotion in emotions {
+                assert!(voice.references.iter().any(|item| {
+                    item.engine_id == engine
+                        && item.emotion_id == emotion
+                        && item.audio_sha256.len() == 64
+                        && item.reference_id == format!("ref-{engine}-{emotion}")
+                        && matches!(
+                            item.qualification_status.as_str(),
+                            "qualified" | "unverified" | "rejected"
+                        )
+                }));
+            }
         }
     }
     Ok(())

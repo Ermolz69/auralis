@@ -35,6 +35,14 @@ const voices = ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru'].map((voice
       audio_sha256: 'c'.repeat(64),
       qualification_status: 'qualified' as const,
     },
+    {
+      reference_id: 'joy',
+      engine_id: 'voxcpm2',
+      emotion_id: 'joy',
+      transcript: 'Радостный референс',
+      audio_sha256: 'd'.repeat(64),
+      qualification_status: 'qualified' as const,
+    },
   ],
 }));
 const props = {
@@ -155,7 +163,12 @@ it('retains the common voice while sending separate role and cue assignments', a
   fireEvent.change(await screen.findByLabelText('Голос роли Narrator'), {
     target: { value: 'alex_analyst_elevenlabs_ru' },
   });
-  fireEvent.change(screen.getByLabelText('Голос реплики cue-2'), { target: { value: 'marina_elevenlabs_ru' } });
+  fireEvent.change(screen.getByLabelText('Эмоция роли Narrator'), {
+    target: { value: 'joy' },
+  });
+  fireEvent.change(screen.getByLabelText('Голос реплики cue-2'), {
+    target: { value: 'marina_elevenlabs_ru' },
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Подготовить озвучку' }));
   await waitFor(() =>
     expect(invoke).toHaveBeenCalledWith('prepare_speech_plan_cmd', {
@@ -167,8 +180,18 @@ it('retains the common voice while sending separate role and cue assignments', a
         voice_id: 'marina_elevenlabs_ru',
         reference_id: 'neutral',
         assignments: [
-          { scope: 'role', target: 'Narrator', voice_id: 'alex_analyst_elevenlabs_ru', reference_id: 'neutral' },
-          { scope: 'cue', target: 'cue-2', voice_id: 'marina_elevenlabs_ru', reference_id: 'neutral' },
+          {
+            scope: 'role',
+            target: 'Narrator',
+            voice_id: 'alex_analyst_elevenlabs_ru',
+            reference_id: 'joy',
+          },
+          {
+            scope: 'cue',
+            target: 'cue-2',
+            voice_id: 'marina_elevenlabs_ru',
+            reference_id: 'neutral',
+          },
         ],
       },
     }),

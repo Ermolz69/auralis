@@ -67,19 +67,34 @@ impl SpeechCatalogPort for Catalog {
                 display_name: "Marina".into(),
                 description: "Fixture".into(),
                 manifest_sha256: "b".repeat(64),
-                references: vec![SpeechReferenceOption {
-                    reference_id: "neutral".into(),
-                    engine_id: "voxcpm2".into(),
-                    emotion_id: "neutral".into(),
-                    transcript: "Fixture".into(),
-                    audio_sha256: "c".repeat(64),
-                    qualification_status: if self.qualified {
-                        "qualified"
-                    } else {
-                        "unverified"
-                    }
-                    .into(),
-                }],
+                references: vec![
+                    SpeechReferenceOption {
+                        reference_id: "neutral".into(),
+                        engine_id: "voxcpm2".into(),
+                        emotion_id: "neutral".into(),
+                        transcript: "Fixture".into(),
+                        audio_sha256: "c".repeat(64),
+                        qualification_status: if self.qualified {
+                            "qualified"
+                        } else {
+                            "unverified"
+                        }
+                        .into(),
+                    },
+                    SpeechReferenceOption {
+                        reference_id: "joy".into(),
+                        engine_id: "voxcpm2".into(),
+                        emotion_id: "joy".into(),
+                        transcript: "Joy fixture".into(),
+                        audio_sha256: "d".repeat(64),
+                        qualification_status: if self.qualified {
+                            "qualified"
+                        } else {
+                            "unverified"
+                        }
+                        .into(),
+                    },
+                ],
             }],
         };
         let mut alex_analyst_elevenlabs_ru = snapshot.voices[0].clone();
@@ -250,6 +265,27 @@ fn request(review: &ports::speech_workflow::SpeechReview) -> PrepareSpeechReques
         reference_id: "neutral".into(),
         assignments: vec![],
     }
+}
+
+#[tokio::test]
+async fn qualified_emotional_reference_keeps_its_emotion_in_the_canonical_plan()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (fixture, cases, _, _) = fixture().await?;
+    let review = cases
+        .review(fixture.project_id.clone(), source(), true)
+        .await?;
+    let mut emotional = request(&review);
+    emotional.reference_id = "joy".into();
+    let prepared = cases.prepare(fixture.project_id.clone(), emotional).await?;
+    let intent = cases
+        .store
+        .get_run(prepared.run_id)
+        .await?
+        .ok_or("Saved plan missing")?;
+    let plan: serde_json::Value = serde_json::from_str(&intent.plan_json)?;
+    assert_eq!(plan["utterances"][0]["reference_id"], "joy");
+    assert_eq!(plan["utterances"][0]["emotion_id"], "joy");
+    Ok(())
 }
 
 #[tokio::test]

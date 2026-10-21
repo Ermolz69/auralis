@@ -122,8 +122,13 @@ impl SpeechUseCases {
                 .iter()
                 .find(|v| v.voice_id == voice_id)
                 .ok_or_else(|| invalid("Unknown assigned voice"))?;
-            let reference = voice.references.iter().find(|r| r.reference_id == reference_id && r.engine_id == profile.engine_id && r.emotion_id == "neutral")
-                .ok_or_else(|| invalid("Voice reference is incompatible with the selected engine or neutral speech"))?;
+            let reference = voice
+                .references
+                .iter()
+                .find(|r| r.reference_id == reference_id && r.engine_id == profile.engine_id)
+                .ok_or_else(|| {
+                    invalid("Voice reference is incompatible with the selected engine")
+                })?;
             if reference.qualification_status != "qualified" {
                 return Err(invalid(format!(
                     "Reference {voice_id}/{reference_id} requires human qualification for {}",
@@ -143,7 +148,7 @@ impl SpeechUseCases {
             cast.push(json!({"role_id": role_id,"voice_id": voice_id,"manifest_sha256": voice.manifest_sha256}));
             utterances.push(json!({"utterance_id": format!("utterance-{:04}", q+1), "cue_id": window.map(|_| id.clone()),
                 "text_range": if window.is_none() { json!({"start":0,"end":text.chars().count()}) } else { serde_json::Value::Null },
-                "text":text, "role_id":role_id,"reference_id":reference_id,"emotion_id":"neutral",
+                "text":text, "role_id":role_id,"reference_id":reference_id,"emotion_id":reference.emotion_id,
                 "start_ms":window.map(|w|w.0),"end_ms":window.map(|w|w.1),"speed":1.0,"volume":1.0,"seed_key":seed_key}));
         }
         let revision = match profile.engine_id.as_str() {

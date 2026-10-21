@@ -28,10 +28,8 @@ export function SpeechVoiceSettings(props: Props) {
   } = props;
   const profile = catalog.profiles.find((p) => p.profile_id === profileId);
   const selected = voices.find((v) => v.voice_id === voiceId);
-  const references =
-    selected?.references.filter(
-      (r) => r.engine_id === profile?.engine_id && r.emotion_id === 'neutral',
-    ) ?? [];
+  const references = selected?.references.filter((r) => r.engine_id === profile?.engine_id) ?? [];
+  const current = references.find((r) => r.reference_id === referenceId);
   const engines = [...new Set(catalog.profiles.map((p) => p.engine_id))].filter((e) =>
     ['voxcpm2', 'espeech'].includes(e),
   );
@@ -77,19 +75,39 @@ export function SpeechVoiceSettings(props: Props) {
           </select>
         </label>
       </div>
-      {references.find((r) => r.reference_id === referenceId)?.qualification_status ===
-      'qualified' ? (
+      {current?.qualification_status === 'qualified' ? (
         <p role="status" className="text-xs text-muted">
-          Нейтральный образец подтверждён прослушиванием.
+          Образец «{current.emotion_id}» подтверждён прослушиванием.
         </p>
       ) : (
         <p role="status" className="text-xs text-muted">
-          Для этого голоса ещё нужен подтверждённый нейтральный образец.
+          Для этого голоса и движка ещё нужен подтверждённый образец.
         </p>
       )}
+      <label className="block text-xs text-muted">
+        Эмоция и образец
+        <select
+          aria-label="Референс"
+          className={select}
+          value={referenceId}
+          onChange={(event) => chooseReference(event.target.value)}
+        >
+          <option value="">Выберите подтверждённый образец</option>
+          {references.map((r) => (
+            <option
+              key={r.reference_id}
+              value={r.reference_id}
+              disabled={r.qualification_status !== 'qualified'}
+            >
+              {r.emotion_id} · {r.transcript || r.reference_id}
+              {r.qualification_status !== 'qualified' ? ' · не подтверждён' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
       <details className="text-xs text-muted">
-        <summary className="cursor-pointer">Другие профили и образцы</summary>
-        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+        <summary className="cursor-pointer">Профиль движка</summary>
+        <div className="mt-2">
           <label>
             Профиль
             <select
@@ -105,26 +123,6 @@ export function SpeechVoiceSettings(props: Props) {
                     {p.profile_id}
                   </option>
                 ))}
-            </select>
-          </label>
-          <label>
-            Образец
-            <select
-              aria-label="Референс"
-              className={select}
-              value={referenceId}
-              onChange={(event) => chooseReference(event.target.value)}
-            >
-              <option value="">Выберите подтверждённый образец</option>
-              {references.map((r) => (
-                <option
-                  key={r.reference_id}
-                  value={r.reference_id}
-                  disabled={r.qualification_status !== 'qualified'}
-                >
-                  {r.transcript || 'Нейтральный образец'}
-                </option>
-              ))}
             </select>
           </label>
         </div>

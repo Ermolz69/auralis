@@ -27,10 +27,7 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
         setProfileId(first?.profile_id ?? '');
         const voice = result.voices.find((v) =>
           v.references.some(
-            (r) =>
-              r.engine_id === first?.engine_id &&
-              r.emotion_id === 'neutral' &&
-              r.qualification_status === 'qualified',
+            (r) => r.engine_id === first?.engine_id && r.qualification_status === 'qualified',
           ),
         );
         setVoiceId(voice?.voice_id ?? '');
@@ -40,14 +37,25 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
               r.engine_id === first?.engine_id &&
               r.emotion_id === 'neutral' &&
               r.qualification_status === 'qualified',
-          )?.reference_id ?? '',
+          )?.reference_id ??
+            voice?.references.find(
+              (r) => r.engine_id === first?.engine_id && r.qualification_status === 'qualified',
+            )?.reference_id ??
+            '',
         );
         const saved = await invoke('get_speech_voice_selection_cmd', { projectId });
         if (active && saved) {
           const savedProfile =
             result.profiles.find((p) => p.profile_id === `native-plan-${saved.engine_id}`) ??
             result.profiles.find((p) => p.engine_id === saved.engine_id);
-          if (savedProfile) {
+          const savedVoice = result.voices.find((voice) => voice.voice_id === saved.voice_id);
+          const savedReference = savedVoice?.references.find(
+            (reference) =>
+              reference.reference_id === saved.reference_id &&
+              reference.engine_id === savedProfile?.engine_id &&
+              reference.qualification_status === 'qualified',
+          );
+          if (savedProfile && savedReference) {
             setProfileId(savedProfile.profile_id);
             setVoiceId(saved.voice_id);
             setReferenceId(saved.reference_id);
@@ -64,23 +72,26 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
   const profile = catalog?.profiles.find((p) => p.profile_id === profileId);
   const voices = useMemo(
     () =>
-      catalog?.voices.filter((v) =>
-        v.references.some((r) => r.engine_id === profile?.engine_id && r.emotion_id === 'neutral'),
-      ) ?? [],
+      catalog?.voices.filter((v) => v.references.some((r) => r.engine_id === profile?.engine_id)) ??
+      [],
     [catalog, profile?.engine_id],
   );
   const chooseVoice = (id: string, engine = profile?.engine_id) => {
     setNotice('');
     setVoiceId(id);
+    const references = catalog?.voices.find((voice) => voice.voice_id === id)?.references ?? [];
     setReferenceId(
-      catalog?.voices
-        .find((v) => v.voice_id === id)
-        ?.references.find(
-          (r) =>
-            r.engine_id === engine &&
-            r.emotion_id === 'neutral' &&
-            r.qualification_status === 'qualified',
-        )?.reference_id ?? '',
+      references.find(
+        (reference) =>
+          reference.engine_id === engine &&
+          reference.emotion_id === 'neutral' &&
+          reference.qualification_status === 'qualified',
+      )?.reference_id ??
+        references.find(
+          (reference) =>
+            reference.engine_id === engine && reference.qualification_status === 'qualified',
+        )?.reference_id ??
+        '',
     );
   };
   const chooseProfile = (id: string) => {
@@ -88,10 +99,7 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
     setProfileId(id);
     const voice = catalog?.voices.find((v) =>
       v.references.some(
-        (r) =>
-          r.engine_id === next?.engine_id &&
-          r.emotion_id === 'neutral' &&
-          r.qualification_status === 'qualified',
+        (r) => r.engine_id === next?.engine_id && r.qualification_status === 'qualified',
       ),
     );
     chooseVoice(voice?.voice_id ?? '', next?.engine_id);

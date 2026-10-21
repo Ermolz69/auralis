@@ -3,25 +3,60 @@ import type { SpeechVoiceOption } from '@/shared/api/contracts/speechCatalog';
 type Props = {
   source: SpeechSourceSnapshot | null;
   voices: SpeechVoiceOption[];
+  engineId: string;
   assignments: SpeechAssignment[];
-  assign: (scope: 'role' | 'cue', target: string, voice: string) => void;
+  assign: (scope: 'role' | 'cue', target: string, voice: string, reference?: string) => void;
 };
-export function SpeechSourcePreview({ source, voices, assignments, assign }: Props) {
-  const assignmentSelect = (scope: 'role' | 'cue', target: string) => (
-    <select
-      aria-label={`Голос ${scope === 'role' ? 'роли' : 'реплики'} ${target}`}
-      className="rounded border border-border bg-surface p-1 text-text"
-      value={assignments.find((a) => a.scope === scope && a.target === target)?.voice_id ?? ''}
-      onChange={(e) => assign(scope, target, e.target.value)}
-    >
-      <option value="">Общий голос</option>
-      {voices.map((v) => (
-        <option key={v.voice_id} value={v.voice_id}>
-          {v.display_name}
-        </option>
-      ))}
-    </select>
-  );
+export function SpeechSourcePreview({ source, voices, engineId, assignments, assign }: Props) {
+  const assignmentSelect = (scope: 'role' | 'cue', target: string) => {
+    const current = assignments.find((a) => a.scope === scope && a.target === target);
+    const references =
+      voices
+        .find((voice) => voice.voice_id === current?.voice_id)
+        ?.references.filter(
+          (reference) =>
+            reference.engine_id === engineId && reference.qualification_status === 'qualified',
+        ) ?? [];
+    return (
+      <span className="flex flex-wrap gap-1">
+        <select
+          aria-label={`Голос ${scope === 'role' ? 'роли' : 'реплики'} ${target}`}
+          className="rounded border border-border bg-surface p-1 text-text"
+          value={current?.voice_id ?? ''}
+          onChange={(e) => assign(scope, target, e.target.value)}
+        >
+          <option value="">Общий голос</option>
+          {voices
+            .filter((voice) =>
+              voice.references.some(
+                (reference) =>
+                  reference.engine_id === engineId &&
+                  reference.qualification_status === 'qualified',
+              ),
+            )
+            .map((voice) => (
+              <option key={voice.voice_id} value={voice.voice_id}>
+                {voice.display_name}
+              </option>
+            ))}
+        </select>
+        {current && (
+          <select
+            aria-label={`Эмоция ${scope === 'role' ? 'роли' : 'реплики'} ${target}`}
+            className="rounded border border-border bg-surface p-1 text-text"
+            value={current.reference_id}
+            onChange={(e) => assign(scope, target, current.voice_id, e.target.value)}
+          >
+            {references.map((reference) => (
+              <option key={reference.reference_id} value={reference.reference_id}>
+                {reference.emotion_id}
+              </option>
+            ))}
+          </select>
+        )}
+      </span>
+    );
+  };
   return (
     <>
       {source && (

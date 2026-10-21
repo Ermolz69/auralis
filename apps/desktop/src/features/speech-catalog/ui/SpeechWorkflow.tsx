@@ -170,6 +170,7 @@ export function SpeechWorkflow({
         <SpeechSourcePreview
           source={source}
           voices={options.voices}
+          engineId={options.engineId}
           assignments={assignments}
           assign={assign}
         />

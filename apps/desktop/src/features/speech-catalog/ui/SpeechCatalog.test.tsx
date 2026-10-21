@@ -26,6 +26,14 @@ const catalog = {
           audio_sha256: 'd'.repeat(64),
           qualification_status: 'qualified',
         },
+        {
+          reference_id: 'ref-joy',
+          engine_id: 'voxcpm2',
+          emotion_id: 'joy',
+          transcript: 'Ура',
+          audio_sha256: 'e'.repeat(64),
+          qualification_status: 'qualified',
+        },
       ],
     },
     {
@@ -62,17 +70,19 @@ describe('SpeechCatalog', () => {
 
     expect(screen.getByLabelText('Голос')).toHaveProperty('value', 'voice-one');
     expect(screen.getByLabelText('Референс')).toHaveProperty('value', 'ref-one');
-    expect(screen.getByText('Нейтральный образец подтверждён прослушиванием.')).not.toBeNull();
+    expect(screen.getByText('Образец «neutral» подтверждён прослушиванием.')).not.toBeNull();
+    fireEvent.change(screen.getByLabelText('Референс'), { target: { value: 'ref-joy' } });
+    expect(screen.getByText('Образец «joy» подтверждён прослушиванием.')).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText('Движок и профиль'), {
       target: { value: 'profile-two' },
     });
-    expect(screen.queryByText('Нейтральный образец подтверждён прослушиванием.')).toBeNull();
+    expect(screen.queryByText('Образец «joy» подтверждён прослушиванием.')).toBeNull();
     expect(screen.getByRole('option', { name: 'Голос Два' })).not.toBeNull();
     fireEvent.change(screen.getByLabelText('Голос'), { target: { value: 'voice-two' } });
     expect(screen.getByLabelText('Референс')).toHaveProperty('value', '');
     expect(
-      screen.getByText('Для этого голоса ещё нужен подтверждённый нейтральный образец.'),
+      screen.getByText('Для этого голоса и движка ещё нужен подтверждённый образец.'),
     ).not.toBeNull();
   });
 
