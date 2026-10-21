@@ -7,6 +7,31 @@ use domain::project::{Project, ProjectId};
 
 #[async_trait]
 pub trait ProjectRepository: Send + Sync {
+    async fn create_with_contract(
+        &self,
+        _project: Project,
+        _contract: crate::puza_contract::PuzaContractSnapshot,
+    ) -> Result<Project, PortError> {
+        Err(PortError::Unsupported {
+            message: "Atomic CONTRACT project creation is unavailable".into(),
+        })
+    }
+    async fn contract_project(
+        &self,
+        _id: &ProjectId,
+    ) -> Result<Option<crate::puza_contract::PuzaContractSnapshot>, PortError> {
+        Ok(None)
+    }
+    async fn save_contract_project(
+        &self,
+        _id: &ProjectId,
+        _expected: Option<&str>,
+        _contract: &crate::puza_contract::PuzaContractSnapshot,
+    ) -> Result<(), PortError> {
+        Err(PortError::Unsupported {
+            message: "CONTRACT project persistence is unavailable".into(),
+        })
+    }
     async fn create(&self, project: Project) -> Result<Project, PortError>;
     async fn get(&self, id: &ProjectId) -> Result<Option<Project>, PortError>;
     async fn update(
@@ -133,6 +158,27 @@ impl<T> ProjectRepository for Arc<T>
 where
     T: ProjectRepository + ?Sized,
 {
+    async fn create_with_contract(
+        &self,
+        project: Project,
+        contract: crate::puza_contract::PuzaContractSnapshot,
+    ) -> Result<Project, PortError> {
+        (**self).create_with_contract(project, contract).await
+    }
+    async fn contract_project(
+        &self,
+        id: &ProjectId,
+    ) -> Result<Option<crate::puza_contract::PuzaContractSnapshot>, PortError> {
+        (**self).contract_project(id).await
+    }
+    async fn save_contract_project(
+        &self,
+        id: &ProjectId,
+        expected: Option<&str>,
+        contract: &crate::puza_contract::PuzaContractSnapshot,
+    ) -> Result<(), PortError> {
+        (**self).save_contract_project(id, expected, contract).await
+    }
     async fn create(&self, project: Project) -> Result<Project, PortError> {
         (**self).create(project).await
     }

@@ -37,7 +37,7 @@ async fn v10_database_gains_speech_tables_without_losing_existing_jobs()
     )
     .fetch_one(&migrated)
     .await?;
-    assert_eq!(speech_tables, 3);
+    assert_eq!(speech_tables, 7);
     migrated.close().await;
     connect_sqlite(&path).await?;
     Ok(())

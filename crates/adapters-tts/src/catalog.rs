@@ -11,6 +11,7 @@ use crate::client::TtsWorkerClient;
 #[async_trait]
 impl SpeechCatalogPort for TtsWorkerClient {
     async fn snapshot(&self, project: &ProjectId) -> Result<SpeechCatalogSnapshot, PortError> {
+        self.verify_integrity(None).await?;
         let capabilities = self.capabilities(project).await?;
         let catalog = self.catalog(project).await?;
         let profiles = capabilities

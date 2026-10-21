@@ -17,6 +17,7 @@ const desktopPackage = JSON.parse(
 };
 const nativeE2e = process.env.AURALIS_NATIVE_E2E === '1';
 const nativeE2eCaster = nativeE2e && process.env.AURALIS_NATIVE_E2E_CASTER === '1';
+const nativeE2eSpeech = nativeE2e && process.env.AURALIS_NATIVE_E2E_SPEECH === '1';
 const nativeE2eMediaPath = nativeE2e ? process.env.AURALIS_NATIVE_E2E_MEDIA_PATH : '';
 const nativeE2eRunId = nativeE2e ? process.env.AURALIS_NATIVE_E2E_RUN_ID : '';
 const nativeE2eYtdlpUrl = nativeE2e ? process.env.AURALIS_NATIVE_E2E_YTDLP_URL : '';
@@ -45,9 +46,8 @@ const nativeE2eTranslationDelete =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_DELETE === '1';
 const nativeE2eTranslationPackage =
   nativeE2eTranslation && process.env.AURALIS_NATIVE_E2E_TRANSLATION_PACKAGE === '1';
-const nativeE2eSubtitlePath = nativeE2eTranslation
-  ? process.env.AURALIS_NATIVE_E2E_SUBTITLE_PATH
-  : '';
+const nativeE2eSubtitlePath =
+  nativeE2eTranslation || nativeE2eSpeech ? process.env.AURALIS_NATIVE_E2E_SUBTITLE_PATH : '';
 
 if (nativeE2e && (!nativeE2eMediaPath || !nativeE2eRunId || !nativeE2eYtdlpUrl)) {
   throw new Error(
@@ -78,6 +78,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(desktopPackage.version),
     __NATIVE_E2E__: JSON.stringify(nativeE2e),
     __NATIVE_E2E_CASTER__: JSON.stringify(nativeE2eCaster),
+    __NATIVE_E2E_SPEECH__: JSON.stringify(nativeE2eSpeech),
     __NATIVE_E2E_MEDIA_PATH__: JSON.stringify(nativeE2eMediaPath ?? ''),
     __NATIVE_E2E_RUN_ID__: JSON.stringify(nativeE2eRunId ?? ''),
     __NATIVE_E2E_YTDLP_URL__: JSON.stringify(nativeE2eYtdlpUrl ?? ''),

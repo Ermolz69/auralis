@@ -9,6 +9,7 @@ export type ArtifactKind =
   | 'manualCast'
   | 'generatedSpeechSegment'
   | 'generatedSpeech'
+  | 'speechManifest'
   | 'mixedAudio'
   | 'previewVideo'
   | 'finalVideo';

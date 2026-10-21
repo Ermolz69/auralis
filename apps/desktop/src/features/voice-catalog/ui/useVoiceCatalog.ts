@@ -9,6 +9,7 @@ import type {
   VoiceReferenceMetadata,
 } from '@/shared/api/contracts/caster';
 import { invoke } from '@/shared/api/tauri';
+import { describeCommandError } from '@/shared/api/contracts/error';
 
 export function useVoiceCatalog(projectId: string) {
   const [voices, setVoices] = useState<VoiceCatalogEntry[]>([]);
@@ -226,5 +227,5 @@ export function useVoiceCatalog(projectId: string) {
 }
 
 function message(reason: unknown): string {
-  return reason instanceof Error ? reason.message : 'Операция с голосами не выполнена';
+  return describeCommandError(reason, 'Операция с голосами не выполнена');
 }

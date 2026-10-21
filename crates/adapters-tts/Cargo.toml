@@ -5,14 +5,16 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+tempfile.workspace = true
 async-trait.workspace = true
+common.workspace = true
 domain.workspace = true
 ports.workspace = true
 process-wrap = { workspace = true, features = ["tokio1", "job-object", "kill-on-drop", "creation-flags", "process-group"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 sha2.workspace = true
-tokio = { workspace = true, features = ["process", "io-util", "time", "macros"] }
+tokio = { workspace = true, features = ["process", "io-util", "time", "macros", "fs"] }
 uuid.workspace = true
 windows = { workspace = true, features = ["Win32_System_Threading"] }
 

@@ -7,14 +7,21 @@ pub struct ManagedLlamaLease {
     server_url: String,
     child: OwnedChild,
     _permit: OwnedSemaphorePermit,
+    _admission: common::model_admission::ModelAdmissionLease,
 }
 
 impl ManagedLlamaLease {
-    pub fn new(server_url: String, child: OwnedChild, permit: OwnedSemaphorePermit) -> Self {
+    pub fn new(
+        server_url: String,
+        child: OwnedChild,
+        permit: OwnedSemaphorePermit,
+        admission: common::model_admission::ModelAdmissionLease,
+    ) -> Self {
         Self {
             server_url,
             child,
             _permit: permit,
+            _admission: admission,
         }
     }
 

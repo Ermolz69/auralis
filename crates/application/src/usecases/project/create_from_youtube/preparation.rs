@@ -28,6 +28,7 @@ impl<R: ProjectRepository, V: VideoSourcePort + Clone, S: ArtifactStore + Clone>
             None => Project::new(url.to_string())?,
         };
         ensure_draft(&project)?;
+        self.contract_snapshot(project.id()).await?;
         let original_updated_at = project_id.as_ref().map(|_| project.updated_at());
         let source = MediaSource::YoutubeUrl { url: url.into() };
         self.video_source.validate_source(&source).await?;

@@ -87,7 +87,8 @@ where
                     ports::transaction::CommitArtifactFinalizeResult::AlreadyFinalized => {
                         // Success, was finalized by another retry
                     }
-                    ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted => {
+                    ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseProjectDeleted
+                    | ports::transaction::CommitArtifactFinalizeResult::ObsoleteBecauseArtifactDiscarded => {
                         // Project deleted -> Delete the final_key
                         let _ = self.artifact_store.delete_storage_key(final_key).await;
                     }

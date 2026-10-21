@@ -4,6 +4,7 @@ use domain::media::{ArtifactKind, ArtifactState, MediaSource};
 use domain::project::{Project, ProjectStatus};
 
 pub struct CommitYoutubeImport {
+    pub puza_contract: Option<crate::puza_contract::PuzaContractSnapshot>,
     pub project: Project,
     pub write: CommitStagedArtifactWrite,
     pub original_updated_at: Option<chrono::DateTime<chrono::Utc>>,

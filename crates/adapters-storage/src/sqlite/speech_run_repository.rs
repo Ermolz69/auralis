@@ -24,6 +24,7 @@ impl SqliteSpeechRunStore {
 }
 
 mod operations;
+mod workflow;
 
 fn decode_active(row: sqlx::sqlite::SqliteRow) -> Result<ActiveSpeechAttempt, PortError> {
     let job = row_to_job(JobRow::from_row(&row).map_err(decode_error)?)?;

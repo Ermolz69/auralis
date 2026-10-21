@@ -34,12 +34,12 @@ export const ProjectHeader = () => {
           tabIndex={-1}
           className="min-w-0 truncate !text-xl !font-semibold focus:outline-none"
         >
-          {isSourceStep ? 'Источник видео' : 'Субтитры'}
+          {isSourceStep ? 'Источник видео' : 'Текст и озвучка'}
         </PageTitle>
         <PageDescription className="mt-0.5 !text-[13px]">
           {isSourceStep
             ? 'YouTube-ссылка или локальный MP4-файл'
-            : 'Получите исходные субтитры для перевода'}
+            : 'Русский текст или субтитры → проверка → голос → озвучка'}
         </PageDescription>
 
         {isSourceStep && project && (

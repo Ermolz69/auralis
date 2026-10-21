@@ -152,7 +152,7 @@ describe('AppShell', () => {
         },
       },
     });
-    const step = screen.getByRole('button', { name: /Субтитры/ });
+    const step = screen.getByRole('button', { name: /Текст, субтитры и озвучка/ });
     expect(step.querySelector('.bg-success')).toBeTruthy();
     expect(step.querySelector('.animate-pulse')).toBeNull();
     expect(screen.getByRole('button', { name: /Очередь/ }).textContent).toContain('2');

@@ -92,6 +92,20 @@ impl TtsWorkerClient {
         if cancellation.is_cancelled() {
             return Ok(TtsExecutionOutcome::Cancelled);
         }
+        self.verify_profile_integrity(&request.profile_path).await?;
+        if cancellation.is_cancelled() {
+            return Ok(TtsExecutionOutcome::Cancelled);
+        }
+        let admission =
+            tokio::task::spawn_blocking(common::model_admission::ModelAdmissionLease::acquire)
+                .await
+                .map_err(|e| unexpected(&e.to_string()))?
+                .map_err(|e| PortError::Busy {
+                    message: e.to_string(),
+                })?;
+        if cancellation.is_cancelled() {
+            return Ok(TtsExecutionOutcome::Cancelled);
+        }
         let identity = WorkerIdentity {
             request_id: Uuid::new_v4().to_string(),
             project_id: request.project_id.to_string(),
@@ -131,7 +145,10 @@ impl TtsWorkerClient {
             }
             Ok(outcome) => Ok(outcome),
             Err(error) => {
-                terminate(&mut child).await?;
+                if let Err(cleanup) = terminate(&mut child).await {
+                    std::mem::forget(admission);
+                    return Err(cleanup);
+                }
                 Err(error)
             }
         }
@@ -268,8 +285,17 @@ async fn terminate(child: &mut Box<dyn ChildWrapper>) -> Result<(), PortError> {
     let _ = Box::into_pin(child.kill()).await;
     timeout(EXIT_DEADLINE, child.wait())
         .await
-        .map_err(|_| unexpected("TTS worker termination could not be confirmed"))?
-        .map_err(io_error)?;
+        .map_err(|_| PortError::CleanupFailed {
+            resource: "TTS worker".into(),
+            message: "TTS worker termination could not be confirmed; model admission retained"
+                .into(),
+        })?
+        .map_err(|e| PortError::CleanupFailed {
+            resource: "TTS worker".into(),
+            message: format!(
+                "TTS worker exit could not be confirmed: {e}; model admission retained"
+            ),
+        })?;
     Ok(())
 }
 

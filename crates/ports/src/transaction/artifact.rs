@@ -155,6 +155,7 @@ pub struct CommitArtifactFinalize {
 pub enum CommitArtifactFinalizeResult {
     Committed,
     ObsoleteBecauseProjectDeleted,
+    ObsoleteBecauseArtifactDiscarded,
     Conflict,
     AlreadyFinalized,
 }

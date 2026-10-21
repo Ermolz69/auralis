@@ -44,6 +44,11 @@ pub(crate) async fn write(
         }
         None => insert_project(tx, &command.project).await?,
     }
+    if let Some(contract) = &command.puza_contract
+        && command.original_updated_at.is_none()
+    {
+        crate::sqlite::project_contract::insert(tx, command.project.id(), contract).await?;
+    }
     let write = command.write;
     insert_new_artifact(tx, &write.project_id, &write.artifact).await?;
     save_outbox_message(

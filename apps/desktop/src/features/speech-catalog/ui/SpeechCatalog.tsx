@@ -1,120 +1,185 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SpeechCatalogSnapshot } from '@/shared/api/contracts/speechCatalog';
+import { describeCommandError } from '@/shared/api/contracts/error';
 import { invoke } from '@/shared/api/tauri';
+import { SpeechWorkflow } from './SpeechWorkflow';
+import { SpeechVoiceSettings } from './SpeechVoiceSettings';
 
-type Props = { projectId: string };
-
-export function SpeechCatalog({ projectId }: Props) {
+export function SpeechCatalog({ projectId }: { projectId: string }) {
   const [catalog, setCatalog] = useState<SpeechCatalogSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profileId, setProfileId] = useState('');
   const [voiceId, setVoiceId] = useState('');
   const [referenceId, setReferenceId] = useState('');
-
+  const [revision, setRevision] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
   useEffect(() => {
     let active = true;
+    setCatalog(null);
+    setError(null);
     void invoke('get_speech_catalog_cmd', { projectId })
-      .then((result) => {
+      .then(async (result) => {
         if (!active) return;
         setCatalog(result);
-        setProfileId(result.profiles[0]?.profile_id ?? '');
-        setError(null);
+        const first =
+          result.profiles.find((p) => p.profile_id === 'native-plan-voxcpm2') ?? result.profiles[0];
+        setProfileId(first?.profile_id ?? '');
+        const voice = result.voices.find((v) =>
+          v.references.some(
+            (r) =>
+              r.engine_id === first?.engine_id &&
+              r.emotion_id === 'neutral' &&
+              r.qualification_status === 'qualified',
+          ),
+        );
+        setVoiceId(voice?.voice_id ?? '');
+        setReferenceId(
+          voice?.references.find(
+            (r) =>
+              r.engine_id === first?.engine_id &&
+              r.emotion_id === 'neutral' &&
+              r.qualification_status === 'qualified',
+          )?.reference_id ?? '',
+        );
+        const saved = await invoke('get_speech_voice_selection_cmd', { projectId });
+        if (active && saved) {
+          const savedProfile =
+            result.profiles.find((p) => p.profile_id === `native-plan-${saved.engine_id}`) ??
+            result.profiles.find((p) => p.engine_id === saved.engine_id);
+          if (savedProfile) {
+            setProfileId(savedProfile.profile_id);
+            setVoiceId(saved.voice_id);
+            setReferenceId(saved.reference_id);
+          }
+        }
       })
-      .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : String(reason));
+      .catch((reason) => {
+        if (active) setError(describeCommandError(reason));
       });
     return () => {
       active = false;
     };
-  }, [projectId]);
-
-  const profile = catalog?.profiles.find((item) => item.profile_id === profileId);
+  }, [projectId, revision]);
+  const profile = catalog?.profiles.find((p) => p.profile_id === profileId);
   const voices = useMemo(
     () =>
-      catalog?.voices.filter((voice) =>
-        voice.references.some((reference) => reference.engine_id === profile?.engine_id),
+      catalog?.voices.filter((v) =>
+        v.references.some((r) => r.engine_id === profile?.engine_id && r.emotion_id === 'neutral'),
       ) ?? [],
     [catalog, profile?.engine_id],
   );
-  const selectedVoice = voices.find((voice) => voice.voice_id === voiceId);
-  const references =
-    selectedVoice?.references.filter((reference) => reference.engine_id === profile?.engine_id) ??
-    [];
-  const selectedReference = references.find((reference) => reference.reference_id === referenceId);
-
+  const chooseVoice = (id: string, engine = profile?.engine_id) => {
+    setNotice('');
+    setVoiceId(id);
+    setReferenceId(
+      catalog?.voices
+        .find((v) => v.voice_id === id)
+        ?.references.find(
+          (r) =>
+            r.engine_id === engine &&
+            r.emotion_id === 'neutral' &&
+            r.qualification_status === 'qualified',
+        )?.reference_id ?? '',
+    );
+  };
+  const chooseProfile = (id: string) => {
+    const next = catalog?.profiles.find((p) => p.profile_id === id);
+    setProfileId(id);
+    const voice = catalog?.voices.find((v) =>
+      v.references.some(
+        (r) =>
+          r.engine_id === next?.engine_id &&
+          r.emotion_id === 'neutral' &&
+          r.qualification_status === 'qualified',
+      ),
+    );
+    chooseVoice(voice?.voice_id ?? '', next?.engine_id);
+  };
+  const saveVoice = async () => {
+    setSaving(true);
+    setError(null);
+    setNotice('');
+    try {
+      await invoke('save_speech_voice_selection_cmd', {
+        projectId,
+        profileId,
+        voiceId,
+        referenceId,
+      });
+      setNotice('Голос проекта сохранён и проверен.');
+    } catch (reason) {
+      setError(describeCommandError(reason));
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <section
       className="rounded-md border border-border bg-surface p-4"
       aria-label="Голоса синтеза речи"
     >
-      <h2 className="text-sm font-semibold text-text">Синтез речи</h2>
+      <h2 className="text-base font-semibold text-text">Текст и озвучка</h2>
+      <p className="mt-1 text-xs text-muted">
+        Добавьте русский текст или субтитры, проверьте подготовку и выберите голос.
+      </p>
       {error && (
-        <p role="status" className="mt-2 text-xs text-muted">
-          TTS недоступен: {error}
+        <div role="alert" className="mt-3 text-sm text-danger">
+          {error}
+          <button className="ml-2 underline" onClick={() => setRevision((value) => value + 1)}>
+            Повторить подключение
+          </button>
+        </div>
+      )}
+      {!catalog && !error && (
+        <p role="status" className="mt-3 text-xs text-muted">
+          Проверяем проект и библиотеку голосов…
         </p>
       )}
       {catalog && (
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="text-xs text-muted">
-            Движок и профиль
-            <select
-              className="mt-1 w-full rounded border border-border bg-surface p-2 text-text"
-              value={profileId}
-              onChange={(event) => {
-                setProfileId(event.target.value);
-                setVoiceId('');
-                setReferenceId('');
-              }}
-            >
-              {catalog.profiles.map((item) => (
-                <option key={item.profile_id} value={item.profile_id}>
-                  {item.engine_id} · {item.profile_id}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs text-muted">
-            Голос
-            <select
-              className="mt-1 w-full rounded border border-border bg-surface p-2 text-text"
-              value={voiceId}
-              onChange={(event) => {
-                setVoiceId(event.target.value);
-                setReferenceId('');
-              }}
-            >
-              <option value="">Выберите голос</option>
-              {voices.map((voice) => (
-                <option key={voice.voice_id} value={voice.voice_id}>
-                  {voice.display_name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs text-muted">
-            Референс
-            <select
-              className="mt-1 w-full rounded border border-border bg-surface p-2 text-text"
-              value={referenceId}
-              onChange={(event) => setReferenceId(event.target.value)}
-              disabled={!selectedVoice}
-            >
-              <option value="">Выберите референс</option>
-              {references.map((reference) => (
-                <option key={reference.reference_id} value={reference.reference_id}>
-                  {reference.emotion_id} · {reference.reference_id}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-      {selectedReference && (
-        <p className="mt-2 text-xs text-muted">
-          {selectedReference.qualification_status === 'qualified'
-            ? 'Референс подтверждён для выбранного движка.'
-            : 'Голос выбран; проверка референса для синтеза ещё не завершена.'}
-        </p>
+        <>
+          <p
+            title="Проект и образцы проверены через PUZA CONTRACT"
+            className="mt-2 text-xs text-muted"
+          >
+            Проект проверен · библиотека голосов подключена
+          </p>
+          <SpeechWorkflow
+            projectId={projectId}
+            profileId={profileId}
+            voiceId={voiceId}
+            referenceId={referenceId}
+            voices={voices}
+            engineId={profile?.engine_id ?? ''}
+            renderVoiceSettings={(disabled) => (
+              <>
+                <SpeechVoiceSettings
+                  catalog={catalog}
+                  voices={voices}
+                  profileId={profileId}
+                  voiceId={voiceId}
+                  referenceId={referenceId}
+                  disabled={disabled || saving}
+                  chooseProfile={chooseProfile}
+                  chooseVoice={chooseVoice}
+                  chooseReference={setReferenceId}
+                />
+                <button
+                  className="rounded border border-border px-3 py-2 text-xs text-text disabled:opacity-40"
+                  disabled={disabled || saving || !referenceId}
+                  onClick={() => void saveVoice()}
+                >
+                  Сохранить голос проекта
+                </button>
+                {notice && (
+                  <p role="status" className="text-xs text-muted">
+                    {notice}
+                  </p>
+                )}
+              </>
+            )}
+          />
+        </>
       )}
     </section>
   );

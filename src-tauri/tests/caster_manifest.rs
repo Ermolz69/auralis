@@ -2,8 +2,7 @@ use auralis_app::bootstrap::caster::verified_manifest;
 use sha2::{Digest, Sha256};
 
 #[test]
-fn caster_manifest_receipt_must_match_the_selected_installed_runtime()
--> Result<(), Box<dyn std::error::Error>> {
+fn caster_manifest_receipt_must_match_the_selected_installed_runtime() -> std::io::Result<()> {
     let directory = tempfile::tempdir()?;
     let scripts = directory.path().join("Scripts");
     std::fs::create_dir(&scripts)?;

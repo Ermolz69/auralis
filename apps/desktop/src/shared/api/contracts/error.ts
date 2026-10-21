@@ -50,3 +50,12 @@ export function toCommandError(error: unknown): CommandError {
     message: 'An unexpected system error occurred',
   };
 }
+export function describeCommandError(
+  error: unknown,
+  fallback = 'Не удалось выполнить операцию',
+): string {
+  if (isCommandError(error)) return error.message;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string' && error.trim()) return error;
+  return fallback;
+}

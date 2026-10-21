@@ -8,8 +8,8 @@ vi.mock('@/shared/api/tauri', () => ({ invoke }));
 
 const catalog = {
   profiles: [
-    { profile_id: 'profile-one', profile_sha256: 'a'.repeat(64), engine_id: 'engine-one' },
-    { profile_id: 'profile-two', profile_sha256: 'b'.repeat(64), engine_id: 'engine-two' },
+    { profile_id: 'profile-one', profile_sha256: 'a'.repeat(64), engine_id: 'voxcpm2' },
+    { profile_id: 'profile-two', profile_sha256: 'b'.repeat(64), engine_id: 'espeech' },
   ],
   voices: [
     {
@@ -20,8 +20,8 @@ const catalog = {
       references: [
         {
           reference_id: 'ref-one',
-          engine_id: 'engine-one',
-          emotion_id: 'calm',
+          engine_id: 'voxcpm2',
+          emotion_id: 'neutral',
           transcript: 'Здравствуйте',
           audio_sha256: 'd'.repeat(64),
           qualification_status: 'qualified',
@@ -36,7 +36,7 @@ const catalog = {
       references: [
         {
           reference_id: 'ref-two',
-          engine_id: 'engine-two',
+          engine_id: 'espeech',
           emotion_id: 'neutral',
           transcript: 'Привет',
           audio_sha256: 'f'.repeat(64),
@@ -51,35 +51,37 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => cleanup());
 
 describe('SpeechCatalog', () => {
-  it('filters references by engine and resets voice selection when the profile changes', async () => {
-    invoke.mockResolvedValue(catalog);
+  it('selects a qualified neutral reference automatically and refuses an unchecked engine voice', async () => {
+    invoke.mockImplementation((command: string) =>
+      Promise.resolve(command === 'get_speech_catalog_cmd' ? catalog : []),
+    );
     render(<SpeechCatalog projectId="project-one" />);
     expect(await screen.findByRole('option', { name: 'Голос Один' })).not.toBeNull();
     expect(screen.queryByRole('option', { name: 'Голос Два' })).toBeNull();
     expect(invoke).toHaveBeenCalledWith('get_speech_catalog_cmd', { projectId: 'project-one' });
 
-    fireEvent.change(screen.getByLabelText('Голос'), { target: { value: 'voice-one' } });
-    fireEvent.change(screen.getByLabelText('Референс'), { target: { value: 'ref-one' } });
-    expect(screen.getByText('Референс подтверждён для выбранного движка.')).not.toBeNull();
+    expect(screen.getByLabelText('Голос')).toHaveProperty('value', 'voice-one');
+    expect(screen.getByLabelText('Референс')).toHaveProperty('value', 'ref-one');
+    expect(screen.getByText('Нейтральный образец подтверждён прослушиванием.')).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText('Движок и профиль'), {
       target: { value: 'profile-two' },
     });
-    expect(screen.queryByText('Референс подтверждён для выбранного движка.')).toBeNull();
+    expect(screen.queryByText('Нейтральный образец подтверждён прослушиванием.')).toBeNull();
     expect(screen.getByRole('option', { name: 'Голос Два' })).not.toBeNull();
     fireEvent.change(screen.getByLabelText('Голос'), { target: { value: 'voice-two' } });
-    fireEvent.change(screen.getByLabelText('Референс'), { target: { value: 'ref-two' } });
+    expect(screen.getByLabelText('Референс')).toHaveProperty('value', '');
     expect(
-      screen.getByText('Голос выбран; проверка референса для синтеза ещё не завершена.'),
+      screen.getByText('Для этого голоса ещё нужен подтверждённый нейтральный образец.'),
     ).not.toBeNull();
   });
 
   it('shows a catalog loading failure without exposing an empty selection', async () => {
     invoke.mockRejectedValue(new Error('Catalog unavailable'));
     render(<SpeechCatalog projectId="project-two" />);
-    expect(await screen.findByRole('status')).toHaveProperty(
+    expect(await screen.findByRole('alert')).toHaveProperty(
       'textContent',
-      'TTS недоступен: Catalog unavailable',
+      expect.stringContaining('Catalog unavailable'),
     );
     expect(screen.queryByLabelText('Голос')).toBeNull();
   });

@@ -18,6 +18,7 @@ pub async fn get_ready_artifact(
             id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
         FROM artifacts
         WHERE id = ? AND state = 'ready'
+          AND NOT EXISTS (SELECT 1 FROM speech_publications p, json_each(p.publication_json, '$.files') f WHERE p.ready=0 AND json_extract(f.value, '$.artifact_id')=artifacts.id)
         "#,
     )
     .bind(id.to_string())
@@ -52,6 +53,7 @@ pub async fn list_ready_by_project(
             id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
         FROM artifacts
         WHERE project_id = ? AND state = 'ready'
+          AND NOT EXISTS (SELECT 1 FROM speech_publications p, json_each(p.publication_json, '$.files') f WHERE p.ready=0 AND json_extract(f.value, '$.artifact_id')=artifacts.id)
         ORDER BY created_at ASC
         "#,
     )
@@ -80,6 +82,7 @@ pub async fn list_ready_by_project_and_kind(
             id, project_id, kind, location_kind, location_value, size_bytes, state, created_at, updated_at, ready_at
         FROM artifacts
         WHERE project_id = ? AND kind = ? AND state = 'ready'
+          AND NOT EXISTS (SELECT 1 FROM speech_publications p, json_each(p.publication_json, '$.files') f WHERE p.ready=0 AND json_extract(f.value, '$.artifact_id')=artifacts.id)
         ORDER BY created_at ASC
         "#,
     )
