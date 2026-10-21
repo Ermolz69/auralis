@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "node_version": "v24.14.0",
+  "probe_script_sha256": "1a20350ec40324c32fda9eaf4fdf10ead4972960cd4b13ff570fed05854b6102",
+  "config_sha256": "e80c4a3d0f8c6091547b1fcb14f61411b6e2d6402c79e4abcb3130fd73fb91a9",
+  "manifest_sha256": {
+    "marina_elevenlabs_ru": "6c69208f30421111e827ec3a1e6f8cd8a5793bcae8c42127cc7ed84fe3b02c28",
+    "alex_analyst_elevenlabs_ru": "7e2433bc4f7d531bd8a860a7427565190ac27888da0ad3aa0963b2474338788d",
+    "anastasiya_kim_elevenlabs_ru": "99994a20165052401847de2a767c9e98ff108c740072755df55d76cde56a8393",
+    "artur_denophine_elevenlabs_ru": "12e8c07c1bc70c84ba6f5c66eca1e9505dce5bafcaaf31797ffba408a3775f20",
+    "denis_elevenlabs_ru": "6cdbc205e927ee5589820d3f362417fda34f75d91a15a02a5b494381f8020fd3",
+    "nastya_elevenlabs_ru": "d9addc1c56474cf4a20667ec791d20447129d806fac56b9986c775c84fef751d",
+    "rina_elevenlabs_ru": "2bcfbbf2962c4911d01167f3e186e6d3abf23c316ed4afb354b145a1353e8fd8",
+    "stanislav_elevenlabs_ru": "9b47d30e4afac89448d011c9ae28b18879dc39363dd7cf9d753dc4fe34140057"
+  },
+  "qualification": {
+    "marina_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    },
+    "alex_analyst_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    },
+    "anastasiya_kim_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    },
+    "artur_denophine_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    },
+    "denis_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    },
+    "nastya_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    },
+    "rina_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    },
+    "stanislav_elevenlabs_ru": {
+      "voxcpm2": [
+        "unverified"
+      ],
+      "espeech": [
+        "unverified"
+      ]
+    }
+  },
+  "status": "blocked_unqualified",
+  "error": "Human qualification missing: two new voices must have qualified neutral references for VoxCPM2 and ESpeech; found 0",
+  "elapsed_ms": 8
+}
