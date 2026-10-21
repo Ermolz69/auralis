@@ -59,6 +59,14 @@ tasks:
     desc: Verify native speech selects and freezes qualified new voices without loading models
     cmds:
       - node --test --test-isolation=none tools/native-e2e/speech-voice-selection.test.mjs
+  tts:test:native-cache:
+    desc: Verify native saved-plan cache evidence and confined corruption without loading models
+    cmds:
+      - node --test --test-isolation=none tools/native-e2e/speech-cache.test.mjs tools/native-e2e/speech-artifacts.test.mjs
+  tts:test:native-cache-split:
+    desc: Verify installed model-free speech splitting changes exactly one native chunk
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/native-e2e/speech-cache-split.ps1
   tts:test:native-voice-build:
     desc: Compile the native Speech UI scenario with two build-only voice identifiers
     env:
@@ -80,7 +88,7 @@ tasks:
     cmds:
       - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/test_admission.ps1 -ModelFree
   desktop:e2e:native:speech:
-    desc: Sequential real Windows speech acceptance with qualified installed voices and local GPU models
+    desc: Sequential real Windows speech and cache recovery acceptance with qualified installed voices
     env:
       AURALIS_NATIVE_E2E_SPEECH: '1'
       AURALIS_NATIVE_E2E_TRANSLATION: '0'
@@ -88,6 +96,7 @@ tasks:
       AURALIS_NATIVE_E2E_KEEP_TEMP: '1'
     cmds:
       - node --check tools/native-e2e/speech.mjs
+      - node --check tools/native-e2e/speech-cache.mjs
       - node tools/native-e2e/run.mjs
   desktop:e2e:native:speech:resume:
     desc: Explicitly continue cancellation and crash acceptance from a retained completed matrix
@@ -101,6 +110,7 @@ tasks:
       AURALIS_NATIVE_E2E_KEEP_TEMP: '1'
     cmds:
       - node --check tools/native-e2e/speech.mjs
+      - node --check tools/native-e2e/speech-cache.mjs
       - node tools/native-e2e/run.mjs
   tts:qualification:prepare:
     desc: Verify the eight new voices on both engines and retain unscored reports

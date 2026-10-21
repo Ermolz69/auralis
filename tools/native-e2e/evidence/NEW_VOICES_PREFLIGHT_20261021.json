@@ -1,7 +1,7 @@
 {
   "version": 1,
   "node_version": "v24.14.0",
-  "probe_script_sha256": "580a273c897ddcde9d076b27ad7f8c8c79ba68777fc1e39ee4c7ca92764d875c",
+  "probe_script_sha256": "1a20350ec40324c32fda9eaf4fdf10ead4972960cd4b13ff570fed05854b6102",
   "config_sha256": "e80c4a3d0f8c6091547b1fcb14f61411b6e2d6402c79e4abcb3130fd73fb91a9",
   "manifest_sha256": {
     "marina_elevenlabs_ru": "6c69208f30421111e827ec3a1e6f8cd8a5793bcae8c42127cc7ed84fe3b02c28",
@@ -81,5 +81,5 @@
   },
   "status": "blocked_unqualified",
   "error": "Human qualification missing: two new voices must have qualified neutral references for VoxCPM2 and ESpeech; found 0",
-  "elapsed_ms": 9
+  "elapsed_ms": 11
 }

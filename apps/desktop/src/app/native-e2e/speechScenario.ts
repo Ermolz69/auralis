@@ -18,18 +18,55 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
     await waitFor(() =>
       document.querySelector<HTMLSelectElement>('select[aria-label="Движок и профиль"]'),
     );
-    if (
-      [`native-e2e-speech-complete:${runId}`, `native-e2e-speech-reopened:${runId}`].includes(
-        project.title,
-      )
-    ) {
+    if (project.title === `native-e2e-speech-reopened:${runId}`) {
       const ready = (await invoke('list_speech_runs_cmd', { projectId })).filter(
         (r) => r.result?.ready,
       );
-      if (ready.length !== 10) throw new Error('Restart lost a ready speech result');
+      if (ready.length !== 13) throw new Error('Restart lost a ready speech result');
       await select('Сохранённые запуски', ready[0].run_id);
       await playback();
       await title(projectId, `native-e2e-speech-reopened:${runId}`);
+      return;
+    }
+    if (project.title === `native-e2e-speech-cache-validated:${runId}`) {
+      const ready = (await invoke('list_speech_runs_cmd', { projectId })).filter(
+        (r) => r.result?.ready,
+      );
+      if (ready.length !== 13) throw new Error('Cache acceptance lost a ready speech result');
+      await select('Сохранённые запуски', ready[0].run_id);
+      await playback();
+      await title(projectId, `native-e2e-speech-reopened:${runId}`);
+      return;
+    }
+    if (project.title === `native-e2e-speech-cache-repeat-ready:${runId}`) {
+      await configure('voxcpm2', primaryVoice);
+      const repaired = await prepareText(projectId, longText);
+      await click('Озвучить');
+      await ready(projectId, repaired.run_id);
+      await playback();
+      const changed = await prepareText(
+        projectId,
+        longText.replace('каждое слово должно', 'каждый текст должен'),
+      );
+      await click('Озвучить');
+      await ready(projectId, changed.run_id);
+      await playback();
+      await title(projectId, `native-e2e-speech-cache-validated:${runId}`);
+      return;
+    }
+    if (project.title === `native-e2e-speech-complete:${runId}`) {
+      const readyRuns = (await invoke('list_speech_runs_cmd', { projectId })).filter(
+        (r) => r.result?.ready,
+      );
+      if (readyRuns.length !== 10) throw new Error('Restart lost a ready speech result');
+      await select('Сохранённые запуски', readyRuns[0].run_id);
+      await playback();
+      await configure('voxcpm2', primaryVoice);
+      const repeat = await prepareText(projectId, longText);
+      await click('Озвучить');
+      await ready(projectId, repeat.run_id);
+      await playback();
+      await title(projectId, `native-e2e-speech-cache-repeat-ready:${runId}`);
       return;
     }
     if (project.title === `native-e2e-speech-cancelled:${runId}`) {

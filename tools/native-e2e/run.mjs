@@ -35,6 +35,11 @@ import {
   waitForSpeechTitle,
   waitForSpeechRelease,
 } from './speech.mjs';
+import {
+  corruptSpeechCache,
+  verifySpeechCacheRepeat,
+  verifySpeechCacheSequence,
+} from './speech-cache.mjs';
 
 const RESULT_TIMEOUT_MS = 60_000;
 const TRANSLATION_RESULT_TIMEOUT_MS = 600_000;
@@ -201,12 +206,24 @@ export async function runNativeE2e(rootDir) {
             project.title,
           )
         ) {
-          speechRecoveryStage = 'completed';
+          speechRecoveryStage = 'base-complete';
           if (project.title === `native-e2e-speech-reopened:${runId}`) {
             recovery
               .prepare('UPDATE projects SET title=?,revision=revision+1 WHERE title=?')
               .run(`native-e2e-speech-complete:${runId}`, project.title);
           }
+        } else if (
+          count === 11 &&
+          project.title === `native-e2e-speech-cache-repeat-ready:${runId}`
+        ) {
+          speechRecoveryStage = 'cache-repeat-ready';
+        } else if (count === 13 && project.title === `native-e2e-speech-cache-validated:${runId}`) {
+          speechRecoveryStage = 'cache-validated';
+        } else if (count === 13 && project.title === `native-e2e-speech-reopened:${runId}`) {
+          speechRecoveryStage = 'cache-validated';
+          recovery
+            .prepare('UPDATE projects SET title=?,revision=revision+1 WHERE title=?')
+            .run(`native-e2e-speech-cache-validated:${runId}`, project.title);
         } else throw new Error('Speech sandbox is not at a supported retained acceptance boundary');
       } finally {
         recovery.close();
@@ -260,6 +277,10 @@ export async function runNativeE2e(rootDir) {
       translationHistoryEnabled
     )
       baselineModelPids = listModelProcessIds();
+    if (speechRecoveryStage === 'cache-repeat-ready') {
+      await verifySpeechCacheRepeat(dataRoot);
+      await corruptSpeechCache(dataRoot);
+    }
     app = launchTestApplication(
       rootDir,
       dataRoot,
@@ -271,18 +292,19 @@ export async function runNativeE2e(rootDir) {
         : null,
     );
     if (speechEnabled) {
-      if (speechRecoveryStage === 'completed') {
+      if (speechRecoveryStage === 'cache-validated') {
         await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-reopened:${runId}`, runId);
         assert(
-          (await verifySpeechArtifacts(dataRoot, 10)) === retainedSpeechHashes,
+          (await verifySpeechArtifacts(dataRoot, 13)) === retainedSpeechHashes,
           'Reopening changed ready speech bytes',
         );
+        await verifySpeechCacheSequence(dataRoot);
         process.stdout.write(
-          'Native Speech retained result reopening and managed WAV playback passed.\n',
+          'Native Speech retained result, cache regeneration and managed WAV playback passed.\n',
         );
         return;
       }
-      if (speechRecoveryStage !== 'interrupted') {
+      if (!['interrupted', 'base-complete', 'cache-repeat-ready'].includes(speechRecoveryStage)) {
         const projectId = await waitForSpeechTitle(
           dataRoot,
           app,
@@ -304,18 +326,41 @@ export async function runNativeE2e(rootDir) {
         await waitForSpeechRelease(rootDir);
         app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
       }
-      await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-complete:${runId}`, runId);
-      const before = await verifySpeechArtifacts(dataRoot, 10);
+      if (speechRecoveryStage !== 'cache-repeat-ready') {
+        if (speechRecoveryStage !== 'base-complete') {
+          await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-complete:${runId}`, runId);
+          await verifySpeechArtifacts(dataRoot, 10);
+          await terminate(app.child);
+          await waitForSpeechRelease(rootDir);
+          app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+        }
+        await waitForSpeechTitle(
+          dataRoot,
+          app,
+          `native-e2e-speech-cache-repeat-ready:${runId}`,
+          runId,
+        );
+        await verifySpeechArtifacts(dataRoot, 11);
+        await verifySpeechCacheRepeat(dataRoot);
+        await terminate(app.child);
+        await waitForSpeechRelease(rootDir);
+        await corruptSpeechCache(dataRoot);
+        app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
+      }
+      await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-cache-validated:${runId}`, runId);
+      const before = await verifySpeechArtifacts(dataRoot, 13);
+      await verifySpeechCacheSequence(dataRoot);
       await terminate(app.child);
       await waitForSpeechRelease(rootDir);
       app = launchTestApplication(rootDir, dataRoot, fixtureServer.url);
       await waitForSpeechTitle(dataRoot, app, `native-e2e-speech-reopened:${runId}`, runId);
       assert(
-        (await verifySpeechArtifacts(dataRoot, 10)) === before,
+        (await verifySpeechArtifacts(dataRoot, 13)) === before,
         'Restart changed retained speech bytes',
       );
+      await verifySpeechCacheSequence(dataRoot);
       process.stdout.write(
-        'Native Speech acceptance passed: both engines and voices, text/subtitles, split cues, cancellation, crash, resume, managed WAV playback and unchanged results after restart.\n',
+        'Native Speech acceptance passed: both engines and voices, text/subtitles, split cues, cancellation, crash, resume, verified cross-run cache repair and changed-text regeneration, managed WAV playback and unchanged results after restart.\n',
       );
       return;
     }

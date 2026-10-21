@@ -170,6 +170,7 @@ export async function verifySpeechArtifacts(dataRoot, expectedCount) {
     if (publications.length !== expectedCount)
       throw new Error(`Expected ${expectedCount} ready speech runs, found ${publications.length}`);
     const hashes = {};
+    const runEvidence = [];
     let splitPlans = 0;
     for (const row of publications) {
       const published = JSON.parse(row.publication_json);
@@ -222,10 +223,61 @@ export async function verifySpeechArtifacts(dataRoot, expectedCount) {
       const rate = wav.readUInt32LE(fmt + 12);
       const bytesPerSecond = wav.readUInt32LE(fmt + 16);
       const durationMs = Math.round((wav.readUInt32LE(data + 4) / bytesPerSecond) * 1000);
-      if (rate !== 48000 || Math.abs(durationMs - published.duration_ms) > 1 || durationMs <= 0)
+      if (
+        rate !== 48000 ||
+        !Number.isSafeInteger(published.duration_ms) ||
+        published.duration_ms <= 0 ||
+        Math.abs(durationMs - published.duration_ms) > 1 ||
+        durationMs <= 0
+      )
         throw new Error('Independent WAV duration differs');
+      const attempts = db
+        .prepare(
+          `SELECT a.attempt_id, a.created_at, a.ended_at, j.status, j.progress_json
+           FROM speech_host_attempts a JOIN jobs j ON j.id=a.job_id
+           WHERE a.run_id=? ORDER BY a.created_at, a.rowid`,
+        )
+        .all(row.run_id)
+        .map((attempt) => {
+          const elapsedMs =
+            attempt.ended_at === null
+              ? null
+              : Date.parse(attempt.ended_at) - Date.parse(attempt.created_at);
+          if (elapsedMs !== null && (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0))
+            throw new Error('Native speech attempt has invalid saved timing');
+          return {
+            attempt_id: attempt.attempt_id,
+            started_at: attempt.created_at,
+            ended_at: attempt.ended_at,
+            elapsed_ms: elapsedMs,
+            status: attempt.status,
+            progress: JSON.parse(attempt.progress_json),
+            checkpoints: db
+              .prepare(
+                `SELECT sequence, utterance_id, cue_id, chunk_id, cache_key, audio_sha256,
+                        duration_ms, origin, saved_at
+                 FROM speech_host_checkpoints WHERE attempt_id=? ORDER BY sequence`,
+              )
+              .all(attempt.attempt_id),
+          };
+        });
+      runEvidence.push({
+        run_id: row.run_id,
+        project_id: intent.project_id,
+        plan_sha256: intent.plan_sha256,
+        plan,
+        expected_utterances: intent.expected_utterances,
+        expected_chunks: intent.expected_chunks,
+        publication_attempt_id: row.attempt_id,
+        publication_duration_ms: published.duration_ms,
+        independent_wav_duration_ms: durationMs,
+        wav_sha256: published.files.find((file) => file.kind === 'wav').sha256,
+        manifest_sha256: published.files.find((file) => file.kind === 'manifest').sha256,
+        files: published.files,
+        attempts,
+      });
     }
-    if (expectedCount === 10) {
+    if (expectedCount >= 10) {
       if (splitPlans < 6) throw new Error('Technical splitting did not survive native publication');
       const attempts = db
         .prepare(
@@ -248,10 +300,14 @@ export async function verifySpeechArtifacts(dataRoot, expectedCount) {
       if (active.count) throw new Error('Finished native run retained an active attempt');
     }
     const proof = {
-      version: 1,
+      version: 2,
+      node_version: process.version,
+      verifier_sha256: digest(await fsp.readFile(new URL(import.meta.url))),
+      runtime_config_sha256: digest(await fsp.readFile(path.join(dataRoot, 'tts-runtime.json'))),
       ready_runs: expectedCount,
       split_plans: splitPlans,
       artifact_hashes: hashes,
+      runs: runEvidence,
     };
     await fsp.writeFile(
       path.join(dataRoot, 'speech-acceptance.json'),
