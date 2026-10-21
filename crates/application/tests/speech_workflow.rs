@@ -355,7 +355,7 @@ async fn approved_translation_assignments(
             .await
             .is_err()
     );
-    prepared_request.assignments = vec![role, cue];
+    prepared_request.assignments = vec![role.clone(), cue.clone()];
     let prepared = cases
         .prepare(fixture.project_id.clone(), prepared_request)
         .await?;
@@ -373,6 +373,29 @@ async fn approved_translation_assignments(
         assert_eq!(plan["utterances"][q]["cue_id"], original.id);
         assert_eq!(plan["utterances"][q]["start_ms"], original.start_ms);
         assert_eq!(plan["utterances"][q]["end_ms"], original.end_ms);
+    }
+    let mut repeated_plan_request = request(&review);
+    repeated_plan_request.assignments = vec![role, cue];
+    let repeated_plan = cases
+        .prepare(fixture.project_id.clone(), repeated_plan_request)
+        .await?;
+    let repeated_intent = cases
+        .store
+        .get_run(repeated_plan.run_id)
+        .await?
+        .ok_or("Missing repeated speech plan")?;
+    let repeated_json: serde_json::Value = serde_json::from_str(&repeated_intent.plan_json)?;
+    assert_ne!(prepared.run_id, repeated_plan.run_id);
+    assert_ne!(plan["plan_digest"], repeated_json["plan_digest"]);
+    for q in 0..review.source.cues.len() {
+        assert_eq!(
+            plan["utterances"][q]["seed_key"],
+            repeated_json["utterances"][q]["seed_key"]
+        );
+        assert_eq!(
+            plan["utterances"][q]["role_id"],
+            repeated_json["utterances"][q]["role_id"]
+        );
     }
     fixture
         .links

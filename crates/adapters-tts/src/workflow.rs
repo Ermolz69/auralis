@@ -26,6 +26,14 @@ impl TtsWorkerClient {
             .join(intent.run_id.to_string())
     }
 
+    fn cache_root(&self, intent: &SpeechRunIntent) -> PathBuf {
+        self.runtime()
+            .managed_root
+            .join(intent.project_id.to_string())
+            .join("speech")
+            .join("cache")
+    }
+
     async fn saved_plan(&self, intent: &SpeechRunIntent) -> Result<PathBuf, PortError> {
         let anchor = tokio::fs::read_to_string(self.run_root(intent).join("runtime-sha256.txt"))
             .await
@@ -171,7 +179,13 @@ impl SpeechExecutionPort for TtsWorkerClient {
                 .join(format!("{}.json", intent.profile_id)),
             out_file: attempt.join("speech.wav"),
             manifest_path: attempt.join("manifest.json"),
-            cache_dir: root.join("cache"),
+            // Keep existing resumable runs on their original cache. New runs share
+            // verified project audio so a changed cue regenerates only its chunks.
+            cache_dir: if root.join("cache").exists() {
+                root.join("cache")
+            } else {
+                self.cache_root(&intent)
+            },
             checkpoint_root: root.join("checkpoints"),
             rebuild: false,
         };

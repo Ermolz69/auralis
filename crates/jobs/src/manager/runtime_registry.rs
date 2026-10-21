@@ -55,10 +55,7 @@ impl RuntimeRegistry {
     }
 
     pub fn close_and_take_all(&self) -> HashMap<JobId, JobRuntimeEntry> {
-        match self.try_close() {
-            Some(entries) => entries,
-            None => HashMap::new(),
-        }
+        self.try_close().unwrap_or_default()
     }
 
     pub fn try_close(&self) -> Option<HashMap<JobId, JobRuntimeEntry>> {

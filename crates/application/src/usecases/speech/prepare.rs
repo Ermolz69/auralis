@@ -131,7 +131,8 @@ impl SpeechUseCases {
                 ))
                 .into());
             }
-            let role_id = format!("role-{:04}", q + 1);
+            let seed_key = stable_cue_seed(&project, &id);
+            let role_id = format!("role-{}", &seed_key[..20]);
             contract_bindings.push(ports::puza_contract::PuzaVoiceBinding {
                 role_id: role_id.clone(),
                 display_name: role.clone(),
@@ -143,7 +144,7 @@ impl SpeechUseCases {
             utterances.push(json!({"utterance_id": format!("utterance-{:04}", q+1), "cue_id": window.map(|_| id.clone()),
                 "text_range": if window.is_none() { json!({"start":0,"end":text.chars().count()}) } else { serde_json::Value::Null },
                 "text":text, "role_id":role_id,"reference_id":reference_id,"emotion_id":"neutral",
-                "start_ms":window.map(|w|w.0),"end_ms":window.map(|w|w.1),"speed":1.0,"volume":1.0,"seed_key":format!("{}-{}",run_id,q+1)}));
+                "start_ms":window.map(|w|w.0),"end_ms":window.map(|w|w.1),"speed":1.0,"volume":1.0,"seed_key":seed_key}));
         }
         let revision = match profile.engine_id.as_str() {
             "voxcpm2" => "32279effe8c19989596f05d353d1447f51d9e915",
@@ -206,5 +207,26 @@ impl SpeechUseCases {
             .validate(intent)
             .await?;
         Ok(())
+    }
+}
+
+fn stable_cue_seed(project: &ProjectId, cue_id: &str) -> String {
+    hash(format!("auralis-speech-cue-v1\0{project}\0{cue_id}").as_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::stable_cue_seed;
+    use domain::project::ProjectId;
+
+    #[test]
+    fn cue_seed_survives_new_runs_and_changes_only_with_project_or_cue_identity() {
+        let project = ProjectId::default();
+        let other = ProjectId::default();
+        let first = stable_cue_seed(&project, "cue-1");
+        assert_eq!(first, stable_cue_seed(&project, "cue-1"));
+        assert_ne!(first, stable_cue_seed(&project, "cue-2"));
+        assert_ne!(first, stable_cue_seed(&other, "cue-1"));
+        assert_eq!(first.len(), 64);
     }
 }
