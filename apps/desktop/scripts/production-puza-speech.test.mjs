@@ -15,24 +15,20 @@ function installSpeechFixture() {
     text,
     cues: [],
   });
-  const voices = ['ciri', 'geralt'].flatMap((voice) =>
-    ['voxcpm2', 'espeech'].map((engine) => ({
-      voice_id: `${voice}_${engine}`,
-      display_name: voice === 'ciri' ? 'Ciri' : 'Geralt',
-      description: '',
-      manifest_sha256: digest,
-      references: [
-        {
-          reference_id: 'neutral-v2',
-          engine_id: engine,
-          emotion_id: 'neutral',
-          transcript: 'Нейтральный образец.',
-          audio_sha256: digest,
-          qualification_status: 'qualified',
-        },
-      ],
+  const voices = ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru'].map((voice) => ({
+    voice_id: voice,
+    display_name: voice === 'marina_elevenlabs_ru' ? 'Марина' : 'Алекс',
+    description: '',
+    manifest_sha256: digest,
+    references: ['voxcpm2', 'espeech'].map((engine) => ({
+      reference_id: `ref-${engine}-neutral`,
+      engine_id: engine,
+      emotion_id: 'neutral',
+      transcript: 'Нейтральный образец.',
+      audio_sha256: digest,
+      qualification_status: 'qualified',
     })),
-  );
+  }));
   let saved = null;
   let planned = null;
   window.__puzaCalls = [];
@@ -109,7 +105,17 @@ test(
       await page.addInitScript(installSpeechFixture);
       await page.goto(server.url);
       await page.getByRole('button', { name: /^Open Review fixture/ }).click();
-      await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
+      const speechStep = page.getByRole('button', { name: /Текст, субтитры и озвучка/ });
+      try {
+        await speechStep.waitFor({ timeout: 5000 });
+      } catch {
+        const diagnostics = await page.evaluate(() => ({
+          commands: window.__smokeUnknownCommands,
+          body: document.body.innerText.slice(0, 1200),
+        }));
+        throw new Error(`Speech pipeline unavailable: ${JSON.stringify({ diagnostics, errors })}`);
+      }
+      await speechStep.click();
       const panel = page.getByRole('region', { name: 'Голоса синтеза речи' });
       await panel.getByText('Проект проверен · библиотека голосов подключена').waitFor();
       assert.equal(
@@ -124,7 +130,7 @@ test(
         .click();
       await panel.getByRole('button', { name: 'Текст проверен', exact: true }).click();
       await panel.getByLabel('Движок', { exact: true }).selectOption('espeech');
-      await panel.getByLabel('Голос', { exact: true }).selectOption('geralt_espeech');
+      await panel.getByLabel('Голос', { exact: true }).selectOption('alex_analyst_elevenlabs_ru');
       await panel.getByRole('button', { name: 'Сохранить голос проекта', exact: true }).click();
       await panel.getByText('Голос проекта сохранён и проверен.').waitFor();
       await panel.getByRole('button', { name: 'Подготовить озвучку', exact: true }).click();
@@ -138,7 +144,7 @@ test(
         ),
       );
       const plan = calls.find(({ command }) => command === 'prepare_speech_plan_cmd').args.request;
-      assert.equal(plan.voice_id, 'geralt_espeech');
+      assert.equal(plan.voice_id, 'alex_analyst_elevenlabs_ru');
       assert.equal(plan.profile_id, 'native-plan-espeech');
       if (process.env.AURALIS_PUZA_SCREENSHOT)
         await panel.screenshot({ path: process.env.AURALIS_PUZA_SCREENSHOT });

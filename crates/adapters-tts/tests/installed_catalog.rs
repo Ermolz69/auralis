@@ -6,8 +6,8 @@ use std::path::PathBuf;
 const VOX_REVISION: &str = "32279effe8c19989596f05d353d1447f51d9e915";
 
 #[tokio::test]
-#[ignore = "requires an installed TTS worker and the user-selected Ciri/Geralt voice copies"]
-async fn installed_worker_lists_ciri_and_geralt_for_both_engines()
+#[ignore = "requires an installed TTS worker and the eight new voice manifests"]
+async fn installed_worker_lists_new_voices_for_both_engines()
 -> Result<(), Box<dyn std::error::Error>> {
     let required_path = |name| -> Result<PathBuf, std::io::Error> {
         std::env::var_os(name)
@@ -36,8 +36,16 @@ async fn installed_worker_lists_ciri_and_geralt_for_both_engines()
                 .iter()
                 .any(|item| { item.engine_id == engine && item.profile_id == profile })
         );
-        for character in ["ciri", "geralt"] {
-            let voice_id = format!("{character}_{engine}");
+        for voice_id in [
+            "marina_elevenlabs_ru",
+            "alex_analyst_elevenlabs_ru",
+            "anastasiya_kim_elevenlabs_ru",
+            "artur_denophine_elevenlabs_ru",
+            "denis_elevenlabs_ru",
+            "nastya_elevenlabs_ru",
+            "rina_elevenlabs_ru",
+            "stanislav_elevenlabs_ru",
+        ] {
             let voice = snapshot
                 .voices
                 .iter()
@@ -47,6 +55,7 @@ async fn installed_worker_lists_ciri_and_geralt_for_both_engines()
                 item.engine_id == engine
                     && item.emotion_id == "neutral"
                     && item.audio_sha256.len() == 64
+                    && item.reference_id == format!("ref-{engine}-neutral")
             }));
         }
     }

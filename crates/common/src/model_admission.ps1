@@ -46,6 +46,7 @@ try {
     $modelAdmitted = $true
     if ($ProbeScript) {
         if (-not [IO.Path]::IsPathRooted($ProbeScript) -or -not [IO.File]::Exists($ProbeScript) -or -not [IO.File]::Exists($ProbePython)) { throw 'Probe paths are invalid.' }
+        $env:PUZA_PROBE_ADMITTED = '1'
         & $ProbePython $ProbeScript --case-id $CaseId
         if ($LASTEXITCODE -ne 0) { throw 'Qualification probe failed; inspect its retained evidence.' }
     } else { [Console]::In.ReadLine() | Out-Null }

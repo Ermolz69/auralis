@@ -34,7 +34,7 @@ worker to report them before validation:
 
 | Packaged schema                   | SHA-256                                                            |
 | --------------------------------- | ------------------------------------------------------------------ |
-| `speech-plan-v1.schema.json`      | `9bb9889612007b9986e3bb46d08790bd6cca5ef408f9d094235f53fa0085f8dc` |
+| `speech-plan-foundation-v1.schema.json` | `9bb9889612007b9986e3bb46d08790bd6cca5ef408f9d094235f53fa0085f8dc` |
 | `voice-snapshot-v1.schema.json`   | `ead637ac05c567cfbc90ca0a356ec23563cefd2986fdccc9d3e5fec1ab4bb0d2` |
 | `segment-result-v1.schema.json`   | `b3f66e7e76be2575d979f13c6c09ca8ad30cadad7071900560f9d7e16cec25fa` |
 | `synthesis-result-v1.schema.json` | `b1b4fdd09d6b41f435e8666bc17ef9a62aefc6ed26880ece33520a25a924da09` |

@@ -1,5 +1,13 @@
 # TTS integration execution record
 
+> Update 21 October 2026: the Ciri/Geralt voice candidates and their probes
+> below are historical evidence only. The active library is the eight new
+> ElevenLabs RU v2 manifests (Marina, Alex, Anastasiya Kim, Artur, Denis,
+> Nastya, Rina and Stanislav). Their references remain unverified until a
+> person listens to real VoxCPM2/ESpeech samples and records scores. Current
+> integration and probe evidence is in
+> [the 21 October acceptance record](tts-new-voices-20261021.md).
+
 Started: 10 October 2026. Scope: native Windows, Python 3.12, explicit reviewed
 Russian text or ordered subtitle utterances, VoxCPM2 and ESpeech, neutral
 references first. Additional emotions require an exact qualified v2 reference

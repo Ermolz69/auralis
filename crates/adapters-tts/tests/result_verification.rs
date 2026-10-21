@@ -40,7 +40,7 @@ impl Fixture {
                 "engine_id": "voxcpm2",
                 "model_revision": "32279effe8c19989596f05d353d1447f51d9e915"
             },
-            "cast": [{"role_id": "narrator", "voice_id": "ciri"}],
+            "cast": [{"role_id": "narrator", "voice_id": "marina_elevenlabs_ru"}],
             "utterances": [{
                 "utterance_id": "line-1", "cue_id": "cue-1", "text": "Hello world.",
                 "role_id": "narrator", "reference_id": "neutral-1", "emotion_id": "neutral",
@@ -61,7 +61,7 @@ impl Fixture {
             "segments": [{
                 "utterance_id": "line-1", "cue_id": "cue-1", "chunk_id": "line-1-chunk-0001",
                 "kind": "text", "status": "generated", "text": "Hello world.",
-                "voice": "narrator", "resolved_voice": "ciri", "reference_id": "neutral-1",
+                "voice": "narrator", "resolved_voice": "marina_elevenlabs_ru", "reference_id": "neutral-1",
                 "emotion": "neutral", "engine": "voxcpm2", "source_start_ms": 100,
                 "source_end_ms": 2000, "speed": 1.0, "volume": 1.0,
                 "seed_key": "seed-1:chunk:1", "duration_ms": 1000,

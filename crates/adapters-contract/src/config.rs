@@ -33,7 +33,7 @@ impl ContractPin {
             || self.speech_plan_version != 1
             || self.schema_sha256.len() != 4
             || [
-                "speech-plan-v1.schema.json",
+                "speech-plan-foundation-v1.schema.json",
                 "voice-snapshot-v1.schema.json",
                 "segment-result-v1.schema.json",
                 "synthesis-result-v1.schema.json",

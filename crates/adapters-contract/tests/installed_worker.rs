@@ -11,6 +11,22 @@ fn installed() -> Result<(PathBuf, PathBuf), Box<dyn Error>> {
     Ok((executable, fixtures))
 }
 
+fn python_for_cli(cli: &Path) -> Result<PathBuf, Box<dyn Error>> {
+    let scripts = cli.parent().ok_or("worker has no parent")?;
+    let next_to_cli = scripts.join("python.exe");
+    if next_to_cli.is_file() {
+        return Ok(next_to_cli);
+    }
+    let copied_base = scripts
+        .parent()
+        .ok_or("worker scripts have no parent")?
+        .join("python.exe");
+    if copied_base.is_file() {
+        return Ok(copied_base);
+    }
+    Err("installed worker has no adjacent Python runtime".into())
+}
+
 fn adapter(
     executable: PathBuf,
     arguments: Vec<String>,
@@ -68,10 +84,7 @@ async fn installed_worker_matches_cli_on_plan_voice_and_result() -> Result<(), B
 async fn synthetic_process_rejects_stale_eof_malformed_and_unknown_completion()
 -> Result<(), Box<dyn Error>> {
     let (cli, fixtures) = installed()?;
-    let python = cli
-        .parent()
-        .ok_or("worker has no parent")?
-        .join("python.exe");
+    let python = python_for_cli(&cli)?;
     let script = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/support/fixture_worker.py");
     let pin = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("contract-pin-v1.json");
     for mode in ["stale", "eof", "partial", "malformed", "unknown"] {
@@ -103,10 +116,7 @@ async fn synthetic_process_rejects_stale_eof_malformed_and_unknown_completion()
 #[ignore = "requires the explicitly installed model-free Python runtime"]
 async fn owned_worker_tree_exits_before_timeout_error_is_returned() -> Result<(), Box<dyn Error>> {
     let (cli, fixtures) = installed()?;
-    let python = cli
-        .parent()
-        .ok_or("worker has no parent")?
-        .join("python.exe");
+    let python = python_for_cli(&cli)?;
     let script = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/support/fixture_worker.py");
     let pin = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("contract-pin-v1.json");
     let temporary = tempfile::tempdir()?;

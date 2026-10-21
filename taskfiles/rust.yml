@@ -112,7 +112,7 @@ tasks:
       - rustfmt --edition 2024 crates/ports/src/speech_catalog.rs crates/application/src/usecases/speech_catalog.rs crates/adapters-tts/src/catalog.rs crates/adapters-tts/src/client.rs crates/adapters-tts/tests/installed_catalog.rs src-tauri/src/bootstrap/tts.rs src-tauri/src/commands/tts.rs
 
   test:tts-catalog:installed:
-    desc: Read selected Ciri and Geralt copies through the installed TTS worker without model loading
+    desc: Read eight new voice copies through the installed TTS worker without model loading
     requires:
       vars: [PYTHON, PACKAGE_ROOT, VOICE_STORE, PROFILE_ROOT, MODEL_CACHE, INTEGRITY_SHA256]
     env:

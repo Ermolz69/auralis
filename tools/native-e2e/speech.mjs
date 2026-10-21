@@ -8,11 +8,12 @@ import { spawn } from 'node:child_process';
 export async function seedSpeechRuntime(dataRoot, subtitlePath) {
   const original = path.join(process.env.APPDATA, 'com.auralis.desktop', 'tts-runtime.json');
   const config = JSON.parse(await fsp.readFile(original, 'utf8'));
-  for (const voice of ['ciri_voxcpm2', 'geralt_voxcpm2', 'ciri_espeech', 'geralt_espeech']) {
+  for (const voice of ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru']) {
     const manifest = JSON.parse(
       await fsp.readFile(path.join(config.voice_store, voice, 'voice.json'), 'utf8'),
     );
-    if (!JSON.stringify(manifest).includes('qualified'))
+    if (!['voxcpm2', 'espeech'].every((engine) => manifest.references.some((reference) =>
+      reference.engine_id === engine && reference.emotion_id === 'neutral' && reference.qualification.status === 'qualified')))
       throw new Error(`Human qualification missing: ${voice}`);
   }
   await fsp.copyFile(original, path.join(dataRoot, 'tts-runtime.json'));

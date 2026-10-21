@@ -40,7 +40,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
       await click('Продолжить');
       await ready(projectId, cancelled.run_id);
       await playback();
-      await configure('voxcpm2', 'geralt');
+      await configure('voxcpm2', 'alex_analyst_elevenlabs_ru');
       const interrupted = await prepareText(projectId, longText);
       await click('Озвучить');
       await checkpoint(projectId, interrupted.run_id);
@@ -77,7 +77,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
         ),
       );
       for (const engine of ['voxcpm2', 'espeech']) {
-        for (const character of ['ciri', 'geralt']) {
+        for (const character of ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru']) {
           await configure(engine, character);
           const text = await prepareText(
             projectId,
@@ -100,7 +100,7 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
         }
       }
     }
-    await configure('voxcpm2', 'ciri');
+    await configure('voxcpm2', 'marina_elevenlabs_ru');
     const cancelled = await prepareText(projectId, longText);
     await click('Озвучить');
     await checkpoint(projectId, cancelled.run_id);
@@ -125,8 +125,8 @@ export async function runSpeechScenario(runId: string, showProject: (id: string)
 
 async function configure(engine: string, character: string) {
   await select('Движок и профиль', `native-plan-${engine}`);
-  await select('Голос', `${character}_${engine}`);
-  await select('Референс', `${engine}-neutral-01`);
+  await select('Голос', character);
+  await select('Референс', `ref-${engine}-neutral`);
 }
 async function prepareText(projectId: string, text: string) {
   await click('Текст');

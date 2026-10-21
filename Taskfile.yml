@@ -87,19 +87,53 @@ tasks:
       - node --check tools/native-e2e/speech.mjs
       - node tools/native-e2e/run.mjs
   tts:qualification:prepare:
-    desc: Verify the four real probes and retain unscored reports for this installation
+    desc: Verify the eight new voices on both engines and retain unscored reports
     cmds:
-      - '"../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" tools/tts/qualification.py prepare {{.CLI_ARGS}}'
+      - task -d ../TTS voices:new:review
   tts:qualification:apply:
-    desc: Record explicit human decisions through CONTRACT
+    desc: Record explicit human decisions for the new voices through CONTRACT
+    requires:
+      vars: [CLI_ARGS]
     cmds:
-      - '"../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" tools/tts/qualification.py apply {{.CLI_ARGS}}'
+      - task -d ../TTS voices:new:apply -- {{.CLI_ARGS}}
   setup:tts:local:
     desc: Install pinned local PUZA wheels, voice copies and runtime configuration without model loading
     vars:
       PYTHON: '{{default "../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" .PYTHON}}'
     cmds:
       - '"{{.PYTHON}}" tools/tts/setup_local.py {{.CLI_ARGS}}'
+
+  tts:bundle:stage:
+    desc: Stage a hashed standalone PUZA runtime, model, wheel, and voice bundle from the verified local installation
+    requires:
+      vars: [BUNDLE]
+    vars:
+      PYTHON: '{{default "../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" .PYTHON}}'
+    cmds:
+      - '"{{.PYTHON}}" tools/tts/local_bundle.py stage --bundle "{{.BUNDLE}}"'
+
+  tts:bundle:install:
+    desc: Install a standalone PUZA bundle using its own Python without any source checkout
+    requires:
+      vars: [BUNDLE, DATA_ROOT]
+    cmds:
+      - 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{{.BUNDLE}}/install.ps1" -DataRoot "{{.DATA_ROOT}}"'
+
+  tts:bundle:probe:
+    desc: Run one technical model probe from a standalone bundle under shared admission
+    requires:
+      vars: [DATA_ROOT, CASE]
+    cmds:
+      - 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/run_bundle_probe.ps1 -DataRoot "{{.DATA_ROOT}}" -CaseId "{{.CASE}}"'
+
+  tts:bundle:verify:
+    desc: Compare four standalone model WAVs with frozen source hashes and retain evidence
+    requires:
+      vars: [BUNDLE, DATA_ROOT]
+    vars:
+      PYTHON: '{{default "../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" .PYTHON}}'
+    cmds:
+      - '"{{.PYTHON}}" tools/tts/export_bundle_evidence.py --bundle "{{.BUNDLE}}" --data-root "{{.DATA_ROOT}}"'
 
   setup:media-tools:
     desc: Alias for media:setup-tools

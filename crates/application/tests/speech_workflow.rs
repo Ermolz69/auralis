@@ -63,8 +63,8 @@ impl SpeechCatalogPort for Catalog {
                 engine_id: "voxcpm2".into(),
             }],
             voices: vec![SpeechVoiceOption {
-                voice_id: "ciri".into(),
-                display_name: "Ciri".into(),
+                voice_id: "marina_elevenlabs_ru".into(),
+                display_name: "Marina".into(),
                 description: "Fixture".into(),
                 manifest_sha256: "b".repeat(64),
                 references: vec![SpeechReferenceOption {
@@ -82,10 +82,10 @@ impl SpeechCatalogPort for Catalog {
                 }],
             }],
         };
-        let mut geralt = snapshot.voices[0].clone();
-        geralt.voice_id = "geralt".into();
-        geralt.display_name = "Geralt".into();
-        snapshot.voices.push(geralt);
+        let mut alex_analyst_elevenlabs_ru = snapshot.voices[0].clone();
+        alex_analyst_elevenlabs_ru.voice_id = "alex_analyst_elevenlabs_ru".into();
+        alex_analyst_elevenlabs_ru.display_name = "Alex".into();
+        snapshot.voices.push(alex_analyst_elevenlabs_ru);
         Ok(snapshot)
     }
 }
@@ -246,7 +246,7 @@ fn request(review: &ports::speech_workflow::SpeechReview) -> PrepareSpeechReques
         decision_id: review.decision_id,
         expected_source_sha256: review.source.sha256.clone(),
         profile_id: "native-plan-voxcpm2".into(),
-        voice_id: "ciri".into(),
+        voice_id: "marina_elevenlabs_ru".into(),
         reference_id: "neutral".into(),
         assignments: vec![],
     }
@@ -327,13 +327,13 @@ async fn approved_translation_assignments(
     let role = SpeechAssignment {
         scope: "role".into(),
         target: "Narrator".into(),
-        voice_id: "geralt".into(),
+        voice_id: "alex_analyst_elevenlabs_ru".into(),
         reference_id: "neutral".into(),
     };
     let cue = SpeechAssignment {
         scope: "cue".into(),
         target: review.source.cues[0].id.clone(),
-        voice_id: "ciri".into(),
+        voice_id: "marina_elevenlabs_ru".into(),
         reference_id: "neutral".into(),
     };
     let mut repeated = request(&review);
@@ -366,8 +366,8 @@ async fn approved_translation_assignments(
         .ok_or("Missing speech plan")?;
     let plan: serde_json::Value = serde_json::from_str(&intent.plan_json)?;
     assert_eq!(prepared.utterance_count, 2);
-    assert_eq!(plan["cast"][0]["voice_id"], "ciri");
-    assert_eq!(plan["cast"][1]["voice_id"], "geralt");
+    assert_eq!(plan["cast"][0]["voice_id"], "marina_elevenlabs_ru");
+    assert_eq!(plan["cast"][1]["voice_id"], "alex_analyst_elevenlabs_ru");
     for (q, original) in review.source.cues.iter().enumerate() {
         assert_eq!(plan["utterances"][q]["text"], original.text);
         assert_eq!(plan["utterances"][q]["cue_id"], original.id);
@@ -411,7 +411,7 @@ async fn reviewed_text_cancels_via_common_jobs_and_resumes_a_new_attempt_to_read
     invalid.assignments.push(SpeechAssignment {
         scope: "cue".into(),
         target: "missing".into(),
-        voice_id: "ciri".into(),
+        voice_id: "marina_elevenlabs_ru".into(),
         reference_id: "neutral".into(),
     });
     assert!(

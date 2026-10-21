@@ -139,7 +139,7 @@ describe('SubtitleWorkspace', () => {
   it('announces loading and errors with the appropriate live roles', () => {
     mockUseTracks.mockReturnValue({ ...availableTracks, tracks: [], isLoading: true });
     const { rerender } = render(<SubtitleWorkspace />);
-    expect(screen.getByRole('status')).not.toBeNull();
+    expect(screen.getByText('Получаем список дорожек с YouTube…').getAttribute('role')).toBe('status');
 
     mockUseTracks.mockReturnValue({
       ...availableTracks,

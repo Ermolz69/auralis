@@ -21,7 +21,7 @@ const planned = {
   job: null,
   result: null,
 };
-const voices = ['ciri', 'geralt'].map((voice) => ({
+const voices = ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru'].map((voice) => ({
   voice_id: voice,
   display_name: voice,
   description: '',
@@ -40,7 +40,7 @@ const voices = ['ciri', 'geralt'].map((voice) => ({
 const props = {
   projectId: 'project-1',
   profileId: 'native-plan-voxcpm2',
-  voiceId: 'ciri',
+  voiceId: 'marina_elevenlabs_ru',
   referenceId: 'neutral',
   engineId: 'voxcpm2',
   voices,
@@ -117,7 +117,7 @@ it('requires explicit text review and clears that review when text changes', asy
         decision_id: review.decision_id,
         expected_source_sha256: source.sha256,
         profile_id: props.profileId,
-        voice_id: 'ciri',
+        voice_id: 'marina_elevenlabs_ru',
         reference_id: 'neutral',
         assignments: [],
       },
@@ -153,9 +153,9 @@ it('retains the common voice while sending separate role and cue assignments', a
   fireEvent.click(screen.getByRole('button', { name: 'Субтитры' }));
   fireEvent.click(screen.getByRole('button', { name: 'Текст проверен' }));
   fireEvent.change(await screen.findByLabelText('Голос роли Narrator'), {
-    target: { value: 'geralt' },
+    target: { value: 'alex_analyst_elevenlabs_ru' },
   });
-  fireEvent.change(screen.getByLabelText('Голос реплики cue-2'), { target: { value: 'ciri' } });
+  fireEvent.change(screen.getByLabelText('Голос реплики cue-2'), { target: { value: 'marina_elevenlabs_ru' } });
   fireEvent.click(screen.getByRole('button', { name: 'Подготовить озвучку' }));
   await waitFor(() =>
     expect(invoke).toHaveBeenCalledWith('prepare_speech_plan_cmd', {
@@ -164,11 +164,11 @@ it('retains the common voice while sending separate role and cue assignments', a
         decision_id: review.decision_id,
         expected_source_sha256: source.sha256,
         profile_id: props.profileId,
-        voice_id: 'ciri',
+        voice_id: 'marina_elevenlabs_ru',
         reference_id: 'neutral',
         assignments: [
-          { scope: 'role', target: 'Narrator', voice_id: 'geralt', reference_id: 'neutral' },
-          { scope: 'cue', target: 'cue-2', voice_id: 'ciri', reference_id: 'neutral' },
+          { scope: 'role', target: 'Narrator', voice_id: 'alex_analyst_elevenlabs_ru', reference_id: 'neutral' },
+          { scope: 'cue', target: 'cue-2', voice_id: 'marina_elevenlabs_ru', reference_id: 'neutral' },
         ],
       },
     }),

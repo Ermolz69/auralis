@@ -38,14 +38,14 @@ async fn installed_normalizer_prepares_text_and_subtitles_sequentially()
         SpeechCue {
             id: "first".into(),
             text: text.into(),
-            role: "Geralt".into(),
+            role: "Alex".into(),
             start_ms: 100,
             end_ms: 1900,
         },
         SpeechCue {
             id: "second".into(),
             text: "Обычный русский текст.".into(),
-            role: "Ciri".into(),
+            role: "Marina".into(),
             start_ms: 2200,
             end_ms: 4100,
         },

@@ -14,8 +14,6 @@ type Props = {
   chooseReference: (id: string) => void;
 };
 const select = 'mt-1 w-full rounded border border-border bg-surface p-2 text-text';
-const voiceName = (name: string) =>
-  name === 'Ciri' ? 'Цири' : name === 'Geralt' ? 'Геральт' : name;
 export function SpeechVoiceSettings(props: Props) {
   const {
     catalog,
@@ -73,7 +71,7 @@ export function SpeechVoiceSettings(props: Props) {
             <option value="">Выберите голос</option>
             {voices.map((voice) => (
               <option key={voice.voice_id} value={voice.voice_id}>
-                {voiceName(voice.display_name)}
+                {voice.display_name}
               </option>
             ))}
           </select>

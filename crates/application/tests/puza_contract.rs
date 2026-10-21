@@ -39,14 +39,14 @@ async fn saved_default_voice_preserves_reviewed_source_and_other_roles_after_reo
     let narrator = PuzaVoiceBinding {
         role_id: "narrator".into(),
         display_name: "Рассказчик".into(),
-        voice_id: "ciri".into(),
+        voice_id: "marina_elevenlabs_ru".into(),
         reference_id: "neutral-v2".into(),
         engine_id: "voxcpm2".into(),
     };
     let role = PuzaVoiceBinding {
         role_id: "role-0001".into(),
-        display_name: "Геральт".into(),
-        voice_id: "geralt".into(),
+        display_name: "Алекс".into(),
+        voice_id: "alex_analyst_elevenlabs_ru".into(),
         ..narrator.clone()
     };
     service
@@ -57,7 +57,7 @@ async fn saved_default_voice_preserves_reviewed_source_and_other_roles_after_reo
         )
         .await?;
     let changed = PuzaVoiceBinding {
-        voice_id: "geralt".into(),
+        voice_id: "alex_analyst_elevenlabs_ru".into(),
         ..narrator
     };
     service
