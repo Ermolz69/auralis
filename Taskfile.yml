@@ -38,11 +38,23 @@ tasks:
       SPEC: '{{default "tools/revoice/youtube-source-v1.json" .SPEC}}'
     cmds:
       - node tools/revoice/youtube-inspect.mjs "{{.SPEC}}"
+  revoice:translate:seed-assets:
+    desc: Verify and copy existing pinned translator assets into the ordinary profile cache under shared machine admission
+    requires:
+      vars: [OUTPUT]
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/seed-translate-assets.ps1 -Output "{{.OUTPUT}}"
+  revoice:install:local:
+    desc: Install one hash-pinned local NSIS candidate in the ordinary user application directory and retain its identity
+    requires:
+      vars: [INSTALLER_SHA256, APPLICATION_SHA256, OUTPUT]
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/install-candidate.ps1 -InstallerSha256 "{{.INSTALLER_SHA256}}" -ApplicationSha256 "{{.APPLICATION_SHA256}}" -Output "{{.OUTPUT}}"
   revoice:fmt:
     desc: Format only the full revoicing scope, audit tools and speech pagination slice
     cmds:
       - pnpm prettier --write "tools/revoice/*.mjs" "docs/integration/revoice-*.md" "docs/integration/revoice-plan.json" "docs/integration/README.md"
-      - pnpm prettier --write "docs/integration/acceptance/01-revoice-baseline.md"
+      - pnpm prettier --write "docs/integration/acceptance/0*-revoice-*.md"
       - pnpm prettier --write "apps/desktop/src/features/speech-catalog/ui/SpeechSourcePreview*.tsx" "apps/desktop/src/features/speech-catalog/ui/SpeechPreviewPage.tsx"
   perf:translation-observer:measure:
     desc: Measure translation screen IPC calls and committed-progress DOM latency with fixed fixture IPC
@@ -110,6 +122,10 @@ tasks:
     desc: Verify model-free preparation shares model exclusion without claiming GPU memory
     cmds:
       - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/test_admission.ps1 -ModelFree
+  tts:test:admission:computer-use-path:
+    desc: Check native UI helper path classification with fixtures without running admission or models
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/tts/test_computer_use_path.ps1
   desktop:e2e:native:speech:
     desc: Sequential real Windows speech and cache recovery acceptance with qualified installed voices
     env:

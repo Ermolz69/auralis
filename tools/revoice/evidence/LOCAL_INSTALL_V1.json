@@ -1,0 +1,19 @@
+{
+    "version":  1,
+    "case_id":  "NORMAL-PROFILE-INSTALL-v1",
+    "started_at":  "2026-10-22T22:40:52.4561564Z",
+    "ended_at":  "2026-10-22T22:41:00.6111939Z",
+    "elapsed_ms":  8156,
+    "installer":  "E:\\Anything\\Projects\\Commercial\\auralis\\target\\release\\bundle\\nsis\\Auralis_0.1.0_x64-setup.exe",
+    "installer_sha256":  "34b17c418aeb38f4eefdcd04cf8201fa39eeb6e06deca7b7b0547c1171ea3d9f",
+    "install_root":  "C:\\Users\\Ermolz\\AppData\\Local\\Programs\\Auralis",
+    "application":  "C:\\Users\\Ermolz\\AppData\\Local\\Programs\\Auralis\\auralis-app.exe",
+    "application_sha256":  "7f944769255803623d6226318f1d5d96e1b4e8e27e619ceec00111e7a1bf3a22",
+    "expected_application_sha256":  "7f944769255803623d6226318f1d5d96e1b4e8e27e619ceec00111e7a1bf3a22",
+    "installer_pid":  2880,
+    "exit_code":  0,
+    "script_sha256":  "7b21802da7e4d2d3af4b3fdceccbdd52ac0ffedb5d3c3983ed1609fab4785950",
+    "error":  null,
+    "status":  "installed_verified",
+    "limitation":  "Local development-host installation only. Native workflow, asset acquisition, listening and clean Windows are separate acceptance gates. No app or model is launched by this command."
+}

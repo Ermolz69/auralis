@@ -1,0 +1,51 @@
+{
+    "version":  1,
+    "case_id":  "NORMAL-PROFILE-TRANSLATE-ASSETS-v3",
+    "started_at":  "2026-10-22T22:39:25.2969366Z",
+    "ended_at":  "2026-10-22T22:39:41.6495904Z",
+    "elapsed_ms":  16348,
+    "command":  "task revoice:translate:seed-assets",
+    "release_id":  "hy-mt2-1-8b-q4-windows-x64-cpu-b10977",
+    "release_sha256":  "33550fb32ffe357443ee3f1b372b816b055a5155d5d3697245a04a45c7b799cb",
+    "admission_pid":  27636,
+    "admitted":  true,
+    "admission_released":  true,
+    "script_sha256":  "71cbc24aefe78847c79489e3ef4cc2b56b5453eacffc64f91ed50e25d11fc25a",
+    "assets":  [
+                   {
+                       "filename":  "Hy-MT2-1.8B-Q4_K_M.gguf",
+                       "source":  "E:\\Anything\\Projects\\Commercial\\auralis-translate\\.cache\\install-sources\\Hy-MT2-1.8B-Q4_K_M.gguf",
+                       "target":  "C:\\Users\\Ermolz\\AppData\\Roaming\\com.auralis.desktop\\cache\\translation-downloads\\Hy-MT2-1.8B-Q4_K_M.gguf",
+                       "bytes":  1133080448,
+                       "sha256":  "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
+                       "copied":  true
+                   },
+                   {
+                       "filename":  "MODEL-LICENSE.txt",
+                       "source":  "E:\\Anything\\Projects\\Commercial\\auralis-translate\\.cache\\install-sources\\MODEL-LICENSE.txt",
+                       "target":  "C:\\Users\\Ermolz\\AppData\\Roaming\\com.auralis.desktop\\cache\\translation-downloads\\MODEL-LICENSE.txt",
+                       "bytes":  11639,
+                       "sha256":  "a1d52d448f81c584a47c583e19dfab2d3851c7c84431b07baee093c1113ed114",
+                       "copied":  true
+                   },
+                   {
+                       "filename":  "LLAMA-LICENSE.txt",
+                       "source":  "E:\\Anything\\Projects\\Commercial\\auralis-translate\\.cache\\install-sources\\LLAMA-LICENSE.txt",
+                       "target":  "C:\\Users\\Ermolz\\AppData\\Roaming\\com.auralis.desktop\\cache\\translation-downloads\\LLAMA-LICENSE.txt",
+                       "bytes":  1078,
+                       "sha256":  "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d",
+                       "copied":  true
+                   },
+                   {
+                       "filename":  "llama-b10977-bin-win-cpu-x64.zip",
+                       "source":  "E:\\Anything\\Projects\\Commercial\\auralis-translate\\.cache\\install-sources\\llama-b10977-bin-win-cpu-x64.zip",
+                       "target":  "C:\\Users\\Ermolz\\AppData\\Roaming\\com.auralis.desktop\\cache\\translation-downloads\\llama-b10977-bin-win-cpu-x64.zip",
+                       "bytes":  18428830,
+                       "sha256":  "bdbb1ee5368b44112fa3fa9b3ac168a15d0d492e5c2f9fbe2074dd2f4628a4b9",
+                       "copied":  true
+                   }
+               ],
+    "error":  null,
+    "status":  "verified_assets_copied",
+    "limitation":  "Preseeded existing local assets only, not model inference, installed package selection, native translation or clean Windows acceptance. Original files unchanged."
+}

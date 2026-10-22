@@ -33,7 +33,10 @@ try {
             $modelGpuPid = [int]$Matches[1]
             $modelGpuProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$modelGpuPid" -ErrorAction Stop
             $modelSpotifyGamebar = $modelGpuProcess -and $modelGpuProcess.Name -eq 'SpotifyXboxGamebarWebView.exe' -and $modelGpuProcess.ExecutablePath -like (Join-Path $env:ProgramFiles 'WindowsApps\SpotifyAB.SpotifyMusic_*\SpotifyXboxGamebarWebView.exe')
-            $modelComputerUse = $modelGpuProcess -and $modelGpuProcess.Name -eq 'codex-computer-use.exe' -and $modelGpuProcess.ExecutablePath -like (Join-Path $env:ProgramFiles 'WindowsApps\OpenAI.Codex_*\app\resources\cua_node\bin\node_modules\@oai\sky\bin\windows\codex-computer-use.exe')
+            $modelComputerUse = $modelGpuProcess -and $modelGpuProcess.Name -eq 'codex-computer-use.exe' -and (
+                $modelGpuProcess.ExecutablePath -like (Join-Path $env:ProgramFiles 'WindowsApps\OpenAI.Codex_*\app\resources\cua_node\bin\node_modules\@oai\sky\bin\windows\codex-computer-use.exe') -or
+                $modelGpuProcess.ExecutablePath -match ('^' + [regex]::Escape((Join-Path $env:LOCALAPPDATA 'OpenAI\Codex\runtimes\cua_node')) + '\\[0-9a-f]{16}\\bin\\node_modules\\@oai\\sky\\bin\\windows\\codex-computer-use\.exe$')
+            )
             $modelEditor = $ModelFree -and $modelGpuProcess -and $modelGpuProcess.Name -in @('UnrealEditor.exe','LiveCodingConsole.exe') -and $modelGpuProcess.ExecutablePath -eq (Join-Path $env:ProgramFiles ('Epic Games\UE_5.3\Engine\Binaries\Win64\' + $modelGpuProcess.Name))
             if (-not $modelGpuProcess -or ($modelGpuProcess.Name.ToLowerInvariant() -notin $modelDesktopNames -and -not $modelSpotifyGamebar -and -not $modelComputerUse -and -not $modelEditor)) { throw ('GPU compute owner is unknown or is a model: ' + $modelGpuPid) }
         }

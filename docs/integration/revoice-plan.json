@@ -175,7 +175,11 @@
       "depends_on": ["INT-R01"],
       "status": "in_progress",
       "bindings": ["INT-TR05", "INT-T07", "INT-V05"],
-      "evidence": [],
+      "evidence": [
+        "docs/integration/acceptance/02-revoice-local-install.md",
+        "tools/revoice/evidence/LOCAL_INSTALL_V1.json",
+        "tools/revoice/evidence/TRANSLATE_ASSETS_V3.json"
+      ],
       "blocker": null
     },
     {

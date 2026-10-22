@@ -1,0 +1,20 @@
+{
+    "version":  1,
+    "case_id":  "NORMAL-PROFILE-TRANSLATE-ASSETS-v2",
+    "started_at":  "2026-10-22T22:34:05.0591441Z",
+    "ended_at":  "2026-10-22T22:34:07.3635828Z",
+    "elapsed_ms":  2297,
+    "command":  "task revoice:translate:seed-assets",
+    "release_id":  "hy-mt2-1-8b-q4-windows-x64-cpu-b10977",
+    "release_sha256":  "33550fb32ffe357443ee3f1b372b816b055a5155d5d3697245a04a45c7b799cb",
+    "admission_pid":  26176,
+    "admitted":  false,
+    "admission_released":  true,
+    "script_sha256":  "7a08cf8738cdfe8e41dc580f06a5b2fb97340c84d222f01259c2c2f6302f592e",
+    "assets":  [
+
+               ],
+    "error":  "Shared admission refused: GPU compute owner is unknown or is a model: 13296",
+    "status":  "failed",
+    "limitation":  "Preseeded existing local assets only, not model inference, installed package selection, native translation or clean Windows acceptance. Original files unchanged."
+}

@@ -154,3 +154,23 @@ the source voice store and current manifests unchanged. This feedback is source
 preference, not six per-engine listening scores; do not manufacture a qualified
 report. Keep the native qualification prerequisite visible and do independent
 work. Clean Windows is currently unavailable, as explicitly confirmed by the owner.
+
+## Native admission compatibility slice
+
+After the owner closed VALORANT/Riot, GPU use fell from 3,123 to 1,144 MiB and
+no model process was found. The remaining native-UI helper is the installed
+Codex `codex-computer-use.exe` under the user's versioned
+`OpenAI/Codex/runtimes/cua_node/<16-hex-id>/bin/node_modules/@oai/sky/bin/windows/`
+directory. The old guard recognized only the WindowsApps distribution path.
+The model-free six-case path control reproduces rejection of this legitimate
+location while rejecting model names and untrusted paths correctly.
+
+The compatibility fix admits that exact executable name and constrained runtime
+path shape in addition to the existing distribution path. It does not admit
+games, arbitrary helpers, Python/model processes, unknown GPU owners or extra
+leases. Mutex/file admission, process-tree release, WSL/container refusal and GPU
+memory limits remain in force. Run path controls and both existing real admission
+checks before further asset/model work. The first asset-copy attempt also exposed
+an unavailable Windows PowerShell `Get-FileHash`; the bounded script uses streaming
+.NET SHA-256 instead. Failed attempts remain recorded; no assets were copied by
+the two refused attempts.

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "case_id": "NATIVE-YOUTUBE-STORY-v1",
+  "application_source_commit": "b6dc303",
+  "translate_submodule_commit": "44e7d4f3c6ce2443279f5d0d3acd07cbb931476e",
+  "endpoint": "Installed ordinary Windows Auralis UI, not the native test-runner build or fixture IPC",
+  "source_url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "source_track": { "language": "zh", "kind": "manual", "format": "srt" },
+  "metadata_evidence": "tools/revoice/evidence/YOUTUBE_HRaa8kb1EhE_METADATA_V2.json",
+  "first_stage": "Install one local committed candidate, open normal profile, import video URL, select Chinese subtitle track, retain managed source and exact hashes",
+  "translation_candidate": {
+    "release_id": "hy-mt2-1-8b-q4-windows-x64-cpu-b10977",
+    "backend": "cpu",
+    "profile_sha256": "dba1d341230bc4f1117c6fba8ce55a1127b120864aa8363295bdbc883b98fc3e",
+    "model_sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
+    "model_revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a",
+    "runtime_build": "b10977-0ecb159c9",
+    "selection_status": "candidate; freeze actual source hashes/counts before translation inference"
+  },
+  "voices_policy": "Leave source and installed new-voice manifests unchanged as requested. Never fabricate qualification. Stop speech at its real qualification guard if still unqualified.",
+  "max_install_attempts": 1,
+  "max_source_import_attempts": 1,
+  "max_install_minutes": 10,
+  "max_source_import_minutes": 15,
+  "max_source_media_bytes": 1073741824,
+  "max_short_translation_minutes": 120,
+  "resource_policy": "Shared machine admission for asset-loader and all model work. No overlapping models, loaders or TTS/ASR renders.",
+  "clean_windows": "unavailable, owner confirmed; local install and preseeded assets do not pass G9",
+  "expected_evidence": [
+    "installer and installed executable hashes",
+    "native UI screenshots and project ID",
+    "selected source URL and Chinese track identity",
+    "managed source/subtitle hashes",
+    "process exit/resource records for any inference",
+    "explicit unpassed boundaries"
+  ]
+}
