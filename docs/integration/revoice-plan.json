@@ -1,0 +1,323 @@
+{
+  "version": 1,
+  "objective": "Installed Windows Chinese-to-Russian story revoicing: subtitles, Chinese TXT and subtitle-free video via ASR; all mandatory gates for one reproducible candidate.",
+  "scope_date": "2026-10-23",
+  "status": "active",
+  "scope_document": "docs/integration/revoice-execution.md",
+  "contract_document": "docs/integration/revoice-input-contract.md",
+  "canonical_translate_backlog": "../auralis-translate/docs/IMPLEMENTATION_BACKLOG.md",
+  "completion_rule": "All required tasks and acceptance cases pass for the same committed candidate. Missing listening, long-story or clean-Windows evidence is not completion.",
+  "required_cases": [
+    {
+      "id": "SUB-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "SUB-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "SUB-03",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "TTS-NATIVE",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "LONG-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "LONG-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "FIT-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "FIT-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "FIT-03",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "EXPORT-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "EXPORT-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "TXT-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "TXT-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ASR-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ASR-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "LANG-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "REC-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "LISTEN-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "LISTEN-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "LISTEN-03",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "VOICES-192",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "INSTALL-01",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "INSTALL-02",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "AUDIT-01",
+      "status": "pending",
+      "evidence": []
+    }
+  ],
+  "tasks": [
+    {
+      "id": "INT-R01",
+      "title": "Audit repositories, installed identities and freeze scope",
+      "depends_on": [],
+      "status": "done",
+      "bindings": ["PLAN-03", "INT-C01", "INT-A06"],
+      "evidence": [
+        "docs/integration/acceptance/01-revoice-baseline.md",
+        "tools/revoice/evidence/BASELINE_20261023.json"
+      ],
+      "blocker": null
+    },
+    {
+      "id": "INT-R02",
+      "title": "Admit and freeze genuine story, TXT, ASR and holdout materials",
+      "depends_on": ["INT-R01"],
+      "status": "in_progress",
+      "bindings": ["DATA-03", "DATA-04", "DATA-05"],
+      "evidence": ["tools/revoice/evidence/YOUTUBE_HRaa8kb1EhE_METADATA_V2.json"],
+      "blocker": "Owner requested YouTube discovery. HRaa8kb1EhE has manual Chinese tracks; native import, actual source bytes, trusted ASR truth and independent published references still pending."
+    },
+    {
+      "id": "INT-R03",
+      "title": "Record two neutral voices qualified on both engines",
+      "depends_on": ["INT-R01"],
+      "status": "blocked",
+      "bindings": ["INT-V02", "INT-T05"],
+      "evidence": [],
+      "blocker": "0/192 installed references qualified. Owner likes the new voices and asked to leave them unchanged; no per-engine score report was supplied or inferred."
+    },
+    {
+      "id": "INT-R04",
+      "title": "Assess all 192 voice/emotion/engine combinations",
+      "depends_on": ["INT-R01"],
+      "status": "planned",
+      "bindings": ["INT-V02", "INT-T02", "INT-T05"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R05",
+      "title": "Prepare ordinary installed profiles and actionable readiness",
+      "depends_on": ["INT-R01"],
+      "status": "in_progress",
+      "bindings": ["INT-TR05", "INT-T07", "INT-V05"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R06",
+      "title": "Complete real short subtitle and native TTS matrices",
+      "depends_on": ["INT-R02", "INT-R03", "INT-R05"],
+      "status": "planned",
+      "bindings": [
+        "INT-TR01",
+        "INT-TR02",
+        "INT-TR03",
+        "INT-T01",
+        "INT-T02",
+        "INT-T03",
+        "INT-T04",
+        "INT-T05",
+        "INT-T06",
+        "INT-V01",
+        "INT-V03",
+        "INT-V04",
+        "INT-A01",
+        "INT-A02"
+      ],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R07",
+      "title": "Remove 512-cue restriction with bounded pages, storage and processing",
+      "depends_on": ["INT-R01"],
+      "status": "in_progress",
+      "bindings": ["LONG-01", "LONG-03", "INT-A05"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R08",
+      "title": "Assemble continuous and source-window speech with explicit conflicts",
+      "depends_on": ["INT-R01"],
+      "status": "planned",
+      "bindings": ["VOICE-03", "VOICE-07", "INT-A03"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R09",
+      "title": "Publish managed WAV and separate playable video",
+      "depends_on": ["INT-R08"],
+      "status": "planned",
+      "bindings": ["VOICE-06", "INT-A02", "INT-A03"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R10",
+      "title": "Implement and verify short/long Chinese TXT input",
+      "depends_on": ["INT-R06", "INT-R07"],
+      "status": "planned",
+      "bindings": ["INT-IN01", "INT-IN02"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R11",
+      "title": "Implement and evaluate short/long Chinese ASR input",
+      "depends_on": ["INT-R06", "INT-R07", "INT-R09"],
+      "status": "planned",
+      "bindings": ["ASR-01", "INT-IN03", "INT-IN04"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R12",
+      "title": "Pass same-candidate translation G1-G9 reference-based evaluation",
+      "depends_on": ["INT-R02", "INT-R05"],
+      "status": "planned",
+      "bindings": [
+        "CTX-02",
+        "CTX-03",
+        "CTX-04",
+        "CTX-05",
+        "EVAL-04",
+        "LONG-02",
+        "LONG-04",
+        "LONG-05",
+        "LONG-06",
+        "DECIDE-01",
+        "HOST-01",
+        "HOST-02",
+        "HOST-03",
+        "HOST-04",
+        "RELEASE-01",
+        "RELEASE-02",
+        "RELEASE-03"
+      ],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R13",
+      "title": "Complete the full natural long story with exact coverage",
+      "depends_on": ["INT-R06", "INT-R07", "INT-R09"],
+      "status": "planned",
+      "bindings": ["VOICE-05", "LONG-04", "INT-A01", "INT-A05"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R14",
+      "title": "Verify cross-stage cancellation, death, corruption and publication recovery",
+      "depends_on": ["INT-R10", "INT-R11", "INT-R13"],
+      "status": "planned",
+      "bindings": ["HOST-01", "HOST-04", "LONG-05", "INT-T03", "INT-T04", "INT-A04"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R15",
+      "title": "Obtain actual listening decisions for three 10-20-minute scenes",
+      "depends_on": ["INT-R12", "INT-R13"],
+      "status": "planned",
+      "bindings": ["VOICE-04", "INT-A03"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R16",
+      "title": "Pass pinned clean Windows acquisition, interruption and offline workflows",
+      "depends_on": ["INT-R04", "INT-R12", "INT-R14", "INT-R15"],
+      "status": "planned",
+      "bindings": ["RELEASE-03", "INT-TR05", "INT-T07", "INT-V05", "INT-A06"],
+      "evidence": [],
+      "blocker": null
+    },
+    {
+      "id": "INT-R17",
+      "title": "Audit and deliver one committed reproducible full candidate",
+      "depends_on": ["INT-R16"],
+      "status": "planned",
+      "bindings": ["RELEASE-04", "RELEASE-05", "VOICE-06", "INT-A06"],
+      "evidence": [],
+      "blocker": null
+    }
+  ]
+}

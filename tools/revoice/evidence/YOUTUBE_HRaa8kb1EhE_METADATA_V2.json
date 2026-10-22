@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "case_id": "YT-STORY-HRaa8kb1EhE-METADATA-v2",
+  "started_at": "2026-10-22T22:22:47.332Z",
+  "ended_at": "2026-10-22T22:22:50.996Z",
+  "elapsed_ms": 3662,
+  "spec_sha256": "d52a78acc2f76bd4a0c776fe24c2fa86f79cf62b12a9e4b0194e5f859eaf9170",
+  "script_sha256": "f092481cacb280785741949efc39d8ea0bc88644b50aeb2a23e5c9f79e8f9c6b",
+  "media_manifest_sha256": "e294fc6493add95950f0beae3d0102f651cd9660fcef61b745fa1dd77355b6f9",
+  "binary_sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a",
+  "args": [
+    "--ignore-config",
+    "--no-cache-dir",
+    "--skip-download",
+    "--no-playlist",
+    "--retries",
+    "0",
+    "--extractor-retries",
+    "0",
+    "--socket-timeout",
+    "20",
+    "--dump-single-json",
+    "https://www.youtube.com/watch?v=HRaa8kb1EhE"
+  ],
+  "exit_code": 0,
+  "signal": null,
+  "error": null,
+  "status": "chinese_track_listed",
+  "video": {
+    "id": "HRaa8kb1EhE",
+    "title": "【漫畫解說】《千面演員》有人問 “你覺得人們最終會怎麼稱呼他”，但無人能給出答案。一位超凡存在已降臨世間，電影史由此翻開全新篇章。",
+    "channel": "天天动态漫",
+    "duration_seconds": 4435,
+    "language": null,
+    "license": null,
+    "webpage_url": "https://www.youtube.com/watch?v=HRaa8kb1EhE"
+  },
+  "manual_chinese_tracks": [
+    {
+      "language": "zh",
+      "formats": [
+        {
+          "ext": "json3",
+          "name": "Chinese"
+        },
+        {
+          "ext": "srv1",
+          "name": "Chinese"
+        },
+        {
+          "ext": "srv2",
+          "name": "Chinese"
+        },
+        {
+          "ext": "srv3",
+          "name": "Chinese"
+        },
+        {
+          "ext": "ttml",
+          "name": "Chinese"
+        },
+        {
+          "ext": "srt",
+          "name": "Chinese"
+        },
+        {
+          "ext": "vtt",
+          "name": "Chinese"
+        }
+      ]
+    },
+    {
+      "language": "zh-Hant",
+      "formats": [
+        {
+          "ext": "json3",
+          "name": "Chinese (Traditional)"
+        },
+        {
+          "ext": "srv1",
+          "name": "Chinese (Traditional)"
+        },
+        {
+          "ext": "srv2",
+          "name": "Chinese (Traditional)"
+        },
+        {
+          "ext": "srv3",
+          "name": "Chinese (Traditional)"
+        },
+        {
+          "ext": "ttml",
+          "name": "Chinese (Traditional)"
+        },
+        {
+          "ext": "srt",
+          "name": "Chinese (Traditional)"
+        },
+        {
+          "ext": "vtt",
+          "name": "Chinese (Traditional)"
+        }
+      ]
+    }
+  ],
+  "automatic_chinese_tracks": [
+    {
+      "language": "zh",
+      "formats": [
+        {
+          "ext": "vtt",
+          "name": null
+        }
+      ]
+    },
+    {
+      "language": "zh-Hant",
+      "formats": [
+        {
+          "ext": "vtt",
+          "name": null
+        }
+      ]
+    }
+  ],
+  "stdout_sha256": "d9e20d0a79e1c4061043ff20a716bef619244dfa5f3d9275e156d262c9fd8c9a",
+  "stderr_sha256": "fb7d131a5abfc45d225c710b558243492b0cc1c170ec46c93741bb5c71a530e8",
+  "limitation": "CLI metadata screening only. No media/subtitle bytes, source-language listening, rights admission or native Auralis import has passed."
+}

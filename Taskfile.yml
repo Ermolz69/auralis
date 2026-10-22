@@ -21,6 +21,29 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  revoice:plan:check:
+    desc: Check the frozen full revoicing task and acceptance matrix without models
+    cmds:
+      - node --test --test-isolation=none tools/revoice/plan.test.mjs
+      - node tools/revoice/plan.mjs
+  revoice:audit:
+    desc: Read repository pins and installed speech assets into a new immutable audit receipt
+    requires:
+      vars: [OUTPUT]
+    cmds:
+      - node tools/revoice/audit.mjs "{{.OUTPUT}}"
+  revoice:youtube:inspect:
+    desc: Retain one bounded metadata attempt for the frozen Chinese story URL without downloading media or loading models
+    vars:
+      SPEC: '{{default "tools/revoice/youtube-source-v1.json" .SPEC}}'
+    cmds:
+      - node tools/revoice/youtube-inspect.mjs "{{.SPEC}}"
+  revoice:fmt:
+    desc: Format only the full revoicing scope, audit tools and speech pagination slice
+    cmds:
+      - pnpm prettier --write "tools/revoice/*.mjs" "docs/integration/revoice-*.md" "docs/integration/revoice-plan.json" "docs/integration/README.md"
+      - pnpm prettier --write "docs/integration/acceptance/01-revoice-baseline.md"
+      - pnpm prettier --write "apps/desktop/src/features/speech-catalog/ui/SpeechSourcePreview*.tsx" "apps/desktop/src/features/speech-catalog/ui/SpeechPreviewPage.tsx"
   perf:translation-observer:measure:
     desc: Measure translation screen IPC calls and committed-progress DOM latency with fixed fixture IPC
     env:

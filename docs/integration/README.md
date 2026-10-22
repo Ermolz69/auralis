@@ -1,5 +1,10 @@
 # Auralis module integration plan
 
+The owner's active 23 October 2026 full story-revoicing Goal is tracked in
+[the execution record](revoice-execution.md), with a finite acceptance matrix
+and an [extended TXT/ASR contract](revoice-input-contract.md). That explicit
+scope supersedes the older prompts' TXT/ASR exclusions for this Goal only.
+
 Updated: 10 October 2026. The requested delivery connects Translate, TTS and
 Caster to Auralis through reusable libraries and explicit adapters. CONTRACT
 supplies shared data validation. Marker is a later stage; the existing Caster

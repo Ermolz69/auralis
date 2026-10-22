@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "case_id": "YT-STORY-HRaa8kb1EhE-METADATA-v1",
+  "url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "video_id": "HRaa8kb1EhE",
+  "observed_title": "千面演員",
+  "observed_channel": "天天动态漫",
+  "observed_duration_seconds": 4435,
+  "observed_caption_label": "Chinese",
+  "selection": "Chinese-language manhua recap discovered through the YouTube search UI on 2026-10-23. The player exposes Subtitles/CC Chinese. Metadata/track identity and downloadability still require verification.",
+  "purpose": "Private development source screening, then native URL import. No release holdout or permission to publish a dub is inferred.",
+  "model_inference": false,
+  "max_invocations": 1,
+  "max_wall_seconds": 120,
+  "socket_timeout_seconds": 20,
+  "retries": 0,
+  "stop_conditions": ["metadata process failure", "deadline", "different video ID", "no downloadable Chinese track"],
+  "prospective_short_window_seconds": [0, 90],
+  "prospective_long_source": "complete_video",
+  "prospective_listening_windows_seconds": [[0, 720], [1500, 2220], [3300, 4020]],
+  "listening_windows_status": "provisional_until_scene_boundaries_and_text_are_inspected"
+}
