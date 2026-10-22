@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SpeechUseCases {
+    pub limits: Result<super::SpeechLimits, String>,
     pub marker: Option<Arc<dyn ports::marker::MarkerPort>>,
     pub marker_error: Option<String>,
     pub contract: Option<Arc<super::super::project::contract::ProjectContractUseCase>>,
@@ -26,4 +27,16 @@ pub struct SpeechUseCases {
     pub translation_review: Arc<TranslationReviewUseCase>,
     pub subtitles: Arc<InspectTranslationSourceUseCase>,
     pub emitter: Arc<dyn Fn(JobLifecycleEvent) + Send + Sync>,
+}
+
+impl SpeechUseCases {
+    pub(super) fn limits(&self) -> Result<&super::SpeechLimits, ports::error::PortError> {
+        self.limits
+            .as_ref()
+            .map_err(|message| ports::error::PortError::InvalidSource {
+                message: format!(
+                    "Invalid speech-limits.json: {message}; correct the file and restart Auralis"
+                ),
+            })
+    }
 }

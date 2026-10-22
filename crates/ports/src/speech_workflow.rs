@@ -67,7 +67,8 @@ pub trait SpeechWorkflowStore: SpeechRunStore {
     ) -> Result<(), PortError>;
     async fn save_review(&self, review: &SpeechReview) -> Result<(), PortError>;
     async fn get_review(&self, decision_id: Uuid) -> Result<Option<SpeechReview>, PortError>;
-    async fn list_runs(&self, project: &ProjectId) -> Result<Vec<SpeechRunIntent>, PortError>;
+    /// Bounded history identifiers; callers load at most one immutable plan at a time.
+    async fn list_run_ids(&self, project: &ProjectId) -> Result<Vec<Uuid>, PortError>;
     async fn latest_job(&self, run_id: Uuid) -> Result<Option<Job>, PortError>;
     async fn publication(&self, run_id: Uuid) -> Result<Option<SpeechPublication>, PortError>;
     async fn publish(

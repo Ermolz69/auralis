@@ -7,7 +7,7 @@ use domain::project::ProjectId;
 use ports::{
     cancellation::CancellationToken,
     error::PortError,
-    speech_run::{SpeechCheckpoint, SpeechRunIntent},
+    speech_run::{MAX_SPEECH_PLAN_BYTES, SpeechCheckpoint, SpeechRunIntent},
     speech_workflow::{
         SpeechExecutionPort, SpeechExecutionResult, SpeechProducedFile, SpeechProgressObserver,
     },
@@ -15,6 +15,7 @@ use ports::{
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{path::PathBuf, sync::Arc};
+use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
 impl TtsWorkerClient {
@@ -42,7 +43,7 @@ impl TtsWorkerClient {
             return Err(invalid("TTS runtime changed; prepare a new run"));
         }
         let path = self.run_root(intent).join("plan.json");
-        let bytes = tokio::fs::read(&path).await.map_err(io_error)?;
+        let bytes = read_bounded_json(&path).await?;
         if format!("{:x}", Sha256::digest(&bytes)) != intent.plan_sha256
             || bytes != intent.plan_json.as_bytes()
         {
@@ -61,6 +62,9 @@ impl SpeechExecutionPort for TtsWorkerClient {
         profile_id: String,
         draft: String,
     ) -> Result<SpeechRunIntent, PortError> {
+        if draft.len() > MAX_SPEECH_PLAN_BYTES {
+            return Err(invalid("Speech draft exceeds the worker plan limit"));
+        }
         let root = self
             .runtime()
             .managed_root
@@ -96,9 +100,8 @@ impl SpeechExecutionPort for TtsWorkerClient {
             &profile_id,
         )
         .await?;
-        let plan_json = tokio::fs::read_to_string(&plan_path)
-            .await
-            .map_err(io_error)?;
+        let plan_json = String::from_utf8(read_bounded_json(&plan_path).await?)
+            .map_err(|_| invalid("Composed speech plan is not UTF-8"))?;
         let plan: Value = serde_json::from_str(&plan_json).map_err(|e| invalid(&e.to_string()))?;
         let profile_sha256 = plan["profile"]["profile_sha256"]
             .as_str()
@@ -198,10 +201,12 @@ impl SpeechExecutionPort for TtsWorkerClient {
         match TtsWorkerClient::execute(self, request, &bridge, cancel).await? {
             TtsExecutionOutcome::Cancelled => Ok(SpeechExecutionResult::Cancelled),
             TtsExecutionOutcome::Completed(result) => {
-                let manifest: Value = serde_json::from_slice(
-                    &tokio::fs::read(&result.manifest).await.map_err(io_error)?,
-                )
-                .map_err(|e| invalid(&e.to_string()))?;
+                let bytes = read_bounded_json(&result.manifest).await?;
+                if format!("{:x}", Sha256::digest(&bytes)) != result.manifest_sha256 {
+                    return Err(invalid("Speech result manifest changed after verification"));
+                }
+                let manifest: Value =
+                    serde_json::from_slice(&bytes).map_err(|e| invalid(&e.to_string()))?;
                 let mut files = vec![
                     SpeechProducedFile {
                         kind: "wav".into(),
@@ -237,6 +242,50 @@ impl SpeechExecutionPort for TtsWorkerClient {
                 })
             }
         }
+    }
+}
+
+async fn read_bounded_json(path: &std::path::Path) -> Result<Vec<u8>, PortError> {
+    let metadata = tokio::fs::symlink_metadata(path).await.map_err(io_error)?;
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || metadata.len() > MAX_SPEECH_PLAN_BYTES as u64
+    {
+        return Err(invalid(
+            "Speech plan or manifest is not a bounded regular file",
+        ));
+    }
+    let mut bytes = Vec::new();
+    tokio::fs::File::open(path)
+        .await
+        .map_err(io_error)?
+        .take(MAX_SPEECH_PLAN_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .await
+        .map_err(io_error)?;
+    if bytes.len() > MAX_SPEECH_PLAN_BYTES {
+        return Err(invalid(
+            "Speech plan or manifest grew beyond its byte limit",
+        ));
+    }
+    Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    async fn retained_json_is_bounded_before_deserialization()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = tempfile::tempdir()?;
+        let path = root.path().join("oversized.json");
+        let file = std::fs::File::create(&path)?;
+        file.set_len(super::MAX_SPEECH_PLAN_BYTES as u64 + 1)?;
+        drop(file);
+        assert!(super::read_bounded_json(&path).await.is_err());
+        assert!(super::read_bounded_json(root.path()).await.is_err());
+        std::fs::write(&path, b"{\"kept\":true}")?;
+        assert_eq!(super::read_bounded_json(&path).await?, b"{\"kept\":true}");
+        Ok(())
     }
 }
 

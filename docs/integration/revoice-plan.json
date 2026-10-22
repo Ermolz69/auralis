@@ -178,9 +178,10 @@
       "evidence": [
         "docs/integration/acceptance/02-revoice-local-install.md",
         "tools/revoice/evidence/LOCAL_INSTALL_V1.json",
-        "tools/revoice/evidence/TRANSLATE_ASSETS_V3.json"
+        "tools/revoice/evidence/TRANSLATE_ASSETS_V3.json",
+        "docs/integration/acceptance/03-revoice-pin-startup.md"
       ],
-      "blocker": null
+      "blocker": "Ordinary installed app launches, but native window capture still times out after helper reset and owner confirmation of an active visible desktop. No URL import was confirmed. Continue independent implementation."
     },
     {
       "id": "INT-R06",
@@ -212,7 +213,10 @@
       "depends_on": ["INT-R01"],
       "status": "in_progress",
       "bindings": ["LONG-01", "LONG-03", "INT-A05"],
-      "evidence": [],
+      "evidence": [
+        "docs/integration/acceptance/01-revoice-baseline.md",
+        "docs/integration/acceptance/04-revoice-long-host.md"
+      ],
       "blocker": null
     },
     {

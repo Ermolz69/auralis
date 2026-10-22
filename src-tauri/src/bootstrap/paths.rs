@@ -9,6 +9,7 @@ const TRANSLATION_DOWNLOAD_CACHE_DIRECTORY_NAME: &str = "translation-downloads";
 const TRANSLATION_PACKAGE_SELECTION_FILE_NAME: &str = "translation-package-selection.json";
 const CASTER_RUNTIME_CONFIG_FILE_NAME: &str = "caster-runtime.json";
 const TTS_RUNTIME_CONFIG_FILE_NAME: &str = "tts-runtime.json";
+const SPEECH_LIMITS_CONFIG_FILE_NAME: &str = "speech-limits.json";
 const PROJECTS_DIRECTORY_NAME: &str = "projects";
 const LOGS_DIRECTORY_NAME: &str = "logs";
 const CACHE_DIRECTORY_NAME: &str = "cache";
@@ -83,6 +84,10 @@ impl AppPaths {
 
     pub fn tts_runtime_config(&self) -> PathBuf {
         self.root.join(TTS_RUNTIME_CONFIG_FILE_NAME)
+    }
+
+    pub fn speech_limits_config(&self) -> PathBuf {
+        self.root.join(SPEECH_LIMITS_CONFIG_FILE_NAME)
     }
 
     pub fn caster_audio_cache(&self) -> PathBuf {

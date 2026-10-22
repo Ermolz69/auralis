@@ -1,10 +1,10 @@
 use super::*;
 use crate::error::ApplicationError;
 use domain::project::ProjectId;
-use ports::speech_run::SpeechRunIntent;
+use ports::speech_run::{MAX_SPEECH_PLAN_BYTES, SpeechRunIntent};
 use serde::Deserialize;
 use serde_json::json;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 #[derive(Clone, Deserialize)]
@@ -42,6 +42,8 @@ impl SpeechUseCases {
             return Err(conflict("Reviewed text does not belong to this input").into());
         }
         self.check_source(&review).await?;
+        self.limits()?
+            .source(&review.source.text, review.source.cues.len())?;
         let catalog = self
             .catalog
             .as_ref()
@@ -59,14 +61,30 @@ impl SpeechUseCases {
             .iter()
             .find(|p| p.profile_id == request.profile_id)
             .ok_or_else(|| invalid("Unknown speech profile"))?;
-        let mut targets = HashSet::new();
+        let cue_ids: HashSet<_> = review
+            .source
+            .cues
+            .iter()
+            .map(|cue| cue.id.as_str())
+            .collect();
+        let roles: HashSet<_> = review
+            .source
+            .cues
+            .iter()
+            .map(|cue| cue.role.as_str())
+            .collect();
+        let mut targets = HashMap::new();
         for a in &request.assignments {
             let exists = match a.scope.as_str() {
-                "cue" => review.source.cues.iter().any(|c| c.id == a.target),
-                "role" => review.source.cues.iter().any(|c| c.role == a.target),
+                "cue" => cue_ids.contains(a.target.as_str()),
+                "role" => roles.contains(a.target.as_str()),
                 _ => false,
             };
-            if !exists || !targets.insert((a.scope.clone(), a.target.clone())) {
+            if !exists
+                || targets
+                    .insert((a.scope.as_str(), a.target.as_str()), a)
+                    .is_some()
+            {
                 return Err(invalid("Voice assignment has an unknown or repeated target").into());
             }
         }
@@ -104,16 +122,10 @@ impl SpeechUseCases {
                 .collect()
         };
         for (q, (id, text, role, window)) in inputs.into_iter().enumerate() {
-            let binding = request
-                .assignments
-                .iter()
-                .find(|a| a.scope == "cue" && a.target == id)
-                .or_else(|| {
-                    request
-                        .assignments
-                        .iter()
-                        .find(|a| a.scope == "role" && a.target == role)
-                });
+            let binding = targets
+                .get(&("cue", id.as_str()))
+                .or_else(|| targets.get(&("role", role.as_str())))
+                .copied();
             let voice_id = binding.map_or(request.voice_id.as_str(), |a| a.voice_id.as_str());
             let reference_id =
                 binding.map_or(request.reference_id.as_str(), |a| a.reference_id.as_str());
@@ -161,6 +173,9 @@ impl SpeechUseCases {
             "review":{"decision_id":review.decision_id,"status":"approved"},
             "profile":{"profile_id":profile.profile_id,"profile_sha256":profile.profile_sha256,"engine_id":profile.engine_id,"model_revision":revision},
             "cast":cast,"utterances":utterances}).to_string();
+        if draft.len() > MAX_SPEECH_PLAN_BYTES {
+            return Err(invalid(format!("Speech draft exceeds {MAX_SPEECH_PLAN_BYTES} bytes; reduce the admitted source or assignments")).into());
+        }
         if let Some(contract) = &self.contract {
             contract
                 .configure(&project, review.source.text.clone(), contract_bindings)
@@ -173,6 +188,7 @@ impl SpeechUseCases {
         let intent = engine
             .compose(project, run_id, request.profile_id, draft)
             .await?;
+        self.limits()?.plan(&intent)?;
         self.store
             .register_reviewed_run(&intent, request.decision_id)
             .await?;
@@ -183,6 +199,7 @@ impl SpeechUseCases {
         &self,
         intent: &SpeechRunIntent,
     ) -> Result<(), ApplicationError> {
+        self.limits()?.plan(intent)?;
         let plan: serde_json::Value =
             serde_json::from_str(&intent.plan_json).map_err(|e| invalid(e.to_string()))?;
         let decision = plan["review"]["decision_id"]

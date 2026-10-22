@@ -1,5 +1,6 @@
 mod digest;
 mod error;
+mod limits;
 mod marker;
 mod ownership;
 mod prepare;
@@ -12,6 +13,7 @@ mod voices;
 
 use digest::hash;
 use error::{conflict, invalid};
+pub use limits::SpeechLimits;
 use ownership::CompletionGuard;
 pub use prepare::{PrepareSpeechRequest, SpeechAssignment};
 use progress::Progress;

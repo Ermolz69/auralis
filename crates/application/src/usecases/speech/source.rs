@@ -63,11 +63,8 @@ impl SpeechUseCases {
                         .map(|c| c.text.as_str())
                         .collect::<Vec<_>>()
                         .join("\n");
-                    if cues.is_empty()
-                        || cues.len() > 512
-                        || text.trim().is_empty()
-                        || text.len() > 1_048_576
-                    {
+                    self.limits()?.source(&text, cues.len())?;
+                    if cues.is_empty() || text.trim().is_empty() {
                         return Err(
                             invalid("Subtitle source is empty or exceeds its limits").into()
                         );
@@ -153,11 +150,8 @@ impl SpeechUseCases {
             }
             _ => return Err(invalid("Unknown speech source").into()),
         };
-        if text.trim().is_empty()
-            || text.len() > 1_048_576
-            || (request.kind != "text" && cues.is_empty())
-            || cues.len() > 512
-        {
+        self.limits()?.source(&text, cues.len())?;
+        if text.trim().is_empty() || (request.kind != "text" && cues.is_empty()) {
             return Err(invalid("Speech source is empty or exceeds its limits").into());
         }
         Ok(SpeechSourceSnapshot {

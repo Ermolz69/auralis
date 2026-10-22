@@ -127,3 +127,58 @@ must survive page changes. Raising a single constant is insufficient acceptance.
 Preserve old plans and checkpoint identities during migration; reject unsupported
 new data in old binaries. A full-source metadata snapshot may be bounded by the
 declared byte limit; decoded audio must be streamed, not loaded whole into RAM.
+
+## Speech admission policy
+
+The long-source host candidate replaces 512 with a default **4,096 utterances**,
+**8,192 chunks** and **1,048,576 UTF-8 source-text bytes**. An optional
+`speech-limits.json` under the ordinary application data root configures these
+quotas at startup:
+
+```json
+{
+  "version": 1,
+  "max_utterances": 4096,
+  "max_chunks": 8192,
+  "max_source_bytes": 1048576
+}
+```
+
+Unknown fields, invalid versions, zero/negative values and values above hard
+ceilings reject speech admission with the file name and a correction/restart
+instruction. An absent file uses the documented defaults. Partial fields use
+the same defaults. The file must be regular, at most 8,192 bytes. Changing a
+quota requires restart. Lowering it below an existing source/plan also blocks
+revalidation/resume until the quota is restored; it does not delete accepted
+work or rewrite approval. This configuration is an operator file; settings UI
+is not claimed by this slice.
+
+The hard ceilings are 8,192 utterances, 8,192 total chunks and 1 MiB source text.
+`max_chunks` must be at least `max_utterances`. A composed plan can expand a cue
+into multiple chunks, so source admission alone does not guarantee render
+admission. Its composed counts are checked before run registration or inference.
+Plan and result JSON retain a separate 16 MiB byte ceiling. The Python worker
+already has the same 16 MiB plan ceiling; CONTRACT speech-plan-v1 has no 512-item
+schema cap. These are host safety limits, not a change to CONTRACT semantics.
+
+The defaults allow an eightfold increase in cue count while retaining the old
+source/plan byte budgets. The 8,192 hard count bounds metadata, cast mappings,
+checkpoints and publication records; it is a conservative host quota, not a
+measured maximum story length or quality/performance claim. Text length and
+segmentation still determine feasibility. A source beyond the quotas fails
+explicitly; no tail is truncated or divided into unrelated projects silently.
+
+SQLite schema 18 transactionally rebuilds the two count-constrained tables,
+preserving immutable plans, attempts, reviews, publications and checkpoints. A
+dedicated connection disables foreign-key actions for the parent-table rebuild,
+checks every foreign key before commit and closes without returning to the
+pool. Invalid data rolls back the tables, indexes and schema marker. Normal
+pooled connections keep foreign keys enabled. Old binaries reject schema 18;
+an application downgrade is not an automatic database downgrade.
+
+The host loads at most one immutable plan while enumerating the bounded
+100-run history. Plan/result readers cap actual reads, including file growth
+after metadata inspection. Assignment validation and lookup use indexed IDs
+instead of scanning every cue for every assignment. Source snapshots and JSON
+metadata remain bounded whole snapshots. Streaming decoded audio and complete
+natural-story measurements remain required before INT-R07/LONG-01 can pass.

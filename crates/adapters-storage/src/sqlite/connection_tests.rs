@@ -72,7 +72,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            17
+            18
         );
 
         let project_columns: Vec<String> =

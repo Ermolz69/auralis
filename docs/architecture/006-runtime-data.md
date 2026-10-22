@@ -7,6 +7,7 @@ Tauri for the `com.auralis.desktop` bundle identifier.
 <app-data>/
 ├── auralis.sqlite
 ├── .auralis-owner.lock
+├── speech-limits.json                 # optional, read at startup
 ├── projects/
 │   ├── .staging/
 │   └── <project-id>/
@@ -27,6 +28,8 @@ Tauri for the `com.auralis.desktop` bundle identifier.
 
 - `auralis.sqlite` is the only source of truth for projects, jobs, artifacts, outbox, theme, and pins.
 - `.auralis-owner.lock` carries an exclusive OS lease before migrations and startup recovery.
+- `speech-limits.json` optionally lowers speech admission quotas or raises the default cue quota
+  within fixed host ceilings. See the [speech admission policy](../integration/revoice-input-contract.md#speech-admission-policy).
 - `projects/` contains only physical project files addressed by managed storage keys.
 - `projects/.staging/` contains artifact files waiting for atomic finalization.
 - `logs/` contains structured diagnostic logs with daily rotation, at most 30 owned files,

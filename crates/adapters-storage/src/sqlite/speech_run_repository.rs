@@ -3,7 +3,10 @@ use chrono::Utc;
 use domain::job::{Job, JobKind, JobStatus};
 use domain::project::ProjectId;
 use ports::error::PortError;
-use ports::speech_run::{ActiveSpeechAttempt, SpeechCheckpoint, SpeechRunIntent, SpeechRunStore};
+use ports::speech_run::{
+    ActiveSpeechAttempt, MAX_SPEECH_CHUNKS, MAX_SPEECH_PLAN_BYTES, MAX_SPEECH_UTTERANCES,
+    SpeechCheckpoint, SpeechRunIntent, SpeechRunStore,
+};
 use sha2::{Digest, Sha256};
 use sqlx::{FromRow, Row, SqlitePool};
 use std::str::FromStr;
@@ -41,7 +44,7 @@ fn decode_active(row: sqlx::sqlite::SqliteRow) -> Result<ActiveSpeechAttempt, Po
 
 fn validate_intent(intent: &SpeechRunIntent) -> Result<(), PortError> {
     if intent.plan_json.is_empty()
-        || intent.plan_json.len() > 16_777_216
+        || intent.plan_json.len() > MAX_SPEECH_PLAN_BYTES
         || !serde_json::from_str::<serde_json::Value>(&intent.plan_json)
             .is_ok_and(|value| value.is_object())
         || !valid_hash(&intent.plan_sha256)
@@ -49,9 +52,9 @@ fn validate_intent(intent: &SpeechRunIntent) -> Result<(), PortError> {
         || !portable_id(&intent.profile_id)
         || !valid_hash(&intent.profile_sha256)
         || intent.expected_utterances == 0
-        || intent.expected_utterances > 512
+        || intent.expected_utterances > MAX_SPEECH_UTTERANCES
         || intent.expected_chunks < intent.expected_utterances
-        || intent.expected_chunks > 4096
+        || intent.expected_chunks > MAX_SPEECH_CHUNKS
     {
         Err(invalid_input("invalid immutable speech run intent"))
     } else {

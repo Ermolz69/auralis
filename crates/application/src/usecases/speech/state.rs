@@ -28,8 +28,10 @@ impl SpeechUseCases {
             .await?
             .ok_or_else(|| ApplicationError::ProjectNotFound(project.clone()))?;
         let mut results = Vec::new();
-        for intent in self.store.list_runs(&project).await? {
-            results.push(self.view(intent).await?);
+        for id in self.store.list_run_ids(&project).await? {
+            if let Some(intent) = self.store.get_run(id).await? {
+                results.push(self.view(intent).await?);
+            }
         }
         Ok(results)
     }

@@ -1,0 +1,207 @@
+{
+  "version": 1,
+  "case_id": "LONG-HOST-MODEL-FREE-v1",
+  "recorded_at": "2026-10-22T23:06:26.940Z",
+  "source_parent": "8c30eeb610059d30adbc9e1f1e927fbed074ec2c",
+  "translate_pin": "44e7d4f3c6ce2443279f5d0d3acd07cbb931476e",
+  "scope": "Configured host admission, immutable metadata and SQLite migration only. No real models, natural story, native, listening or clean Windows gate.",
+  "checks": [
+    {
+      "command": "task rs:test:speech-limits",
+      "passed": 16,
+      "failed": 0
+    },
+    {
+      "command": "task rs:test:storage",
+      "passed": 192,
+      "failed": 0,
+      "log": "target/revoice/long-storage-check-v2.log"
+    },
+    {
+      "command": "task rs:test:tts",
+      "passed": 30,
+      "failed": 0,
+      "ignored": 3,
+      "log": "target/revoice/long-tts-check-v1.log"
+    },
+    {
+      "command": "task rs:clippy:speech",
+      "exit_code": 0
+    },
+    {
+      "command": "task rs:test:desktop",
+      "passed": 65,
+      "failed": 0
+    },
+    {
+      "command": "task docs:integration",
+      "exit_code": 0,
+      "markdown_documents": 65
+    },
+    {
+      "command": "task revoice:plan:check",
+      "exit_code": 0,
+      "passed": 3
+    }
+  ],
+  "retained_log_hashes": [
+    {
+      "path": "target/revoice/long-storage-check-v2.log",
+      "sha256": "ef1d1ad9a44e41c13a4d0d027fd727232c1e73ca778870e58eacec68e965cf56"
+    },
+    {
+      "path": "target/revoice/long-tts-check-v1.log",
+      "sha256": "75e9ea6717f4efde35bb2884a9bac62501527250d3a63485156f459c6c1a61c2"
+    }
+  ],
+  "working_tree_file_hashes": [
+    {
+      "path": "crates/adapters-storage/src/sqlite/connection/speech_limits.rs",
+      "sha256": "16799504c7f940a7eb7b1bba63137eb0a56dd4f398ec6fa2543b96fe1b0a9c7d"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/connection/validation.rs",
+      "sha256": "26f4233d3db211266c64bbc3925f6362bdeb193973672c3e04f2d29f394355cc"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/connection_tests.rs",
+      "sha256": "1bc7f100cd25e5c89cab212754fa4730ad39d296e31a9aaf01a95284070744cf"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/project_revision_migration_tests.rs",
+      "sha256": "ab98857ca5642ab34a480784f9f7bef4beaa16b878ea7538f0eeb68f1c08fefe"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/speech_limits_schema.sql",
+      "sha256": "03329b3fe53058815d3ae43bc2e67aa8355a50970edbe00cf896174a64b4d818"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/speech_limits_tests.rs",
+      "sha256": "449be5239a09fd28fd7aee836e1d8cf47e9206504677864dc6e18c303896bcb4"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/speech_run_repository.rs",
+      "sha256": "f1320fab50a5cc018e5fd7838ec6fe96b7e14efe5b710ec2e62a536164054b6d"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/speech_run_repository/workflow.rs",
+      "sha256": "d5bc6e1fcdc23e01d76a955c5707332aebfe534e462c20b2220e6898f23bd15f"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/translation_host_jobs_migration_tests.rs",
+      "sha256": "1a0c5873d817d256e3d1289e63dc11bf0b7a0ff29565bd17bb1400e7e934b21d"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/translation_links_migration_tests.rs",
+      "sha256": "5f29dcc27b210a487ba7afc6b1cf80ff5ffd3a2674189ee7b297f269bfda6f96"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/translation_publication_revisions_migration_tests.rs",
+      "sha256": "4de51a6e41fdfcb2bbc7b36afd9cfadbbc40eedb40a8d9f52a3ed327d9db0358"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/translation_run_intents_migration_tests.rs",
+      "sha256": "de09413e5c7969290222265590bf74799ca95e013996616fba8cd2b69f37b846"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/ui_preferences/tests.rs",
+      "sha256": "21e046819d1955f37802f1810ff5903f8565d9a3c7687dda4901de3d0fd0c796"
+    },
+    {
+      "path": "crates/adapters-storage/src/sqlite/youtube_import_journal/tests.rs",
+      "sha256": "1417893a9f7b0315f039f24a18b9e23473e28240022a3ebabe7f96bd540523bb"
+    },
+    {
+      "path": "crates/adapters-storage/tests/merge_schema_upgrade.rs",
+      "sha256": "9bac19ec6d9e23089f57674140860a4094d18b680b5074cadf5dcaa7f56d990b"
+    },
+    {
+      "path": "crates/adapters-storage/tests/translation_edit_intents.rs",
+      "sha256": "7109cc3b6a20f688a656d12fe667af6d909d2cc8ce5fe6d46081b4da1be752b7"
+    },
+    {
+      "path": "crates/adapters-storage/tests/translation_reviews.rs",
+      "sha256": "a0eca62440ca5aecf0eedba88d7b666edf3217ea7805128c85e3256f01e5f018"
+    },
+    {
+      "path": "crates/adapters-tts/src/result_verification.rs",
+      "sha256": "e466c1b2bded957cd462d1b783fe4c092abaf550ec29c7b6fd0d424e2fbdc371"
+    },
+    {
+      "path": "crates/adapters-tts/src/workflow.rs",
+      "sha256": "241bbeccaaeef0470a6a8cd80bcfda075c7eb29fa971607842d0cb4cf69f20d0"
+    },
+    {
+      "path": "crates/application/src/usecases/speech/limits.rs",
+      "sha256": "3ae644906d0533e89f38fa3ff848dd6caa5dfd8519a3f8a977ce186409117cd8"
+    },
+    {
+      "path": "crates/application/src/usecases/speech/mod.rs",
+      "sha256": "75a65a503dd57bc257d7887bb6f54ab676f95f03d4799f664e42b9ddce51da5e"
+    },
+    {
+      "path": "crates/application/src/usecases/speech/prepare.rs",
+      "sha256": "0c4d210d4a80601ea9b14fb2f091c94b6029c824d9a762f7840c7882a58ab0d7"
+    },
+    {
+      "path": "crates/application/src/usecases/speech/service.rs",
+      "sha256": "943a1b8997c686a78246f7137a5f6d012993ad419bdd07d2b49b8dba5624d0dc"
+    },
+    {
+      "path": "crates/application/src/usecases/speech/source.rs",
+      "sha256": "bf4961aa9bac0d4ee8afa29241c32bed18ef70bfeb2e686f371ddedf78509dab"
+    },
+    {
+      "path": "crates/application/src/usecases/speech/state.rs",
+      "sha256": "a989d720424d19937c586a46126d0cf4bca79f42a3c98f12368e9c004fc5ce1f"
+    },
+    {
+      "path": "crates/application/tests/speech_workflow.rs",
+      "sha256": "460e0253d80cdd7decd0fe054bed7ab0a806d7ad7787251cd67cb0667f13473c"
+    },
+    {
+      "path": "crates/application/tests/speech_workflow_long.rs",
+      "sha256": "d9e108bd05d39263047a54069b00e2c751438368225826d9668da8308648556d"
+    },
+    {
+      "path": "crates/ports/src/speech_run.rs",
+      "sha256": "4cfda598ed199e89fabff40e83c3d40ba04be86badc7400c4d2a347a106df308"
+    },
+    {
+      "path": "crates/ports/src/speech_workflow.rs",
+      "sha256": "8b56632e9df15ae4b6936c86eb42bf4875dbb144cdb889c2ec7a863e5444cf02"
+    },
+    {
+      "path": "docs/architecture/006-runtime-data.md",
+      "sha256": "05af6ddad2746bf9ad943a8d2ce6ae8c7875791320b80881f7a23c81aaeb1f9e"
+    },
+    {
+      "path": "docs/integration/acceptance/04-revoice-long-host.md",
+      "sha256": "8ded1b6c92e26691dbcbc579ce843bef14443c48c27348aad697cff87d87d72c"
+    },
+    {
+      "path": "docs/integration/revoice-execution.md",
+      "sha256": "6969f77f42887a38079cd5c86c7e19e40f668980e96ccae0d16c57356393b16f"
+    },
+    {
+      "path": "docs/integration/revoice-input-contract.md",
+      "sha256": "70b9789f8dc0481294d033749062f3db034f1cf7dddca83aef0044a13c54b2aa"
+    },
+    {
+      "path": "docs/integration/revoice-plan.json",
+      "sha256": "0df92c6bdd88187d7dac2e9d1104f2aa93a598b9f3b0f0ffa185b36e1196b736"
+    },
+    {
+      "path": "src-tauri/src/bootstrap/paths.rs",
+      "sha256": "2ebe8018738ea57b3063bb5ba0dfc60adcd0a039823002bcc5ba5fe2f6bf2583"
+    },
+    {
+      "path": "src-tauri/src/bootstrap/tts.rs",
+      "sha256": "703df17ee988577c26ed2406217a524893e6732e0025d33d8263e01e93bbb903"
+    },
+    {
+      "path": "taskfiles/rust.yml",
+      "sha256": "50e06296d3f861c4cb672eff52051e13a6730fa61e0df774f2f7e6263cdf7933"
+    }
+  ]
+}

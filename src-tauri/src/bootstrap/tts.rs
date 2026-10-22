@@ -1,7 +1,8 @@
 use super::{paths::AppPaths, services::RuntimeServices};
 use adapters_tts::{TtsRuntimeConfig, TtsWorkerClient};
 use application::usecases::{
-    speech::SpeechUseCases, speech_catalog::SpeechCatalogUseCase,
+    speech::{SpeechLimits, SpeechUseCases},
+    speech_catalog::SpeechCatalogUseCase,
     translation::TranslationReviewUseCase,
 };
 use ports::{speech_catalog::SpeechCatalogPort, speech_workflow::SpeechExecutionPort};
@@ -103,6 +104,7 @@ pub fn setup(
                 .unwrap_or_else(|| "TTS runtime unavailable".into()),
         );
     let cases = SpeechUseCases {
+        limits: load_speech_limits(paths),
         marker: marker.ok().map(|config| {
             Arc::new(adapters_tts::MarkerClient { config }) as Arc<dyn ports::marker::MarkerPort>
         }),
@@ -121,4 +123,27 @@ pub fn setup(
         emitter,
     };
     (Arc::new(catalog_cases), Arc::new(cases))
+}
+
+fn load_speech_limits(paths: &AppPaths) -> Result<SpeechLimits, String> {
+    let path = paths.speech_limits_config();
+    let metadata = match path.symlink_metadata() {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Default::default()),
+        Err(error) => return Err(error.to_string()),
+    };
+    if !metadata.is_file() || metadata.file_type().is_symlink() || metadata.len() > 8192 {
+        return Err("configuration must be a regular file of at most 8192 bytes".into());
+    }
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .map_err(|error| error.to_string())?
+        .take(8193)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() > 8192 {
+        return Err("configuration grew beyond 8192 bytes".into());
+    }
+    SpeechLimits::from_json(&bytes)
 }

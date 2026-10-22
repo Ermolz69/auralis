@@ -1,6 +1,8 @@
 use super::*;
 #[path = "puza_project.rs"]
 mod puza_project;
+#[path = "speech_limits.rs"]
+mod speech_limits;
 #[path = "speech_workflow.rs"]
 mod speech_workflow;
 /// Returns `true` only when a new database still needs its one-time initialization.
@@ -71,7 +73,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
-        14..=17 => has_speech && has_queue && has_reviews,
+        14..=18 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();
@@ -213,6 +215,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     }
     speech_workflow::migrate_and_validate(pool, schema_marker).await?;
     puza_project::migrate_and_validate(pool, schema_marker).await?;
+    speech_limits::migrate(pool, schema_marker).await?;
     validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;

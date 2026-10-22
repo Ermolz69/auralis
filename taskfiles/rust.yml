@@ -1,6 +1,19 @@
 version: '3'
 
 tasks:
+  test:speech-limits:
+    desc: Verify bounded long speech admission and non-destructive SQLite upgrades without models
+    cmds:
+      - cargo test --locked -p application --lib usecases::speech::limits
+      - cargo test --locked -p adapters-storage --lib speech_limits
+      - cargo test --locked -p adapters-storage --test merge_schema_upgrade
+      - task: test:speech-workflow
+  fmt:speech-limits:
+    desc: Format the scoped long speech admission sources without touching sibling work
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/speech_run.rs crates/application/src/usecases/speech/mod.rs crates/application/src/usecases/speech/limits.rs crates/application/src/usecases/speech/service.rs crates/application/src/usecases/speech/source.rs crates/application/src/usecases/speech/prepare.rs crates/application/tests/speech_workflow.rs crates/adapters-storage/src/sqlite/connection/validation.rs crates/adapters-storage/src/sqlite/connection/speech_limits.rs crates/adapters-storage/src/sqlite/speech_limits_tests.rs crates/adapters-storage/src/sqlite/speech_run_repository.rs crates/adapters-storage/src/sqlite/connection_tests.rs crates/adapters-storage/src/sqlite/ui_preferences/tests.rs crates/adapters-storage/tests/merge_schema_upgrade.rs crates/adapters-tts/src/workflow.rs crates/adapters-tts/src/result_verification.rs src-tauri/src/bootstrap/tts.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/application/tests/speech_workflow_long.rs crates/application/src/usecases/speech/state.rs crates/ports/src/speech_workflow.rs crates/adapters-storage/src/sqlite/speech_run_repository/workflow.rs src-tauri/src/bootstrap/paths.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/src/sqlite/project_revision_migration_tests.rs crates/adapters-storage/src/sqlite/translation_host_jobs_migration_tests.rs crates/adapters-storage/src/sqlite/translation_run_intents_migration_tests.rs crates/adapters-storage/src/sqlite/translation_publication_revisions_migration_tests.rs crates/adapters-storage/src/sqlite/translation_links_migration_tests.rs crates/adapters-storage/src/sqlite/youtube_import_journal/tests.rs crates/adapters-storage/tests/translation_edit_intents.rs crates/adapters-storage/tests/translation_reviews.rs
   test:ui-preferences:
     desc: Verify durable pin migration and concurrent startup imports against real SQLite
     cmds:

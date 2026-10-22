@@ -11,6 +11,9 @@ mod historical_provider;
 #[path = "support/historical_seed.rs"]
 mod historical_seed;
 
+#[path = "speech_workflow_long.rs"]
+mod long_sources;
+
 use adapters_storage::sqlite::{
     SqliteJobRepository, SqliteProjectRepository, SqliteSpeechRunStore, SqliteStorageUnitOfWork,
     SqliteTranslationReviewStore,
@@ -226,6 +229,7 @@ async fn fixture() -> Result<
         invalid: AtomicBool::new(false),
     });
     let cases = SpeechUseCases {
+        limits: Ok(Default::default()),
         marker: None,
         marker_error: None,
         contract: None,

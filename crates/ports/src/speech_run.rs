@@ -5,6 +5,12 @@ use uuid::Uuid;
 
 use crate::error::PortError;
 
+// Host-wide storage/transport ceilings. Admission policy can be lower, while
+// immutable stored plans remain bounded independently of user configuration.
+pub const MAX_SPEECH_UTTERANCES: u32 = 8192;
+pub const MAX_SPEECH_CHUNKS: u32 = 8192;
+pub const MAX_SPEECH_PLAN_BYTES: usize = 16_777_216;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SpeechRunIntent {
     pub run_id: Uuid,

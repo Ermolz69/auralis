@@ -82,17 +82,12 @@ impl SpeechWorkflowStore for SqliteSpeechRunStore {
         .transpose()
     }
 
-    async fn list_runs(&self, project: &ProjectId) -> Result<Vec<SpeechRunIntent>, PortError> {
+    async fn list_run_ids(&self, project: &ProjectId) -> Result<Vec<Uuid>, PortError> {
         let ids: Vec<String> = sqlx::query_scalar("SELECT run_id FROM speech_run_intents WHERE project_id = ? ORDER BY created_at DESC LIMIT 100")
             .bind(project.to_string()).fetch_all(&self.pool).await.map_err(decode_error)?;
-        let mut runs = Vec::new();
-        for id in ids {
-            let id = Uuid::parse_str(&id).map_err(|e| invalid_input(&e.to_string()))?;
-            if let Some(run) = self.get_run(id).await? {
-                runs.push(run);
-            }
-        }
-        Ok(runs)
+        ids.into_iter()
+            .map(|id| Uuid::parse_str(&id).map_err(|e| invalid_input(&e.to_string())))
+            .collect()
     }
 
     async fn latest_job(&self, run_id: Uuid) -> Result<Option<Job>, PortError> {

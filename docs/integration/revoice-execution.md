@@ -138,6 +138,14 @@ The owner has been asked for the existing neutral listening JSON, actual story
 paths and a clean Windows target. Continue model-free implementation while those
 answers are pending. No qualification scores or source suitability are inferred.
 
+The subsequent [long-source host slice](acceptance/04-revoice-long-host.md)
+adds configurable admission, schema 18, bounded plan/result reads, indexed cast
+lookup and one-plan-at-a-time history. Its 600-cue application test passes; it
+does not pass LONG-01/02 because decoded audio assembly is still eager and the
+natural installed story has not run. The existing CONTRACT schema has no
+512-item cap; the [host policy](revoice-input-contract.md#speech-admission-policy)
+documents the new safety quotas without changing CONTRACT semantics.
+
 ## Owner steering, 23 October
 
 The owner has no story folder and explicitly requested finding a webtoon on

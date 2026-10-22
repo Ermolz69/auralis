@@ -169,7 +169,18 @@ fn read_json(path: &Path) -> Result<Value, PortError> {
             "Speech plan or result manifest is not a bounded regular file",
         ));
     }
-    serde_json::from_slice(&fs::read(path).map_err(io_error)?)
+    let mut bytes = Vec::new();
+    File::open(path)
+        .map_err(io_error)?
+        .take(MAX_RESULT_JSON_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(io_error)?;
+    if bytes.len() as u64 > MAX_RESULT_JSON_BYTES {
+        return Err(invalid(
+            "Speech plan or result manifest grew beyond its byte limit",
+        ));
+    }
+    serde_json::from_slice(&bytes)
         .map_err(|_| invalid("Speech plan or result manifest is invalid JSON"))
 }
 
