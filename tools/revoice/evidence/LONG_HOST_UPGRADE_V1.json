@@ -1,0 +1,41 @@
+{
+    "version":  1,
+    "case_id":  "NORMAL-PROFILE-LONG-HOST-UPGRADE-v1",
+    "started_at":  "2026-10-22T23:15:59.4106090Z",
+    "installer":  "E:\\Anything\\Projects\\Commercial\\auralis\\target\\release\\bundle\\nsis\\Auralis_0.1.0_x64-setup.exe",
+    "installer_sha256":  "485d8783a0b3432ade03fda90eaa9029a3e6c79bcbed8477eedadaf1862e18f0",
+    "application":  "C:\\Users\\Ermolz\\AppData\\Local\\Programs\\Auralis\\auralis-app.exe",
+    "expected_application_sha256":  "4c80cb6c6e8a2cd31be886ba87c9d781d41ed94723187e5de1c617ec9b4f7f3a",
+    "previous_application_sha256":  "7f944769255803623d6226318f1d5d96e1b4e8e27e619ceec00111e7a1bf3a22",
+    "backup":  "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\local-upgrade-long-host-v1.json.backup",
+    "owned_pids":  [
+                       11164,
+                       21612,
+                       5988,
+                       25668,
+                       25688,
+                       25136,
+                       27604
+                   ],
+    "phase":  "installed_verified",
+    "error":  null,
+    "script_sha256":  "74bf9b768bd3b38b1524f516e9c8abbbe64e4ba212f81acb94725cd8bd41b623",
+    "limitation":  "Local existing-profile upgrade only; no clean Windows, native workflow or inference acceptance. Does not launch the application or models.",
+    "ended_at":  "2026-10-22T23:16:08.9582384Z",
+    "elapsed_ms":  9548,
+    "profile_before":  {
+                           "version":  1,
+                           "at":  "2026-10-22T23:15:59.536Z",
+                           "profile":  "C:\\Users\\Ermolz\\AppData\\Roaming\\com.auralis.desktop",
+                           "projects":  0,
+                           "jobs":  0,
+                           "active_jobs":  0,
+                           "schema":  17,
+                           "backups":  [
+
+                                       ]
+                       },
+    "installer_pid":  17132,
+    "installer_exit_code":  0,
+    "application_sha256":  "4c80cb6c6e8a2cd31be886ba87c9d781d41ed94723187e5de1c617ec9b4f7f3a"
+}

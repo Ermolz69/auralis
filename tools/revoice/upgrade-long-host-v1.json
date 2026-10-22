@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "case_id": "NORMAL-PROFILE-LONG-HOST-UPGRADE-v1",
+  "source_commit": "70471a458cad95edcb42f54ee7df4fc982ff4c3a",
+  "translate_pin": "44e7d4f3c6ce2443279f5d0d3acd07cbb931476e",
+  "installer_sha256": "485d8783a0b3432ade03fda90eaa9029a3e6c79bcbed8477eedadaf1862e18f0",
+  "application_sha256": "4c80cb6c6e8a2cd31be886ba87c9d781d41ed94723187e5de1c617ec9b4f7f3a",
+  "previous_application_sha256": "7f944769255803623d6226318f1d5d96e1b4e8e27e619ceec00111e7a1bf3a22",
+  "msi_sha256": "b7242be80dad8a2a0926ebc8904fd584abc41cdfe90d06d518f2706d1bba60a6",
+  "max_install_attempts": 1,
+  "max_install_minutes": 10,
+  "profile_precondition": "Ordinary owned native-test profile: zero projects and zero active jobs; previous executable hash exact. Stop only its verified process tree, retain SQLite/configuration and previous executable backups, then install one candidate.",
+  "expected": "Exact new executable hash; later launch migrates schema 17 to 18. Rebind a fresh native window once to determine whether UI capture recovers.",
+  "boundary": "Local upgrade and native-window diagnostic only. Genuine YouTube VTT was independently rejected for Kind/Language header metadata. Fix selected SRT retrieval before a full URL-import claim. No model/voice changes, no clean Windows or language/audio quality acceptance."
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "case_id": "YT-STORY-HRaa8kb1EhE-CAPTIONS-v1",
+  "video_id": "HRaa8kb1EhE",
+  "url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "metadata_case": "YT-STORY-HRaa8kb1EhE-METADATA-v2",
+  "metadata_evidence": "tools/revoice/evidence/YOUTUBE_HRaa8kb1EhE_METADATA_V2.json",
+  "track": { "language": "zh", "kind": "manual", "format": "vtt" },
+  "max_invocations": 1,
+  "max_wall_seconds": 120,
+  "max_subtitle_bytes": 8388608,
+  "purpose": "Privately freeze exact Chinese subtitle bytes before model work while native input is unavailable. Use the retained metadata's exact manual Chinese VTT URL; do not fall back to automatic captions.",
+  "stop_conditions": [
+    "admission refusal",
+    "metadata hash mismatch",
+    "expired/empty/unavailable captions",
+    "deadline",
+    "byte ceiling"
+  ],
+  "limitation": "HTTP source acquisition only. Not a native Auralis URL import, strict format acceptance, Chinese audio/transcript alignment, ASR ground truth or translation quality pass. No video or model is downloaded."
+}

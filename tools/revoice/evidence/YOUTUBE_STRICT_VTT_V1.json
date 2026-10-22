@@ -1,0 +1,14 @@
+{
+  "case_id": "YT-STORY-HRaa8kb1EhE-STRICT-VTT-v1",
+  "elapsed_ms": 21,
+  "error": "Invalid source: WebVTT error MissingHeaderSeparator at line 2",
+  "scope": "Real local Chinese caption bytes through the pinned Auralis FormatInspector; no project UI, inference, source-language listening or quality acceptance. Source group is exposed diagnostic material, never a sealed holdout.",
+  "source_bytes": 217352,
+  "source_group": "HRaa8kb1EhE",
+  "source_sha256": "daede8cab3c510ce0ab7317f100d465b333b4ab39b6489249df79483696020e5",
+  "source_url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "spec_sha256": "9543fe4440944af030422c53234c054c08f8c166e4c4432e24916839d9668fc2",
+  "status": "failed",
+  "test_source_sha256": "7a14b4d103f8880f03a46d48f4a410408b8dc175b11222e4f362b4e18cedb3a5",
+  "version": 1
+}

@@ -38,6 +38,12 @@ tasks:
       SPEC: '{{default "tools/revoice/youtube-source-v1.json" .SPEC}}'
     cmds:
       - node tools/revoice/youtube-inspect.mjs "{{.SPEC}}"
+  revoice:youtube:captions:
+    desc: Retain one bounded exact manual Chinese VTT acquisition under shared metadata admission without models or video
+    vars:
+      SPEC: '{{default "tools/revoice/captions-v1.json" .SPEC}}'
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/captions-admitted.ps1 -Spec "{{.SPEC}}"
   revoice:translate:seed-assets:
     desc: Verify and copy existing pinned translator assets into the ordinary profile cache under shared machine admission
     requires:
@@ -50,6 +56,22 @@ tasks:
       vars: [INSTALLER_SHA256, APPLICATION_SHA256, OUTPUT]
     cmds:
       - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/install-candidate.ps1 -InstallerSha256 "{{.INSTALLER_SHA256}}" -ApplicationSha256 "{{.APPLICATION_SHA256}}" -Output "{{.OUTPUT}}"
+  revoice:profile:inspect:
+    desc: Read only project/job counts and schema identity in the ordinary local profile
+    cmds:
+      - node --disable-warning=ExperimentalWarning tools/revoice/profile-snapshot.mjs inspect
+  revoice:upgrade:local:
+    desc: Upgrade one pinned local candidate after verifying the owned idle profile and retaining database/configuration/executable backups
+    requires:
+      vars: [INSTALLER_SHA256, APPLICATION_SHA256, PREVIOUS_APPLICATION_SHA256, OUTPUT]
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/upgrade-candidate.ps1 -InstallerSha256 "{{.INSTALLER_SHA256}}" -ApplicationSha256 "{{.APPLICATION_SHA256}}" -PreviousApplicationSha256 "{{.PREVIOUS_APPLICATION_SHA256}}" -Output "{{.OUTPUT}}"
+  revoice:profile:backup:
+    desc: Retain WAL-consistent SQLite and configuration backups before a local candidate upgrade
+    requires:
+      vars: [OUTPUT]
+    cmds:
+      - node --disable-warning=ExperimentalWarning tools/revoice/profile-snapshot.mjs backup "{{.OUTPUT}}"
   revoice:fmt:
     desc: Format only the full revoicing scope, audit tools and speech pagination slice
     cmds:

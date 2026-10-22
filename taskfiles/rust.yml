@@ -1,6 +1,14 @@
 version: '3'
 
 tasks:
+  test:source-inspect:
+    desc: Inspect one frozen real Chinese subtitle file with the pinned production format adapter without models
+    vars:
+      SPEC: '{{default "tools/revoice/source-inspect-v1.json" .SPEC}}'
+    env:
+      AURALIS_REVOICE_SOURCE_SPEC: '{{.ROOT_DIR}}/{{.SPEC}}'
+    cmds:
+      - cargo test --locked -p adapters-translate --test admitted_source -- --ignored --nocapture
   test:speech-limits:
     desc: Verify bounded long speech admission and non-destructive SQLite upgrades without models
     cmds:

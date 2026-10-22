@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "case_id": "YT-STORY-HRaa8kb1EhE-STRICT-VTT-v1",
+  "source_group": "HRaa8kb1EhE",
+  "source_url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "source_path": "target/revoice/YT-STORY-HRaa8kb1EhE-CAPTIONS-v1/attempt-wo9ZHw/HRaa8kb1EhE.zh.vtt",
+  "source_sha256": "daede8cab3c510ce0ab7317f100d465b333b4ab39b6489249df79483696020e5",
+  "source_bytes": 217352,
+  "expected_cues": 4004,
+  "format": "vtt",
+  "max_source_bytes": 8388608,
+  "output": "target/revoice/YT-STORY-HRaa8kb1EhE-STRICT-VTT-v1.json",
+  "expected": "Unmodified original, exact strict-parser cue coverage, unique ordered IDs, retained timing and text hash. Reject unsupported grammar rather than silently convert it.",
+  "scope": "Real local Chinese caption bytes through the pinned Auralis FormatInspector; no project UI, inference, source-language listening or quality acceptance. Source group is exposed diagnostic material, never a sealed holdout."
+}

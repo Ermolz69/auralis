@@ -148,8 +148,13 @@
       "depends_on": ["INT-R01"],
       "status": "in_progress",
       "bindings": ["DATA-03", "DATA-04", "DATA-05"],
-      "evidence": ["tools/revoice/evidence/YOUTUBE_HRaa8kb1EhE_METADATA_V2.json"],
-      "blocker": "Owner requested YouTube discovery. HRaa8kb1EhE has manual Chinese tracks; native import, actual source bytes, trusted ASR truth and independent published references still pending."
+      "evidence": [
+        "tools/revoice/evidence/YOUTUBE_HRaa8kb1EhE_METADATA_V2.json",
+        "tools/revoice/evidence/YOUTUBE_CAPTIONS_V1.json",
+        "tools/revoice/evidence/YOUTUBE_STRICT_VTT_V1.json",
+        "docs/integration/acceptance/05-revoice-upgrade-and-source.md"
+      ],
+      "blocker": "Raw manual zh VTT retained (217352 bytes, 4004 timing lines) but strict FormatInspector rejected provider Kind/Language header. Preserve that failed case; implement explicit SRT selection/retrieval and freeze a separate source case. Native URL import, trusted ASR truth and independent published references remain pending."
     },
     {
       "id": "INT-R03",
@@ -179,7 +184,9 @@
         "docs/integration/acceptance/02-revoice-local-install.md",
         "tools/revoice/evidence/LOCAL_INSTALL_V1.json",
         "tools/revoice/evidence/TRANSLATE_ASSETS_V3.json",
-        "docs/integration/acceptance/03-revoice-pin-startup.md"
+        "docs/integration/acceptance/03-revoice-pin-startup.md",
+        "docs/integration/acceptance/05-revoice-upgrade-and-source.md",
+        "tools/revoice/evidence/LONG_HOST_UPGRADE_V1.json"
       ],
       "blocker": "Ordinary installed app launches, but native window capture still times out after helper reset and owner confirmation of an active visible desktop. No URL import was confirmed. Continue independent implementation."
     },
