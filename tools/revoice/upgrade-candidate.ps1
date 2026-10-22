@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{64}$')][string]$InstallerSha256,
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{64}$')][string]$ApplicationSha256,
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-f0-9]{64}$')][string]$PreviousApplicationSha256,
+    [ValidatePattern('^[A-Z0-9][A-Za-z0-9_-]{1,95}$')][string]$CaseId = 'NORMAL-PROFILE-LONG-HOST-UPGRADE-v1',
     [Parameter(Mandatory=$true)][string]$Output
 )
 $ErrorActionPreference = 'Stop'
@@ -21,7 +22,7 @@ $application = Join-Path $installRoot 'auralis-app.exe'
 if ((Get-PinnedSha256 $installer) -ne $InstallerSha256 -or (Get-PinnedSha256 $application) -ne $PreviousApplicationSha256) { throw 'Upgrade candidate or previous installed identity differs' }
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $receipt = [ordered]@{
-    version=1;case_id='NORMAL-PROFILE-LONG-HOST-UPGRADE-v1';started_at=[DateTime]::UtcNow.ToString('o')
+    version=1;case_id=$CaseId;started_at=[DateTime]::UtcNow.ToString('o')
     installer=$installer;installer_sha256=$InstallerSha256;application=$application;expected_application_sha256=$ApplicationSha256
     previous_application_sha256=$PreviousApplicationSha256;backup=$backupPath;owned_pids=@();phase='preflight';error=$null
     script_sha256=(Get-PinnedSha256 $PSCommandPath)

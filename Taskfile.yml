@@ -68,10 +68,12 @@ tasks:
       - node --disable-warning=ExperimentalWarning tools/revoice/profile-snapshot.mjs inspect
   revoice:upgrade:local:
     desc: Upgrade one pinned local candidate after verifying the owned idle profile and retaining database/configuration/executable backups
+    vars:
+      CASE_ID: '{{default "NORMAL-PROFILE-LONG-HOST-UPGRADE-v1" .CASE_ID}}'
     requires:
       vars: [INSTALLER_SHA256, APPLICATION_SHA256, PREVIOUS_APPLICATION_SHA256, OUTPUT]
     cmds:
-      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/upgrade-candidate.ps1 -InstallerSha256 "{{.INSTALLER_SHA256}}" -ApplicationSha256 "{{.APPLICATION_SHA256}}" -PreviousApplicationSha256 "{{.PREVIOUS_APPLICATION_SHA256}}" -Output "{{.OUTPUT}}"
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/upgrade-candidate.ps1 -InstallerSha256 "{{.INSTALLER_SHA256}}" -ApplicationSha256 "{{.APPLICATION_SHA256}}" -PreviousApplicationSha256 "{{.PREVIOUS_APPLICATION_SHA256}}" -CaseId "{{.CASE_ID}}" -Output "{{.OUTPUT}}"
   revoice:profile:backup:
     desc: Retain WAL-consistent SQLite and configuration backups before a local candidate upgrade
     requires:

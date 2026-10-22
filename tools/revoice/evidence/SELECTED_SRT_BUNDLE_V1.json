@@ -1,0 +1,30 @@
+{
+  "createdAt": "2026-10-22T23:51:06.715Z",
+  "target": "x86_64-pc-windows-msvc",
+  "artifact": {
+    "file": "target\\release\\bundle\\msi\\Auralis_0.1.0_x64_en-US.msi",
+    "bytes": 68997120,
+    "sha256": "fea4b6689ccc7f4229d2c4e7b05bab5a47c7c51a9e5bf67db521ff441538e0a1"
+  },
+  "payload": {
+    "fileCount": 9,
+    "files": [
+      "Auralis_0.1.0_x64_en-US.msi",
+      "PFiles\\Auralis\\auralis-app.exe",
+      "PFiles\\Auralis\\binaries\\FFMPEG-GPL-3.0.txt",
+      "PFiles\\Auralis\\binaries\\THIRD-PARTY-NOTICES.txt",
+      "PFiles\\Auralis\\binaries\\YT-DLP-UNLICENSE.txt",
+      "PFiles\\Auralis\\binaries\\ffmpeg-x86_64-pc-windows-msvc.exe",
+      "PFiles\\Auralis\\binaries\\ffprobe-x86_64-pc-windows-msvc.exe",
+      "PFiles\\Auralis\\binaries\\media-tools-provenance.json",
+      "PFiles\\Auralis\\binaries\\yt-dlp-x86_64-pc-windows-msvc.exe"
+    ]
+  },
+  "application": {
+    "file": "PFiles\\Auralis\\auralis-app.exe",
+    "bytes": 21300224,
+    "sha256": "b2b2c78f6bf8f38914972a22a0c18a423a24c0ba01bb21b70cd101adf64c7e54",
+    "sourceSha256": "aaa81eb3547207ba42b505e07ccf149d2b9d56d57ecad2a7759f47df8f9067d6",
+    "packageType": "msi"
+  }
+}

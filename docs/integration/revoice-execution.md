@@ -163,6 +163,13 @@ preference, not six per-engine listening scores; do not manufacture a qualified
 report. Keep the native qualification prerequisite visible and do independent
 work. Clean Windows is currently unavailable, as explicitly confirmed by the owner.
 
+The [explicit SRT candidate upgrade](acceptance/07-revoice-selected-srt-upgrade.md)
+is now installed with exact package/executable hashes and a retained profile
+backup. Its fresh normal startup exposes the empty project page through
+accessibility. Native URL input remains unproven because the earlier helper
+capture/input problem is unresolved. Long-audio assembly continues as an
+independent TTS slice without modifying voices or qualification decisions.
+
 ## Native admission compatibility slice
 
 After the owner closed VALORANT/Riot, GPU use fell from 3,123 to 1,144 MiB and

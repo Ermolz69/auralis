@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "case_id": "NORMAL-PROFILE-SELECTED-SRT-UPGRADE-v1",
+  "source_commit": "72e58c84f17edc1e03227040140e2b86ca24e289",
+  "translate_pin": "44e7d4f3c6ce2443279f5d0d3acd07cbb931476e",
+  "installer_sha256": "5c64b3ef28be7babffe9c69d20c8c6fabc0bfcb2867787db9e31aa5b6e560b26",
+  "application_sha256": "f3341ad4c1a7c5eb04689c4d9ce37ff58c801059f7dc4bb5746cb80c2c5a7618",
+  "previous_application_sha256": "4c80cb6c6e8a2cd31be886ba87c9d781d41ed94723187e5de1c617ec9b4f7f3a",
+  "msi_sha256": "fea4b6689ccc7f4229d2c4e7b05bab5a47c7c51a9e5bf67db521ff441538e0a1",
+  "max_install_attempts": 1,
+  "max_install_minutes": 10,
+  "profile_precondition": "Ordinary owned native-test profile: zero projects and zero active jobs; previous executable hash exact. Stop only its verified process tree and retain SQLite/configuration/previous executable backups before one install.",
+  "expected": "Exact NSIS payload hash, schema remains 18, unchanged TTS configuration. Launch the new application and inspect fresh accessibility once; no repeated capture/input probes while geometry remains unavailable.",
+  "boundary": "Local existing-profile upgrade of explicit Chinese SRT selection support. Native URL import, translation, audio, human qualification and clean Windows remain unproven. No voice, model or original-media changes."
+}

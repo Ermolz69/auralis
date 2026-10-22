@@ -1,0 +1,41 @@
+{
+    "version":  1,
+    "case_id":  "NORMAL-PROFILE-SELECTED-SRT-UPGRADE-v1",
+    "started_at":  "2026-10-22T23:51:26.7034748Z",
+    "installer":  "E:\\Anything\\Projects\\Commercial\\auralis\\target\\release\\bundle\\nsis\\Auralis_0.1.0_x64-setup.exe",
+    "installer_sha256":  "5c64b3ef28be7babffe9c69d20c8c6fabc0bfcb2867787db9e31aa5b6e560b26",
+    "application":  "C:\\Users\\Ermolz\\AppData\\Local\\Programs\\Auralis\\auralis-app.exe",
+    "expected_application_sha256":  "f3341ad4c1a7c5eb04689c4d9ce37ff58c801059f7dc4bb5746cb80c2c5a7618",
+    "previous_application_sha256":  "4c80cb6c6e8a2cd31be886ba87c9d781d41ed94723187e5de1c617ec9b4f7f3a",
+    "backup":  "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\local-upgrade-selected-srt-v1.json.backup",
+    "owned_pids":  [
+                       20020,
+                       8392,
+                       21548,
+                       26680,
+                       8412,
+                       24336,
+                       26952
+                   ],
+    "phase":  "installed_verified",
+    "error":  null,
+    "script_sha256":  "44bc80dffbe8a32a7d53698a634a1fc2b5ad1cc26c2ef89358d92be2a38c8e3e",
+    "limitation":  "Local existing-profile upgrade only; no clean Windows, native workflow or inference acceptance. Does not launch the application or models.",
+    "ended_at":  "2026-10-22T23:51:37.1135885Z",
+    "elapsed_ms":  10410,
+    "profile_before":  {
+                           "version":  1,
+                           "at":  "2026-10-22T23:51:26.916Z",
+                           "profile":  "C:\\Users\\Ermolz\\AppData\\Roaming\\com.auralis.desktop",
+                           "projects":  0,
+                           "jobs":  0,
+                           "active_jobs":  0,
+                           "schema":  18,
+                           "backups":  [
+
+                                       ]
+                       },
+    "installer_pid":  23572,
+    "installer_exit_code":  0,
+    "application_sha256":  "f3341ad4c1a7c5eb04689c4d9ce37ff58c801059f7dc4bb5746cb80c2c5a7618"
+}
