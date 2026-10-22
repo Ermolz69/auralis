@@ -152,9 +152,11 @@
         "tools/revoice/evidence/YOUTUBE_HRaa8kb1EhE_METADATA_V2.json",
         "tools/revoice/evidence/YOUTUBE_CAPTIONS_V1.json",
         "tools/revoice/evidence/YOUTUBE_STRICT_VTT_V1.json",
-        "docs/integration/acceptance/05-revoice-upgrade-and-source.md"
+        "docs/integration/acceptance/05-revoice-upgrade-and-source.md",
+        "tools/revoice/evidence/YOUTUBE_STRICT_SRT_V1.json",
+        "docs/integration/acceptance/06-revoice-selected-srt.md"
       ],
-      "blocker": "Raw manual zh VTT retained (217352 bytes, 4004 timing lines) but strict FormatInspector rejected provider Kind/Language header. Preserve that failed case; implement explicit SRT selection/retrieval and freeze a separate source case. Native URL import, trusted ASR truth and independent published references remain pending."
+      "blocker": "Genuine manual Chinese SRT retained and strict-parsed: 4004 cues, 236229 bytes. Selected-SRT host correction passes model-free tests; new committed installer and native video URL import pending. Trusted ASR truth and independent published references remain pending."
     },
     {
       "id": "INT-R03",

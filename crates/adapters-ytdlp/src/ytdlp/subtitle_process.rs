@@ -28,6 +28,7 @@ pub(super) async fn download(
     token: &CancellationToken,
     limits: ProcessLimits,
 ) -> Result<PathBuf, PortError> {
+    let format = selected_format(track)?;
     let id = uuid::Uuid::new_v4().to_string();
     let template = format!("{id}.%(ext)s");
     let target_arg = target.to_string_lossy();
@@ -52,7 +53,7 @@ pub(super) async fn download(
             "--sub-langs",
             &track.language,
             "--sub-format",
-            "vtt",
+            format,
             "-P",
             &target_arg,
             "-o",
@@ -63,9 +64,19 @@ pub(super) async fn download(
         limits,
     )
     .await?;
-    super::command::find_downloaded_subtitle(target, &id, "vtt")
+    super::command::find_downloaded_subtitle(target, &id, format)
         .await?
         .ok_or_else(|| super::error::YtDlpError::SubtitleNotFoundAfterDownload.into())
+}
+
+pub(super) fn selected_format(track: &domain::media::SubtitleTrack) -> Result<&str, PortError> {
+    match track.format.as_deref() {
+        Some(format @ ("srt" | "vtt")) => Ok(format),
+        None => Ok("vtt"), // Legacy port callers did not store a representation.
+        Some(_) => Err(PortError::InvalidSource {
+            message: "Select an available SRT or VTT subtitle representation".into(),
+        }),
+    }
 }
 
 async fn run(

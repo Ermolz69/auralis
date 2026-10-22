@@ -261,6 +261,7 @@ impl SubtitleSourcePort for YtDlpAdapter {
         request: ports::source::DownloadSubtitleRequest,
     ) -> Result<domain::media::Artifact, PortError> {
         self.validate_source(&request.source).await?;
+        let format = super::subtitle_process::selected_format(&request.track)?;
 
         let url = match &request.source {
             MediaSource::YoutubeUrl { url } => url,
@@ -285,7 +286,7 @@ impl SubtitleSourcePort for YtDlpAdapter {
             url,
             &request.target_directory,
             &request.track.language,
-            "vtt",
+            format,
             request.track.is_auto_generated,
             self.timeout_ms,
         )

@@ -44,13 +44,13 @@ export function SubtitleWorkspace() {
       data-testid="subtitle-workspace"
     >
       <div className="space-y-5">
-        {project && <SpeechCatalog key={project.id} projectId={project.id} />}
+        {project && <SpeechCatalog key={`speech-${project.id}`} projectId={project.id} />}
         <TranslationReview refreshRevision={readyResultsRevision} />
         <SubtitleMethods />
         <TranslationModelSetup />
         {project && (
           <TranslationSourceImport
-            key={project.id}
+            key={`translation-source-${project.id}`}
             projectId={project.id}
             onTranslationPrepared={() => setTranslationRevision((value) => value + 1)}
           />

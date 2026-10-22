@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "case_id": "YT-STORY-HRaa8kb1EhE-SRT-v1",
+  "started_at": "2026-10-22T23:21:11.360Z",
+  "spec_sha256": "3d2ceaa5425486eb7fbaace654811b7a267eabfc1ff68bc13dd0cc6e0e94b7f6",
+  "script_sha256": "bb4ce745e52973f357a8d373e2566067af755ed60c2699aa3c60a795cb8455fa",
+  "source_url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "selected_track": {
+    "language": "zh",
+    "kind": "manual",
+    "format": "srt"
+  },
+  "status": "caption_bytes_retained",
+  "limitation": "HTTP source acquisition only, not native URL import, strict format acceptance, trusted ASR transcript or translation/listening quality. No video or model downloaded.",
+  "metadata_sha256": "d9e20d0a79e1c4061043ff20a716bef619244dfa5f3d9275e156d262c9fd8c9a",
+  "http_status": 200,
+  "subtitle": {
+    "path": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\YT-STORY-HRaa8kb1EhE-SRT-v1\\attempt-nWzE86\\HRaa8kb1EhE.zh.srt",
+    "bytes": 236229,
+    "sha256": "868dc24073183cfd9e5f41ded3eb0cca34b6faad53e008a8b50ddb6f79c49735",
+    "timing_lines_screen": 4004
+  },
+  "ended_at": "2026-10-22T23:21:11.772Z",
+  "elapsed_ms": 412
+}

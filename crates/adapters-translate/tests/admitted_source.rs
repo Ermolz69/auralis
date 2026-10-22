@@ -43,9 +43,12 @@ async fn frozen_real_source_is_inspected_without_modifying_its_bytes() -> Result
         return Err("Source identity differs before inspection".into());
     }
     let clock = std::time::Instant::now();
-    let inspected = FormatInspector
-        .inspect(&source, TranslationSourceFormat::Vtt)
-        .await;
+    let format = match spec["format"].as_str() {
+        Some("srt") => TranslationSourceFormat::Srt,
+        Some("vtt") => TranslationSourceFormat::Vtt,
+        _ => return Err("Unsupported declared source format".into()),
+    };
+    let inspected = FormatInspector.inspect(&source, format).await;
     let mut receipt = json!({"version":1,"case_id":spec["case_id"],"source_group":spec["source_group"],"source_url":spec["source_url"],"source_sha256":hash(&original),"source_bytes":original.len(),"spec_sha256":hash(&spec_bytes),"test_source_sha256":hash(include_bytes!("admitted_source.rs")),"scope":spec["scope"],"status":"failed"});
     let outcome = (|| -> Result<(), Box<dyn Error>> {
         let parsed = inspected?;

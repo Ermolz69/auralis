@@ -39,7 +39,6 @@ export function TranscriptResult({ transcript, isLoading, error, onRefresh }: Pr
           Обновить
         </Button>
       </div>
-      <p className="mt-3 font-mono text-[11px] text-subtle">subtitles/source.vtt</p>
       <div className="mt-3 border-t border-success/25 pt-2">
         <input
           type="search"

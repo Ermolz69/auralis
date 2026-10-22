@@ -56,7 +56,7 @@ impl ExecutionDescriptor {
                     || track.id.len() > 4096
                     || track.language.trim().is_empty()
                     || track.language.len() > 64
-                    || track.format.as_deref() != Some("vtt")
+                    || !matches!(track.format.as_deref(), Some("srt" | "vtt"))
                     || track.label.as_ref().is_some_and(|label| label.len() > 4096)
             })
         {

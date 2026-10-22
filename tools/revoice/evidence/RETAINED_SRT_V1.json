@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "at": "2026-10-22T23:40:13.368Z",
+  "spec": "E:\\Anything\\Projects\\Commercial\\auralis\\tools\\revoice\\source-inspect-srt-v1.json",
+  "spec_sha256": "66789fda2c08714ab7aa7ba5fbe6afe8f70ad3dd6856c774928302371473fb45",
+  "source_group": "HRaa8kb1EhE",
+  "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\YT-STORY-HRaa8kb1EhE-SRT-v1\\attempt-nWzE86\\HRaa8kb1EhE.zh.srt",
+  "source_sha256": "868dc24073183cfd9e5f41ded3eb0cca34b6faad53e008a8b50ddb6f79c49735",
+  "copy": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-materials\\HRaa8kb1EhE\\868dc24073183cfd9e5f41ded3eb0cca34b6faad53e008a8b50ddb6f79c49735.srt",
+  "copy_sha256": "868dc24073183cfd9e5f41ded3eb0cca34b6faad53e008a8b50ddb6f79c49735",
+  "bytes": 236229,
+  "limitation": "Private immutable material copy outside Cargo target; not native import, parser, audio, inference or quality acceptance. Originals unchanged."
+}

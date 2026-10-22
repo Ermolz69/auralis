@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 mod commit;
 mod execute;
+mod parse;
 
 pub struct ImportYoutubeSubtitlesUseCase {
     project_repo: Arc<dyn ProjectRepository>,
@@ -25,6 +26,7 @@ pub struct ImportYoutubeSubtitlesUseCase {
     cleanup_coordinator: ImportCleanupCoordinator,
     cpu_executor: Option<Arc<dyn ports::job_resources::CpuExecutorPort>>,
     max_subtitle_bytes: u64,
+    inspector: Option<Arc<dyn ports::translation_inspection::TranslationInspectorPort>>,
 }
 
 impl ImportYoutubeSubtitlesUseCase {
@@ -44,7 +46,16 @@ impl ImportYoutubeSubtitlesUseCase {
             cleanup_coordinator: ImportCleanupCoordinator::new(artifact_store, workspace_port),
             cpu_executor: None,
             max_subtitle_bytes: 10 * 1024 * 1024,
+            inspector: None,
         }
+    }
+
+    pub fn with_subtitle_inspector(
+        mut self,
+        inspector: Option<Arc<dyn ports::translation_inspection::TranslationInspectorPort>>,
+    ) -> Self {
+        self.inspector = inspector;
+        self
     }
 
     pub fn with_cpu_executor(

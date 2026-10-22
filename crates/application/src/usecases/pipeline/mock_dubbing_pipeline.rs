@@ -37,6 +37,7 @@ pub struct MockDubbingPipelineRunner<
     execution_inputs: Option<ports::job_execution::ExecutionDescriptor>,
     cpu_executor: Option<Arc<dyn ports::job_resources::CpuExecutorPort>>,
     max_subtitle_bytes: u64,
+    inspector: Option<Arc<dyn ports::translation_inspection::TranslationInspectorPort>>,
     #[cfg(test)]
     panic_on_run: bool,
 }
@@ -81,9 +82,18 @@ impl<
             execution_inputs: None,
             cpu_executor: None,
             max_subtitle_bytes: 10 * 1024 * 1024,
+            inspector: None,
             #[cfg(test)]
             panic_on_run: false,
         }
+    }
+
+    pub fn with_subtitle_inspector(
+        mut self,
+        inspector: Option<Arc<dyn ports::translation_inspection::TranslationInspectorPort>>,
+    ) -> Self {
+        self.inspector = inspector;
+        self
     }
 
     pub fn with_selected_subtitle_track(
@@ -151,7 +161,8 @@ impl<
             Arc::new(self.artifact_store.clone()),
             Arc::new(self.storage_uow.clone()),
             self.workspace_port.clone(),
-        );
+        )
+        .with_subtitle_inspector(self.inspector.clone());
         if let Some(cpu) = &self.cpu_executor {
             import_use_case =
                 import_use_case.with_cpu_executor(cpu.clone(), self.max_subtitle_bytes);

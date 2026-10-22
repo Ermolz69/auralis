@@ -39,11 +39,17 @@ tasks:
     cmds:
       - node tools/revoice/youtube-inspect.mjs "{{.SPEC}}"
   revoice:youtube:captions:
-    desc: Retain one bounded exact manual Chinese VTT acquisition under shared metadata admission without models or video
+    desc: Retain one bounded exact manual Chinese SRT/VTT acquisition under shared metadata admission without models or video
     vars:
       SPEC: '{{default "tools/revoice/captions-v1.json" .SPEC}}'
     cmds:
       - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/revoice/captions-admitted.ps1 -Spec "{{.SPEC}}"
+  revoice:material:retain:
+    desc: Preserve one hash-pinned real subtitle outside Cargo target without replacing originals or putting media in Git
+    requires:
+      vars: [SPEC, OUTPUT]
+    cmds:
+      - node tools/revoice/retain-material.mjs "{{.SPEC}}" "{{.OUTPUT}}"
   revoice:translate:seed-assets:
     desc: Verify and copy existing pinned translator assets into the ordinary profile cache under shared machine admission
     requires:

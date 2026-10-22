@@ -43,7 +43,7 @@ impl<R: ProjectRepository, S: SubtitleSourcePort> ListYoutubeSubtitleTracksUseCa
             .list_subtitles(source)
             .await?
             .into_iter()
-            .filter(|track| track.format.as_deref() == Some("vtt"))
+            .filter(|track| matches!(track.format.as_deref(), Some("srt" | "vtt")))
             .collect();
 
         tracks.sort_by(|left, right| {
@@ -51,6 +51,7 @@ impl<R: ProjectRepository, S: SubtitleSourcePort> ListYoutubeSubtitleTracksUseCa
                 .cmp(&track_priority(right))
                 .then_with(|| left.language.cmp(&right.language))
                 .then_with(|| left.is_auto_generated.cmp(&right.is_auto_generated))
+                .then_with(|| left.format.cmp(&right.format))
         });
 
         Ok(ListYoutubeSubtitleTracksResponse { tracks })

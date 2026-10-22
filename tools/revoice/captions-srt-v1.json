@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "case_id": "YT-STORY-HRaa8kb1EhE-SRT-v1",
+  "video_id": "HRaa8kb1EhE",
+  "url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "metadata_case": "YT-STORY-HRaa8kb1EhE-METADATA-v2",
+  "metadata_evidence": "tools/revoice/evidence/YOUTUBE_HRaa8kb1EhE_METADATA_V2.json",
+  "track": {
+    "language": "zh",
+    "kind": "manual",
+    "format": "srt"
+  },
+  "max_invocations": 1,
+  "max_wall_seconds": 120,
+  "max_subtitle_bytes": 8388608,
+  "purpose": "Freeze exact provider SRT bytes of the same Chinese story before model work. No automatic-caption fallback or original-byte edits.",
+  "stop_conditions": [
+    "admission refusal",
+    "metadata hash mismatch",
+    "expired/empty/unavailable captions",
+    "deadline",
+    "byte ceiling"
+  ],
+  "limitation": "HTTP source acquisition only, not native URL import, strict format acceptance, trusted ASR transcript or translation/listening quality. No video or model downloaded.",
+  "prior_case": "YT-STORY-HRaa8kb1EhE-CAPTIONS-v1",
+  "change_reason": "The strict parser rejected the actual provider VTT Kind/Language header. Acquire the separately published SRT representation of the exact same manual zh track; do not edit or relabel VTT bytes."
+}

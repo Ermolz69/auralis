@@ -11,7 +11,7 @@ if (process.env.AURALIS_REVOICE_ADMITTED_CASE !== spec.case_id)
   throw new Error('Use the shared-admission Taskfile command');
 if (
   spec.track.kind !== 'manual' ||
-  spec.track.format !== 'vtt' ||
+  !['srt', 'vtt'].includes(spec.track.format) ||
   spec.track.language !== 'zh' ||
   spec.max_invocations !== 1
 )
@@ -65,21 +65,25 @@ try {
   const content = Buffer.concat(chunks);
   if (
     !content.length ||
-    !content
-      .subarray(0, 64)
-      .toString('utf8')
-      .replace(/^\uFEFF/, '')
-      .startsWith('WEBVTT')
+    !(spec.track.format === 'vtt'
+      ? content
+          .subarray(0, 64)
+          .toString('utf8')
+          .replace(/^\uFEFF/, '')
+          .startsWith('WEBVTT')
+      : /^\uFEFF?\d+\r?\n\d{2}:\d{2}:\d{2},\d{3} --> /.test(
+          content.subarray(0, 128).toString('utf8'),
+        ))
   )
-    throw new Error('Caption response is empty or lacks the WEBVTT header');
-  const output = path.join(attempt, 'HRaa8kb1EhE.zh.vtt');
+    throw new Error('Caption response is empty or lacks the selected format signature');
+  const output = path.join(attempt, `${spec.video_id}.zh.${spec.track.format}`);
   fs.writeFileSync(output, content, { flag: 'wx' });
   receipt.subtitle = {
     path: output,
     bytes,
     sha256: hash(content),
     timing_lines_screen: [
-      ...content.toString('utf8').matchAll(/^(?:\d+:)?\d{2}:\d{2}\.\d{3} --> /gm),
+      ...content.toString('utf8').matchAll(/^(?:\d+:)?\d{2}:\d{2}[.,]\d{3} --> /gm),
     ].length,
   };
   receipt.status = 'caption_bytes_retained';

@@ -45,6 +45,7 @@ pub struct StartMockPipelineUseCase<
 > {
     dependencies: StartMockPipelineDependencies<R, V, S>,
     queue: Option<Arc<dyn ports::job_execution::JobQueuePort>>,
+    inspector: Option<Arc<dyn ports::translation_inspection::TranslationInspectorPort>>,
 }
 
 impl<
@@ -57,7 +58,16 @@ impl<
         Self {
             dependencies,
             queue: None,
+            inspector: None,
         }
+    }
+
+    pub fn with_subtitle_inspector(
+        mut self,
+        inspector: Arc<dyn ports::translation_inspection::TranslationInspectorPort>,
+    ) -> Self {
+        self.inspector = Some(inspector);
+        self
     }
 
     pub fn with_queue(mut self, queue: Arc<dyn ports::job_execution::JobQueuePort>) -> Self {
@@ -66,7 +76,12 @@ impl<
     }
 
     pub fn queued_executor(&self) -> Arc<dyn ports::job_execution::JobExecutorPort> {
-        Arc::new(super::queued_subtitle_executor::QueuedSubtitleExecutor::new(&self.dependencies))
+        Arc::new(
+            super::queued_subtitle_executor::QueuedSubtitleExecutor::new(
+                &self.dependencies,
+                self.inspector.clone(),
+            ),
+        )
     }
 
     pub async fn execute(
@@ -129,7 +144,8 @@ impl<
             dependencies.workspace_port.clone(),
             dependencies.job_runtime.clone(),
         )
-        .with_selected_subtitle_track(request.selected_subtitle_track);
+        .with_selected_subtitle_track(request.selected_subtitle_track)
+        .with_subtitle_inspector(self.inspector.clone());
 
         let runtime_starter = MockPipelineRuntimeStarter::new(
             dependencies.job_scheduler.clone(),

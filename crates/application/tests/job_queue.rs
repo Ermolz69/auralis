@@ -10,5 +10,7 @@ mod failures;
 mod pipeline;
 #[path = "job_queue/resources.rs"]
 mod resources;
+#[path = "job_queue/srt.rs"]
+mod srt;
 #[path = "support/job_queue.rs"]
 mod support;

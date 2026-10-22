@@ -11,7 +11,7 @@ mod historical_provider;
 #[path = "support/historical_seed.rs"]
 mod historical_seed;
 
-#[path = "speech_workflow_long.rs"]
+#[path = "support/speech_workflow_long.rs"]
 mod long_sources;
 
 use adapters_storage::sqlite::{

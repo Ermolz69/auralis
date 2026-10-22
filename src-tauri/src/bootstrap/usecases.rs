@@ -244,7 +244,8 @@ pub(super) fn setup_usecases(
             locks: locks.clone(),
             job_runtime: job_runtime.clone(),
         })
-        .with_queue(job_queue),
+        .with_queue(job_queue)
+        .with_subtitle_inspector(Arc::new(adapters_translate::FormatInspector)),
         get_transcript: GetTranscriptUseCase::new(project_repo.clone()),
         list_youtube_subtitle_tracks: ListYoutubeSubtitleTracksUseCase::new(
             project_repo.clone(),

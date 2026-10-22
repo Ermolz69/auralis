@@ -17,6 +17,7 @@ pub(super) struct QueuedSubtitleExecutor<
     S: ArtifactStore + Clone + 'static,
 > {
     dependencies: StartMockPipelineDependencies<R, V, S>,
+    inspector: Option<std::sync::Arc<dyn ports::translation_inspection::TranslationInspectorPort>>,
 }
 
 impl<
@@ -25,8 +26,14 @@ impl<
     S: ArtifactStore + Clone + 'static,
 > QueuedSubtitleExecutor<R, V, S>
 {
-    pub fn new(dependencies: &StartMockPipelineDependencies<R, V, S>) -> Self {
+    pub fn new(
+        dependencies: &StartMockPipelineDependencies<R, V, S>,
+        inspector: Option<
+            std::sync::Arc<dyn ports::translation_inspection::TranslationInspectorPort>,
+        >,
+    ) -> Self {
         Self {
+            inspector,
             dependencies: StartMockPipelineDependencies {
                 project_repo: dependencies.project_repo.clone(),
                 job_scheduler: dependencies.job_scheduler.clone(),
@@ -77,7 +84,8 @@ impl<
             dependencies.workspace_port.clone(),
             dependencies.job_runtime.clone(),
         )
-        .with_execution_inputs(descriptor, context.cpu, context.max_subtitle_bytes);
+        .with_execution_inputs(descriptor, context.cpu, context.max_subtitle_bytes)
+        .with_subtitle_inspector(self.inspector.clone());
         let span = tracing::info_span!("queued_subtitle_import", job_id = %execution.job.id(), project_id = %execution.job.project_id());
         let mut guard = crate::observability::execution_summary::ExecutionSummaryGuard::new(
             span,

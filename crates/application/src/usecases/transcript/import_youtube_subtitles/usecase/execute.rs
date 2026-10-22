@@ -18,7 +18,9 @@ impl ImportYoutubeSubtitlesUseCase {
             })?;
 
         let best_track = if let Some(track) = request.selected_track {
-            if track.format.as_deref() != Some("vtt") || track.language.trim().is_empty() {
+            if !matches!(track.format.as_deref(), Some("srt" | "vtt"))
+                || track.language.trim().is_empty()
+            {
                 return Err(ApplicationError::InvalidOperation {
                     message: "Invalid selected subtitle track".to_string(),
                 });
@@ -40,6 +42,12 @@ impl ImportYoutubeSubtitlesUseCase {
                 request.allow_auto_generated,
             )?
         };
+
+        if best_track.format.as_deref() == Some("srt") && self.inspector.is_none() {
+            return Err(ApplicationError::InvalidOperation {
+                message: "Strict SRT inspection is not configured".into(),
+            });
+        }
 
         let alloc = self
             .workspace_port
@@ -130,7 +138,14 @@ impl ImportYoutubeSubtitlesUseCase {
             }
         };
 
-        let parsed = if let Some(cpu) = &self.cpu_executor {
+        let parsed = if best_track.format.as_deref() == Some("srt") {
+            self.parse_srt(
+                &alloc.absolute_path.join(&filename),
+                &vtt_content,
+                &best_track.language,
+            )
+            .await
+        } else if let Some(cpu) = &self.cpu_executor {
             let language = best_track.language.clone();
             let (send, receive) = tokio::sync::oneshot::channel();
             match cpu
@@ -185,7 +200,11 @@ impl ImportYoutubeSubtitlesUseCase {
                 self.workspace_port.as_ref(),
                 &alloc.workspace_key,
                 &filename,
-                Some("subtitles.vtt"),
+                Some(if best_track.format.as_deref() == Some("srt") {
+                    "subtitles.srt"
+                } else {
+                    "subtitles.vtt"
+                }),
             )
             .await
         {

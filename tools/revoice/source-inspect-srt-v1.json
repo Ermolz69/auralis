@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "case_id": "YT-STORY-HRaa8kb1EhE-STRICT-SRT-v1",
+  "source_group": "HRaa8kb1EhE",
+  "source_url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "source_path": "target/revoice/YT-STORY-HRaa8kb1EhE-SRT-v1/attempt-nWzE86/HRaa8kb1EhE.zh.srt",
+  "source_sha256": "868dc24073183cfd9e5f41ded3eb0cca34b6faad53e008a8b50ddb6f79c49735",
+  "source_bytes": 236229,
+  "expected_cues": 4004,
+  "format": "srt",
+  "max_source_bytes": 8388608,
+  "output": "target/revoice/YT-STORY-HRaa8kb1EhE-STRICT-SRT-v1.json",
+  "expected": "Unmodified original, exact strict-parser cue coverage, unique ordered IDs, retained timing and text hash. Reject unsupported grammar rather than silently convert it.",
+  "scope": "Real local Chinese caption bytes through the pinned Auralis FormatInspector; no project UI, inference, source-language listening or quality acceptance. Source group is exposed diagnostic material, never a sealed holdout.",
+  "prior_case": "YT-STORY-HRaa8kb1EhE-STRICT-VTT-v1",
+  "change_reason": "Independent provider SRT representation; VTT header remains unsupported and unchanged. Freeze count and byte hash before the strict SRT inspection."
+}
