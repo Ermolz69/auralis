@@ -1,6 +1,10 @@
 version: '3'
 
 tasks:
+  test:ui-preferences:
+    desc: Verify durable pin migration and concurrent startup imports against real SQLite
+    cmds:
+      - cargo test --locked -p adapters-storage --lib sqlite::ui_preferences::tests {{.CLI_ARGS}}
   test:puza:
     cmds:
       - cargo test --locked -p adapters-tts marker_tests

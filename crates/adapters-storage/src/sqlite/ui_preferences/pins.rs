@@ -61,7 +61,7 @@ pub(super) async fn import(
     pool: &SqlitePool,
     entries: &[(ProjectId, bool)],
 ) -> Result<ProjectPins, PortError> {
-    let mut tx = pool.begin().await.map_err(error)?;
+    let mut tx = pool.begin_with("BEGIN IMMEDIATE").await.map_err(error)?;
     let migrated: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM ui_migrations WHERE key = 'project_pins_v1')",
     )

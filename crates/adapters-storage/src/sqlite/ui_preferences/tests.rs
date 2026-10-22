@@ -7,6 +7,58 @@ use ports::{
 };
 
 #[tokio::test]
+async fn pin_import_waits_for_a_writer_and_duplicate_startup_import_is_idempotent() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("startup-pins.sqlite");
+    let pool = connect_sqlite(&path).await.unwrap();
+    let project = SqliteProjectRepository::new(pool.clone())
+        .create(Project::new("Preserved startup pin".into()).unwrap())
+        .await
+        .unwrap();
+    let other_pool = connect_sqlite(&path).await.unwrap();
+    let mut writer = pool.begin_with("BEGIN IMMEDIATE").await.unwrap();
+    sqlx::query("INSERT INTO project_pins VALUES (?, 0, 1)")
+        .bind(project.id().to_string())
+        .execute(&mut *writer)
+        .await
+        .unwrap();
+
+    let entries = vec![(project.id().clone(), true)];
+    let imported_entries = entries.clone();
+    let prefs = SqliteUiPreferences::new(other_pool.clone());
+    let mut importing = tokio::spawn(async move { prefs.import_pins(&imported_entries).await });
+    // A deferred read-then-write upgrade returns BUSY immediately in WAL mode.
+    // An immediate transaction waits at admission, before reading the marker.
+    let early = tokio::time::timeout(std::time::Duration::from_millis(100), &mut importing).await;
+    writer.commit().await.unwrap();
+    let imported = match early {
+        Ok(result) => result
+            .unwrap()
+            .expect("pin import must wait for the existing writer"),
+        Err(_) => importing.await.unwrap().unwrap(),
+    };
+    assert!(imported.migrated);
+    assert_eq!(imported.entries.len(), 1);
+    assert!(
+        !imported.entries[0].pinned,
+        "legacy data must not overwrite the newer native pin"
+    );
+
+    let first = SqliteUiPreferences::new(pool.clone());
+    let second = SqliteUiPreferences::new(other_pool.clone());
+    let (left, right) = tokio::join!(first.import_pins(&entries), second.import_pins(&entries));
+    assert_eq!(left.unwrap(), imported);
+    assert_eq!(right.unwrap(), imported);
+    let marker_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM ui_migrations")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(marker_count, 1);
+    pool.close().await;
+    other_pool.close().await;
+}
+
+#[tokio::test]
 async fn preferences_survive_reopen_and_legacy_never_overwrites_newer_values() {
     let root = tempfile::tempdir().unwrap();
     let path = root.path().join("preferences.sqlite");
