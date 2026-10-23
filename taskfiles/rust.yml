@@ -1,6 +1,19 @@
 version: '3'
 
 tasks:
+  test:audio:timeline:
+    desc: Verify pure bounded speech timing, complete coverage and visible conflict rules without models or media tools
+    cmds:
+      - cargo test --locked -p domain --test audio_timeline
+      - cargo test --locked -p domain --lib
+  fmt:audio:timeline:
+    desc: Format only the new pure audio timeline sources and controls
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/domain/src/speech/mod.rs crates/domain/src/speech/timeline/mod.rs crates/domain/src/speech/timeline/planner.rs crates/domain/tests/audio_timeline.rs
+  clippy:audio:timeline:
+    desc: Lint the domain timing policy and its model-free controls
+    cmds:
+      - cargo clippy --locked -p domain --lib --test audio_timeline -- -D warnings
   fmt:youtube:srt:
     desc: Format only selected-representation source, queue wiring and regressions
     cmds:

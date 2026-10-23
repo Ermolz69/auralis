@@ -1,6 +1,7 @@
 mod identity;
 mod plan;
 mod result;
+pub mod timeline;
 mod voice;
 
 pub use identity::{Sha256Digest, SpeechId};

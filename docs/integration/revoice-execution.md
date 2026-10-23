@@ -176,6 +176,12 @@ It bounds decoded audio and preserves cancellation/atomic output, but has not
 replaced the installed runtime or passed a natural story. Managed timing/export,
 real recovery, measured working sets and listening remain open.
 
+The next [audio timing policy](revoice-audio-assembly.md) has a pure domain
+planner with complete frame accounting, explicit silence and typed overlap/fit
+conflicts. Its ten timing controls and 21 domain unit checks pass. It is not yet
+wired to verified worker chunks, managed FFmpeg, durable jobs or native controls,
+so it does not accept any timing/export gate.
+
 ## Native admission compatibility slice
 
 After the owner closed VALORANT/Riot, GPU use fell from 3,123 to 1,144 MiB and

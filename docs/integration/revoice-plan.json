@@ -236,9 +236,9 @@
       "id": "INT-R08",
       "title": "Assemble continuous and source-window speech with explicit conflicts",
       "depends_on": ["INT-R01"],
-      "status": "planned",
+      "status": "in_progress",
       "bindings": ["VOICE-03", "VOICE-07", "INT-A03"],
-      "evidence": [],
+      "evidence": ["docs/integration/revoice-audio-assembly.md"],
       "blocker": null
     },
     {

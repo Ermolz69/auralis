@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "case_id": "AUDIO-TIMELINE-DOMAIN-v1",
+  "at": "2026-10-23T00:15:22.1552443Z",
+  "base_commit": "238036c0b6ed5ab55c8228ca2ddd0ee2e44f0107",
+  "policy": "preserve_full_speech_48k_v1",
+  "prospective_policy": "docs/integration/revoice-audio-assembly.md",
+  "timing_controls_passed": 10,
+  "domain_library_tests_passed": 21,
+  "scoped_clippy": "passed with warnings denied",
+  "normal_desktop_composition": "passed",
+  "architectural_file_size": "passed without exceptions",
+  "max_utterances": 8192,
+  "continuous_ordered_control": 600,
+  "sample_rate": 48000,
+  "tempo": "1.0 only",
+  "coverage": "Complete untimed utterance artifacts; verified technical-chunk bridge is required before calling the planner",
+  "side_effects": "Pure metadata calculation; no media decoding, database, native input or model invocation",
+  "installed_application_changed": false,
+  "voice_store_changed": false,
+  "limitations": "Not wired to complete raw worker chunks, managed FFmpeg, jobs/recovery/outbox or native controls. No actual audio/video rendering, timing/listening acceptance or clean Windows.",
+  "files": [
+    {
+      "file": "crates/domain/src/speech/mod.rs",
+      "sha256": "dfa0975deb5d0ea85dbeaee724ef7f8cf5101d9752c1a7994824644e96888132"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/mod.rs",
+      "sha256": "0db26c8429932779c5295b65eb3550ba5dba8682ac7bc75d2d94dbacb5a44467"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/planner.rs",
+      "sha256": "42fbff8506d18606388c337bd4ff6d1ba47d57b24dcda25b8889e6a6bae86694"
+    },
+    {
+      "file": "crates/domain/tests/audio_timeline.rs",
+      "sha256": "7143cb14ee3070f3ca0763e53bcfb14058a0392aab4229877269b88b323c0cd3"
+    },
+    {
+      "file": "taskfiles/rust.yml",
+      "sha256": "b70db0bb99a8e52bae41d28b30081e0e487df5a25ab13db637ad31e1d94e833c"
+    },
+    {
+      "file": "target/revoice/audio-timeline-check-v1.log",
+      "sha256": "9ab40b798e4d9f24c9eccc1281f0450af2097a042241d652ae97e06aa2cfd318"
+    },
+    {
+      "file": "target/revoice/audio-timeline-clippy-v1.log",
+      "sha256": "3b58a8532f294d938a4040411fda876b9b856adf35cf8d8e7136cdf6a2660757"
+    },
+    {
+      "file": "target/revoice/audio-timeline-desktop-check-v1.log",
+      "sha256": "aecb743cd27539b7c0646f3a1b7ebc4eba7562cdf086638d2fe69a744e8c5bd1"
+    }
+  ]
+}
