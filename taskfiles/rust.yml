@@ -1,6 +1,15 @@
 version: '3'
 
 tasks:
+  test:library:
+    cmds:
+      - cargo test --locked -p application --test library_workspace
+  check:library:
+    cmds:
+      - cargo check --locked -p auralis-app
+  fmt:library:
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/domain/src/lib.rs crates/domain/src/library/mod.rs crates/domain/src/library/asset.rs crates/domain/src/library/state.rs crates/domain/src/library/workspace.rs crates/domain/src/library/validation.rs crates/ports/src/lib.rs crates/ports/src/library.rs crates/adapters-storage/src/local/mod.rs crates/adapters-storage/src/local/library_text.rs crates/adapters-storage/src/sqlite/mod.rs crates/adapters-storage/src/sqlite/connection.rs crates/adapters-storage/src/sqlite/library_repository.rs crates/adapters-storage/src/sqlite/library_migration.rs crates/adapters-storage/src/sqlite/connection_tests.rs crates/adapters-storage/src/sqlite/translation_links_migration_tests.rs crates/adapters-storage/src/sqlite/ui_preferences/tests.rs crates/adapters-storage/src/sqlite/youtube_import_journal/tests.rs crates/adapters-storage/src/sqlite/connection/validation.rs crates/adapters-storage/src/sqlite/project_revision_migration_tests.rs crates/adapters-storage/src/sqlite/translation_host_jobs_migration_tests.rs crates/adapters-storage/src/sqlite/translation_publication_revisions_migration_tests.rs crates/adapters-storage/src/sqlite/translation_run_intents_migration_tests.rs crates/adapters-storage/tests/merge_schema_upgrade.rs crates/adapters-storage/tests/translation_edit_intents.rs crates/adapters-storage/tests/translation_reviews.rs crates/application/src/usecases/mod.rs crates/application/src/usecases/library/mod.rs crates/application/src/usecases/library/service.rs crates/application/src/usecases/library/hydrate.rs crates/application/tests/library_workspace.rs src-tauri/src/commands/mod.rs src-tauri/src/commands/library.rs src-tauri/src/lib.rs src-tauri/src/bootstrap/mod.rs src-tauri/src/bootstrap/services.rs src-tauri/src/bootstrap/storage.rs
   test:themes:
     cmds:
       - cargo test --locked -p application --test theme_preferences

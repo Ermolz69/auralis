@@ -4,8 +4,9 @@ import { describeCommandError } from '@/shared/api/contracts/error';
 import { invoke } from '@/shared/api/tauri';
 import { SpeechWorkflow } from './SpeechWorkflow';
 import { SpeechVoiceSettings } from './SpeechVoiceSettings';
+import type { SpeechInput } from '../model/speechDraft';
 
-export function SpeechCatalog({ projectId }: { projectId: string }) {
+export function SpeechCatalog({ projectId, ...input }: { projectId: string } & SpeechInput) {
   const [catalog, setCatalog] = useState<SpeechCatalogSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profileId, setProfileId] = useState('');
@@ -119,7 +120,15 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
       className="rounded-md border border-border bg-surface p-4"
       aria-label="Голоса синтеза речи"
     >
-      <h2 className="text-base font-semibold text-text">Текст и озвучка</h2>
+      <h2 className="text-base font-semibold text-text">
+        {input.stage === 'text'
+          ? 'Текст и подготовка'
+          : input.stage === 'voices'
+            ? 'Голоса и образцы'
+            : input.stage === 'speech'
+              ? 'Синтез речи'
+              : 'Текст и озвучка'}
+      </h2>
       <p className="mt-1 text-xs text-muted">
         Добавьте русский текст или субтитры, проверьте подготовку и выберите голос.
       </p>
@@ -136,48 +145,53 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
           Проверяем проект и библиотеку голосов…
         </p>
       )}
-      {catalog && (
+      {(catalog || input.stage === 'text') && (
         <>
-          <p
-            title="Проект и образцы проверены через PUZA CONTRACT"
-            className="mt-2 text-xs text-muted"
-          >
-            Проект проверен · библиотека голосов подключена
-          </p>
+          {catalog && (
+            <p
+              title="Проект и образцы проверены через PUZA CONTRACT"
+              className="mt-2 text-xs text-muted"
+            >
+              Проект проверен · библиотека голосов подключена
+            </p>
+          )}
           <SpeechWorkflow
+            {...input}
             projectId={projectId}
             profileId={profileId}
             voiceId={voiceId}
             referenceId={referenceId}
             voices={voices}
             engineId={profile?.engine_id ?? ''}
-            renderVoiceSettings={(disabled) => (
-              <>
-                <SpeechVoiceSettings
-                  catalog={catalog}
-                  voices={voices}
-                  profileId={profileId}
-                  voiceId={voiceId}
-                  referenceId={referenceId}
-                  disabled={disabled || saving}
-                  chooseProfile={chooseProfile}
-                  chooseVoice={chooseVoice}
-                  chooseReference={setReferenceId}
-                />
-                <button
-                  className="rounded border border-border px-3 py-2 text-xs text-text disabled:opacity-40"
-                  disabled={disabled || saving || !referenceId}
-                  onClick={() => void saveVoice()}
-                >
-                  Сохранить голос проекта
-                </button>
-                {notice && (
-                  <p role="status" className="text-xs text-muted">
-                    {notice}
-                  </p>
-                )}
-              </>
-            )}
+            renderVoiceSettings={(disabled) =>
+              catalog && (
+                <>
+                  <SpeechVoiceSettings
+                    catalog={catalog}
+                    voices={voices}
+                    profileId={profileId}
+                    voiceId={voiceId}
+                    referenceId={referenceId}
+                    disabled={disabled || saving}
+                    chooseProfile={chooseProfile}
+                    chooseVoice={chooseVoice}
+                    chooseReference={setReferenceId}
+                  />
+                  <button
+                    className="rounded border border-border px-3 py-2 text-xs text-text disabled:opacity-40"
+                    disabled={disabled || saving || !referenceId}
+                    onClick={() => void saveVoice()}
+                  >
+                    Сохранить голос проекта
+                  </button>
+                  {notice && (
+                    <p role="status" className="text-xs text-muted">
+                      {notice}
+                    </p>
+                  )}
+                </>
+              )
+            }
           />
         </>
       )}

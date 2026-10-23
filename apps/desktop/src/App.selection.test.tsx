@@ -1,252 +1,119 @@
 // @vitest-environment jsdom
-import { useContext } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { invoke, listen } from '@/shared/api/tauri';
-import { NavigationProvider, useNavigation } from '@/shared/router';
-import {
-  ProjectProvider,
-  useProjectContext,
-  type Project,
-  type ProjectContextType,
-} from '@/entities/project';
-import { JobContext, useProjectJobs, type JobDto } from '@/entities/job';
-import { AppJobProvider } from './app/providers';
-import { CurrentStepSummary } from './pages/project';
+import { emptyLibrary, type LibraryState } from '@/shared/api/contracts/library';
+import { JobContext } from '@/entities/job';
 import App from './App';
 
 vi.mock('@/shared/api/tauri', () => ({ invoke: vi.fn(), listen: vi.fn() }));
-vi.mock('./pages/home', () => ({ HomePage: () => <h1>Home page</h1> }));
-vi.mock('./pages/project', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./pages/project')>()),
-  ProjectPage: () => <button>Project controls</button>,
+vi.mock('./features/app-update', () => ({
+  AppUpdateProvider: ({ children }: { children: React.ReactNode }) => children,
+  AppUpdateNotifier: () => null,
 }));
 vi.mock('./pages/settings', () => ({ SettingsPage: () => <h1>Settings page</h1> }));
-
-const project: Project = {
+vi.mock('./app/studio/ui/StudioToolPanel', () => ({
+  StudioToolPanel: ({ tab }: { tab: { tool: string } }) => <p>Tool: {tab.tool}</p>,
+}));
+let state: LibraryState;
+let projectEvents: Array<() => void>;
+const project = {
+  id: 'project-1',
   revision: 1,
-  id: 'p1',
-  title: 'Selected',
+  title: 'Project one',
   status: 'draft',
   source: null,
   metadata: null,
-  createdAt: '2026-01-01T00:00:00Z',
-  updatedAt: '2026-01-01T00:00:00Z',
+  createdAt: '2026-10-23T10:00:00Z',
+  updatedAt: '2026-10-23T10:00:00Z',
 };
-const job: JobDto = {
-  kind: 'dubbing',
-  id: 'j1',
-  projectId: 'p1',
-  revision: 1,
-  title: 'Old job',
-  status: 'running',
-  stage: 'extractOrGenerateTranscript',
-  progress: {
-    percent: 10,
-    message: 'Working',
-    currentStep: null,
-    processedItems: null,
-    totalItems: null,
-  },
-  error: null,
-  createdAt: project.createdAt,
-  updatedAt: project.updatedAt,
-};
-let context: ProjectContextType;
-let navigation: ReturnType<typeof useNavigation>;
-let projectEvent: (event: { payload: { projectId: string } }) => Promise<void>;
-const jobListeners = new Map<string, (event: { payload: unknown }) => void>();
-let missing: boolean;
-let jobSnapshot: Promise<JobDto[]> | JobDto[];
-let creation: Promise<Project> | null;
-let observations: { selectedId: string | null; jobs: JobDto[] }[];
-
-function Probe() {
-  context = useProjectContext();
-  navigation = useNavigation();
-  const jobs = useContext(JobContext)!;
-  const scoped = useProjectJobs(context.projectId);
-  observations.push({
-    selectedId: context.projectId,
-    jobs: scoped.jobs,
-  });
-  return (
-    <>
-      <output data-testid="job-scope">
-        {context.projectId ?? 'none'}:{scoped.jobs.length}
-      </output>
-      <output data-testid="global-jobs">{JSON.stringify(jobs.jobs)}</output>
-      <CurrentStepSummary />
-    </>
-  );
-}
-
+let projects: (typeof project)[];
 beforeEach(() => {
   vi.resetAllMocks();
-  jobListeners.clear();
-  observations = [];
-  missing = false;
-  creation = null;
-  jobSnapshot = [job];
-  vi.spyOn(console, 'warn').mockImplementation(() => {});
-  vi.mocked(listen).mockImplementation(async (name, callback) => {
-    if (name === 'project-updated') {
-      projectEvent = callback as typeof projectEvent;
-      return () => {};
-    }
-    jobListeners.set(name, callback as (event: { payload: unknown }) => void);
-    return () => {
-      jobListeners.delete(name);
-    };
+  state = emptyLibrary();
+  projectEvents = [];
+  projects = [project];
+  state.assets.push({
+    id: 'a',
+    ownerProjectId: project.id,
+    name: 'Standalone',
+    kind: 'text',
+    artifactId: null,
+    format: 'txt',
+    text: 'Текст',
+    parentId: null,
+    tags: [],
+    openedAt: null,
   });
-  vi.mocked(invoke).mockImplementation((async (command: string) => {
-    if (command === 'list_projects_cmd') return [];
-    if (command === 'create_project_cmd' && creation) return creation;
-    if (command === 'list_jobs_cmd') return jobSnapshot;
-    if (command === 'get_project_cmd') {
-      if (missing) throw { code: 'NOT_FOUND', message: 'Removed elsewhere' };
-      return project;
+  vi.mocked(listen).mockImplementation(async (name, callback) => {
+    if (name === 'project-updated') projectEvents.push(callback as () => void);
+    return () => {};
+  });
+  vi.mocked(invoke).mockImplementation((async (
+    command: string,
+    args?: { state?: LibraryState },
+  ) => {
+    if (command === 'get_library_cmd') return structuredClone(state);
+    if (command === 'list_projects_cmd') return projects;
+    if (command === 'save_library_cmd') {
+      state = structuredClone(args!.state!);
+      state.revision++;
+      return structuredClone(state);
     }
     throw new Error(`Unexpected command: ${command}`);
   }) as typeof invoke);
 });
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
+afterEach(() => cleanup());
+it('opens standalone assets outside the library and preserves tabs on return', async () => {
+  render(<App />);
+  fireEvent.doubleClick(await screen.findByRole('button', { name: /Standalone Текст/ }));
+  expect(await screen.findByRole('tab', { name: /Текст и подготовка/ })).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Все материалы' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Синтез речи' }));
+  await screen.findByRole('tab', { name: /Синтез речи/ });
+  fireEvent.click(screen.getByRole('button', { name: 'Библиотека' }));
+  expect(screen.queryByRole('tablist')).toBeNull();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Открытые рабочие пространства' }), {
+    target: { value: 'asset:a' },
+  });
+  expect(await screen.findByRole('tab', { name: /Синтез речи/ })).toBeTruthy();
+  expect(state.workspaces[0].tabs).toHaveLength(2);
 });
-
-async function openWorkspace() {
-  render(
-    <NavigationProvider>
-      <ProjectProvider>
-        <AppJobProvider>
-          <App />
-          <Probe />
-        </AppJobProvider>
-      </ProjectProvider>
-    </NavigationProvider>,
-  );
-  await act(async () => {
-    context.setProject(project);
-    navigation.setCurrentView('project');
-  });
-  await waitFor(() => expect(screen.getByTestId('job-scope').textContent).toBe('p1:1'));
-}
-
-it('closes missing selection and clears project selectors while the global queue keeps updating', async () => {
-  await openWorkspace();
-  const token = context.captureToken();
-  const lateJobEvent = jobListeners.get('job-event')!;
-  let resolve!: (jobs: JobDto[]) => void;
-  jobSnapshot = new Promise((done) => {
-    resolve = done;
-  });
-  act(() => jobListeners.get('job-events-invalidated')!({ payload: {} }));
-  missing = true;
-  await act(async () => projectEvent({ payload: { projectId: project.id } }));
-  expect(context.selection).toEqual({ status: 'closed' });
-  expect(context.project).toBeNull();
-  expect(context.validateToken(token)).toBe(false);
-  expect(navigation.currentView).toBe('home');
-  expect(screen.getByRole('heading', { name: 'Home page' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Project controls' })).toBeNull();
-  expect(
-    (
-      screen.getByRole('button', {
-        name: 'Workspace unavailable without an active project',
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(true);
-  expect(screen.getByTestId('job-scope').textContent).toBe('none:0');
-  await act(async () => {
-    resolve([job]);
-    lateJobEvent({ payload: { kind: 'progressed', job: { ...job, revision: 2 } } });
-  });
-  expect(screen.getByTestId('job-scope').textContent).toBe('none:0');
-  expect(
-    observations.every((value) =>
-      value.jobs.every((job) => value.selectedId !== null && job.projectId === value.selectedId),
-    ),
-  ).toBe(true);
-  expect(jobListeners.size).toBe(2);
-  expect(JSON.parse(screen.getByTestId('global-jobs').textContent!).j1.revision).toBe(2);
-});
-
-it('switches job scope in the same render as the selected project', async () => {
-  await openWorkspace();
-  await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: /Очередь/ }));
-    await vi.dynamicImportSettled();
-  });
-  expect(await screen.findByRole('progressbar', { name: 'Old job progress' })).toBeTruthy();
-  const listener = jobListeners.get('job-event');
-  jobSnapshot = [];
-  await act(async () => context.setProject({ ...project, id: 'p2' }));
-  expect(screen.getByTestId('job-scope').textContent).toBe('p2:0');
-  expect(screen.getByText('No operation is running for this project.')).toBeTruthy();
-  expect(
-    observations.every((value) => value.jobs.every((job) => job.projectId === value.selectedId)),
-  ).toBe(true);
-  expect(screen.getByRole('progressbar', { name: 'Old job progress' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: /Очередь/ }).textContent).toContain('1');
-  expect(jobListeners.get('job-event')).toBe(listener);
-  expect(
-    vi.mocked(invoke).mock.calls.filter(([command]) => command === 'list_jobs_cmd'),
-  ).toHaveLength(1);
-  expect(invoke).not.toHaveBeenCalledWith('list_jobs_snapshot_cmd', expect.anything());
-  act(() =>
-    listener!({
-      payload: {
-        kind: 'progressed',
-        job: {
-          ...job,
-          revision: 2,
-          progress: { ...job.progress, percent: 75 },
-        },
-      },
-    }),
-  );
-  expect(
-    screen.getByRole('progressbar', { name: 'Old job progress' }).getAttribute('aria-valuenow'),
-  ).toBe('75');
-  await act(async () => context.setProject(null));
-  expect(screen.getByRole('button', { name: /Очередь/ }).textContent).toContain('1');
-  expect(screen.getByRole('progressbar', { name: 'Old job progress' })).toBeTruthy();
-  expect(screen.getByTestId('job-scope').textContent).toBe('none:0');
-  act(() =>
-    listener!({
-      payload: { kind: 'completed', job: { ...job, revision: 3, status: 'completed' } },
-    }),
-  );
-  expect(screen.queryByRole('progressbar', { name: 'Old job progress' })).toBeNull();
-  expect(screen.getByRole('list', { name: 'Operation history' }).textContent).toContain('Old job');
-});
-
-it('returns home if the selected project disappears while settings are visible', async () => {
-  await openWorkspace();
-  act(() => navigation.setCurrentView('settings'));
+it('keeps settings separate and recovers when the open project is removed elsewhere', async () => {
+  render(<App />);
+  fireEvent.doubleClick(await screen.findByRole('button', { name: 'Project one' }));
+  await screen.findByRole('tablist');
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(await screen.findByRole('heading', { name: 'Settings page' })).toBeTruthy();
-  missing = true;
-  await act(async () => projectEvent({ payload: { projectId: project.id } }));
-  expect(navigation.currentView).toBe('home');
-  expect(screen.getByRole('heading', { name: 'Home page' })).toBeTruthy();
+  projects = [];
+  state.workspaces = [];
+  await act(async () => projectEvents.forEach((notify) => notify()));
+  expect(await screen.findByRole('heading', { name: 'Все материалы' })).toBeTruthy();
 });
-
-it('does not navigate back into a project when an invalidated create operation completes', async () => {
-  await openWorkspace();
-  let resolve!: (value: Project) => void;
-  creation = new Promise((done) => {
-    resolve = done;
+it('does not publish a broken catalog and exposes a retry after unavailable storage', async () => {
+  vi.mocked(invoke).mockRejectedValueOnce({
+    code: 'STORAGE',
+    message: 'Library storage unavailable',
   });
-  fireEvent.change(screen.getByRole('textbox', { name: 'Project name' }), {
-    target: { value: 'New project' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Create project' }));
-  expect(invoke).toHaveBeenCalledWith('create_project_cmd', { title: 'New project' });
-  missing = true;
-  await act(async () => projectEvent({ payload: { projectId: project.id } }));
-  await act(async () => resolve({ ...project, id: 'created' }));
-  expect(context.selection.status).toBe('closed');
-  expect(navigation.currentView).toBe('home');
-  expect(screen.getByTestId('job-scope').textContent).toBe('none:0');
+  render(<App />);
+  expect(await screen.findByRole('alert')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Повторить подключение' }));
+  expect(await screen.findByRole('button', { name: /Standalone Текст/ })).toBeTruthy();
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+});
+it('keeps the global queue outside workspace selection', async () => {
+  const jobs = {
+    jobs: { job1: { status: 'running', title: 'Global job', progress: { percent: 42 } } },
+  };
+  render(
+    <JobContext.Provider value={jobs as unknown as React.ContextType<typeof JobContext>}>
+      <App />
+    </JobContext.Provider>,
+  );
+  expect(await screen.findByRole('button', { name: 'Очередь · 1' })).toBeTruthy();
+  fireEvent.doubleClick(screen.getByRole('button', { name: 'Project one' }));
+  await screen.findByRole('tablist');
+  expect(screen.getByText('Global job · 42%')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Библиотека' }));
+  expect(screen.getByRole('button', { name: 'Очередь · 1' })).toBeTruthy();
 });

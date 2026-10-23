@@ -8,20 +8,12 @@ import type {
   SpeechSourceSnapshot,
   SpeechSourceRequest,
 } from '@/shared/api/contracts/speech';
-import type { SpeechVoiceOption } from '@/shared/api/contracts/speechCatalog';
-import { describeCommandError } from '@/shared/api/contracts/error';
+import { describeCommandError as describe } from '@/shared/api/contracts/error';
 import { useSpeechSources } from './useSpeechSources';
 import { useMarkerPreparation } from './useMarkerPreparation';
-
-export type SpeechWorkflowOptions = {
-  projectId: string;
-  profileId: string;
-  voiceId: string;
-  referenceId: string;
-  voices: SpeechVoiceOption[];
-  engineId: string;
-};
-const describe = describeCommandError;
+import type { SpeechWorkflowOptions } from './speechOptions';
+export type { SpeechWorkflowOptions } from './speechOptions';
+import { useSpeechDraftSync } from './useSpeechDraftSync';
 
 export function useSpeechWorkflow({
   projectId,
@@ -30,23 +22,45 @@ export function useSpeechWorkflow({
   referenceId,
   voices,
   engineId,
+  initialSource,
+  draft,
+  onDraftChange,
 }: SpeechWorkflowOptions) {
-  const [mode, setMode] = useState<'text' | 'subtitles'>('text');
-  const [text, setText] = useState('');
-  const [translationId, setTranslationId] = useState('');
-  const [subtitleId, setSubtitleId] = useState('');
+  const [mode, setMode] = useState<'text' | 'subtitles'>(
+    draft?.mode ?? (initialSource && initialSource.kind !== 'text' ? 'subtitles' : 'text'),
+  );
+  const [text, setText] = useState(draft?.text ?? initialSource?.text ?? '');
+  const [translationId, setTranslationId] = useState(
+    draft?.translationId ?? initialSource?.translation_id ?? '',
+  );
+  const [subtitleId, setSubtitleId] = useState(
+    draft?.subtitleId ?? initialSource?.artifact_id ?? '',
+  );
   const { subtitleFiles, translations, refreshSources } = useSpeechSources(projectId);
-  const marker = useMarkerPreparation(projectId);
+  const marker = useMarkerPreparation(projectId, draft);
   const [source, setSource] = useState<SpeechSourceSnapshot | null>(null);
   const [review, setReview] = useState<SpeechReview | null>(null);
   const [assignments, setAssignments] = useState<SpeechAssignment[]>([]);
   const [runs, setRuns] = useState<SpeechRunView[]>([]);
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(draft?.selected ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [audio, setAudio] = useState<string | null>(null);
   const run = runs.find((item) => item.run_id === selected);
   const subtitle = subtitleFiles.find((f) => f.id === subtitleId);
+  useSpeechDraftSync(
+    {
+      mode,
+      text,
+      subtitleId,
+      translationId,
+      selected,
+      preparation: marker.preparation,
+      applied: marker.applied,
+      originalRequest: marker.originalRequest,
+    },
+    onDraftChange,
+  );
   const request: SpeechSourceRequest = {
     kind: mode === 'text' ? 'text' : translationId ? 'translation' : 'subtitles',
     text: mode === 'text' ? text : null,

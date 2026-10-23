@@ -134,6 +134,11 @@ async fn setup_storage_with_lease(
 
     Ok((
         RuntimeServices {
+            library: Arc::new(
+                adapters_storage::sqlite::library_repository::SqliteLibraryRepository::new(
+                    pool.clone(),
+                ),
+            ),
             ui_preferences: Arc::new(
                 adapters_storage::sqlite::ui_preferences::SqliteUiPreferences::new(pool.clone()),
             ),

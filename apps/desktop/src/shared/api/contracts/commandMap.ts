@@ -1,4 +1,5 @@
 import type { Project, CreateProjectResponse } from './project';
+import type { LibraryCommandMap } from './library';
 import type { VoiceCommandMap } from './voiceCommandMap';
 import type { SpeechCommandMap } from './speech';
 import type { StoredTheme, ProjectPin, ProjectPins, LegacyPin } from './uiPreferences';
@@ -31,7 +32,7 @@ import type {
   TranslationExportReceipt,
   TranslationStart,
 } from './translation';
-export interface CommandMap extends VoiceCommandMap, SpeechCommandMap {
+export interface CommandMap extends VoiceCommandMap, SpeechCommandMap, LibraryCommandMap {
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
   set_color_theme_cmd: { args: { value: string; expectedRevision: number }; result: StoredTheme };
   import_color_theme_cmd: { args: { value: string }; result: StoredTheme };
@@ -221,7 +222,6 @@ export interface CommandMap extends VoiceCommandMap, SpeechCommandMap {
     args: { projectId: string; translationId: string };
     result: null;
   };
-
   list_jobs_cmd: {
     args: undefined;
     result: Job[];

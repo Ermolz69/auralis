@@ -21,6 +21,11 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  library:native:inspect:
+    requires:
+      vars: [DATA_ROOT, TITLE]
+    cmds:
+      - node tools/tts/inspect_library.mjs "{{.DATA_ROOT}}" "{{.TITLE}}"
   setup:marker:local:
     desc: Verify the frozen Normalizer package and configure its model-free local preparation
     cmds:

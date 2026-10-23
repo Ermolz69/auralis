@@ -2,6 +2,7 @@ pub mod artifact;
 pub mod caster;
 mod import_cleanup;
 pub mod job;
+pub mod library;
 pub mod media;
 pub mod pipeline;
 pub mod project;

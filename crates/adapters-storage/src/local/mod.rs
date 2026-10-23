@@ -4,3 +4,4 @@ pub mod temp_workspace;
 
 pub use artifact_store::LocalArtifactStore;
 pub use temp_workspace::LocalTempWorkspace;
+pub mod library_text;

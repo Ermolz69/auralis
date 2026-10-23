@@ -3,6 +3,7 @@ pub mod artifact_recovery;
 pub mod caster;
 mod caster_audio;
 pub mod job;
+pub mod library;
 pub mod media;
 pub mod native_e2e;
 pub mod native_e2e_historical_edit;

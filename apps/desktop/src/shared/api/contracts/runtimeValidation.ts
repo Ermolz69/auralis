@@ -1,4 +1,5 @@
 import type { Artifact } from './artifact';
+import { libraryCommandResultValidators } from './libraryValidation';
 import {
   validateCastResult,
   validateReferencePlayback,
@@ -26,10 +27,8 @@ import {
 } from './validationPrimitives';
 import { isSafeRevision } from './jobValidation';
 import { validateHistoricalTranslationEditRequest } from './translationHistoricalValidation';
-
 type CommandResultValidators = { [K in keyof CommandMap]: Validator };
 type EventPayloadValidators = { [K in keyof EventMap]: Validator };
-
 const projectStatuses = new Set([
   'draft',
   'source_imported',
@@ -114,6 +113,7 @@ export function validateArtifact(value: unknown): value is Artifact {
 }
 
 const commandResultValidators = {
+  ...libraryCommandResultValidators,
   ...speechCommandResultValidators,
   list_voice_catalog_cmd: validateVoiceCatalogPage,
   inspect_voice_cmd: validateVoiceDetails,

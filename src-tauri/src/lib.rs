@@ -100,6 +100,9 @@ pub fn run() -> Result<(), AppRunError> {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::library::get_library_cmd,
+            commands::library::read_library_text_cmd,
+            commands::library::save_library_cmd,
             commands::ui_preferences::get_color_theme_cmd,
             commands::ui_preferences::set_color_theme_cmd,
             commands::ui_preferences::import_color_theme_cmd,

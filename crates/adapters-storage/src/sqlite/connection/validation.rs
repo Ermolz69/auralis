@@ -3,7 +3,6 @@ use super::*;
 mod puza_project;
 #[path = "speech_workflow.rs"]
 mod speech_workflow;
-/// Returns `true` only when a new database still needs its one-time initialization.
 pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError> {
     let table_names: Vec<String> = sqlx::query_scalar(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -24,6 +23,9 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
             crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
         })?;
     let mut expected_tables = FINAL_TABLES.to_vec();
+    if schema_marker >= 18 || table_names.iter().any(|name| name == "workspace_library") {
+        expected_tables.push("workspace_library");
+    }
     if schema_marker >= 4 {
         expected_tables.push("youtube_imports");
     }
@@ -71,7 +73,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
-        14..=17 => has_speech && has_queue && has_reviews,
+        14..=18 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();
@@ -213,6 +215,10 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     }
     speech_workflow::migrate_and_validate(pool, schema_marker).await?;
     puza_project::migrate_and_validate(pool, schema_marker).await?;
+    if schema_marker < 18 {
+        crate::sqlite::library_migration::migrate(pool).await?;
+    }
+    validate_columns(pool, "workspace_library", &["id", "revision", "payload"]).await?;
     validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;

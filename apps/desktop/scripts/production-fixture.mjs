@@ -42,6 +42,7 @@ export function installFixture() {
     window.__smokeViolations.push(event.effectiveDirective),
   );
   let callbackId = 0;
+  let library = JSON.parse(sessionStorage.getItem('smoke-library') || 'null') ?? { revision: 0, assets: [], folders: [], links: [], standaloneOwners: [], removedProjects: [], hiddenAssets: [], workspaces: [], browser: { scope: 'all', projectId: null, folderId: null, search: '', kind: '', selectedId: null } };
   window.__TAURI_INTERNALS__ = {
     transformCallback(callback) {
       window.__smokeCallbacks.set(++callbackId, callback);
@@ -50,10 +51,13 @@ export function installFixture() {
     unregisterCallback(id) {
       window.__smokeCallbacks.delete(id);
     },
-    async invoke(command) {
+    async invoke(command, args) {
       window.__smokeCommands.push(command);
       if (command === 'plugin:event|listen') return ++callbackId;
       if (command === 'plugin:event|unlisten') return null;
+      if (command === 'get_library_cmd') return structuredClone(library);
+      if (command === 'save_library_cmd') { library = { ...structuredClone(args.state), revision: library.revision + 1 }; sessionStorage.setItem('smoke-library', JSON.stringify(library)); return library; }
+      if (command === 'list_project_artifacts_cmd') return [];
       if (command === 'list_projects_cmd') return [project];
       if (command === 'list_pending_youtube_imports_cmd') return [];
       if (command === 'list_artifact_recovery_cmd') return [];

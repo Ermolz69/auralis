@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@/shared/api/tauri';
 import type { MarkerPreparation, SpeechSourceRequest } from '@/shared/api/contracts/speech';
+import type { SpeechDraft } from './speechDraft';
 
-export function useMarkerPreparation(projectId: string) {
+export function useMarkerPreparation(projectId: string, draft?: SpeechDraft) {
+  const initial = useRef(draft);
   const [preparation, setPreparation] = useState<MarkerPreparation | null>(null);
   const [originalRequest, setOriginalRequest] = useState<SpeechSourceRequest | null>(null);
   const [applied, setApplied] = useState(false);
   useEffect(() => {
-    setPreparation(null);
-    setOriginalRequest(null);
-    setApplied(false);
+    setPreparation(initial.current?.preparation ?? null);
+    setOriginalRequest(initial.current?.originalRequest ?? null);
+    setApplied(initial.current?.applied ?? false);
   }, [projectId]);
   const clear = () => {
     setPreparation(null);
@@ -33,5 +35,13 @@ export function useMarkerPreparation(projectId: string) {
       confirmed: true,
     });
   };
-  return { preparation, applied, normalize, confirm, clear, apply: () => setApplied(true) };
+  return {
+    preparation,
+    originalRequest,
+    applied,
+    normalize,
+    confirm,
+    clear,
+    apply: () => setApplied(true),
+  };
 }

@@ -4,6 +4,8 @@ pub mod job_executions;
 pub mod job_mapper;
 pub mod job_repository;
 pub mod job_row;
+mod library_migration;
+pub mod library_repository;
 pub mod outbox_mapper;
 mod outbox_parallel_migration;
 pub mod outbox_repository;
