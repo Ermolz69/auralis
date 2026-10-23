@@ -240,7 +240,8 @@
       "bindings": ["VOICE-03", "VOICE-07", "INT-A03"],
       "evidence": [
         "docs/integration/revoice-audio-assembly.md",
-        "docs/integration/revoice-ffmpeg-assembly.md"
+        "docs/integration/revoice-ffmpeg-assembly.md",
+        "docs/integration/acceptance/09-revoice-managed-ffmpeg.md"
       ],
       "blocker": null
     },

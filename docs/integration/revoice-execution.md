@@ -185,10 +185,16 @@ so it does not accept any timing/export gate.
 The [managed PCM assembly slice](revoice-ffmpeg-assembly.md) now implements a
 hash-pinned owned FFmpeg adapter, bounded source snapshots, exact expected PCM
 coverage/peak verification and confirmed shared-admission release. Its
-model-free checks pass; the first committed real-media fixture matrix is next.
-The updated Windows helper was also tested after its version changed to
-26.1016.62342. Both bounded capture attempts still timed out; no project/input or
-native workflow was confirmed. The normal profile remains an empty test profile.
+model-free checks pass. The [first real FFmpeg fixture matrix](acceptance/09-revoice-managed-ffmpeg.md)
+also passed three one-attempt cases with exact PCM hashes and confirmed resource
+release, including 600 entries. These remain synthetic staging results; the
+complete worker-chunk bridge, durable publication, native workflow and real-story
+quality/recovery gates remain open.
+After the computer-use skill catalog changed to 26.1016.62342, the official
+JavaScript session was reset and a fresh installed window was tested. Both
+bounded capture attempts still timed out; no project/input or native workflow
+was confirmed. The native helper executable's binary version was not separately
+verified. The normal profile remains an empty test profile.
 
 ## Native admission compatibility slice
 

@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "at": "2026-10-23T08:00:17.429Z",
+  "spec_sha256": "58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3",
+  "script_sha256": "6550b3592be8569bc8fcaecdfcb9acc15a41ae4e8201260ddad46267cb213989",
+  "total_bytes": 4680241,
+  "files": [
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\tools\\revoice\\ffmpeg-assembly-v1.json",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\spec.json",
+      "bytes": 24660,
+      "sha256": "58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-ASSEMBLY-INPUTS-v1\\音频's\\mono-a.wav",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\fixtures\\mono-a.wav",
+      "bytes": 9644,
+      "sha256": "ec2d1806f5cdbedffd7341fb01133d823a588588f12632c26428940989531492"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-ASSEMBLY-INPUTS-v1\\音频's\\mono-b.wav",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\fixtures\\mono-b.wav",
+      "bytes": 4844,
+      "sha256": "ccfa79b95f501fdfe1ff86dc9ee0498790327068f5a170aa6b11292801b4f805"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-ASSEMBLY-INPUTS-v1\\音频's\\stereo-a.wav",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\fixtures\\stereo-a.wav",
+      "bytes": 19244,
+      "sha256": "29abd412fce6a3842c2685b7010d25f4369094ccf262042d1283c5affdab50a4"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-ASSEMBLY-INPUTS-v1\\音频's\\stereo-b.wav",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\fixtures\\stereo-b.wav",
+      "bytes": 9644,
+      "sha256": "96e0778bf78d60db9c69deeb49bbb7e3e49de5ab1f61189b9bff1540370da881"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-CONTINUOUS-v1\\staging\\audio-assembly-yNZ3RK\\speech.wav",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-CONTINUOUS-v1\\speech.wav",
+      "bytes": 33644,
+      "sha256": "c856284fae690e78a12a7a6069a997a507e90aab856567e8e9035fa644c200f9"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-CONTINUOUS-v1\\staging\\audio-assembly-yNZ3RK\\assembly.json",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-CONTINUOUS-v1\\assembly.json",
+      "bytes": 1625,
+      "sha256": "d9ab886b421e537832e72e023d284c47f5b1f96190901ba1a0388c19ac448654"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-CONTINUOUS-v1\\receipt.json",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-CONTINUOUS-v1\\receipt.json",
+      "bytes": 1496,
+      "sha256": "25f53f7e6200a9194ba7c4ac9be1aed0a25e6967508f840d6dfa457de5abb52a"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-WINDOWS-v1\\staging\\audio-assembly-kUnHRC\\speech.wav",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-WINDOWS-v1\\speech.wav",
+      "bytes": 38444,
+      "sha256": "9afffb66be24c40a5ceef4494f728d750e36af59cea08f1c8065ae93d468849f"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-WINDOWS-v1\\staging\\audio-assembly-kUnHRC\\assembly.json",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-WINDOWS-v1\\assembly.json",
+      "bytes": 1945,
+      "sha256": "d32af6eb4bdf9bf3b68720aceadd044063760d018e763ec4f6ade6154d4cc4ac"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-WINDOWS-v1\\receipt.json",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-WINDOWS-v1\\receipt.json",
+      "bytes": 1489,
+      "sha256": "2f0cfa599bed8ef04a64fa7f4843859e24ed08d5e58e06889f2d20c57ace0d14"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-LONG600-v1\\staging\\audio-assembly-5v6Z0N\\speech.wav",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-LONG600-v1\\speech.wav",
+      "bytes": 4320044,
+      "sha256": "0608784c2b9850183ca45b40dc65866d281e9dca86fb172a4392347809dfa871"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-LONG600-v1\\staging\\audio-assembly-5v6Z0N\\assembly.json",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-LONG600-v1\\assembly.json",
+      "bytes": 211118,
+      "sha256": "257637885431420eed88bcdb610887511d0ec7b53394cc091a395c8591f74437"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\FFMPEG-AUDIO-LONG600-v1\\receipt.json",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\FFMPEG-AUDIO-LONG600-v1\\receipt.json",
+      "bytes": 1495,
+      "sha256": "fa8081c9c58577a559bde75b196b4e0373efec02575022486a488e67bc7fa231"
+    },
+    {
+      "source": "E:\\Anything\\Projects\\Commercial\\auralis\\target\\revoice\\ffmpeg-assembly-real-v1.log",
+      "retained": "E:\\Anything\\Projects\\Commercial\\auralis\\.cache\\revoice-audio\\58e8c084572715567fdf6c620d7f7429a5bbb584e60ac5bdd713b02522035ca3\\real-v1.log",
+      "bytes": 905,
+      "sha256": "eb2b5a939f4aca70322dfe382038bd3360b75f9a56ac679978acf1fa5f36aeaa"
+    }
+  ],
+  "scope": "Exact retained synthetic fixture inputs, verified staged WAVs and manifests. No native, speech/listening, publication or clean Windows acceptance."
+}

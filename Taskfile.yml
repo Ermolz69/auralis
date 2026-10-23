@@ -26,6 +26,13 @@ tasks:
     cmds:
       - node --check tools/revoice/prepare-audio-fixtures.mjs
       - node tools/revoice/prepare-audio-fixtures.mjs
+  revoice:audio:retain:
+    desc: Retain exact frozen fixture inputs and verified FFmpeg WAV/manifest bytes outside Cargo target
+    requires:
+      vars: [SPEC]
+    cmds:
+      - node --check tools/revoice/retain-audio.mjs
+      - node tools/revoice/retain-audio.mjs "{{.SPEC}}"
   revoice:audio:real:
     desc: Run each frozen real managed FFmpeg case once under shared model-free admission; no models or speech qualification
     requires:
@@ -37,7 +44,8 @@ tasks:
   revoice:audio:fmt:
     desc: Format only the managed PCM fixture generator and assembly policy
     cmds:
-      - pnpm prettier --write tools/revoice/prepare-audio-fixtures.mjs docs/integration/revoice-ffmpeg-assembly.md docs/integration/revoice-audio-assembly.md docs/integration/revoice-execution.md docs/integration/revoice-plan.json
+      - pnpm prettier --write tools/revoice/prepare-audio-fixtures.mjs tools/revoice/retain-audio.mjs docs/integration/revoice-ffmpeg-assembly.md docs/integration/revoice-audio-assembly.md docs/integration/revoice-execution.md docs/integration/revoice-plan.json
+      - pnpm prettier --write docs/integration/acceptance/09-revoice-managed-ffmpeg.md
   revoice:plan:check:
     desc: Check the frozen full revoicing task and acceptance matrix without models
     cmds:

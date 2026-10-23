@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "case_id": "FFMPEG-ASSEMBLY-RELEASE-v1",
+  "observed_at": "2026-10-23T08:01:14.5985807Z",
+  "queried_guardian_pids": [
+    21572,
+    13888,
+    19592
+  ],
+  "still_present": [],
+  "all_queried_guardians_absent": true,
+  "scope": "Post-completion read-only process snapshot for the three recorded admission guardians. Each staged result already required owned FFmpeg exit and guardian exit status 0. Does not measure native speech performance or prove availability of a later model slot."
+}

@@ -87,9 +87,11 @@ edges for existing workspace packages; no package version was updated. The first
 compile failure after moving timeline types was an omitted explicit import and
 was corrected; its log remains separate from successful checks.
 
-Real FFmpeg results are still pending. Commit the candidate before running
-`task revoice:audio:prepare`, commit the resulting immutable case specification,
-then run `task revoice:audio:real SPEC=tools/revoice/ffmpeg-assembly-v1.json` once.
+The [first real managed-FFmpeg matrix](acceptance/09-revoice-managed-ffmpeg.md)
+then passed all three frozen cases once, including stereo, source windows and
+600 ordered entries. Exact PCM hashes, frames, peaks and clipping counts matched.
+Verified WAVs, manifests, sources and receipts are retained outside Cargo target.
+This does not accept the natural-story, native, publication or listening gates.
 
 Publication still requires application
 ownership/review checks, complete chunk provenance, durable assembly intents and
