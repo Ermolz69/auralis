@@ -12,6 +12,31 @@ impl ModelAdmissionLease {
     pub fn acquire_model_free() -> io::Result<Self> {
         Self::acquire_mode(true)
     }
+    pub fn guardian_pid(&self) -> u32 {
+        self.child.id()
+    }
+    pub fn release(mut self) -> io::Result<()> {
+        if let Some(mut stdin) = self.child.stdin.take() {
+            let _ = stdin.write_all(b"release\n");
+        }
+        for _ in 0..1000 {
+            match self.child.try_wait() {
+                Ok(Some(status)) if status.success() => return Ok(()),
+                Ok(Some(_)) => return Err(io::Error::other("Admission release inspection failed")),
+                Ok(None) => std::thread::sleep(std::time::Duration::from_millis(20)),
+                Err(error) => {
+                    std::mem::forget(self);
+                    return Err(error);
+                }
+            }
+        }
+        // Keep the guardian and its leases alive when resource release is uncertain.
+        std::mem::forget(self);
+        Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "Admission release was not confirmed",
+        ))
+    }
     fn acquire_mode(model_free: bool) -> io::Result<Self> {
         if !cfg!(windows) {
             return Err(io::Error::other(

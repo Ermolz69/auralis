@@ -1,6 +1,39 @@
 version: '3'
 
 tasks:
+  sync:audio:assembly:
+    desc: Refresh only workspace dependency edges for the PCM assembly adapter using the existing offline dependency cache
+    cmds:
+      - cargo check --offline -p adapters-ffmpeg
+  fmt:audio:assembly:
+    desc: Format only the shared PCM verifier and managed FFmpeg assembly slice
+    cmds:
+      - task: fmt:audio:timeline
+      - rustfmt --edition 2024 --config skip_children=true crates/common/src/lib.rs crates/common/src/model_admission.rs crates/common/src/wav/mod.rs crates/common/src/wav/entity.rs crates/common/src/wav/error.rs crates/common/src/wav/inspect.rs crates/common/src/wav/tests.rs crates/adapters-tts/src/wav_verification.rs crates/ports/src/lib.rs crates/ports/src/audio_assembly.rs crates/adapters-ffmpeg/src/lib.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/assembly/mod.rs crates/adapters-ffmpeg/src/assembly/adapter.rs crates/adapters-ffmpeg/src/assembly/config.rs crates/adapters-ffmpeg/src/assembly/control.rs crates/adapters-ffmpeg/src/assembly/error.rs crates/adapters-ffmpeg/src/assembly/pcm.rs crates/adapters-ffmpeg/src/assembly/process.rs crates/adapters-ffmpeg/src/assembly/staging.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/assembly/process/tests.rs crates/adapters-ffmpeg/src/assembly/staging/tests.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/tests/audio_assembly_real.rs crates/adapters-ffmpeg/tests/audio_assembly/support.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/assembly/adapter/tests.rs
+  test:audio:assembly:
+    desc: Verify shared PCM, timeline and owned process controls without models or real FFmpeg renders
+    cmds:
+      - task: test:audio:assembly:core
+      - task: test:tts
+  test:audio:assembly:core:
+    desc: Run shared WAV, managed assembly lifecycle and pure timeline controls without real FFmpeg
+    cmds:
+      - cargo test --locked -p common --lib wav
+      - cargo test --locked -p adapters-ffmpeg --lib assembly -- --test-threads=1
+      - task: test:audio:timeline
+  check:audio:probe:
+    desc: Compile the frozen real-media fixture driver without invoking FFmpeg
+    cmds:
+      - cargo test --locked -p adapters-ffmpeg --test audio_assembly_real --no-run
+  clippy:audio:assembly:
+    desc: Lint the managed assembly and shared WAV boundary with warnings denied
+    cmds:
+      - cargo clippy --locked -p common -p ports -p adapters-ffmpeg -p adapters-tts --lib -- -D warnings
+      - cargo clippy --locked -p adapters-ffmpeg --lib --tests -- -D warnings
   test:audio:timeline:
     desc: Verify pure bounded speech timing, complete coverage and visible conflict rules without models or media tools
     cmds:
@@ -10,6 +43,8 @@ tasks:
     desc: Format only the new pure audio timeline sources and controls
     cmds:
       - rustfmt --edition 2024 --config skip_children=true crates/domain/src/speech/mod.rs crates/domain/src/speech/timeline/mod.rs crates/domain/src/speech/timeline/planner.rs crates/domain/tests/audio_timeline.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/domain/src/speech/timeline/entity.rs crates/domain/src/speech/timeline/error.rs crates/domain/src/speech/timeline/measurement.rs crates/domain/src/speech/timeline/policy.rs crates/domain/src/speech/timeline/request.rs crates/domain/src/speech/timeline/span.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/domain/src/speech/timeline/window.rs
   clippy:audio:timeline:
     desc: Lint the domain timing policy and its model-free controls
     cmds:

@@ -2,6 +2,7 @@ pub mod active_translation_host_job;
 pub mod artifact_finalization;
 pub mod artifact_index;
 pub mod artifact_recovery;
+pub mod audio_assembly;
 pub mod cancellation;
 pub mod caster;
 pub mod committed_translation_progress;

@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "case_id": "FFMPEG-ASSEMBLY-MODEL-FREE-v1",
+  "at": "2026-10-23T07:45:47.3878731Z",
+  "base_commit": "37cfd678598dcfa73c429f076653cdf99ab0b298",
+  "policy": "pcm16_48k_exact_concat_v1",
+  "status": "model_free_checks_passed",
+  "shared_wav_tests": 7,
+  "assembly_tests": 9,
+  "timeline_tests": 10,
+  "domain_library_tests": 21,
+  "regressions": "task rs:test:audio:assembly passed including TTS adapter, SQLite speech storage and application workflow",
+  "clippy": "Production and test targets passed with warnings denied",
+  "normal_desktop": "passed",
+  "real_driver": "compiled without invocation",
+  "file_size": "passed",
+  "initial_compile_failure": "Explicit SpeechId/TimingMode imports omitted after splitting timeline types; corrected in v2, v1 log retained",
+  "dependency_changes": "Only existing common, sha2 and tempfile dependency edges added to adapters-ffmpeg; no versions changed",
+  "models_loaded": false,
+  "real_ffmpeg_invoked": false,
+  "installed_runtime_changed": false,
+  "voices_changed": false,
+  "limitations": "Pure/synthetic controls and fixture child processes only. Real FFmpeg matrix, complete worker-chunk bridge, native workflow, durable jobs/outbox, actual speech, listening, video and clean Windows remain pending.",
+  "sources": [
+    {
+      "file": "crates/common/src/model_admission.rs",
+      "sha256": "86b412fb458bad67dee6a558c4fcd8f00a8941c728d5e44d74b9f716d11bb09a"
+    },
+    {
+      "file": "crates/common/src/lib.rs",
+      "sha256": "7f50356fce26a21c961f4506ec14af18347895d677fd26d82dc192d7b26b31ac"
+    },
+    {
+      "file": "crates/adapters-tts/src/wav_verification.rs",
+      "sha256": "466a6c5273fd23b7c4b2abf2ee9036c01eb9df15e1ff290d1be35f988d61e46e"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/Cargo.toml",
+      "sha256": "606e6f8a028ce66d37c32d24618e03db28ccde7f7920e016c85c0d5de1040e2b"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/lib.rs",
+      "sha256": "728167579a513bd8254fa07156c4b4025f22aedf47cbc33c5fdd86fd01cf2712"
+    },
+    {
+      "file": "crates/ports/src/lib.rs",
+      "sha256": "1cb3accc71d7681c3f2bf66f013e1cc7eaa9a4dfe92841f7447ab594631d4736"
+    },
+    {
+      "file": "crates/ports/src/audio_assembly.rs",
+      "sha256": "dbc2cfb85eaafb65feee593e6900a47072353dcc13fc1929d1736b5fec5035d3"
+    },
+    {
+      "file": "Taskfile.yml",
+      "sha256": "7ce68d8acf94b79a4722c945c69555f5c1010ee5a2971d9281e3e7e0f6b293a4"
+    },
+    {
+      "file": "taskfiles/rust.yml",
+      "sha256": "7f69a6eb67dc167124e7be5bf570fdda69f4e3d784109829bd5c7e3d17ab0451"
+    },
+    {
+      "file": "Cargo.lock",
+      "sha256": "c18d602656eb50cf5226f7bd205e9f794eb4f89fd82862aac55f79f8052f0823"
+    },
+    {
+      "file": "tools/revoice/prepare-audio-fixtures.mjs",
+      "sha256": "1ffdd641bedf290a5950e08b14134d2f9728afcd5da00809c1199833ec5d050f"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/adapter.rs",
+      "sha256": "84eb3e7dc749115cafad13a2e94cc3dc18f506d1f31e7dc8fad7ac8dc4593f94"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/adapter/tests.rs",
+      "sha256": "ea15f3022e216e41f0c91bab14e39139a20f0f1f3996eb009ad1a6a3dfcc9926"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/config.rs",
+      "sha256": "e107f6af2a0e14b0a5958b079b445c8819b9d8ca9f73c949affd75dae80ec789"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/control.rs",
+      "sha256": "aaddb6b559659e8ee5e12e6453443d58f2cb19c2cf7dfd20690c2c40fdfc6b49"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/error.rs",
+      "sha256": "543c7e114582fb2f7485e22f8c3a9d04a59d5f68c3641954d2418a24eda18c1e"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/mod.rs",
+      "sha256": "1a7d2e494db27659789655659b09388f04e49ec60a9ec01ee58e8de1729ebe99"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/pcm.rs",
+      "sha256": "1fccd12be8399292c15d5629c9b4b33484c208aacc09e65c4846a5127ebcbb57"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/process.rs",
+      "sha256": "8631c861b741cadf2db4e7e90b148df65c908364b95a014cbf939996c2a879f4"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/process/tests.rs",
+      "sha256": "929eef0abc4d03153e84ebbcc634642a20135ab42a424bcb07af1ee4a48224be"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/staging.rs",
+      "sha256": "1006f8ee4423983ee52684351f7da6543873ea3a296d3986b79994c3a9d70631"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/staging/tests.rs",
+      "sha256": "bddfa1b8a295a5b63247e45d2855aaed5ffec87baae3eafa615e3b9b477afadc"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/tests/audio_assembly_real.rs",
+      "sha256": "d85614e7bc797609d000b20912a2022d693ade6426dcea404dfe4047dfd54857"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/tests/audio_assembly/support.rs",
+      "sha256": "243ab42bc747b7e3b6ed05594cce7d5eedf3ce063813edb258befc8b61ef4043"
+    },
+    {
+      "file": "crates/common/src/wav/entity.rs",
+      "sha256": "98540826d1f036ed48ea981a30178d5be555afbe306081f08ce678cb342be07c"
+    },
+    {
+      "file": "crates/common/src/wav/error.rs",
+      "sha256": "eb8d856eef3c5c37aba4bf025880bdb94a41943c2adb6b3624ca70b9511a168e"
+    },
+    {
+      "file": "crates/common/src/wav/inspect.rs",
+      "sha256": "eb1a8ebbbd72b316ca712533db93a2b8139cbf3c4308edc77001924e0af7a0f3"
+    },
+    {
+      "file": "crates/common/src/wav/mod.rs",
+      "sha256": "54ea9ff3c7680a72635fc0a48fc6ee75e9dea508a9da3b1ceb3cf6a5f64bb847"
+    },
+    {
+      "file": "crates/common/src/wav/tests.rs",
+      "sha256": "888fa78360a9a06ce5d9977b12829ac09424f9fdcb38a97ed651113fd236d78d"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/entity.rs",
+      "sha256": "1df657d57964105334a437c880f4ce32dc9764542f6ca76129a1ed4670cd4aab"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/error.rs",
+      "sha256": "1ba5f8a2a77cf5a9ace6367261952aaea9bd445209a0edd2b2bc551fa48748e7"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/measurement.rs",
+      "sha256": "17cc0873876b5fa8a4c3aa7df906220f32a4307e2aa8a0721e9ff5e8f1bac59d"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/mod.rs",
+      "sha256": "679581654e0541d8da96f1a3b98cd16ac2b1cfc65900ecf6f8d5360394aa739c"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/planner.rs",
+      "sha256": "db5d973c2aa1b0646ff3f1a982852ee951d35f11f29feef709747b17d7c5edb5"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/policy.rs",
+      "sha256": "45f88762062d73f2b51f77010e1a47f90e35d897b762e9c3b4325e265e05be02"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/request.rs",
+      "sha256": "957b303e965d2a05ea4945d8f3d4896201e7a78871d8d0a8cee02754966d2168"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/span.rs",
+      "sha256": "c118d57270af29998974b591c89041da762119b9abea096b60c53e96afafcc4f"
+    },
+    {
+      "file": "crates/domain/src/speech/timeline/window.rs",
+      "sha256": "cef7496abc4c9de1099082ffa2e60c7b43595cf60cafc1e4508157fc6402ef8a"
+    }
+  ],
+  "logs": [
+    {
+      "file": "target/revoice/ffmpeg-assembly-compile-v1.log",
+      "sha256": "6453dd676fdb27971d31ffe69efc6dbacb05c482c88d4c5c58b71de47e293034"
+    },
+    {
+      "file": "target/revoice/ffmpeg-assembly-compile-v2.log",
+      "sha256": "ba3efe5201e6b1b77634311766acf449ed40d707fbf20d267f7fc47beb59fe80"
+    },
+    {
+      "file": "target/revoice/ffmpeg-assembly-unit-v1.log",
+      "sha256": "7b0e25212c9bee0d34322e5c49a417330d9669c420313a1508c90a235e78f9fa"
+    },
+    {
+      "file": "target/revoice/ffmpeg-assembly-core-v2.log",
+      "sha256": "588c950b702bc67008840d901a4e1200fd94ca35bf0ec0973dd1bc449e9b6f0e"
+    },
+    {
+      "file": "target/revoice/ffmpeg-assembly-clippy-v1.log",
+      "sha256": "85d82d51c49c48329ab28c18fe411ddd87f770db204442591ebe78e403b0e691"
+    },
+    {
+      "file": "target/revoice/ffmpeg-assembly-desktop-check-v1.log",
+      "sha256": "0c2dfc03ca1d85d4bf31dedb64c75b68e0ad2a78e4a3a49b23aa9c3ad1cfc47e"
+    },
+    {
+      "file": "target/revoice/ffmpeg-assembly-probe-compile-v1.log",
+      "sha256": "d848d745f8817229eee7ecb5c6fa4a7b766e954d6073503c53fc9cc5adc15b99"
+    }
+  ]
+}

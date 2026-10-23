@@ -238,7 +238,10 @@
       "depends_on": ["INT-R01"],
       "status": "in_progress",
       "bindings": ["VOICE-03", "VOICE-07", "INT-A03"],
-      "evidence": ["docs/integration/revoice-audio-assembly.md"],
+      "evidence": [
+        "docs/integration/revoice-audio-assembly.md",
+        "docs/integration/revoice-ffmpeg-assembly.md"
+      ],
       "blocker": null
     },
     {

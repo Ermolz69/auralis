@@ -182,6 +182,14 @@ conflicts. Its ten timing controls and 21 domain unit checks pass. It is not yet
 wired to verified worker chunks, managed FFmpeg, durable jobs or native controls,
 so it does not accept any timing/export gate.
 
+The [managed PCM assembly slice](revoice-ffmpeg-assembly.md) now implements a
+hash-pinned owned FFmpeg adapter, bounded source snapshots, exact expected PCM
+coverage/peak verification and confirmed shared-admission release. Its
+model-free checks pass; the first committed real-media fixture matrix is next.
+The updated Windows helper was also tested after its version changed to
+26.1016.62342. Both bounded capture attempts still timed out; no project/input or
+native workflow was confirmed. The normal profile remains an empty test profile.
+
 ## Native admission compatibility slice
 
 After the owner closed VALORANT/Riot, GPU use fell from 3,123 to 1,144 MiB and

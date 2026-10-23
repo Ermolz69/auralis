@@ -21,6 +21,23 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  revoice:audio:prepare:
+    desc: Freeze three synthetic PCM matrices and source hashes after committing the tested assembly candidate
+    cmds:
+      - node --check tools/revoice/prepare-audio-fixtures.mjs
+      - node tools/revoice/prepare-audio-fixtures.mjs
+  revoice:audio:real:
+    desc: Run each frozen real managed FFmpeg case once under shared model-free admission; no models or speech qualification
+    requires:
+      vars: [SPEC]
+    env:
+      AURALIS_FFMPEG_ASSEMBLY_SPEC: '{{.ROOT_DIR}}/{{.SPEC}}'
+    cmds:
+      - cargo test --locked -p adapters-ffmpeg --test audio_assembly_real -- --ignored --exact ffmpeg_matrix --nocapture --test-threads=1
+  revoice:audio:fmt:
+    desc: Format only the managed PCM fixture generator and assembly policy
+    cmds:
+      - pnpm prettier --write tools/revoice/prepare-audio-fixtures.mjs docs/integration/revoice-ffmpeg-assembly.md docs/integration/revoice-audio-assembly.md docs/integration/revoice-execution.md docs/integration/revoice-plan.json
   revoice:plan:check:
     desc: Check the frozen full revoicing task and acceptance matrix without models
     cmds:

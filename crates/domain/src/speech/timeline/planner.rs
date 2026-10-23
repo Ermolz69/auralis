@@ -1,4 +1,5 @@
 use super::*;
+use crate::speech::{SpeechId, TimingMode};
 use std::collections::BTreeSet;
 
 const SUPPORTED_RATES: [u32; 13] = [

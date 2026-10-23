@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "case_id": "NATIVE-UPDATED-HELPER-20261023-v1",
+  "skill_version": "computer-use/26.1016.62342",
+  "application_sha256": "f3341ad4c1a7c5eb04689c4d9ce37ff58c801059f7dc4bb5746cb80c2c5a7618",
+  "initial_state": "Registered Auralis was not running and list_windows returned no Auralis window. Read-only profile inspection reported schema 18, zero projects and zero jobs.",
+  "actions": [
+    "Reset the official JavaScript session and initialize @oai/sky",
+    "Launch the verified pre-existing installed Auralis by its returned registered app ID",
+    "Select the sole returned Auralis window 67072",
+    "Request screenshot and accessibility once",
+    "Refresh application/window selection and retry screenshot only once"
+  ],
+  "capture_errors": [
+    "FrameArrived timed out: timed out waiting on channel",
+    "window capture timed out: timed out waiting on channel"
+  ],
+  "status": "capture_failed_after_bounded_recovery",
+  "native_input_performed": false,
+  "project_created": false,
+  "model_loaded": false,
+  "voice_or_qualification_changed": false,
+  "limitation": "The updated helper still cannot capture the window. Desktop lock state and successful app interaction are not inferred. No native workflow gate is accepted; continue independent implementation."
+}
