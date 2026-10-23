@@ -35,9 +35,9 @@
     }
   },
   "type": {
-    "ui": "\"Cascadia Code\", Consolas, monospace",
+    "ui": "\"Roboto\", \"Segoe UI\", sans-serif",
     "technical": "\"Cascadia Code\", Consolas, monospace",
-    "display": "\"Science Gothic\", \"Cascadia Code\", sans-serif",
+    "display": "\"Roboto\", \"Segoe UI\", sans-serif",
     "hero": {
       "size": 34,
       "lineHeight": 42,

@@ -36,9 +36,9 @@
   --color-danger-action-hover: #303030;
   --color-danger-foreground: #eeeeee;
   --color-danger-soft: #151515;
-  --font-sans: 'Cascadia Code', Consolas, monospace;
+  --font-sans: 'Roboto', 'Segoe UI', sans-serif;
   --font-mono: 'Cascadia Code', Consolas, monospace;
-  --font-display: 'Science Gothic', 'Cascadia Code', sans-serif;
+  --font-display: 'Roboto', 'Segoe UI', sans-serif;
   --radius-xs: 0px;
   --radius-sm: 0px;
   --radius-md: 0px;

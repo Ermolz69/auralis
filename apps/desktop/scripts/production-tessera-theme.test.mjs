@@ -94,8 +94,22 @@ test(
         assert.deepEqual(palette, tokens.themes[theme]);
         assert.match(
           await page.locator('body').evaluate((element) => getComputedStyle(element).fontFamily),
-          /Cascadia Code/,
+          /Roboto/,
         );
+        assert.match(
+          await page
+            .getByRole('heading', { level: 1 })
+            .evaluate((element) => getComputedStyle(element).fontFamily),
+          /Roboto/,
+        );
+        for (const weight of [400, 700]) {
+          const faces = await page.evaluate(async (value) => {
+            const loaded = await document.fonts.load(`${value} 16px Roboto`, 'Привет Auralis');
+            return loaded.map((face) => ({ family: face.family, status: face.status }));
+          }, weight);
+          assert.ok(faces.length >= 2, 'Roboto Latin and Cyrillic subsets must load locally');
+          assert.ok(faces.every((face) => face.family === 'Roboto' && face.status === 'loaded'));
+        }
         if (process.env.AURALIS_THEME_EVIDENCE)
           await page.screenshot({
             path: path.join(process.env.AURALIS_THEME_EVIDENCE, `tessera-${theme}.png`),
