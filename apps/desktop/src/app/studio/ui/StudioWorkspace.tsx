@@ -73,26 +73,22 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
       )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="shrink-0 border-b border-border p-4">
-          <h1 className="mb-3 text-xl font-semibold">
-            {title ?? 'Рабочее пространство'}
-            <span className="ml-3 text-xs font-normal text-muted">
-              {workspace.projectId ? 'Проект' : 'Самостоятельный материал'}
-            </span>
-          </h1>
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              aria-label="Материал для инструмента"
-              className={`${field} !w-auto max-w-72`}
-              value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
-            >
-              <option value="">Новый ввод / контекст проекта</option>
-              {assets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            {!workspace.projectId && (
+              <select
+                aria-label="Материал для инструмента"
+                className={`${field} !w-auto max-w-72`}
+                value={assetId}
+                onChange={(e) => setAssetId(e.target.value)}
+              >
+                <option value="">Новый ввод</option>
+                {assets.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            )}
             {(Object.entries(toolNames) as [LibraryTool, string][]).map(([tool, name]) => (
               <button
                 className={button}
@@ -134,30 +130,36 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
           ))}
           {!workspace.tabs.length && (
             <div className="p-6">
-              <p className="mb-4 text-muted">Выберите материал и откройте нужный инструмент.</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {assets.map((asset) => (
-                  <button
-                    className={`${button} text-left`}
-                    key={asset.id}
-                    onClick={() => {
-                      setAssetId(asset.id);
-                      void act(() =>
-                        openTool(
-                          asset.kind === 'video'
-                            ? 'source'
-                            : asset.kind === 'audio'
-                              ? 'results'
-                              : 'text',
-                          asset.id,
-                        ),
-                      );
-                    }}
-                  >
-                    {asset.name}
-                  </button>
-                ))}
-              </div>
+              <p className="mb-4 text-muted">
+                {workspace.projectId
+                  ? 'Выберите материал слева или откройте инструмент.'
+                  : 'Выберите материал и откройте нужный инструмент.'}
+              </p>
+              {!workspace.projectId && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {assets.map((asset) => (
+                    <button
+                      className={`${button} text-left`}
+                      key={asset.id}
+                      onClick={() => {
+                        setAssetId(asset.id);
+                        void act(() =>
+                          openTool(
+                            asset.kind === 'video'
+                              ? 'source'
+                              : asset.kind === 'audio'
+                                ? 'results'
+                                : 'text',
+                            asset.id,
+                          ),
+                        );
+                      }}
+                    >
+                      {asset.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

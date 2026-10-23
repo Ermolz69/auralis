@@ -68,8 +68,7 @@ export function WorkspaceAssetBrowser({
       <div className="shrink-0 space-y-3 border-b border-border p-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">
-            Материалы проекта{' '}
-            <span className="text-xs font-normal text-muted">{assets.length}</span>
+            Материалы <span className="text-xs font-normal text-muted">{assets.length}</span>
           </h2>
           <button
             aria-label="Обновить материалы проекта"

@@ -26,7 +26,9 @@ test(
       assert.equal(await page.getByRole('tablist').count(), 0);
       const standalone = page.getByRole('button', { name: /Самостоятельный текст Текст/ });
       await standalone.dblclick();
-      await page.getByText('Самостоятельный материал', { exact: true }).waitFor();
+      await page
+        .getByRole('region', { name: 'Рабочее пространство Самостоятельный текст', exact: true })
+        .waitFor();
       assert.equal(
         await page.getByRole('complementary', { name: 'Материалы текущего проекта' }).count(),
         0,
@@ -77,7 +79,12 @@ test(
       await dialog.getByLabel('Название', { exact: true }).fill('Текст главы');
       await dialog.getByLabel('Текст', { exact: true }).fill('Первая глава.');
       await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
-      await page.getByText('Проект', { exact: true }).waitFor();
+      await page.getByRole('complementary', { name: 'Материалы текущего проекта' }).waitFor();
+      assert.equal(
+        await page.getByRole('combobox', { name: 'Материал для инструмента' }).count(),
+        0,
+      );
+      assert.equal(await page.getByRole('heading', { name: 'Серия 01', exact: true }).count(), 0);
       await input.waitFor();
       assert.equal(await input.inputValue(), 'Первая глава.');
       const resources = page.getByRole('complementary', { name: 'Материалы текущего проекта' });
