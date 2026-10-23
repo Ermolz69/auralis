@@ -1,3 +1,4 @@
+mod audio_layout;
 mod catalog;
 mod client;
 mod execute;
@@ -12,6 +13,7 @@ mod result_verification;
 mod wav_verification;
 mod workflow;
 
+pub use audio_layout::verify_result_audio_layout;
 pub use client::{TtsRuntimeConfig, TtsWorkerClient};
 pub use execute::{
     SavedCheckpoint, TtsCompleted, TtsExecutionObserver, TtsExecutionOutcome, TtsExecutionRequest,

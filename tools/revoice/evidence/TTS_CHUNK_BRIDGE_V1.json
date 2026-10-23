@@ -1,0 +1,260 @@
+{
+  "version": 1,
+  "case_id": "TTS-CHUNK-BRIDGE-MODEL-FREE-v1",
+  "at": "2026-10-23T08:36:56.210Z",
+  "base_commit": "99ead94db0dff6b1c23b69a2f98d8c88055036e6",
+  "raw_policy": "pcm16_stream_fade10ms_peak089125_kaiser5_v1",
+  "assembly_policy": "pcm16_48k_exact_concat_v1",
+  "status": "model_free_checks_passed",
+  "layout_tests": 11,
+  "assembly_tests": 19,
+  "models_loaded": false,
+  "real_ffmpeg_invoked": false,
+  "installed_runtime_changed": false,
+  "voice_references_or_qualification_changed": false,
+  "limitations": "Synthetic PCM and controlled fixture children only. Application orchestration, durable assembly jobs/outbox, installed worker integration, native workflow, natural stories, listening, video and clean Windows remain pending.",
+  "sources": [
+    {
+      "file": "Taskfile.yml",
+      "bytes": 25808,
+      "sha256": "5395216d949be7ec9014fe04cf5a292b02c9117bcb6e50eabbe00dca5c094254"
+    },
+    {
+      "file": "taskfiles/rust.yml",
+      "bytes": 31087,
+      "sha256": "eca0d7ffaf134a883561e26993bfaf74e316173760b2e0d156dd189ae26419d2"
+    },
+    {
+      "file": "crates/ports/src/lib.rs",
+      "bytes": 1695,
+      "sha256": "fad03ca8f44c3213092c029376f0187d7a6c9678ae79fb9036201f751ee67de9"
+    },
+    {
+      "file": "crates/ports/src/speech_audio/entity.rs",
+      "bytes": 566,
+      "sha256": "ba06d8b4210342134b2544e051bce0466708ec1a39b1ad380b04673c57f5bc19"
+    },
+    {
+      "file": "crates/ports/src/speech_audio/mod.rs",
+      "bytes": 202,
+      "sha256": "3d9f806e894d9f1bb7421f89001f11185db47a725802808026c5c71ad751f94d"
+    },
+    {
+      "file": "crates/ports/src/speech_audio/port.rs",
+      "bytes": 410,
+      "sha256": "caf3693bf2743e0313870e9e30b3939ff62afd2aaa8d0cf38ea6173e1bd4e3a8"
+    },
+    {
+      "file": "crates/ports/src/speech_audio/range.rs",
+      "bytes": 383,
+      "sha256": "b728038061a653383acff5b05fc8eda43085520a472dd6bd0d420ad923036d24"
+    },
+    {
+      "file": "crates/ports/src/speech_audio/request.rs",
+      "bytes": 265,
+      "sha256": "eff9d66b19b6df64d8c0d1b9754d1f25c96137a692fa6a137b58b72e3961f527"
+    },
+    {
+      "file": "crates/adapters-tts/src/lib.rs",
+      "bytes": 805,
+      "sha256": "d10bfb27cba7c3290263c2587d303fecd3ad50a37465165b52bd2ce7e4ffc9ba"
+    },
+    {
+      "file": "crates/adapters-tts/src/result_verification.rs",
+      "bytes": 10299,
+      "sha256": "e8eecdd464602af23a4ef00db9ffe01956b4280cbf09243710a58eeeab72c7c6"
+    },
+    {
+      "file": "crates/adapters-tts/src/audio_layout.rs",
+      "bytes": 4557,
+      "sha256": "a6519048b84638a9ef74f8ee784e19ddf376c7e4726fccaf913e06a198fd9757"
+    },
+    {
+      "file": "crates/adapters-tts/tests/result_verification.rs",
+      "bytes": 6894,
+      "sha256": "d9f686cc104009953bd1e8c2f1d38a587c671af72de6d4f24189084e828966bc"
+    },
+    {
+      "file": "crates/adapters-tts/tests/result_verification/layout.rs",
+      "bytes": 8180,
+      "sha256": "76fa0d1fe2271a940362f8b829637befa6449bde48d46c6e9f9fabff98c31775"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/adapter/tests.rs",
+      "bytes": 2150,
+      "sha256": "ea15f3022e216e41f0c91bab14e39139a20f0f1f3996eb009ad1a6a3dfcc9926"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/adapter.rs",
+      "bytes": 8974,
+      "sha256": "4ddef9eb8c8f9978986a8ffdf8e52b721f1504acc1933c87056e8d4e8ddd2241"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/config.rs",
+      "bytes": 1352,
+      "sha256": "e107f6af2a0e14b0a5958b079b445c8819b9d8ca9f73c949affd75dae80ec789"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/control.rs",
+      "bytes": 1002,
+      "sha256": "aaddb6b559659e8ee5e12e6453443d58f2cb19c2cf7dfd20690c2c40fdfc6b49"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/error.rs",
+      "bytes": 635,
+      "sha256": "543c7e114582fb2f7485e22f8c3a9d04a59d5f68c3641954d2418a24eda18c1e"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/input.rs",
+      "bytes": 1780,
+      "sha256": "a8237f3347234ed597387431f116fe7f13c857c8f2b993bc7be4a2d7993c2e24"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/mod.rs",
+      "bytes": 197,
+      "sha256": "6e699d3bc7aac0f1e0e7d5937a140ebc00a8a5fa15a3dc43e6f966972bc10a61"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/pcm.rs",
+      "bytes": 5179,
+      "sha256": "583508026bb52326830560928d881deb196b9eea2a05e53511107c50503d7fa2"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/process/tests.rs",
+      "bytes": 3433,
+      "sha256": "929eef0abc4d03153e84ebbcc634642a20135ab42a424bcb07af1ee4a48224be"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/process.rs",
+      "bytes": 2387,
+      "sha256": "8631c861b741cadf2db4e7e90b148df65c908364b95a014cbf939996c2a879f4"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/slicing/tests.rs",
+      "bytes": 1809,
+      "sha256": "967b80133e6e6daa778b9d21893109a5cd8a31da0fb845d797da95e8b5fbfe75"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/slicing.rs",
+      "bytes": 1611,
+      "sha256": "8ba759942ff639d821118f5cd3b4bfe812b150495ec6b10bf7f7f0492421b552"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/source/tests.rs",
+      "bytes": 11158,
+      "sha256": "a3128c0992dc31823d40f7592001414f19e9c26ef12f1dd0af642fedad492943"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/source.rs",
+      "bytes": 6471,
+      "sha256": "ee44434ae3d040e7791aa52d40fcd9c90160ea9eb73603f94de21882d1fa53e4"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/staging/tests.rs",
+      "bytes": 6017,
+      "sha256": "bddfa1b8a295a5b63247e45d2855aaed5ffec87baae3eafa615e3b9b477afadc"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/staging.rs",
+      "bytes": 5119,
+      "sha256": "a9483edea08d44dbebd6f44c351c7ca21302a5268f70ee984fd0b0e67cdfd8c3"
+    },
+    {
+      "file": "docs/integration/revoice-chunk-bridge.md",
+      "bytes": 6223,
+      "sha256": "384fe27a3e2b29c783029a17b338c7766fae435a4f3695de84142cad12bffee7"
+    },
+    {
+      "file": "docs/integration/revoice-plan.json",
+      "bytes": 10291,
+      "sha256": "5999f12d744ee52f267b8ac28bbcfdeab38df35a2a7df6f903981506f9df487c"
+    },
+    {
+      "file": "tools/revoice/record-chunk-bridge.mjs",
+      "bytes": 4989,
+      "sha256": "cfce7a1d2390d40966617c68647aa9b5a07d6a10b927b1227e35c308f25dd6b9"
+    }
+  ],
+  "logs": [
+    {
+      "file": "chunk-bridge-model-free-v1.log",
+      "outcome": "failed",
+      "note": "Initial 600-item extraction reached its unchanged 20-second deadline.",
+      "bytes": 3806,
+      "sha256": "b3cbb0ad6317fb6522a0322ef7f31391d56ef20019dd82b053d2fbb33cf3cb49",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-model-free-v1.log"
+    },
+    {
+      "file": "chunk-bridge-model-free-v2.log",
+      "outcome": "passed",
+      "note": "Removed per-intermediate-file physical sync and expanded controls.",
+      "bytes": 3439,
+      "sha256": "f20fe9e8ce587ec977d748c1e6d438f318a904e1a8ec6f40959deca0b2f81f2e",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-model-free-v2.log"
+    },
+    {
+      "file": "chunk-bridge-model-free-v3.log",
+      "outcome": "passed",
+      "note": "Post-cleanup sources before strengthening source-window controls.",
+      "bytes": 3343,
+      "sha256": "5f0257f642b4dd99d355fe293386903ad16d7e446a306be9f467613df807b992",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-model-free-v3.log"
+    },
+    {
+      "file": "chunk-bridge-model-free-v4.log",
+      "outcome": "passed",
+      "note": "Final source-window coverage and exact silence controls.",
+      "bytes": 3454,
+      "sha256": "3aa60af37297073b3d586a5f13720c12cdda6b8ef5a6f8357607fb88c220a412",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-model-free-v4.log"
+    },
+    {
+      "file": "chunk-bridge-regressions-v1.log",
+      "outcome": "passed",
+      "note": "Shared WAV/timeline/domain, TTS, storage and application regressions.",
+      "bytes": 15534,
+      "sha256": "bafbc64740b1bb96d1821d7b3254fec8c51f9c6016512aa873b822f9f2184b04",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-regressions-v1.log"
+    },
+    {
+      "file": "chunk-bridge-clippy-v2.log",
+      "outcome": "passed",
+      "note": "Scoped production and test Clippy, warnings denied.",
+      "bytes": 668,
+      "sha256": "89b27efba4a5a18dbd2411e1ac460870060009c3e5f3171627aeda31ef81d1e9",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-clippy-v2.log"
+    },
+    {
+      "file": "chunk-bridge-desktop-v1.log",
+      "outcome": "passed",
+      "note": "Normal desktop composition check; no application launch.",
+      "bytes": 1296,
+      "sha256": "66304e873437597eac8936c51c69bf1b6ce8226a49207939956e7cc4a0058009",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-desktop-v1.log"
+    },
+    {
+      "file": "chunk-bridge-file-size-v1.log",
+      "outcome": "passed",
+      "note": "Eight checker controls and production file-size scan.",
+      "bytes": 863,
+      "sha256": "85c935518cae5fe1b558f907561ed78555d88f238473fb68471b20dfebc2c1d4",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-file-size-v1.log"
+    },
+    {
+      "file": "chunk-bridge-docs-v3.log",
+      "outcome": "passed",
+      "note": "Final documentation and links.",
+      "bytes": 653,
+      "sha256": "0ece03757e62d1f426fa17c1a00ad3b5e82a8d4918cb910dc244e2680f2523e2",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-docs-v3.log"
+    },
+    {
+      "file": "chunk-bridge-plan-v4.log",
+      "outcome": "passed",
+      "note": "Final full-goal plan remains active with 24 mandatory cases.",
+      "bytes": 585,
+      "sha256": "75c2e93a97f091bfef528fbb7bc37744d9554cf588eeac2707b8c8881447db21",
+      "retained_path": ".cache/revoice-checks/chunk-bridge-v1/chunk-bridge-plan-v4.log"
+    }
+  ]
+}

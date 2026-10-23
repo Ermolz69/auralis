@@ -241,6 +241,7 @@
       "evidence": [
         "docs/integration/revoice-audio-assembly.md",
         "docs/integration/revoice-ffmpeg-assembly.md",
+        "docs/integration/revoice-chunk-bridge.md",
         "docs/integration/acceptance/09-revoice-managed-ffmpeg.md"
       ],
       "blocker": null

@@ -15,6 +15,13 @@ pub fn verify_result_files(
     request: &TtsExecutionRequest,
     completed: &TtsCompleted,
 ) -> Result<(), PortError> {
+    verified_result(request, completed).map(|_| ())
+}
+
+pub(crate) fn verified_result(
+    request: &TtsExecutionRequest,
+    completed: &TtsCompleted,
+) -> Result<(Value, Value, String), PortError> {
     if completed.output != request.out_file
         || completed.manifest != request.manifest_path
         || completed.utterance_count != request.expected_utterances
@@ -22,8 +29,13 @@ pub fn verify_result_files(
     {
         return Err(invalid("Worker completion targets or counts changed"));
     }
-    let plan = read_json(&request.plan_path)?;
-    let manifest = read_json(&completed.manifest)?;
+    let (plan, plan_sha256) = read_json(&request.plan_path)?;
+    let (manifest, manifest_sha256) = read_json(&completed.manifest)?;
+    if manifest_sha256 != completed.manifest_sha256 {
+        return Err(invalid(
+            "Retained manifest bytes differ from worker completion",
+        ));
+    }
     let profile = object(&plan, "profile")?;
     let plan_id = string(&plan, "plan_id")?;
     let engine = string(profile, "engine_id")?;
@@ -157,10 +169,10 @@ pub fn verify_result_files(
             "Result WAV measurements differ from worker completion",
         ));
     }
-    Ok(())
+    Ok((plan, manifest, plan_sha256))
 }
 
-fn read_json(path: &Path) -> Result<Value, PortError> {
+fn read_json(path: &Path) -> Result<(Value, String), PortError> {
     if path.is_symlink()
         || !path.is_file()
         || fs::metadata(path).map_err(io_error)?.len() > MAX_RESULT_JSON_BYTES
@@ -180,8 +192,9 @@ fn read_json(path: &Path) -> Result<Value, PortError> {
             "Speech plan or result manifest grew beyond its byte limit",
         ));
     }
-    serde_json::from_slice(&bytes)
-        .map_err(|_| invalid("Speech plan or result manifest is invalid JSON"))
+    let value = serde_json::from_slice(&bytes)
+        .map_err(|_| invalid("Speech plan or result manifest is invalid JSON"))?;
+    Ok((value, format!("{:x}", Sha256::digest(&bytes))))
 }
 
 fn object<'a>(value: &'a Value, key: &str) -> Result<&'a Value, PortError> {
@@ -191,7 +204,7 @@ fn object<'a>(value: &'a Value, key: &str) -> Result<&'a Value, PortError> {
         .ok_or_else(|| invalid("Missing result object"))
 }
 
-fn array<'a>(value: &'a Value, key: &str) -> Result<&'a [Value], PortError> {
+pub(crate) fn array<'a>(value: &'a Value, key: &str) -> Result<&'a [Value], PortError> {
     value
         .get(key)
         .and_then(Value::as_array)
@@ -199,14 +212,14 @@ fn array<'a>(value: &'a Value, key: &str) -> Result<&'a [Value], PortError> {
         .ok_or_else(|| invalid("Missing result array"))
 }
 
-fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str, PortError> {
+pub(crate) fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str, PortError> {
     value
         .get(key)
         .and_then(Value::as_str)
         .ok_or_else(|| invalid("Missing result string"))
 }
 
-fn number(value: &Value, key: &str) -> Result<u64, PortError> {
+pub(crate) fn number(value: &Value, key: &str) -> Result<u64, PortError> {
     value
         .get(key)
         .and_then(Value::as_u64)
@@ -247,7 +260,7 @@ fn io_error(error: std::io::Error) -> PortError {
     }
 }
 
-fn invalid(message: &str) -> PortError {
+pub(crate) fn invalid(message: &str) -> PortError {
     PortError::InvalidStoredData {
         entity_type: "tts_result".into(),
         entity_id: "manifest".into(),

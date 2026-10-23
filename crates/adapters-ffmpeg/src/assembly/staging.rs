@@ -21,6 +21,7 @@ pub(super) struct PreparedAssembly {
     pub timeline: AudioTimeline,
     pub pcm_sha256: String,
     pub stats: PcmStats,
+    pub raw_source: Option<ports::speech_audio::SpeechAudioLayout>,
 }
 
 pub(super) fn prepare(
@@ -142,5 +143,6 @@ pub(super) fn prepare(
         timeline,
         pcm_sha256: format!("{:x}", expected.finalize()),
         stats,
+        raw_source: None,
     })
 }

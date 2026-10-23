@@ -6,6 +6,9 @@ use std::fs;
 use std::path::Path;
 use tempfile::TempDir;
 
+#[path = "result_verification/layout.rs"]
+mod layout;
+
 struct Fixture {
     _temp: TempDir,
     request: TtsExecutionRequest,

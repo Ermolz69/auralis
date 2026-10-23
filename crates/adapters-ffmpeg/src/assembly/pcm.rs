@@ -110,12 +110,37 @@ pub(super) fn write_silence(
         .checked_mul(u64::from(channels) * 2)
         .filter(|bytes| *bytes <= (1_u64 << 32) - 128)
         .ok_or_else(|| error::invalid("Silence exceeds PCM16 RIFF limit"))?;
-    let size = u32::try_from(bytes).map_err(|_| error::invalid("Silence size overflow"))?;
     let mut output = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(path)
         .map_err(error::io)?;
+    write_header(&mut output, bytes, channels)?;
+    let zeros = [0_u8; BLOCK];
+    let mut remaining = bytes;
+    while remaining > 0 {
+        control.check()?;
+        let size = remaining.min(BLOCK as u64) as usize;
+        output.write_all(&zeros[..size]).map_err(error::io)?;
+        digest.update(&zeros[..size]);
+        remaining -= size as u64;
+    }
+    stats.samples += bytes / 2;
+    output.flush().map_err(error::io)
+}
+
+pub(super) fn write_header(
+    output: &mut impl Write,
+    bytes: u64,
+    channels: u16,
+) -> Result<(), PortError> {
+    let size = u32::try_from(bytes)
+        .ok()
+        .filter(|value| *value <= u32::MAX - 36)
+        .ok_or_else(|| error::invalid("PCM16 RIFF size overflow"))?;
+    if !matches!(channels, 1 | 2) {
+        return Err(error::invalid("PCM16 output requires mono or stereo"));
+    }
     let mut header = Vec::with_capacity(44);
     header.extend_from_slice(b"RIFF");
     header.extend_from_slice(&(size + 36).to_le_bytes());
@@ -130,15 +155,5 @@ pub(super) fn write_silence(
     header.extend_from_slice(b"data");
     header.extend_from_slice(&size.to_le_bytes());
     output.write_all(&header).map_err(error::io)?;
-    let zeros = [0_u8; BLOCK];
-    let mut remaining = bytes;
-    while remaining > 0 {
-        control.check()?;
-        let size = remaining.min(BLOCK as u64) as usize;
-        output.write_all(&zeros[..size]).map_err(error::io)?;
-        digest.update(&zeros[..size]);
-        remaining -= size as u64;
-    }
-    stats.samples += bytes / 2;
-    output.flush().map_err(error::io)
+    Ok(())
 }

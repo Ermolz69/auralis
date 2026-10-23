@@ -1,6 +1,22 @@
 version: '3'
 
 tasks:
+  fmt:audio:bridge:
+    desc: Format only the verified TTS aggregate-to-utterance bridge
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/lib.rs crates/ports/src/speech_audio/mod.rs crates/ports/src/speech_audio/entity.rs crates/ports/src/speech_audio/range.rs crates/ports/src/speech_audio/request.rs crates/ports/src/speech_audio/port.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/lib.rs crates/adapters-tts/src/result_verification.rs crates/adapters-tts/src/audio_layout.rs crates/adapters-tts/tests/result_verification.rs crates/adapters-tts/tests/result_verification/layout.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/assembly/mod.rs crates/adapters-ffmpeg/src/assembly/adapter.rs crates/adapters-ffmpeg/src/assembly/input.rs crates/adapters-ffmpeg/src/assembly/source.rs crates/adapters-ffmpeg/src/assembly/slicing.rs crates/adapters-ffmpeg/src/assembly/staging.rs crates/adapters-ffmpeg/src/assembly/pcm.rs crates/adapters-ffmpeg/src/assembly/source/tests.rs crates/adapters-ffmpeg/src/assembly/slicing/tests.rs
+  test:audio:bridge:
+    desc: Verify TTS chunk lineage and aggregate extraction without models or real FFmpeg
+    cmds:
+      - cargo test --locked -p adapters-tts --test result_verification
+      - cargo test --locked -p adapters-ffmpeg --lib assembly -- --test-threads=1
+  clippy:audio:bridge:
+    desc: Lint the TTS bridge and extraction controls with warnings denied
+    cmds:
+      - cargo clippy --locked -p adapters-tts --test result_verification -- -D warnings
+      - task: clippy:audio:assembly
   sync:audio:assembly:
     desc: Refresh only workspace dependency edges for the PCM assembly adapter using the existing offline dependency cache
     cmds:

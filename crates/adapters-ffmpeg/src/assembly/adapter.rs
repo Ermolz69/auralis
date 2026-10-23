@@ -2,15 +2,17 @@ use super::{
     AudioAssemblyLimits,
     control::WorkControl,
     error,
+    input::{self, AssemblyInput},
     pcm::{self, PcmStats},
-    process, staging,
+    process,
 };
 use async_trait::async_trait;
-use domain::speech::{Sha256Digest, timeline::plan_audio_timeline};
+use domain::speech::Sha256Digest;
 use ports::{
     PortError,
     audio_assembly::{AudioAssemblyPort, AudioAssemblyRequest, StagedAudioAssembly},
     cancellation::CancellationToken,
+    speech_audio::{SpeechAudioAssemblyPort, SpeechAudioAssemblyRequest},
 };
 use sha2::{Digest, Sha256};
 use std::{
@@ -58,42 +60,17 @@ impl FfmpegAudioAssembler {
 
     async fn admitted(
         &self,
-        request: AudioAssemblyRequest,
+        request: AssemblyInput,
         control: WorkControl,
     ) -> Result<(TempDir, StagedAudioAssembly), PortError> {
-        let timeline = plan_audio_timeline(&request.timeline).map_err(|conflicts| {
-            error::invalid(format!(
-                "Resolve {} timing conflicts before audio assembly",
-                conflicts.len()
-            ))
-        })?;
-        if request.inputs.len() != request.timeline.utterances.len()
-            || request
-                .inputs
-                .iter()
-                .zip(&request.timeline.utterances)
-                .any(|(input, facts)| {
-                    input.utterance_id != facts.utterance_id || facts.sample_rate != 48000
-                })
-        {
-            return Err(error::invalid(
-                "Assembly requires exact ordered complete 48 kHz utterance audio",
-            ));
-        }
-        if timeline.frame_count * u64::from(timeline.channels) * 2 > self.limits.max_pcm_bytes {
-            return Err(error::invalid(
-                "Timeline exceeds the configured output byte budget",
-            ));
-        }
         let owner = self.clone();
         let work = control.clone();
         let prepared = tokio::task::spawn_blocking(move || {
             if pcm::hash_file(&owner.executable, &work)? != owner.executable_sha256.as_str() {
                 return Err(error::invalid("Managed FFmpeg executable hash differs"));
             }
-            staging::prepare(
-                &request,
-                timeline,
+            input::prepare(
+                request,
                 &owner.input_root,
                 &owner.staging_root,
                 &owner.limits,
@@ -160,6 +137,7 @@ impl FfmpegAudioAssembler {
                 "ffmpeg_sha256": tool_hash, "timeline": prepared.timeline,
                 "output_file": "speech.wav", "output_sha256": wav_hash, "pcm_sha256": pcm_hash,
                 "peak_sample_abs": stats.peak, "full_scale_samples": stats.full_scale, "sample_count": stats.samples,
+                "raw_source": prepared.raw_source,
             });
             let data = serde_json::to_vec_pretty(&manifest).map_err(|error| super::error::invalid(error.to_string()))?;
             let mut file = OpenOptions::new().write(true).create_new(true).open(&manifest_path).map_err(error::io)?;
@@ -184,7 +162,7 @@ impl FfmpegAudioAssembler {
 impl FfmpegAudioAssembler {
     async fn assemble_owned(
         &self,
-        request: AudioAssemblyRequest,
+        request: AssemblyInput,
         cancellation: CancellationToken,
     ) -> Result<StagedAudioAssembly, PortError> {
         let control = WorkControl::new(cancellation, self.limits.total_timeout)?;
@@ -224,6 +202,29 @@ impl AudioAssemblyPort for FfmpegAudioAssembler {
     async fn assemble(
         &self,
         request: AudioAssemblyRequest,
+        cancellation: CancellationToken,
+    ) -> Result<StagedAudioAssembly, PortError> {
+        self.dispatch(AssemblyInput::Files(request), cancellation)
+            .await
+    }
+}
+
+#[async_trait]
+impl SpeechAudioAssemblyPort for FfmpegAudioAssembler {
+    async fn assemble_speech(
+        &self,
+        request: SpeechAudioAssemblyRequest,
+        cancellation: CancellationToken,
+    ) -> Result<StagedAudioAssembly, PortError> {
+        self.dispatch(AssemblyInput::Speech(request), cancellation)
+            .await
+    }
+}
+
+impl FfmpegAudioAssembler {
+    async fn dispatch(
+        &self,
+        request: AssemblyInput,
         cancellation: CancellationToken,
     ) -> Result<StagedAudioAssembly, PortError> {
         let owner = self.clone();

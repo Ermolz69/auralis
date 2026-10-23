@@ -97,3 +97,6 @@ Publication still requires application
 ownership/review checks, complete chunk provenance, durable assembly intents and
 jobs, outbox staging/finalization, replay/recovery, native controls, actual model
 speech, final video export and playback/listening verification.
+
+The [verified technical-chunk bridge](revoice-chunk-bridge.md) fixes the next
+integration slice's frame extraction policy and finite model-free matrix.

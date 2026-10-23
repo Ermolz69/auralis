@@ -21,6 +21,15 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  revoice:bridge:evidence:
+    desc: Record final chunk-bridge source hashes and retain distinct failed/successful check logs without models
+    cmds:
+      - node --check tools/revoice/record-chunk-bridge.mjs
+      - node tools/revoice/record-chunk-bridge.mjs
+  revoice:bridge:fmt:
+    desc: Format only the verified TTS chunk-bridge evidence writer
+    cmds:
+      - pnpm prettier --write tools/revoice/record-chunk-bridge.mjs
   revoice:audio:prepare:
     desc: Freeze three synthetic PCM matrices and source hashes after committing the tested assembly candidate
     cmds:
@@ -44,7 +53,7 @@ tasks:
   revoice:audio:fmt:
     desc: Format only the managed PCM fixture generator and assembly policy
     cmds:
-      - pnpm prettier --write tools/revoice/prepare-audio-fixtures.mjs tools/revoice/retain-audio.mjs docs/integration/revoice-ffmpeg-assembly.md docs/integration/revoice-audio-assembly.md docs/integration/revoice-execution.md docs/integration/revoice-plan.json
+      - pnpm prettier --write tools/revoice/prepare-audio-fixtures.mjs tools/revoice/retain-audio.mjs docs/integration/revoice-ffmpeg-assembly.md docs/integration/revoice-audio-assembly.md docs/integration/revoice-chunk-bridge.md docs/integration/revoice-execution.md docs/integration/revoice-plan.json
       - pnpm prettier --write docs/integration/acceptance/09-revoice-managed-ffmpeg.md
   revoice:plan:check:
     desc: Check the frozen full revoicing task and acceptance matrix without models

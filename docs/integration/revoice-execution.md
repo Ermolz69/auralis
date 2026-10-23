@@ -188,8 +188,13 @@ coverage/peak verification and confirmed shared-admission release. Its
 model-free checks pass. The [first real FFmpeg fixture matrix](acceptance/09-revoice-managed-ffmpeg.md)
 also passed three one-attempt cases with exact PCM hashes and confirmed resource
 release, including 600 entries. These remain synthetic staging results; the
-complete worker-chunk bridge, durable publication, native workflow and real-story
-quality/recovery gates remain open.
+real worker/assembly integration, durable publication, native workflow and
+real-story quality/recovery gates remain open.
+The [verified chunk bridge](revoice-chunk-bridge.md) now derives complete
+utterance ranges from the known streaming TTS policy and extracts exact PCM for
+the same adapter. Its synthetic controls cover 600 utterances, mixed-rate chunk
+ceilings, hashes, cancellation and fit conflicts. Installed real-worker evidence
+and application orchestration are still required.
 After the computer-use skill catalog changed to 26.1016.62342, the official
 JavaScript session was reset and a fresh installed window was tested. Both
 bounded capture attempts still timed out; no project/input or native workflow
