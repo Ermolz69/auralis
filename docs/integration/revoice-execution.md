@@ -170,6 +170,12 @@ accessibility. Native URL input remains unproven because the earlier helper
 capture/input problem is unresolved. Long-audio assembly continues as an
 independent TTS slice without modifying voices or qualification decisions.
 
+The [streamed raw-audio slice](acceptance/08-revoice-streamed-raw-audio.md) is now
+committed and verified with 94 model-free unit checks and isolated wheel smoke.
+It bounds decoded audio and preserves cancellation/atomic output, but has not
+replaced the installed runtime or passed a natural story. Managed timing/export,
+real recovery, measured working sets and listening remain open.
+
 ## Native admission compatibility slice
 
 After the owner closed VALORANT/Riot, GPU use fell from 3,123 to 1,144 MiB and

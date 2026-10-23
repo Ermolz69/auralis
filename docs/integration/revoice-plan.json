@@ -154,9 +154,10 @@
         "tools/revoice/evidence/YOUTUBE_STRICT_VTT_V1.json",
         "docs/integration/acceptance/05-revoice-upgrade-and-source.md",
         "tools/revoice/evidence/YOUTUBE_STRICT_SRT_V1.json",
-        "docs/integration/acceptance/06-revoice-selected-srt.md"
+        "docs/integration/acceptance/06-revoice-selected-srt.md",
+        "docs/integration/acceptance/07-revoice-selected-srt-upgrade.md"
       ],
-      "blocker": "Genuine manual Chinese SRT retained and strict-parsed: 4004 cues, 236229 bytes. Selected-SRT host correction passes model-free tests; new committed installer and native video URL import pending. Trusted ASR truth and independent published references remain pending."
+      "blocker": "Genuine manual Chinese SRT retained and strict-parsed: 4004 cues, 236229 bytes. Selected-SRT candidate 72e58c8 is installed with retained profile backup and fresh startup accessibility. Native video URL import, trusted ASR truth and independent published references remain pending."
     },
     {
       "id": "INT-R03",
@@ -188,7 +189,9 @@
         "tools/revoice/evidence/TRANSLATE_ASSETS_V3.json",
         "docs/integration/acceptance/03-revoice-pin-startup.md",
         "docs/integration/acceptance/05-revoice-upgrade-and-source.md",
-        "tools/revoice/evidence/LONG_HOST_UPGRADE_V1.json"
+        "tools/revoice/evidence/LONG_HOST_UPGRADE_V1.json",
+        "docs/integration/acceptance/07-revoice-selected-srt-upgrade.md",
+        "tools/revoice/evidence/SELECTED_SRT_UPGRADE_V1.json"
       ],
       "blocker": "Ordinary installed app launches, but native window capture still times out after helper reset and owner confirmation of an active visible desktop. No URL import was confirmed. Continue independent implementation."
     },
@@ -224,7 +227,8 @@
       "bindings": ["LONG-01", "LONG-03", "INT-A05"],
       "evidence": [
         "docs/integration/acceptance/01-revoice-baseline.md",
-        "docs/integration/acceptance/04-revoice-long-host.md"
+        "docs/integration/acceptance/04-revoice-long-host.md",
+        "docs/integration/acceptance/08-revoice-streamed-raw-audio.md"
       ],
       "blocker": null
     },
