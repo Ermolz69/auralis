@@ -56,14 +56,14 @@ async function checkColors() {
 
   let themeTokens = new Set(['transparent', 'current', 'white', 'black']);
   try {
-    const themePath = path.join(appsDir, 'desktop', 'src', 'app', 'styles', 'theme.css');
+    const themePath = path.join(appsDir, 'desktop', 'src', 'app', 'styles', 'tessera-tokens.css');
     const themeContent = await fs.readFile(themePath, 'utf-8');
     const tokenMatches = [...themeContent.matchAll(/--color-([a-zA-Z0-9-]+):/g)];
     for (const match of tokenMatches) {
       themeTokens.add(match[1]);
     }
   } catch (err) {
-    console.warn('Warning: Could not read theme.css to extract valid tokens.');
+    console.warn('Warning: Could not read tessera-tokens.css to extract valid tokens.');
   }
 
   const HEX_REGEX = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;

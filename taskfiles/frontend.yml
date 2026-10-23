@@ -1,6 +1,28 @@
 version: '3'
 
 tasks:
+  theme:generate:
+    cmds:
+      - node tools/theme/generate.mjs
+  theme:check:
+    cmds:
+      - node tools/theme/generate.mjs --check
+  theme:smoke:
+    env:
+      AURALIS_THEME_EVIDENCE: '{{.EVIDENCE}}'
+    requires:
+      vars: [EVIDENCE]
+    cmds:
+      - pnpm --filter desktop exec node --test scripts/production-tessera-theme.test.mjs
+  fmt:themes:
+    cmds:
+      - pnpm prettier --write "apps/desktop/src/app/styles/fonts.css" "taskfiles/frontend.yml" "taskfiles/rust.yml"
+      - pnpm prettier --write "apps/desktop/scripts/production-fixture.mjs" "apps/desktop/src/pages/project/ui/ProjectPage.stories.tsx"
+      - pnpm prettier --write "apps/desktop/scripts/production-tessera-theme.test.mjs" "apps/desktop/src/pages/settings/ui/settings.data.ts"
+      - pnpm prettier --write "tools/theme/*.mjs" "apps/desktop/src/shared/theme/**/*.{ts,tsx,json}" "apps/desktop/.storybook/*.{ts,tsx}" "apps/desktop/src/app/providers/{themePersistence.ts,NativeThemeProvider.test.tsx,SettingsPage.test.tsx}" "apps/desktop/src/app/styles/{index.css,theme.css}" "apps/desktop/src/shared/ui/select/Select.{stories.tsx,test.tsx}" "apps/desktop/visual-tests/storybook.visual.spec.mjs"
+  test:themes:
+    cmds:
+      - pnpm --filter desktop test:components src/app/providers/NativeThemeProvider.test.tsx src/app/providers/SettingsPage.test.tsx
   fmt:speech:
     desc: Format speech UI and its native acceptance harness
     cmds:

@@ -11,7 +11,22 @@ impl UiPreferencesUseCase {
         Self { repository }
     }
     pub async fn get_theme(&self) -> Result<Option<StoredTheme>, ApplicationError> {
-        Ok(self.repository.get_theme().await?)
+        for _ in 0..3 {
+            let Some(stored) = self.repository.get_theme().await? else {
+                return Ok(None);
+            };
+            let Some(value) = legacy_theme(&stored.value) else {
+                return Ok(Some(stored));
+            };
+            match self.repository.set_theme(value, stored.revision).await {
+                Ok(theme) => return Ok(Some(theme)),
+                Err(ports::error::PortError::Conflict { .. }) => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
+        Err(ApplicationError::InvalidOperation {
+            message: "Color theme changed concurrently; retry".into(),
+        })
     }
     pub async fn set_theme(
         &self,
@@ -22,8 +37,14 @@ impl UiPreferencesUseCase {
         Ok(self.repository.set_theme(value, revision).await?)
     }
     pub async fn import_theme(&self, value: &str) -> Result<StoredTheme, ApplicationError> {
+        let value = legacy_theme(value).unwrap_or(value);
         validate_theme(value)?;
-        Ok(self.repository.import_theme(value).await?)
+        self.repository.import_theme(value).await?;
+        self.get_theme()
+            .await?
+            .ok_or_else(|| ApplicationError::InvalidOperation {
+                message: "Imported color theme is missing".into(),
+            })
     }
     pub async fn get_pins(&self) -> Result<ProjectPins, ApplicationError> {
         Ok(self.repository.get_pins().await?)
@@ -52,21 +73,18 @@ impl UiPreferencesUseCase {
     }
 }
 fn validate_theme(value: &str) -> Result<(), ApplicationError> {
-    if ![
-        "auralis",
-        "abyss",
-        "indigo",
-        "ember",
-        "violet",
-        "frost",
-        "polar",
-        "sandstone",
-    ]
-    .contains(&value)
-    {
+    if !["dark", "light"].contains(&value) {
         return Err(ApplicationError::InvalidOperation {
             message: "Unsupported color theme".into(),
         });
     }
     Ok(())
+}
+
+fn legacy_theme(value: &str) -> Option<&'static str> {
+    match value {
+        "auralis" | "abyss" | "indigo" | "ember" | "violet" => Some("dark"),
+        "frost" | "polar" | "sandstone" => Some("light"),
+        _ => None,
+    }
 }

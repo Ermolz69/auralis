@@ -1,0 +1,75 @@
+{
+  "source": "https://timbuhtuk.github.io/tessera-storybook/?path=/docs/01-foundations-tokens--docs",
+  "themes": {
+    "dark": {
+      "canvas": "#101010",
+      "raised": "#151515",
+      "panel": "#191919",
+      "thumbnail": "#0D0D0D",
+      "border": "#3A3A3A",
+      "borderStrong": "#686868",
+      "text": "#EEEEEE",
+      "textSecondary": "#C9C9C9",
+      "textMuted": "#ABABAB",
+      "hover": "#303030",
+      "pressed": "#484848",
+      "primary": "#EEEEEE",
+      "primaryText": "#101010",
+      "accent": "#EEEEEE"
+    },
+    "light": {
+      "canvas": "#E5E2D5",
+      "raised": "#EEEBE0",
+      "panel": "#D8D5C8",
+      "thumbnail": "#CFCCBF",
+      "border": "#AAA99B",
+      "borderStrong": "#74766D",
+      "text": "#383B35",
+      "textSecondary": "#50534C",
+      "textMuted": "#686B62",
+      "hover": "#C9C6B9",
+      "pressed": "#BBB8AB",
+      "primary": "#383B35",
+      "primaryText": "#EEEBE0",
+      "accent": "#383B35"
+    }
+  },
+  "type": {
+    "ui": "\"Cascadia Code\", Consolas, monospace",
+    "technical": "\"Cascadia Code\", Consolas, monospace",
+    "display": "\"Science Gothic\", \"Cascadia Code\", sans-serif",
+    "hero": {
+      "size": 34,
+      "lineHeight": 42,
+      "weight": 700
+    },
+    "section": {
+      "size": 25,
+      "weight": 700
+    },
+    "cardTitle": {
+      "size": 16,
+      "weight": 600
+    },
+    "body": {
+      "size": 15,
+      "lineHeight": 23
+    },
+    "uiDefault": {
+      "size": 13
+    }
+  },
+  "space": {
+    "2xs": 4,
+    "xs": 8,
+    "sm": 10,
+    "md": 16,
+    "lg": 22,
+    "xl": 28,
+    "2xl": 32
+  },
+  "shape": {
+    "cornerRadius": 0,
+    "borderWidth": 1
+  }
+}

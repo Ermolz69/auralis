@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@import './fonts.css';
+@import './tessera-tokens.css';
 @import './theme.css';
 
 @layer base {
@@ -22,7 +24,7 @@
     background-color: var(--color-canvas);
     color: var(--color-text);
     font-family: var(--font-sans);
-    font-size: 0.875rem;
+    font-size: var(--ts-type-uiDefault-size);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -33,6 +35,15 @@
   select,
   textarea {
     font: inherit;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
   }
 
   *:focus-visible {

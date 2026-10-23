@@ -22,12 +22,12 @@ describe('SettingsPage', () => {
     renderSettings();
 
     const themeSelect = screen.getByLabelText('Color theme');
-    fireEvent.change(themeSelect, { target: { value: 'frost' } });
+    fireEvent.change(themeSelect, { target: { value: 'light' } });
 
-    expect(document.documentElement.getAttribute('data-color-theme')).toBe('frost');
+    expect(document.documentElement.getAttribute('data-color-theme')).toBe('light');
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith('set_color_theme_cmd', {
-        value: 'frost',
+        value: 'light',
         expectedRevision: 0,
       }),
     );

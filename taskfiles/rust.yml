@@ -1,6 +1,12 @@
 version: '3'
 
 tasks:
+  test:themes:
+    cmds:
+      - cargo test --locked -p application --test theme_preferences
+  fmt:themes:
+    cmds:
+      - rustfmt --edition 2024 crates/application/src/usecases/system/ui_preferences.rs crates/application/tests/theme_preferences.rs
   test:puza:
     cmds:
       - cargo test --locked -p adapters-tts marker_tests

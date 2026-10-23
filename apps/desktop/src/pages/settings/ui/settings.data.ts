@@ -17,16 +17,6 @@ export const colorThemeOptionGroups: SelectOptionGroup[] = [
       label: theme.label,
     })),
   },
-  {
-    label: 'Custom themes',
-    options: [
-      {
-        value: '__custom-themes-empty',
-        label: 'No custom themes yet',
-        disabled: true,
-      },
-    ],
-  },
 ];
 
 export const unavailableSections: Array<{

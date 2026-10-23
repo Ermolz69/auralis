@@ -11,6 +11,14 @@ let stored: StoredTheme | null;
 let revision = 0;
 
 describe('theme persistence ownership', () => {
+  it('imports a removed palette as Tessera and clears the original value after acknowledgement', async () => {
+    localStorage.setItem(key, 'frost');
+    const { result } = renderHook(useColorTheme, { wrapper: ThemeProvider });
+    await waitFor(() => expect(result.current.colorTheme).toBe('light'));
+    expect(invoke).toHaveBeenCalledWith('import_color_theme_cmd', { value: 'light' });
+    expect(localStorage.getItem(key)).toBeNull();
+    expect(stored?.value).toBe('light');
+  });
   it('serializes rapid choices so a delayed older read cannot overwrite the latest choice', async () => {
     const { result } = renderHook(useColorTheme, { wrapper: ThemeProvider });
     await waitFor(() => expect(result.current.persistenceStatus).toBe('idle'));
@@ -21,18 +29,18 @@ describe('theme persistence ownership', () => {
           resume = resolve;
         }),
     );
-    act(() => result.current.setColorTheme('frost'));
+    act(() => result.current.setColorTheme('light'));
     await waitFor(() => expect(resume).toBeDefined());
-    act(() => result.current.setColorTheme('sandstone'));
+    act(() => result.current.setColorTheme('dark'));
     await act(async () => resume(null));
     await waitFor(() => expect(result.current.persistenceStatus).toBe('saved'));
-    expect(result.current.colorTheme).toBe('sandstone');
-    expect(stored?.value).toBe('sandstone');
+    expect(result.current.colorTheme).toBe('dark');
+    expect(stored?.value).toBe('dark');
     expect(
       invoke.mock.calls
         .filter(([command]) => command === 'set_color_theme_cmd')
         .map(([, args]) => args.value),
-    ).toEqual(['frost', 'sandstone']);
+    ).toEqual(['light', 'dark']);
   });
   beforeEach(() => {
     localStorage.clear();
@@ -50,19 +58,19 @@ describe('theme persistence ownership', () => {
   });
 
   it('does not overwrite an unreadable legacy value', async () => {
-    localStorage.setItem(key, 'frost');
+    localStorage.setItem(key, 'light');
     const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('unavailable');
     });
     const write = vi.spyOn(Storage.prototype, 'setItem');
     const { result } = renderHook(useColorTheme, { wrapper: ThemeProvider });
     await waitFor(() => expect(result.current.persistenceStatus).toBe('error'));
-    expect(result.current.colorTheme).toBe('auralis');
+    expect(result.current.colorTheme).toBe('dark');
     expect(readStoredColorTheme().status).toBe('unavailable');
     expect(write).not.toHaveBeenCalled();
     expect(invoke).toHaveBeenCalledTimes(1);
     read.mockRestore();
-    expect(localStorage.getItem(key)).toBe('frost');
+    expect(localStorage.getItem(key)).toBe('light');
   });
 
   it('preserves unknown values without importing a default', async () => {
@@ -75,16 +83,16 @@ describe('theme persistence ownership', () => {
   });
 
   it('uses SQLite without reading legacy data when a native value exists', async () => {
-    stored = { value: 'frost', revision: ++revision };
+    stored = { value: 'light', revision: ++revision };
     const read = vi.spyOn(Storage.prototype, 'getItem');
     const { result } = renderHook(useColorTheme, { wrapper: ThemeProvider });
-    await waitFor(() => expect(result.current.colorTheme).toBe('frost'));
+    await waitFor(() => expect(result.current.colorTheme).toBe('light'));
     expect(read).not.toHaveBeenCalled();
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 
   it('removes legacy data only after acknowledgement and survives WebView clearing', async () => {
-    localStorage.setItem(key, 'frost');
+    localStorage.setItem(key, 'light');
     let acknowledge!: (value: StoredTheme) => void;
     invoke
       .mockImplementationOnce(async () => null)
@@ -96,25 +104,25 @@ describe('theme persistence ownership', () => {
       );
     const first = renderHook(useColorTheme, { wrapper: ThemeProvider });
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
-    expect(localStorage.getItem(key)).toBe('frost');
-    stored = { value: 'frost', revision: ++revision };
+    expect(localStorage.getItem(key)).toBe('light');
+    stored = { value: 'light', revision: ++revision };
     await act(async () => acknowledge(stored!));
     expect(localStorage.getItem(key)).toBeNull();
     first.unmount();
     localStorage.clear();
     const next = renderHook(useColorTheme, { wrapper: ThemeProvider });
-    await waitFor(() => expect(next.result.current.colorTheme).toBe('frost'));
+    await waitFor(() => expect(next.result.current.colorTheme).toBe('light'));
   });
 
   it('retains legacy data when migration fails and retries on remount', async () => {
-    localStorage.setItem(key, 'frost');
+    localStorage.setItem(key, 'light');
     invoke.mockImplementationOnce(async () => null).mockRejectedValueOnce(new Error('disk'));
     const first = renderHook(useColorTheme, { wrapper: ThemeProvider });
     await waitFor(() => expect(first.result.current.persistenceStatus).toBe('error'));
-    expect(localStorage.getItem(key)).toBe('frost');
+    expect(localStorage.getItem(key)).toBe('light');
     first.unmount();
     const next = renderHook(useColorTheme, { wrapper: ThemeProvider });
-    await waitFor(() => expect(next.result.current.colorTheme).toBe('frost'));
+    await waitFor(() => expect(next.result.current.colorTheme).toBe('light'));
     expect(localStorage.getItem(key)).toBeNull();
   });
 
@@ -122,13 +130,13 @@ describe('theme persistence ownership', () => {
     const { result } = renderHook(useColorTheme, { wrapper: ThemeProvider });
     await waitFor(() => expect(result.current.persistenceStatus).toBe('idle'));
     invoke.mockImplementationOnce(async () => stored).mockRejectedValueOnce(new Error('disk'));
-    act(() => result.current.setColorTheme('frost'));
+    act(() => result.current.setColorTheme('light'));
     expect(result.current.persistenceStatus).toBe('pending');
     await waitFor(() => expect(result.current.persistenceStatus).toBe('error'));
-    expect(result.current.colorTheme).toBe('frost');
-    act(() => result.current.setColorTheme('frost'));
+    expect(result.current.colorTheme).toBe('light');
+    act(() => result.current.setColorTheme('light'));
     await waitFor(() => expect(result.current.persistenceStatus).toBe('saved'));
-    expect(stored?.value).toBe('frost');
+    expect(stored?.value).toBe('light');
     expect(localStorage.getItem(key)).toBeNull();
   });
 
@@ -141,11 +149,11 @@ describe('theme persistence ownership', () => {
         }),
     );
     const { result } = renderHook(useColorTheme, { wrapper: ThemeProvider });
-    const old = { value: 'sandstone', revision: ++revision };
-    act(() => result.current.setColorTheme('frost'));
+    const old = { value: 'dark', revision: ++revision };
+    act(() => result.current.setColorTheme('light'));
     await waitFor(() => expect(result.current.persistenceStatus).toBe('saved'));
     await act(async () => hydrate(old));
-    expect(result.current.colorTheme).toBe('frost');
+    expect(result.current.colorTheme).toBe('light');
     expect(result.current.persistenceStatus).toBe('saved');
   });
 });
