@@ -2,7 +2,6 @@ use super::*;
 use crate::error::ApplicationError;
 use domain::{
     job::{Job, JobError, JobKind, JobStatus},
-    media::ArtifactKind,
     project::ProjectId,
 };
 use ports::{
@@ -11,7 +10,7 @@ use ports::{
     job_runtime_control::{RuntimeCompletion, RuntimeTask, RuntimeTaskOutcome},
     job_scheduler::JobLifecycleEventKind,
     speech_run::SpeechRunIntent,
-    speech_workflow::{SpeechExecutionResult, SpeechPublication, SpeechPublishedFile},
+    speech_workflow::SpeechExecutionResult,
 };
 use std::sync::Arc;
 use tokio::sync::{Mutex, oneshot};
@@ -159,75 +158,8 @@ impl SpeechUseCases {
                 Ok(false)
             }
             SpeechExecutionResult::Completed { files, duration_ms } => {
-                if token.is_cancelled() {
-                    return Err(PortError::Cancelled.into());
-                }
-                let mut staged = Vec::new();
-                let mut published = Vec::new();
-                for (q, file) in files.iter().enumerate() {
-                    let kind = match file.kind.as_str() {
-                        "wav" => ArtifactKind::GeneratedSpeech,
-                        "segment" => ArtifactKind::GeneratedSpeechSegment,
-                        "manifest" => ArtifactKind::SpeechManifest,
-                        _ => return Err(invalid("Unknown speech output").into()),
-                    };
-                    let name = format!(
-                        "speech-{q}.{}",
-                        if file.kind == "manifest" {
-                            "json"
-                        } else {
-                            "wav"
-                        }
-                    );
-                    let artifact = self
-                        .artifacts
-                        .import_external_file(&intent.project_id, kind, &file.path, Some(&name))
-                        .await?;
-                    if !self
-                        .artifacts
-                        .verify_storage_digest(
-                            &artifact.staging_key,
-                            artifact.size_bytes,
-                            &file.sha256,
-                        )
-                        .await?
-                    {
-                        return Err(invalid("Speech staging hash mismatch").into());
-                    }
-                    published.push(SpeechPublishedFile {
-                        artifact_id: artifact.artifact.id.clone(),
-                        kind: file.kind.clone(),
-                        sha256: file.sha256.clone(),
-                        size_bytes: artifact.size_bytes,
-                    });
-                    staged.push(artifact);
-                }
-                let job = observer.job.lock().await;
-                self.store
-                    .publish(
-                        &job,
-                        &SpeechPublication {
-                            run_id: intent.run_id,
-                            attempt_id,
-                            duration_ms,
-                            files: published,
-                            ready: false,
-                        },
-                        &staged,
-                    )
-                    .await?;
-                drop(job);
-                for _ in 0..120 {
-                    if token.is_cancelled() {
-                        return Err(PortError::Cancelled.into());
-                    }
-                    if let Some(job) = self.store.complete_publication(intent.run_id).await? {
-                        self.emit(JobLifecycleEventKind::Completed, &job);
-                        return Ok(true);
-                    }
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                }
-                Err(conflict("Audio is saved; publication is waiting for recovery").into())
+                self.publish_result(&intent, attempt_id, &observer, files, duration_ms, token)
+                    .await
             }
         }
     }

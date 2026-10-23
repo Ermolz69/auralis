@@ -50,6 +50,29 @@ it('rejects unfinished publications, incomplete coverage and duplicate artifacts
   }));
   const result = { run_id: 'run', attempt_id: 'attempt', duration_ms: 200, ready: true, files };
   expect(validateSpeechRun({ ...plan, job, result })).toBe(true);
+  const layout = {
+    artifact_id: 'layout',
+    kind: 'audio_layout',
+    sha256: 'c'.repeat(64),
+    size_bytes: 200,
+  };
+  expect(
+    validateSpeechRun({ ...plan, job, result: { ...result, files: [...files, layout] } }),
+  ).toBe(true);
+  expect(
+    validateSpeechRun({
+      ...plan,
+      job,
+      result: { ...result, files: [...files, layout, { ...layout, artifact_id: 'second-layout' }] },
+    }),
+  ).toBe(false);
+  expect(
+    validateSpeechRun({
+      ...plan,
+      job,
+      result: { ...result, files: [...files, { ...layout, kind: 'unknown' }] },
+    }),
+  ).toBe(false);
   expect(validateSpeechRun({ ...plan, job, result: { ...result, ready: false } })).toBe(false);
   expect(validateSpeechRun({ ...plan, job, result: { ...result, files: files.slice(0, 3) } })).toBe(
     false,

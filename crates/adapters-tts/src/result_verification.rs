@@ -1,5 +1,7 @@
 use crate::execute::{TtsCompleted, TtsExecutionRequest, confined};
+use crate::verification_control::check_cancel;
 use crate::wav_verification::inspect_pcm16_wav;
+use ports::cancellation::CancellationToken;
 use ports::error::PortError;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -15,13 +17,23 @@ pub fn verify_result_files(
     request: &TtsExecutionRequest,
     completed: &TtsCompleted,
 ) -> Result<(), PortError> {
-    verified_result(request, completed).map(|_| ())
+    verify_result_files_cancellable(request, completed, &CancellationToken::new())
+}
+
+pub(crate) fn verify_result_files_cancellable(
+    request: &TtsExecutionRequest,
+    completed: &TtsCompleted,
+    cancel: &CancellationToken,
+) -> Result<(), PortError> {
+    verified_result(request, completed, cancel).map(|_| ())
 }
 
 pub(crate) fn verified_result(
     request: &TtsExecutionRequest,
     completed: &TtsCompleted,
+    cancel: &CancellationToken,
 ) -> Result<(Value, Value, String), PortError> {
+    check_cancel(cancel)?;
     if completed.output != request.out_file
         || completed.manifest != request.manifest_path
         || completed.utterance_count != request.expected_utterances
@@ -44,7 +56,8 @@ pub(crate) fn verified_result(
     if number(&plan, "version")? != 1
         || string(&plan, "project_id")? != request.project_id.to_string()
         || string(&plan, "plan_digest")? != request.plan_digest
-        || string(profile, "profile_sha256")? != hash_file(&request.profile_path)?
+        || string(profile, "profile_sha256")?
+            != hash_file_cancellable(&request.profile_path, cancel)?
         || request
             .profile_path
             .file_stem()
@@ -105,6 +118,7 @@ pub(crate) fn verified_result(
     }
     let mut cursor = 0;
     for utterance in utterances {
+        check_cancel(cancel)?;
         let id = string(utterance, "utterance_id")?;
         let role = string(utterance, "role_id")?;
         let voice = cast
@@ -139,7 +153,7 @@ pub(crate) fn verified_result(
                 || string(segment, "seed_key")?
                     != format!("{}:chunk:{ordinal}", string(utterance, "seed_key")?)
                 || number(segment, "duration_ms")? == 0
-                || string(segment, "audio_sha256")? != hash_file(&audio)?
+                || string(segment, "audio_sha256")? != hash_file_cancellable(&audio, cancel)?
             {
                 return Err(invalid("Result chunk differs from its reviewed utterance"));
             }
@@ -152,8 +166,8 @@ pub(crate) fn verified_result(
     if cursor != segments.len() {
         return Err(invalid("Result contains an extra or reordered utterance"));
     }
-    if hash_file(&request.out_file)? != completed.output_sha256
-        || hash_file(&request.manifest_path)? != completed.manifest_sha256
+    if hash_file_cancellable(&request.out_file, cancel)? != completed.output_sha256
+        || hash_file_cancellable(&request.manifest_path, cancel)? != completed.manifest_sha256
     {
         return Err(invalid(
             "Result WAV or manifest hash changed before publication",
@@ -233,7 +247,11 @@ fn float(value: &Value, key: &str) -> Result<f64, PortError> {
         .ok_or_else(|| invalid("Missing result setting"))
 }
 
-pub(crate) fn hash_file(path: &Path) -> Result<String, PortError> {
+pub(crate) fn hash_file_cancellable(
+    path: &Path,
+    cancel: &CancellationToken,
+) -> Result<String, PortError> {
+    check_cancel(cancel)?;
     if path.is_symlink() || !path.is_file() {
         return Err(invalid("TTS result is not a regular file"));
     }
@@ -241,6 +259,7 @@ pub(crate) fn hash_file(path: &Path) -> Result<String, PortError> {
     let mut digest = Sha256::new();
     let mut buffer = [0u8; 64 * 1024];
     loop {
+        check_cancel(cancel)?;
         let read = stream.read(&mut buffer).map_err(io_error)?;
         if read == 0 {
             break;

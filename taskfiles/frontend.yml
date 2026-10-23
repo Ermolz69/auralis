@@ -1,6 +1,15 @@
 version: '3'
 
 tasks:
+  fmt:audio:publication:
+    desc: Format only speech publication IPC validation and its controls
+    cmds:
+      - pnpm prettier --write apps/desktop/src/shared/api/contracts/speechValidation.ts apps/desktop/src/shared/api/contracts/speechValidation.test.ts
+  test:audio:publication:
+    desc: Verify legacy and optional audio-layout IPC plus speech workflow UI behavior
+    cmds:
+      - pnpm --filter desktop exec vitest run --project unit src/shared/api/contracts/speechValidation.test.ts
+      - pnpm --filter desktop exec vitest run --project component src/features/speech-catalog/ui/SpeechWorkflow.test.tsx
   fmt:speech:
     desc: Format speech UI and its native acceptance harness
     cmds:

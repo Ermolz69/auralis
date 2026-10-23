@@ -14,6 +14,9 @@ mod historical_seed;
 #[path = "support/speech_workflow_long.rs"]
 mod long_sources;
 
+#[path = "support/speech_layout_publication.rs"]
+mod layout_publication;
+
 use adapters_storage::sqlite::{
     SqliteJobRepository, SqliteProjectRepository, SqliteSpeechRunStore, SqliteStorageUnitOfWork,
     SqliteTranslationReviewStore,
@@ -112,6 +115,7 @@ struct Engine {
     hold: AtomicBool,
     checkpoint: Notify,
     invalid: AtomicBool,
+    include_layout: AtomicBool,
 }
 #[async_trait]
 impl SpeechExecutionPort for Engine {
@@ -193,9 +197,13 @@ impl SpeechExecutionPort for Engine {
             .map_err(|e| PortError::Io {
                 message: e.to_string(),
             })?;
+        let mut kinds = vec!["wav", "manifest", "segment"];
+        if self.include_layout.load(Ordering::SeqCst) {
+            kinds.push("audio_layout");
+        }
         Ok(SpeechExecutionResult::Completed {
             duration_ms: 100,
-            files: ["wav", "manifest", "segment"]
+            files: kinds
                 .into_iter()
                 .map(|kind| SpeechProducedFile {
                     kind: kind.into(),
@@ -227,6 +235,7 @@ async fn fixture() -> Result<
         hold: AtomicBool::new(true),
         checkpoint: Notify::new(),
         invalid: AtomicBool::new(false),
+        include_layout: AtomicBool::new(false),
     });
     let cases = SpeechUseCases {
         limits: Ok(Default::default()),

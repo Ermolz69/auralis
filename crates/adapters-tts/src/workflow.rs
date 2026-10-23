@@ -198,7 +198,7 @@ impl SpeechExecutionPort for TtsWorkerClient {
             attempt_id,
             plan_sha256: intent.plan_sha256,
         };
-        match TtsWorkerClient::execute(self, request, &bridge, cancel).await? {
+        match TtsWorkerClient::execute(self, request.clone(), &bridge, cancel.clone()).await? {
             TtsExecutionOutcome::Cancelled => Ok(SpeechExecutionResult::Cancelled),
             TtsExecutionOutcome::Completed(result) => {
                 let bytes = read_bounded_json(&result.manifest).await?;
@@ -207,6 +207,9 @@ impl SpeechExecutionPort for TtsWorkerClient {
                 }
                 let manifest: Value =
                     serde_json::from_slice(&bytes).map_err(|e| invalid(&e.to_string()))?;
+                let layout =
+                    crate::output_layout::produce(request, result.clone(), &manifest, cancel)
+                        .await?;
                 let mut files = vec![
                     SpeechProducedFile {
                         kind: "wav".into(),
@@ -219,6 +222,9 @@ impl SpeechExecutionPort for TtsWorkerClient {
                         sha256: result.manifest_sha256,
                     },
                 ];
+                if let Some(file) = layout {
+                    files.push(file);
+                }
                 for segment in manifest["segments"]
                     .as_array()
                     .ok_or_else(|| invalid("Missing result segments"))?

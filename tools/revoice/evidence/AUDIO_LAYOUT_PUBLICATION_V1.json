@@ -1,0 +1,213 @@
+{
+    "version":  1,
+    "case_id":  "AUDIO-LAYOUT-PUBLICATION-MODEL-FREE-v1",
+    "at":  "2026-10-23T08:59:06.1995089Z",
+    "base_commit":  "16dfa78588d461c8c4978cdf886f54f7c136fc05",
+    "status":  "model_free_checks_passed",
+    "checks":  {
+                   "layout":  11,
+                   "assembly":  19,
+                   "tts_library":  10,
+                   "storage_publication":  2,
+                   "application_workflow":  11,
+                   "ui_contract":  2,
+                   "ui_workflow":  3
+               },
+    "initial_failures":  [
+                             "Frontend formatter rejected an extra closing brace in the added test at line 55; corrected before running tests. Formatter output remains in the tool transcript.",
+                             "The first sandboxed Vitest process exited 3221225477 (0xC0000005) before test results. The unchanged test code passed outside sandbox; root cause was not separately established."
+                         ],
+    "models_loaded":  false,
+    "real_ffmpeg_invoked":  false,
+    "native_ui_pass":  false,
+    "installed_runtime_changed":  false,
+    "voice_references_or_qualification_changed":  false,
+    "limitations":  "Synthetic PCM and fixture execution only. Managed layout publication is connected; durable assembly jobs, timing controls, real worker/native flow, video, natural stories, listening and clean Windows remain pending.",
+    "sources":  [
+                    {
+                        "file":  "Taskfile.yml",
+                        "bytes":  26322,
+                        "sha256":  "47fe7fa1034fa9c2012bc08089a85a44ba89dc0787e07b6f27feb784da767edc"
+                    },
+                    {
+                        "file":  "taskfiles/rust.yml",
+                        "bytes":  32586,
+                        "sha256":  "48c5adaed4748bc3ea9705380783ff80af592ab5a24cf6ace065d76253ffd76a"
+                    },
+                    {
+                        "file":  "taskfiles/frontend.yml",
+                        "bytes":  6286,
+                        "sha256":  "2646fd6e37ee5838269ceb93e9c6cb2c528dc2d3188f7940b3e2dd5bfdb40245"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/lib.rs",
+                        "bytes":  850,
+                        "sha256":  "ffe62671559387ef4c628d6a91e6ce3e69eac488e3967b362d50ea5e00ecfd79"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/execute.rs",
+                        "bytes":  11477,
+                        "sha256":  "661c61fee1daca1b7a3e9e2dc95f154762530e910272c5ba25a122b3327db456"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/result_verification.rs",
+                        "bytes":  10948,
+                        "sha256":  "bb6d471cac0cd2a4938b6ac96c8ad90c46f182a5494f8c1f28f245f0cebf4976"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/audio_layout.rs",
+                        "bytes":  5043,
+                        "sha256":  "02f2d5082b35bd83031103dc0eb8ccc3c247da19c39bee27e691c9cba85f725e"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/output_layout.rs",
+                        "bytes":  2533,
+                        "sha256":  "367ea8710813b84a72cc7cfb7c99096b2ca7c917bd2ec46623a5a018eb349ee5"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/output_layout/tests.rs",
+                        "bytes":  4869,
+                        "sha256":  "d58a64ddf197f08685e7c0596f96a356ee1474796664bcf204358c400de3dc9b"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/verification_control.rs",
+                        "bytes":  395,
+                        "sha256":  "df782170d48ccf89c0c23583339f11f5879f4e739e412291913164edf31df424"
+                    },
+                    {
+                        "file":  "crates/adapters-tts/src/workflow.rs",
+                        "bytes":  12372,
+                        "sha256":  "e93c6fb4da42c1dde25cc259e41327429d6ae4de0f1fad4179d31be81b0e858c"
+                    },
+                    {
+                        "file":  "crates/application/src/usecases/speech/mod.rs",
+                        "bytes":  459,
+                        "sha256":  "63a810c51378436d82cc8795f27c40b27f21bd515689570e656414adadabe9ed"
+                    },
+                    {
+                        "file":  "crates/application/src/usecases/speech/run.rs",
+                        "bytes":  7922,
+                        "sha256":  "2dcdcf9cdb31b74a2c72d45ca91ce9f3621aa968e8857e9d5e7d7eb2d217f1e4"
+                    },
+                    {
+                        "file":  "crates/application/src/usecases/speech/publication.rs",
+                        "bytes":  3327,
+                        "sha256":  "f89c0035f4cfa81092c66e709eb455b331cb857be942c55b3567f38984abd1ef"
+                    },
+                    {
+                        "file":  "crates/application/tests/speech_workflow.rs",
+                        "bytes":  25047,
+                        "sha256":  "14b139708c9dd60614e9fc768110a7eb774c07cfcf06efa9ce884af8d6284bb1"
+                    },
+                    {
+                        "file":  "crates/application/tests/support/speech_layout_publication.rs",
+                        "bytes":  4158,
+                        "sha256":  "884e5187f476e6b6bf9a1cb7f0e73d8db111028832f3c2fa2d5c43a9cd92788c"
+                    },
+                    {
+                        "file":  "crates/adapters-storage/src/sqlite/speech_run_repository/workflow.rs",
+                        "bytes":  16104,
+                        "sha256":  "fcfb52a506dd630dce8abe2e2394854330426e109ff0b5712129d42c8f223aa5"
+                    },
+                    {
+                        "file":  "crates/adapters-storage/tests/speech_publication.rs",
+                        "bytes":  8135,
+                        "sha256":  "52be4d662e33d15c93fd1c49c1c1cf315d971ada93a0ac26cc958fcf743650b3"
+                    },
+                    {
+                        "file":  "apps/desktop/src/shared/api/contracts/speechValidation.ts",
+                        "bytes":  4597,
+                        "sha256":  "0f65cba6b7e80b7a8de77a0e3da13c9662ba50ba13ddaa842c07d88ea4f8be2e"
+                    },
+                    {
+                        "file":  "apps/desktop/src/shared/api/contracts/speechValidation.test.ts",
+                        "bytes":  2621,
+                        "sha256":  "2f0d3985786005874a5a84f2273340a96b591b61a6b63de09a5db7db2e77ebe9"
+                    },
+                    {
+                        "file":  "docs/integration/revoice-audio-publication.md",
+                        "bytes":  5108,
+                        "sha256":  "eff5cdbd9f992b48ce9ab9125dd6a413fa79362ea18a3d7ce74ea044c69d00aa"
+                    },
+                    {
+                        "file":  "docs/integration/revoice-plan.json",
+                        "bytes":  10348,
+                        "sha256":  "81cb2ff460496ac1413258b0f0a6cc64c43de51568342eda3e375755cb233d59"
+                    },
+                    {
+                        "file":  "docs/integration/revoice-execution.md",
+                        "bytes":  18347,
+                        "sha256":  "0fc51c0d6130349911e9ad1b6c99b908b9de1c867d4f5129e8c031c5ead68ed3"
+                    },
+                    {
+                        "file":  "tools/revoice/record-audio-publication.ps1",
+                        "bytes":  5395,
+                        "sha256":  "47f6822b8dce52b030fd084828e5d1b09b00f1f0ed533eca243420553b7ea1b2"
+                    }
+                ],
+    "logs":  [
+                 {
+                     "file":  "audio-publication-checks-v1.log",
+                     "outcome":  "passed",
+                     "bytes":  12842,
+                     "sha256":  "41a4cffa4667c99664cab105eb69851bfe99a7af1c8f4485483030ce7a8302dd",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-checks-v1.log"
+                 },
+                 {
+                     "file":  "audio-publication-ui-v1.log",
+                     "outcome":  "failed",
+                     "bytes":  429,
+                     "sha256":  "65188cbc760bb10c8b00c3296cac891a9278e9aabf88a05248e1e62960926137",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-ui-v1.log"
+                 },
+                 {
+                     "file":  "audio-publication-ui-v2.log",
+                     "outcome":  "passed",
+                     "bytes":  780,
+                     "sha256":  "c88292fb307e674c02f18efb1073529e8f0279df470e72f73e126b13634d9ba8",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-ui-v2.log"
+                 },
+                 {
+                     "file":  "audio-publication-frontend-build-v1.log",
+                     "outcome":  "passed",
+                     "bytes":  5900,
+                     "sha256":  "d0032dc763e5bb4d9d8ddedf12dff194caf24b0863a3c38cd4a4abbd1377ced4",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-frontend-build-v1.log"
+                 },
+                 {
+                     "file":  "audio-publication-clippy-v1.log",
+                     "outcome":  "passed",
+                     "bytes":  1972,
+                     "sha256":  "cb277fef611fe68bb57fa3a8762bb65c9044559ab2cdf607357ebebd79bf20c3",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-clippy-v1.log"
+                 },
+                 {
+                     "file":  "audio-publication-desktop-v1.log",
+                     "outcome":  "passed",
+                     "bytes":  622,
+                     "sha256":  "789acd033aef19003e655c3d8e042d1f6034fe0cd0b3d36df973e22a8bab77b2",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-desktop-v1.log"
+                 },
+                 {
+                     "file":  "audio-publication-size-v1.log",
+                     "outcome":  "passed",
+                     "bytes":  866,
+                     "sha256":  "8b2b8e4b16421e0617af7e760dcd021a5921253232948c7a9ac6589e1f57566e",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-size-v1.log"
+                 },
+                 {
+                     "file":  "audio-publication-docs-v1.log",
+                     "outcome":  "passed",
+                     "bytes":  653,
+                     "sha256":  "910e6f546b444c66720d8415879b27bc06e6265ed49b6e6df23cb2d45f98a411",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-docs-v1.log"
+                 },
+                 {
+                     "file":  "audio-publication-plan-v1.log",
+                     "outcome":  "passed",
+                     "bytes":  585,
+                     "sha256":  "064bc047be3325cff277d2d9ef7a7b7ea855d94c087b67a11c3e691c8e82af9d",
+                     "retained_path":  ".cache/revoice-checks/audio-publication-v1/audio-publication-plan-v1.log"
+                 }
+             ]
+}

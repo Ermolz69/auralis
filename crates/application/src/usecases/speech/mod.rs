@@ -5,6 +5,7 @@ mod marker;
 mod ownership;
 mod prepare;
 mod progress;
+mod publication;
 mod run;
 mod service;
 mod source;

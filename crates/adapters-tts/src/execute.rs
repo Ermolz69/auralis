@@ -15,7 +15,8 @@ use crate::client::TtsWorkerClient;
 use crate::framed::WorkerFrameReader;
 use crate::owned_process;
 use crate::protocol::{WorkerIdentity, WorkerProtocol, WorkerRequest};
-use crate::result_verification::verify_result_files;
+use crate::result_verification::verify_result_files_cancellable;
+use crate::verification_control::VerificationGuard;
 
 const EXECUTION_DEADLINE: Duration = Duration::from_secs(45 * 60);
 const CANCELLATION_DEADLINE: Duration = Duration::from_secs(20);
@@ -88,6 +89,8 @@ impl TtsWorkerClient {
         observer: &dyn TtsExecutionObserver,
         cancellation: CancellationToken,
     ) -> Result<TtsExecutionOutcome, PortError> {
+        let cancellation = cancellation.child_token();
+        let _verification_guard = VerificationGuard(cancellation.clone());
         request.validate(self)?;
         if cancellation.is_cancelled() {
             return Ok(TtsExecutionOutcome::Cancelled);
@@ -130,13 +133,13 @@ impl TtsWorkerClient {
             &identity,
             &request,
             observer,
-            cancellation,
+            cancellation.clone(),
         )
         .await;
         match result {
             Ok(TtsExecutionOutcome::Completed(completed)) => {
                 let completed = tokio::task::spawn_blocking(move || {
-                    verify_result_files(&request, &completed)?;
+                    verify_result_files_cancellable(&request, &completed, &cancellation)?;
                     Ok::<_, PortError>(completed)
                 })
                 .await

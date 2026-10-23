@@ -195,6 +195,10 @@ utterance ranges from the known streaming TTS policy and extracts exact PCM for
 the same adapter. Its synthetic controls cover 600 utterances, mixed-rate chunk
 ceilings, hashes, cancellation and fit conflicts. Installed real-worker evidence
 and application orchestration are still required.
+The [managed layout publication slice](revoice-audio-publication.md) connects the
+known-policy layout to the existing raw-speech transaction/outbox, including
+cancellation and restart. Assembly orchestration and native timing/export are
+still open.
 After the computer-use skill catalog changed to 26.1016.62342, the official
 JavaScript session was reset and a fresh installed window was tested. Both
 bounded capture attempts still timed out; no project/input or native workflow

@@ -135,13 +135,21 @@ impl SpeechWorkflowStore for SqliteSpeechRunStore {
                 .filter(|f| f.kind == "manifest")
                 .count()
                 != 1
+            || publication.files.iter().any(|f| {
+                !matches!(
+                    f.kind.as_str(),
+                    "wav" | "manifest" | "segment" | "audio_layout"
+                )
+            })
             || publication
                 .files
                 .iter()
-                .any(|f| !matches!(f.kind.as_str(), "wav" | "manifest" | "segment"))
+                .filter(|file| file.kind == "audio_layout")
+                .count()
+                > 1
         {
             return Err(invalid_input(
-                "Speech publication requires one WAV, one manifest and its segments",
+                "Speech publication requires one WAV, one manifest, its segments and at most one audio layout",
             ));
         }
         let mut tx = self
@@ -175,7 +183,7 @@ impl SpeechWorkflowStore for SqliteSpeechRunStore {
         for (artifact, file) in staged.iter().zip(&publication.files) {
             let expected_kind = match file.kind.as_str() {
                 "wav" => domain::media::ArtifactKind::GeneratedSpeech,
-                "manifest" => domain::media::ArtifactKind::SpeechManifest,
+                "manifest" | "audio_layout" => domain::media::ArtifactKind::SpeechManifest,
                 _ => domain::media::ArtifactKind::GeneratedSpeechSegment,
             };
             if artifact.artifact.id != file.artifact_id

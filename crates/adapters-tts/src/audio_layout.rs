@@ -1,16 +1,18 @@
 use crate::{
     TtsCompleted, TtsExecutionRequest,
-    result_verification::{array, hash_file, invalid, number, string, verified_result},
+    result_verification::{array, hash_file_cancellable, invalid, number, string, verified_result},
+    verification_control::check_cancel,
 };
 use common::wav::inspect_pcm16_wav;
 use domain::speech::{Sha256Digest, SpeechId, timeline::SourceWindow};
 use ports::{
     PortError,
+    cancellation::CancellationToken,
     speech_audio::{SpeechAudioLayout, UtteranceAudioRange},
 };
 use std::{collections::HashSet, path::Path};
 
-const POLICY: &str = "pcm16_stream_fade10ms_peak089125_kaiser5_v1";
+pub(crate) const AUDIO_LAYOUT_POLICY: &str = "pcm16_stream_fade10ms_peak089125_kaiser5_v1";
 const RATES: [u32; 13] = [
     8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 88200, 96000, 176400, 192000,
 ];
@@ -19,11 +21,19 @@ pub fn verify_result_audio_layout(
     request: &TtsExecutionRequest,
     completed: &TtsCompleted,
 ) -> Result<SpeechAudioLayout, PortError> {
-    let (plan, manifest, plan_sha256) = verified_result(request, completed)?;
+    verify_result_audio_layout_cancellable(request, completed, &CancellationToken::new())
+}
+
+pub(crate) fn verify_result_audio_layout_cancellable(
+    request: &TtsExecutionRequest,
+    completed: &TtsCompleted,
+    cancel: &CancellationToken,
+) -> Result<SpeechAudioLayout, PortError> {
+    let (plan, manifest, plan_sha256) = verified_result(request, completed, cancel)?;
     if manifest
         .get("audio_assembly")
         .and_then(serde_json::Value::as_str)
-        != Some(POLICY)
+        != Some(AUDIO_LAYOUT_POLICY)
     {
         return Err(invalid(
             "Install the verified streaming TTS package and render a new result before audio assembly",
@@ -46,6 +56,7 @@ pub fn verify_result_audio_layout(
     let mut cursor = 0;
     let mut offset = 0_u64;
     for utterance in utterances {
+        check_cancel(cancel)?;
         let id = SpeechId::parse(string(utterance, "utterance_id")?).map_err(invalid)?;
         if !ids.insert(id.clone()) {
             return Err(invalid("Audio layout repeats an utterance"));
@@ -61,7 +72,7 @@ pub fn verify_result_audio_layout(
             if !RATES.contains(&wav.sample_rate)
                 || wav.channels != completed.channels
                 || wav.frames == 0
-                || hash_file(path)? != string(segment, "audio_sha256")?
+                || hash_file_cancellable(path, cancel)? != string(segment, "audio_sha256")?
             {
                 return Err(invalid(
                     "Technical chunk PCM properties or identity changed",
@@ -107,7 +118,7 @@ pub fn verify_result_audio_layout(
         aggregate_sha256: Sha256Digest::parse(&completed.output_sha256).map_err(invalid)?,
         source_plan_sha256: Sha256Digest::parse(plan_sha256).map_err(invalid)?,
         raw_manifest_sha256: Sha256Digest::parse(&completed.manifest_sha256).map_err(invalid)?,
-        assembly_policy: POLICY.into(),
+        assembly_policy: AUDIO_LAYOUT_POLICY.into(),
         sample_rate: completed.sample_rate,
         channels: completed.channels,
         frame_count: completed.frames,

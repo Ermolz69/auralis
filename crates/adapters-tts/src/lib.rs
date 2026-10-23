@@ -6,10 +6,12 @@ mod framed;
 mod integrity;
 #[cfg(test)]
 mod integrity_tests;
+mod output_layout;
 mod owned_process;
 mod preflight;
 mod protocol;
 mod result_verification;
+mod verification_control;
 mod wav_verification;
 mod workflow;
 

@@ -70,13 +70,17 @@ export function validateSpeechRun(value: unknown): boolean {
             isRecord(file) &&
             isString(file.artifact_id) &&
             isString(file.kind) &&
-            ['wav', 'manifest', 'segment'].includes(file.kind) &&
+            ['wav', 'manifest', 'segment', 'audio_layout'].includes(file.kind) &&
             digest(file.sha256) &&
             isNonNegativeSafeInteger(file.size_bytes) &&
             file.size_bytes > 0,
         ) &&
         Array.isArray(result.files) &&
-        result.files.length === Number(value.chunk_count) + 2 &&
+        result.files.filter((f) => isRecord(f) && f.kind === 'audio_layout').length <= 1 &&
+        result.files.length ===
+          Number(value.chunk_count) +
+            2 +
+            result.files.filter((f) => isRecord(f) && f.kind === 'audio_layout').length &&
         result.files.filter((f) => isRecord(f) && f.kind === 'wav').length === 1 &&
         result.files.filter((f) => isRecord(f) && f.kind === 'manifest').length === 1 &&
         result.files.filter((f) => isRecord(f) && f.kind === 'segment').length ===

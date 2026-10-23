@@ -1,6 +1,22 @@
 version: '3'
 
 tasks:
+  fmt:audio:publication:
+    desc: Format only the managed raw-speech layout publication slice
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/lib.rs crates/adapters-tts/src/execute.rs crates/adapters-tts/src/verification_control.rs crates/adapters-tts/src/audio_layout.rs crates/adapters-tts/src/result_verification.rs crates/adapters-tts/src/output_layout.rs crates/adapters-tts/src/output_layout/tests.rs crates/adapters-tts/src/workflow.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/application/src/usecases/speech/mod.rs crates/application/src/usecases/speech/run.rs crates/application/src/usecases/speech/publication.rs crates/application/tests/speech_workflow.rs crates/application/tests/support/speech_layout_publication.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/src/sqlite/speech_run_repository/workflow.rs crates/adapters-storage/tests/speech_publication.rs
+  test:audio:publication:
+    desc: Verify layout metadata publication with real SQLite and outbox but no models
+    cmds:
+      - task: test:audio:bridge
+      - task: test:tts
+  clippy:audio:publication:
+    desc: Lint the raw-layout publication workflow and storage boundary
+    cmds:
+      - cargo clippy --locked -p adapters-tts -p application -p adapters-storage --lib -- -D warnings
+      - cargo clippy --locked -p application --test speech_workflow -p adapters-storage --test speech_publication -- -D warnings
   fmt:audio:bridge:
     desc: Format only the verified TTS aggregate-to-utterance bridge
     cmds:

@@ -23,6 +23,16 @@ use uuid::Uuid;
 #[tokio::test]
 async fn publication_is_atomic_fenced_and_hidden_until_every_file_is_ready()
 -> Result<(), Box<dyn std::error::Error>> {
+    publication_case(false).await
+}
+
+#[tokio::test]
+async fn optional_layout_is_atomic_unique_and_recovered_with_the_raw_publication()
+-> Result<(), Box<dyn std::error::Error>> {
+    publication_case(true).await
+}
+
+async fn publication_case(include_layout: bool) -> Result<(), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let pool = connect_sqlite(dir.path().join("db.sqlite")).await?;
     let project = SqliteProjectRepository::new(pool.clone())
@@ -85,17 +95,21 @@ async fn publication_is_atomic_fenced_and_hidden_until_every_file_is_ready()
     tokio::fs::write(&source, b"fixture bytes").await?;
     let mut staged = Vec::new();
     let mut files = Vec::new();
-    for (kind, artifact_kind) in [
+    let mut outputs = vec![
         ("wav", ArtifactKind::GeneratedSpeech),
         ("manifest", ArtifactKind::SpeechManifest),
         ("segment", ArtifactKind::GeneratedSpeechSegment),
-    ] {
+    ];
+    if include_layout {
+        outputs.push(("audio_layout", ArtifactKind::SpeechManifest));
+    }
+    for (kind, artifact_kind) in outputs {
         let artifact = artifacts
             .import_external_file(
                 project.id(),
                 artifact_kind,
                 &source,
-                Some(if kind == "manifest" {
+                Some(if matches!(kind, "manifest" | "audio_layout") {
                     "manifest.json"
                 } else {
                     "speech.wav"
@@ -143,19 +157,46 @@ async fn publication_is_atomic_fenced_and_hidden_until_every_file_is_ready()
     let mut stale = publication.clone();
     stale.attempt_id = Uuid::new_v4();
     assert!(store.publish(&job, &stale, &staged).await.is_err());
+    if include_layout {
+        let mut invalid = publication.clone();
+        invalid.files[3].kind = "unknown".into();
+        assert!(store.publish(&job, &invalid, &staged).await.is_err());
+        staged[3].artifact.kind = ArtifactKind::GeneratedSpeechSegment;
+        assert!(store.publish(&job, &publication, &staged).await.is_err());
+        staged[3].artifact.kind = ArtifactKind::SpeechManifest;
+        let extra = artifacts
+            .import_external_file(
+                project.id(),
+                ArtifactKind::SpeechManifest,
+                &source,
+                Some("duplicate-layout.json"),
+            )
+            .await?;
+        invalid = publication.clone();
+        invalid.files.push(SpeechPublishedFile {
+            artifact_id: extra.artifact.id.clone(),
+            kind: "audio_layout".into(),
+            sha256: format!("{:x}", Sha256::digest(b"fixture bytes")),
+            size_bytes: extra.size_bytes,
+        });
+        staged.push(extra);
+        assert!(store.publish(&job, &invalid, &staged).await.is_err());
+        staged.pop();
+        assert!(index.list_by_project(project.id()).await?.is_empty());
+    }
     store.publish(&job, &publication, &staged).await?;
     assert!(store.publish(&job, &publication, &staged).await.is_err());
     let outbox: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM outbox_messages")
         .fetch_one(&pool)
         .await?;
-    assert_eq!(outbox, 3);
+    assert_eq!(outbox, publication.files.len() as i64);
     for (q, file) in publication.files.iter().enumerate() {
         sqlx::query("UPDATE artifacts SET state='ready' WHERE id=?")
             .bind(file.artifact_id.to_string())
             .execute(&pool)
             .await?;
         assert!(index.get(&file.artifact_id).await?.is_none());
-        if q < 2 {
+        if q + 1 < publication.files.len() {
             assert!(store.complete_publication(intent.run_id).await?.is_none());
         }
     }
@@ -180,7 +221,7 @@ async fn publication_is_atomic_fenced_and_hidden_until_every_file_is_ready()
             .list_by_project(project.id())
             .await?
             .len(),
-        3
+        publication.files.len()
     );
     Ok(())
 }
