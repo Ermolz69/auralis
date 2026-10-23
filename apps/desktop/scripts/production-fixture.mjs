@@ -33,6 +33,8 @@ export function installFixture() {
   window.__smokeCommands = [];
   window.__smokeUnknownCommands = [];
   window.__smokeCallbacks = new Map();
+  window.__smokeListeners = new Map();
+  window.__smokeJob = job;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
     unregisterListener(_event, id) {
       window.__smokeCallbacks.delete(id);
@@ -42,7 +44,24 @@ export function installFixture() {
     window.__smokeViolations.push(event.effectiveDirective),
   );
   let callbackId = 0;
-  let library = JSON.parse(sessionStorage.getItem('smoke-library') || 'null') ?? { revision: 0, assets: [], folders: [], links: [], standaloneOwners: [], removedProjects: [], hiddenAssets: [], workspaces: [], browser: { scope: 'all', projectId: null, folderId: null, search: '', kind: '', selectedId: null } };
+  let library = JSON.parse(sessionStorage.getItem('smoke-library') || 'null') ?? {
+    revision: 0,
+    assets: [],
+    folders: [],
+    links: [],
+    standaloneOwners: [],
+    removedProjects: [],
+    hiddenAssets: [],
+    workspaces: [],
+    browser: {
+      scope: 'all',
+      projectId: null,
+      folderId: null,
+      search: '',
+      kind: '',
+      selectedId: null,
+    },
+  };
   window.__TAURI_INTERNALS__ = {
     transformCallback(callback) {
       window.__smokeCallbacks.set(++callbackId, callback);
@@ -53,10 +72,17 @@ export function installFixture() {
     },
     async invoke(command, args) {
       window.__smokeCommands.push(command);
-      if (command === 'plugin:event|listen') return ++callbackId;
+      if (command === 'plugin:event|listen') {
+        window.__smokeListeners.set(args.event, args.handler);
+        return ++callbackId;
+      }
       if (command === 'plugin:event|unlisten') return null;
       if (command === 'get_library_cmd') return structuredClone(library);
-      if (command === 'save_library_cmd') { library = { ...structuredClone(args.state), revision: library.revision + 1 }; sessionStorage.setItem('smoke-library', JSON.stringify(library)); return library; }
+      if (command === 'save_library_cmd') {
+        library = { ...structuredClone(args.state), revision: library.revision + 1 };
+        sessionStorage.setItem('smoke-library', JSON.stringify(library));
+        return library;
+      }
       if (command === 'list_project_artifacts_cmd') return [];
       if (command === 'list_projects_cmd') return [project];
       if (command === 'list_pending_youtube_imports_cmd') return [];

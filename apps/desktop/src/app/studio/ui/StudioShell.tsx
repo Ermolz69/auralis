@@ -3,6 +3,7 @@ import { JobContext, isActiveJobStatus } from '@/entities/job';
 import { useLibrary } from '@/entities/library';
 import { JobQueueDrawer } from '@/widgets/app-shell';
 import { button } from '@/widgets/library-browser';
+import { ProcessQueueStrip } from './ProcessQueueStrip';
 const LibraryBrowser = lazy(() =>
   import('@/widgets/library-browser').then((m) => ({ default: m.LibraryBrowser })),
 );
@@ -130,12 +131,7 @@ export function StudioShell() {
           )}
         </Suspense>
       </main>
-      <footer className="flex shrink-0 justify-between border-t border-border bg-surface px-4 py-1 text-xs text-muted">
-        <span>
-          {view === 'workspace' ? workspaceName(workspaceId ?? '') : 'Локальная библиотека'}
-        </span>
-        <span>{active[0] ? `${active[0].title} · ${active[0].progress.percent}%` : 'Готово'}</span>
-      </footer>
+      <ProcessQueueStrip jobs={Object.values(jobs?.jobs ?? {})} />
     </div>
   );
 }

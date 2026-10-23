@@ -27,6 +27,10 @@ test(
       const standalone = page.getByRole('button', { name: /Самостоятельный текст Текст/ });
       await standalone.dblclick();
       await page.getByText('Самостоятельный материал', { exact: true }).waitFor();
+      assert.equal(
+        await page.getByRole('complementary', { name: 'Материалы текущего проекта' }).count(),
+        0,
+      );
       const input = page.getByRole('textbox', { name: 'Русский текст для озвучки' });
       await input.waitFor();
       assert.equal(await input.inputValue(), 'Расстояние 12 км.');
@@ -38,6 +42,26 @@ test(
       );
       await page.getByRole('button', { name: 'Синтез речи', exact: true }).click();
       assert.equal(await input.inputValue(), 'Мой сохранённый черновик.');
+      const tabs = page.getByRole('tablist', { name: 'Вкладки рабочего пространства' });
+      const tabBoxes = await tabs.getByRole('tab').evaluateAll((elements) =>
+        elements.map((element) => {
+          const box = element.parentElement.getBoundingClientRect();
+          return {
+            left: box.left,
+            right: box.right,
+            radius: parseFloat(getComputedStyle(element.parentElement).borderRadius),
+          };
+        }),
+      );
+      assert.ok(tabBoxes[1].left - tabBoxes[0].right >= 8);
+      assert.ok(tabBoxes.every((box) => box.radius > 0));
+      assert.ok(
+        await tabs.evaluate(
+          (element) =>
+            parseFloat(getComputedStyle(element).paddingTop) >= 12 &&
+            parseFloat(getComputedStyle(element).paddingBottom) >= 12,
+        ),
+      );
       await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
       await page.getByRole('heading', { name: 'Все материалы', exact: true }).waitFor();
       assert.equal(await page.getByRole('tablist').count(), 0);
@@ -56,6 +80,23 @@ test(
       await page.getByText('Проект', { exact: true }).waitFor();
       await input.waitFor();
       assert.equal(await input.inputValue(), 'Первая глава.');
+      const resources = page.getByRole('complementary', { name: 'Материалы текущего проекта' });
+      await resources.getByRole('button', { name: /Текст главы Текст/ }).waitFor();
+      assert.equal(
+        await resources.getByRole('button', { name: /Самостоятельный текст/ }).count(),
+        0,
+      );
+      assert.equal(
+        await resources.getByRole('button', { name: 'Серия 02', exact: true }).count(),
+        0,
+      );
+      await resources.getByRole('button', { name: /Общий рассказ Текст/ }).click();
+      assert.equal(await input.inputValue(), 'Добрый вечер.');
+      await resources.getByRole('searchbox', { name: 'Поиск в материалах проекта' }).fill('главы');
+      assert.equal(await resources.getByRole('button', { name: /Общий рассказ Текст/ }).count(), 0);
+      await resources.getByRole('button', { name: /Текст главы Текст/ }).click();
+      await resources.getByRole('searchbox', { name: 'Поиск в материалах проекта' }).fill('');
+      assert.equal(await input.inputValue(), 'Первая глава.');
       await page.getByRole('button', { name: 'Синтез речи', exact: true }).click();
       assert.equal(await input.inputValue(), 'Первая глава.');
       await page
@@ -70,6 +111,26 @@ test(
       );
       await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
       await page.getByRole('button', { name: 'Все материалы', exact: true }).click();
+      await page
+        .getByRole('combobox', { name: 'Открытые рабочие пространства' })
+        .selectOption(`project:${await page.evaluate(() => window.__libraryIds.alpha)}`);
+      if (process.env.AURALIS_LIBRARY_EVIDENCE)
+        await page.screenshot({
+          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'project-workspace-wide.png'),
+          fullPage: true,
+        });
+      await page.setViewportSize({ width: 800, height: 800 });
+      if (process.env.AURALIS_LIBRARY_EVIDENCE)
+        await page.screenshot({
+          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'project-workspace-compact.png'),
+          fullPage: true,
+        });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+      );
+      await page.setViewportSize({ width: 1500, height: 1000 });
+      await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
       await standalone.click();
       const inspector = page.getByRole('complementary', { name: 'Выбранный материал' });
       await inspector
@@ -136,6 +197,42 @@ test(
         ).length,
         0,
       );
+      const processes = page.getByRole('region', { name: 'Текущие процессы' });
+      assert.equal(await processes.getByRole('button').count(), 0);
+      assert.equal(await processes.getByRole('tab').count(), 0);
+      await page.evaluate(() => {
+        const callback = window.__smokeCallbacks.get(window.__smokeListeners.get('job-event'));
+        callback({
+          event: 'job-event',
+          id: 1,
+          payload: {
+            kind: 'progressed',
+            job: {
+              ...window.__smokeJob,
+              revision: 2,
+              progress: { ...window.__smokeJob.progress, percent: 64 },
+            },
+          },
+        });
+      });
+      await processes.getByText('64%', { exact: true }).waitFor();
+      await page.evaluate(() => {
+        const callback = window.__smokeCallbacks.get(window.__smokeListeners.get('job-event'));
+        callback({
+          event: 'job-event',
+          id: 1,
+          payload: {
+            kind: 'completed',
+            job: {
+              ...window.__smokeJob,
+              revision: 3,
+              status: 'completed',
+              progress: { ...window.__smokeJob.progress, percent: 100 },
+            },
+          },
+        });
+      });
+      await processes.getByText('Нет активных процессов').waitFor();
       await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
       await page.evaluate(() => {
         window.__libraryRuntimeMissing = true;

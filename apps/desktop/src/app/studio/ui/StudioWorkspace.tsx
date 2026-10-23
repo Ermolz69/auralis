@@ -1,6 +1,6 @@
 import { describeCommandError } from '@/shared/api/contracts/error';
 import { useEffect, useState } from 'react';
-import { useLibrary, toolNames } from '@/entities/library';
+import { useLibrary, toolNames, defaultTool } from '@/entities/library';
 import type { LibraryTool, LibraryWorkspace } from '@/shared/api/contracts/library';
 import { LibraryCreateDialog } from '@/widgets/library-browser';
 import { importFiles } from '@/entities/library';
@@ -8,6 +8,8 @@ import { button, field } from '@/widgets/library-browser';
 import { StudioToolPanel } from './StudioToolPanel';
 import { panelKey, workspacePanels } from '../model/panels';
 import { parseDraft } from '../model/tabDraft';
+import { WorkspaceAssetBrowser } from './WorkspaceAssetBrowser';
+import { WorkspaceTabs } from './WorkspaceTabs';
 export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) {
   const { state, projects, mutate, refresh, openTool } = useLibrary();
   const activeAssetId = workspace.tabs.find((tab) => tab.id === workspace.activeTab)?.assetId;
@@ -58,150 +60,107 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
     }
   };
   return (
-    <section
-      className="flex h-full min-h-0 flex-col"
-      aria-label={`Рабочее пространство ${title ?? ''}`}
-    >
-      <div className="shrink-0 border-b border-border p-4">
-        <h1 className="mb-3 text-xl font-semibold">
-          {title ?? 'Рабочее пространство'}
-          <span className="ml-3 text-xs font-normal text-muted">
-            {workspace.projectId ? 'Проект' : 'Самостоятельный материал'}
-          </span>
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Материал для инструмента"
-            className={`${field} !w-auto max-w-72`}
-            value={assetId}
-            onChange={(e) => setAssetId(e.target.value)}
-          >
-            <option value="">Новый ввод / контекст проекта</option>
-            {assets.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
+    <section className="flex h-full min-h-0" aria-label={`Рабочее пространство ${title ?? ''}`}>
+      {workspace.projectId && (
+        <WorkspaceAssetBrowser
+          projectId={workspace.projectId}
+          selectedId={assetId || null}
+          onOpen={(asset) => {
+            setAssetId(asset.id);
+            void act(() => openTool(defaultTool(asset), asset.id));
+          }}
+        />
+      )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 border-b border-border p-4">
+          <h1 className="mb-3 text-xl font-semibold">
+            {title ?? 'Рабочее пространство'}
+            <span className="ml-3 text-xs font-normal text-muted">
+              {workspace.projectId ? 'Проект' : 'Самостоятельный материал'}
+            </span>
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Материал для инструмента"
+              className={`${field} !w-auto max-w-72`}
+              value={assetId}
+              onChange={(e) => setAssetId(e.target.value)}
+            >
+              <option value="">Новый ввод / контекст проекта</option>
+              {assets.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+            {(Object.entries(toolNames) as [LibraryTool, string][]).map(([tool, name]) => (
+              <button
+                className={button}
+                key={tool}
+                onClick={() => void act(() => openTool(tool, assetId || null))}
+              >
+                {name}
+              </button>
             ))}
-          </select>
-          {(Object.entries(toolNames) as [LibraryTool, string][]).map(([tool, name]) => (
+            <button className={button} onClick={() => setDialog(true)}>
+              + Текст
+            </button>
             <button
               className={button}
-              key={tool}
-              onClick={() => void act(() => openTool(tool, assetId || null))}
+              onClick={() => void act(() => importFiles(destination, mutate, refresh))}
             >
-              {name}
+              Импорт
             </button>
-          ))}
-          <button className={button} onClick={() => setDialog(true)}>
-            + Текст
-          </button>
-          <button
-            className={button}
-            onClick={() => void act(() => importFiles(destination, mutate, refresh))}
-          >
-            Импорт
-          </button>
+          </div>
+          {error && (
+            <p role="alert" className="mt-2 text-sm">
+              {error}
+            </p>
+          )}
         </div>
-        {error && (
-          <p role="alert" className="mt-2 text-sm">
-            {error}
-          </p>
-        )}
-      </div>
-      <div
-        role="tablist"
-        aria-label="Вкладки рабочего пространства"
-        className="flex shrink-0 overflow-x-auto border-b border-border bg-surface"
-      >
-        {workspace.tabs.map((tab) => (
-          <div key={tab.id} className="flex shrink-0 items-center border-r border-border">
-            <button
-              role="tab"
-              id={`tab-${tab.id}`}
-              aria-controls={`panel-${workspace.id}-${panelKey(tab)}`}
-              aria-selected={workspace.activeTab === tab.id}
-              tabIndex={workspace.activeTab === tab.id ? 0 : -1}
-              onKeyDown={(event) => {
-                const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
-                if (!keys.includes(event.key)) return;
-                event.preventDefault();
-                const index = workspace.tabs.findIndex((t) => t.id === tab.id);
-                const next =
-                  event.key === 'Home'
-                    ? 0
-                    : event.key === 'End'
-                      ? workspace.tabs.length - 1
-                      : (index + (event.key === 'ArrowLeft' ? -1 : 1) + workspace.tabs.length) %
-                        workspace.tabs.length;
-                const target = workspace.tabs[next].id;
-                document.getElementById(`tab-${target}`)?.focus();
-                void mutate((state) => {
-                  state.workspaces.find((w) => w.id === workspace.id)!.activeTab = target;
-                }).catch(() => {});
-              }}
-              className={`${button} border-0 ${workspace.activeTab === tab.id ? 'bg-surface-active font-semibold' : ''}`}
-              onClick={() =>
-                void mutate((state) => {
-                  state.workspaces.find((w) => w.id === workspace.id)!.activeTab = tab.id;
-                }).catch(() => {})
-              }
+        <WorkspaceTabs workspace={workspace} close={(id) => void act(() => close(id))} />
+        <div className="mx-3 mb-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-bg">
+          {workspacePanels(workspace.tabs, workspace.activeTab).map((panel) => (
+            <div
+              key={panel.key}
+              role="tabpanel"
+              id={`panel-${workspace.id}-${panel.key}`}
+              aria-labelledby={`tab-${panel.tab.id}`}
+              hidden={!panel.active}
+              className="h-full"
             >
-              {toolNames[tab.tool]}
-              {tab.assetId
-                ? ` · ${state.assets.find((a) => a.id === tab.assetId)?.name ?? ''}`
-                : ''}
-            </button>
-            <button
-              className="p-2 text-muted hover:text-text"
-              aria-label={`Закрыть ${toolNames[tab.tool]}`}
-              onClick={() => void act(() => close(tab.id))}
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto">
-        {workspacePanels(workspace.tabs, workspace.activeTab).map((panel) => (
-          <div
-            key={panel.key}
-            role="tabpanel"
-            id={`panel-${workspace.id}-${panel.key}`}
-            aria-labelledby={`tab-${panel.tab.id}`}
-            hidden={!panel.active}
-            className="h-full"
-          >
-            <StudioToolPanel tab={panel.tab} workspace={workspace} />
-          </div>
-        ))}
-        {!workspace.tabs.length && (
-          <div className="p-6">
-            <p className="mb-4 text-muted">Выберите материал и откройте нужный инструмент.</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {assets.map((asset) => (
-                <button
-                  className={`${button} text-left`}
-                  key={asset.id}
-                  onClick={() => {
-                    setAssetId(asset.id);
-                    void act(() =>
-                      openTool(
-                        asset.kind === 'video'
-                          ? 'source'
-                          : asset.kind === 'audio'
-                            ? 'results'
-                            : 'text',
-                        asset.id,
-                      ),
-                    );
-                  }}
-                >
-                  {asset.name}
-                </button>
-              ))}
+              <StudioToolPanel tab={panel.tab} workspace={workspace} />
             </div>
-          </div>
-        )}
+          ))}
+          {!workspace.tabs.length && (
+            <div className="p-6">
+              <p className="mb-4 text-muted">Выберите материал и откройте нужный инструмент.</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {assets.map((asset) => (
+                  <button
+                    className={`${button} text-left`}
+                    key={asset.id}
+                    onClick={() => {
+                      setAssetId(asset.id);
+                      void act(() =>
+                        openTool(
+                          asset.kind === 'video'
+                            ? 'source'
+                            : asset.kind === 'audio'
+                              ? 'results'
+                              : 'text',
+                          asset.id,
+                        ),
+                      );
+                    }}
+                  >
+                    {asset.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       {dialog && (
         <LibraryCreateDialog

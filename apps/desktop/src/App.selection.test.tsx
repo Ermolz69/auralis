@@ -53,7 +53,14 @@ beforeEach(() => {
     command: string,
     args?: { state?: LibraryState },
   ) => {
-    if (command === 'get_library_cmd') return structuredClone(state);
+    if (command === 'get_library_cmd') {
+      const catalog = structuredClone(state);
+      catalog.workspaces = catalog.workspaces.filter(
+        (workspace) =>
+          !workspace.projectId || projects.some((project) => project.id === workspace.projectId),
+      );
+      return catalog;
+    }
     if (command === 'list_projects_cmd') return projects;
     if (command === 'save_library_cmd') {
       state = structuredClone(args!.state!);
@@ -103,7 +110,9 @@ it('does not publish a broken catalog and exposes a retry after unavailable stor
 });
 it('keeps the global queue outside workspace selection', async () => {
   const jobs = {
-    jobs: { job1: { status: 'running', title: 'Global job', progress: { percent: 42 } } },
+    jobs: {
+      job1: { id: 'job1', status: 'running', title: 'Global job', progress: { percent: 42 } },
+    },
   };
   render(
     <JobContext.Provider value={jobs as unknown as React.ContextType<typeof JobContext>}>
@@ -113,7 +122,10 @@ it('keeps the global queue outside workspace selection', async () => {
   expect(await screen.findByRole('button', { name: 'Очередь · 1' })).toBeTruthy();
   fireEvent.doubleClick(screen.getByRole('button', { name: 'Project one' }));
   await screen.findByRole('tablist');
-  expect(screen.getByText('Global job · 42%')).toBeTruthy();
+  expect(screen.getByRole('region', { name: 'Текущие процессы' }).textContent).toContain(
+    'Global job',
+  );
+  expect(screen.getByText('42%')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Библиотека' }));
   expect(screen.getByRole('button', { name: 'Очередь · 1' })).toBeTruthy();
 });

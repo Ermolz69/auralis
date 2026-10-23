@@ -18,6 +18,7 @@ tasks:
       - pnpm --filter desktop exec node --test scripts/production-library.test.mjs
   fmt:library:
     cmds:
+      - pnpm prettier --write "apps/desktop/scripts/production-fixture.mjs"
       - pnpm prettier --write "tools/tts/inspect_library.mjs" "Taskfile.yml"
       - pnpm prettier --write "apps/desktop/src/App.tsx" "apps/desktop/src/App.selection.test.tsx" "apps/desktop/src/entities/library/**/*.{ts,tsx}" "apps/desktop/src/widgets/library-browser/**/*.{ts,tsx}" "apps/desktop/src/app/studio/**/*.{ts,tsx}" "apps/desktop/src/shared/api/contracts/{library.ts,libraryValidation.ts,libraryValidation.test.ts,commandMap.ts,runtimeValidation.ts}" "apps/desktop/src/features/speech-catalog/**/*.{ts,tsx}" "apps/desktop/src/widgets/app-shell/index.ts" "apps/desktop/src/pages/project/index.ts" "apps/desktop/scripts/*library*.mjs" "taskfiles/{frontend,rust}.yml"
   theme:generate:

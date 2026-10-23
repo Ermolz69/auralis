@@ -19,6 +19,21 @@ export function LibraryBrowser() {
   const assets = visibleAssets(state, browser);
   const selected = assets.find((a) => a.id === browser.selectedId);
   useEffect(() => {
+    if (
+      !loading &&
+      browser.projectId &&
+      (!projects.some((project) => project.id === browser.projectId) ||
+        state.removedProjects.includes(browser.projectId))
+    )
+      setBrowser((current) => ({
+        ...current,
+        scope: 'all',
+        projectId: null,
+        folderId: null,
+        selectedId: null,
+      }));
+  }, [loading, browser.projectId, projects, state.removedProjects]);
+  useEffect(() => {
     if (!loading && !hydrated.current) {
       hydrated.current = true;
       setBrowser(state.browser);
