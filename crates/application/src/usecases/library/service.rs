@@ -12,6 +12,7 @@ pub struct LibraryUseCase {
     projects: Arc<dyn ProjectRepository>,
     artifacts: Arc<dyn ArtifactIndex>,
     text_reader: Option<Arc<dyn ports::library::LibraryTextReader>>,
+    media: Option<Arc<dyn ports::media_project::MediaProjectStore>>,
 }
 impl LibraryUseCase {
     pub fn new(
@@ -24,10 +25,15 @@ impl LibraryUseCase {
             projects,
             artifacts,
             text_reader: None,
+            media: None,
         }
     }
     pub fn with_text_reader(mut self, reader: Arc<dyn ports::library::LibraryTextReader>) -> Self {
         self.text_reader = Some(reader);
+        self
+    }
+    pub fn with_media(mut self, media: Arc<dyn ports::media_project::MediaProjectStore>) -> Self {
+        self.media = Some(media);
         self
     }
     pub async fn read_text(&self, path: &str) -> Result<String, ApplicationError> {
@@ -99,11 +105,53 @@ impl LibraryUseCase {
                 workspace.active_tab = workspace.tabs.first().map(|t| t.id.clone());
             }
         }
+        if let Some(media) = &self.media {
+            return Ok(media.reconcile(state).await?);
+        }
         Ok(state)
     }
 
     pub async fn save(&self, state: LibraryState) -> Result<LibraryState, ApplicationError> {
         state.validate()?;
+        if self.media.is_some() {
+            let previous = self.repository.load().await?;
+            for asset in &state.assets {
+                if previous.assets.iter().any(|old| {
+                    old.id == asset.id
+                        && (old.owner_project_id != asset.owner_project_id
+                            || old.artifact_id != asset.artifact_id
+                            || old.kind != asset.kind)
+                }) {
+                    return Err(PortError::InvalidSource { message: "Источник материала неизменяем; создайте новую версию через импорт или копирование".into() }.into());
+                }
+            }
+            for link in &state.links {
+                let foreign = state
+                    .assets
+                    .iter()
+                    .any(|a| a.id == link.asset_id && a.owner_project_id != link.project_id);
+                if foreign
+                    && !previous.links.iter().any(|old| {
+                        old.asset_id == link.asset_id && old.project_id == link.project_id
+                    })
+                {
+                    return Err(PortError::InvalidSource {
+                        message: "Добавляйте материал через серверное копирование".into(),
+                    }
+                    .into());
+                }
+            }
+            if state
+                .folders
+                .iter()
+                .any(|f| !previous.folders.iter().any(|old| old.id == f.id))
+            {
+                return Err(PortError::InvalidSource {
+                    message: "Разделы проекта определяются медиаконтрактом".into(),
+                }
+                .into());
+            }
+        }
         let projects = self.projects.list().await?;
         let ids: HashSet<_> = projects.iter().map(|p| p.id().to_string()).collect();
         let invalid = || PortError::InvalidSource {

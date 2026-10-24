@@ -53,6 +53,7 @@ pub use unit_of_work::SqliteStorageUnitOfWork;
 mod connection_tests;
 #[cfg(test)]
 mod driver_compatibility_tests;
+pub mod media_project;
 #[cfg(test)]
 mod project_avatar_tests;
 mod project_contract;

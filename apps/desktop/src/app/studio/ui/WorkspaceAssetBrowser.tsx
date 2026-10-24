@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { kindNames, useLibrary } from '@/entities/library';
+import { kindNames, useLibrary, useStudioActions, VideoPreview } from '@/entities/library';
 import type { LibraryAsset } from '@/shared/api/contracts/library';
 import { Icon } from '@/shared/ui/icon';
 import { field } from '@/widgets/library-browser';
@@ -16,14 +16,15 @@ export function WorkspaceAssetBrowser({
   onSelect: (asset: LibraryAsset) => void;
   onOpen: (asset: LibraryAsset) => void;
 }) {
-  const { state, refresh } = useLibrary();
+  const { state, workspaceId } = useLibrary();
+  const actions = useStudioActions();
   const [search, setSearch] = useState('');
   const links = state.links.filter((link) => link.projectId === projectId);
   const assets = state.assets.filter(
     (asset) =>
       !state.hiddenAssets.includes(asset.id) && links.some((link) => link.assetId === asset.id),
   );
-  const folders = state.folders.filter((folder) => folder.projectId === projectId);
+
   const query = search.trim().toLocaleLowerCase('ru');
   const item = (asset: LibraryAsset) => (
     <li key={asset.id}>
@@ -32,9 +33,21 @@ export function WorkspaceAssetBrowser({
         aria-current={selectedId === asset.id ? 'page' : undefined}
         title={asset.name}
         onClick={() => onSelect(asset)}
+        onContextMenu={(e) => {
+          onSelect(asset);
+          actions.context(e, { projectId, assetId: asset.id, workspaceId });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onOpen(asset);
+          else actions.context(e, { projectId, assetId: asset.id, workspaceId });
+        }}
         onDoubleClick={() => onOpen(asset)}
       >
-        <Icon name={icons[asset.kind]} size={16} className="mt-0.5 shrink-0" />
+        {asset.kind === 'video' ? (
+          <VideoPreview asset={asset} compact />
+        ) : (
+          <Icon name={icons[asset.kind]} size={16} className="mt-0.5 shrink-0" />
+        )}
         <span className="min-w-0">
           <span className="block break-words">{asset.name}</span>
           <span className="block text-xs text-muted">{kindNames[asset.kind]}</span>
@@ -42,27 +55,6 @@ export function WorkspaceAssetBrowser({
       </button>
     </li>
   );
-  const folderItems = (parentId: string | null, depth = 0): React.ReactNode =>
-    folders
-      .filter((folder) => folder.parentId === parentId)
-      .map((folder) => (
-        <li key={folder.id}>
-          <details open className="my-1">
-            <summary className="cursor-pointer rounded-md px-2 py-2 text-sm hover:bg-surface-raised">
-              <Icon name="Folder" size={14} className="mr-2 inline-block" />
-              {folder.name}
-            </summary>
-            <ul className="ml-3 border-l border-border pl-2">
-              {assets
-                .filter((asset) =>
-                  links.some((link) => link.assetId === asset.id && link.folderId === folder.id),
-                )
-                .map(item)}
-              {depth < 50 && folderItems(folder.id, depth + 1)}
-            </ul>
-          </details>
-        </li>
-      ));
   return (
     <aside
       aria-label="Материалы текущего проекта"
@@ -73,13 +65,6 @@ export function WorkspaceAssetBrowser({
           <h2 className="text-sm font-semibold">
             Материалы <span className="text-xs font-normal text-muted">{assets.length}</span>
           </h2>
-          <button
-            aria-label="Обновить материалы проекта"
-            className="rounded p-1 text-muted hover:text-text"
-            onClick={() => void refresh().catch(() => {})}
-          >
-            <Icon name="RefreshCw" size={15} />
-          </button>
         </div>
         <input
           type="search"
@@ -90,7 +75,10 @@ export function WorkspaceAssetBrowser({
           onChange={(event) => setSearch(event.target.value)}
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto p-2"
+        onContextMenu={(e) => actions.context(e, { projectId, assetId: null, workspaceId })}
+      >
         <ul aria-label="Содержимое проекта" className="space-y-1">
           {query ? (
             assets
@@ -100,12 +88,16 @@ export function WorkspaceAssetBrowser({
               .map(item)
           ) : (
             <>
-              {assets
-                .filter((asset) =>
-                  links.some((link) => link.assetId === asset.id && !link.folderId),
-                )
-                .map(item)}
-              {folderItems(null)}
+              {Object.entries(kindNames).map(([kind, name]) => (
+                <li key={kind}>
+                  <details open>
+                    <summary className="cursor-pointer px-2 py-2 text-xs text-muted">
+                      {name}
+                    </summary>
+                    <ul>{assets.filter((a) => a.kind === kind).map(item)}</ul>
+                  </details>
+                </li>
+              ))}
             </>
           )}
         </ul>

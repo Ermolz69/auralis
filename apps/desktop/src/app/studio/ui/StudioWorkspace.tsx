@@ -1,24 +1,21 @@
 import { describeCommandError } from '@/shared/api/contracts/error';
 import { useEffect, useState } from 'react';
-import { useLibrary, defaultTool } from '@/entities/library';
+import { useLibrary, defaultTool, useStudioActions } from '@/entities/library';
 import type { LibraryWorkspace } from '@/shared/api/contracts/library';
-import { LibraryCreateDialog } from '@/widgets/library-browser';
-import { importFiles } from '@/entities/library';
 import { button, field } from '@/widgets/library-browser';
 import { StudioToolPanel } from './StudioToolPanel';
 import { panelKey, workspacePanels } from '../model/panels';
 import { parseDraft } from '../model/tabDraft';
 import { WorkspaceAssetBrowser } from './WorkspaceAssetBrowser';
 import { WorkspaceTabs } from './WorkspaceTabs';
-import { WorkspaceToolMenu } from './WorkspaceToolMenu';
 export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) {
-  const { state, projects, mutate, refresh, openTool, view, workspaceId } = useLibrary();
+  const { state, projects, mutate, openTool, view, workspaceId } = useLibrary();
   const activeAssetId = workspace.tabs.find((tab) => tab.id === workspace.activeTab)?.assetId;
   const [assetId, setAssetId] = useState(activeAssetId ?? workspace.assetId ?? '');
   useEffect(() => {
     setAssetId(activeAssetId ?? workspace.assetId ?? '');
   }, [activeAssetId, workspace.assetId]);
-  const [dialog, setDialog] = useState(false);
+  const actions = useStudioActions();
   const [error, setError] = useState('');
   const assets = state.assets.filter(
     (a) =>
@@ -52,7 +49,22 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
       if (item.activeTab === id) item.activeTab = item.tabs[Math.max(0, index - 1)]?.id ?? null;
     });
   };
-  const destination = { projectId: workspace.projectId, folderId: null };
+  const select = (id: string) => {
+    setAssetId(id);
+    actions.select({
+      workspaceId: workspace.id,
+      projectId: workspace.projectId,
+      assetId: id || null,
+    });
+  };
+  useEffect(() => {
+    if (view === 'workspace' && workspaceId === workspace.id)
+      actions.select({
+        workspaceId: workspace.id,
+        projectId: workspace.projectId,
+        assetId: assetId || null,
+      });
+  }, [view, workspaceId, workspace.id, workspace.projectId, assetId]);
   const act = async (work: () => Promise<unknown>) => {
     setError('');
     try {
@@ -67,7 +79,7 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
         <WorkspaceAssetBrowser
           projectId={workspace.projectId}
           selectedId={selectedAsset?.id ?? null}
-          onSelect={(asset) => setAssetId(asset.id)}
+          onSelect={(asset) => select(asset.id)}
           onOpen={(asset) => {
             setAssetId(asset.id);
             void act(() => openTool(defaultTool(asset), asset.id));
@@ -81,7 +93,7 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
               aria-label="Материал для инструмента"
               className={`${field} !w-auto max-w-72`}
               value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
+              onChange={(e) => select(e.target.value)}
             >
               <option value="">Новый ввод</option>
               {assets.map((a) => (
@@ -97,21 +109,7 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
             {error}
           </p>
         )}
-        <WorkspaceTabs
-          workspace={workspace}
-          close={(id) => void act(() => close(id))}
-          add={
-            view === 'workspace' &&
-            workspaceId === workspace.id && (
-              <WorkspaceToolMenu
-                materialName={selectedAsset?.name}
-                onTool={(tool) => void act(() => openTool(tool, selectedAsset?.id ?? null))}
-                onCreateText={() => setDialog(true)}
-                onImport={() => void act(() => importFiles(destination, mutate, refresh))}
-              />
-            )
-          }
-        />
+        <WorkspaceTabs workspace={workspace} close={(id) => void act(() => close(id))} />
         <div className="mx-3 mb-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-bg">
           {workspacePanels(workspace.tabs, workspace.activeTab).map((panel) => (
             <div
@@ -129,8 +127,8 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
             <div className="p-6">
               <p className="mb-4 text-muted">
                 {workspace.projectId
-                  ? 'Выберите материал слева и нажмите «+» рядом с вкладками, чтобы открыть инструмент.'
-                  : 'Нажмите «+» рядом с вкладками и выберите инструмент.'}
+                  ? 'Выберите материал слева и откройте инструмент через верхнее меню или правую кнопку мыши.'
+                  : 'Выберите инструмент в верхнем меню.'}
               </p>
               {!workspace.projectId && (
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -161,14 +159,6 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
           )}
         </div>
       </div>
-      {dialog && (
-        <LibraryCreateDialog
-          kind="text"
-          destination={destination}
-          inWorkspace
-          close={() => setDialog(false)}
-        />
-      )}
     </section>
   );
 }

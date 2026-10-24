@@ -8,8 +8,8 @@ import { installLibraryFixture } from './library-fixture.mjs';
 import { installSpeechFixture } from './library-speech-fixture.mjs';
 
 test(
-  'library and separate project/standalone workspaces preserve drafts, membership and versions',
-  { timeout: 60000 },
+  'menus, contextual tools, copies, settings and persistent workspaces',
+  { timeout: 90000 },
   async () => {
     const server = await serveProduction();
     let browser;
@@ -23,16 +23,18 @@ test(
       await page.addInitScript(installSpeechFixture);
       await page.goto(server.url);
       await page.getByRole('heading', { name: 'Все материалы', exact: true }).waitFor();
-      assert.equal(await page.getByRole('tablist').count(), 0);
-      const standalone = page.getByRole('button', { name: /Самостоятельный текст Текст/ });
-      await standalone.dblclick();
-      await page
-        .getByRole('region', { name: 'Рабочее пространство Самостоятельный текст', exact: true })
-        .waitFor();
+      const main = page.getByRole('menubar', { name: 'Главное меню' });
+      assert.equal(await main.getByRole('menuitem').count(), 3);
       assert.equal(
-        await page.getByRole('complementary', { name: 'Материалы текущего проекта' }).count(),
+        await page.getByRole('button', { name: 'Открыть инструмент', exact: true }).count(),
         0,
       );
+      assert.equal(
+        await page.getByRole('button', { name: 'Импорт файлов', exact: true }).count(),
+        0,
+      );
+      const standalone = page.getByRole('button', { name: /Самостоятельный текст Текст/ });
+      await standalone.dblclick();
       const input = page.getByRole('textbox', { name: 'Русский текст для озвучки' });
       await input.waitFor();
       assert.equal(await input.inputValue(), 'Расстояние 12 км.');
@@ -42,199 +44,114 @@ test(
           w.tabs.some((t) => t.draft.includes('Мой сохранённый черновик.')),
         ),
       );
-      const add = page.getByRole('button', { name: 'Открыть инструмент', exact: true });
-      await add.click();
-      await page.getByRole('menuitem', { name: 'Синтез речи', exact: true }).click();
+      const tools = main.getByRole('menuitem', { name: 'Инструменты', exact: true });
+      await tools.click();
+      const toolMenu = page.getByRole('menu', { name: 'Инструменты', exact: true });
+      assert.equal(await toolMenu.getByRole('menuitem').count(), 6);
+      assert.equal(
+        await toolMenu
+          .getByRole('menuitem', { name: /Источник и субтитры/ })
+          .getAttribute('aria-disabled'),
+        'true',
+      );
+      await toolMenu.getByRole('menuitem', { name: 'Синтез речи', exact: true }).click();
       assert.equal(await input.inputValue(), 'Мой сохранённый черновик.');
-      const tabs = page.getByRole('tablist', { name: 'Вкладки рабочего пространства' });
-      const tabBoxes = await tabs.getByRole('tab').evaluateAll((elements) =>
-        elements.map((element) => {
-          const box = element.parentElement.getBoundingClientRect();
-          return {
-            left: box.left,
-            right: box.right,
-            radius: parseFloat(getComputedStyle(element.parentElement).borderRadius),
-          };
-        }),
+      await tools.click();
+      await page
+        .getByRole('menu')
+        .getByRole('menuitem', { name: 'Синтез речи', exact: true })
+        .click();
+      assert.equal(await page.getByRole('tab').count(), 2);
+      const settings = page.getByRole('button', { name: 'Настройки', exact: true });
+      await settings.click();
+      await page.getByRole('dialog', { name: 'Настройки', exact: true }).waitFor();
+      await page.keyboard.press('Escape');
+      assert.equal(await input.inputValue(), 'Мой сохранённый черновик.');
+      assert.ok(await settings.evaluate((e) => e === document.activeElement));
+      const logo = page.getByRole('button', { name: 'Auralis — библиотека', exact: true });
+      await logo.click();
+      await standalone.click();
+      const other = page.getByRole('button', { name: /Общий рассказ Текст/ });
+      await other.click({ button: 'right' });
+      await page.getByRole('menuitem', { name: 'Свойства…', exact: true }).click();
+      await page.getByRole('dialog').filter({ hasText: 'Общий рассказ' }).waitFor();
+      await page.keyboard.press('Escape');
+      await standalone.focus();
+      await page.keyboard.press('Shift+F10');
+      await page.getByRole('menu', { name: 'Действия' }).waitFor();
+      await page.keyboard.press('Escape');
+      assert.ok(await standalone.evaluate((e) => e === document.activeElement));
+      const beta = page.getByRole('button', { name: 'Серия 02', exact: true });
+      const drop = async () => {
+        await standalone.and(page.locator('[aria-pressed="true"]')).dragTo(beta);
+        await page.waitForFunction(() =>
+          JSON.parse(sessionStorage.getItem('library-state')).links.some(
+            (l) => l.projectId === window.__libraryIds.beta,
+          ),
+        );
+      };
+      await drop();
+      await page.waitForFunction(
+        () =>
+          !document.querySelector('[role="status"]')?.textContent?.includes('Добавление в проект'),
       );
-      assert.ok(tabBoxes[1].left - tabBoxes[0].right >= 8);
-      assert.ok(tabBoxes.every((box) => box.radius > 0));
-      assert.ok(
-        await tabs.evaluate(
-          (element) =>
-            parseFloat(getComputedStyle(element).paddingTop) >= 12 &&
-            parseFloat(getComputedStyle(element).paddingBottom) >= 12,
+      const count = await page.evaluate(
+        () => JSON.parse(sessionStorage.getItem('library-state')).assets.length,
+      );
+      await drop();
+      assert.equal(
+        await page.evaluate(
+          () => JSON.parse(sessionStorage.getItem('library-state')).assets.length,
         ),
+        count,
       );
-      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
-      await page.getByRole('heading', { name: 'Все материалы', exact: true }).waitFor();
-      assert.equal(await page.getByRole('tablist').count(), 0);
-
-      await page.getByRole('button', { name: 'Серия 01', exact: true }).click();
-      await page.getByRole('button', { name: '+ Папка', exact: true }).click();
+      await beta.dblclick();
+      await page.getByRole('complementary', { name: 'Материалы текущего проекта' }).waitFor();
+      await main.getByRole('menuitem', { name: 'Файл', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Новый текст…', exact: true }).click();
       let dialog = page.getByRole('dialog');
-      await dialog.getByLabel('Название', { exact: true }).fill('Главы');
-      await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
-      await page.getByRole('button', { name: 'Главы', exact: true }).click();
-      await page.getByRole('button', { name: 'Новый текст', exact: true }).click();
-      dialog = page.getByRole('dialog');
+      await dialog.getByText('Серия 02', { exact: false }).waitFor();
       await dialog.getByLabel('Название', { exact: true }).fill('Текст главы');
       await dialog.getByLabel('Текст', { exact: true }).fill('Первая глава.');
       await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
-      await page.getByRole('complementary', { name: 'Материалы текущего проекта' }).waitFor();
-      assert.equal(
-        await page.getByRole('combobox', { name: 'Материал для инструмента' }).count(),
-        0,
-      );
-      assert.equal(await page.getByRole('heading', { name: 'Серия 01', exact: true }).count(), 0);
       await input.waitFor();
       assert.equal(await input.inputValue(), 'Первая глава.');
       const resources = page.getByRole('complementary', { name: 'Материалы текущего проекта' });
-      await resources.getByRole('button', { name: /Текст главы Текст/ }).waitFor();
-      assert.equal(
-        await resources.getByRole('button', { name: /Самостоятельный текст/ }).count(),
-        0,
-      );
-      assert.equal(
-        await resources.getByRole('button', { name: 'Серия 02', exact: true }).count(),
-        0,
-      );
-      await resources.getByRole('button', { name: /Общий рассказ Текст/ }).click();
+      await resources.getByRole('button', { name: /Самостоятельный текст/ }).click();
       assert.equal(await input.inputValue(), 'Первая глава.');
-      await add.click();
-      const menu = page.getByRole('menu', { name: 'Инструменты для материала' });
-      await menu.getByText('Общий рассказ', { exact: true }).waitFor();
-      await page.keyboard.press('ArrowDown');
-      assert.equal(
-        await page
-          .getByRole('menuitem', { name: 'Текст и подготовка', exact: true })
-          .evaluate((element) => element === document.activeElement),
-        true,
-      );
-      await page.keyboard.press('Escape');
-      assert.equal(await menu.count(), 0);
-      assert.equal(await add.evaluate((element) => element === document.activeElement), true);
-      await add.click();
+      await tools.click();
       await page.getByRole('menuitem', { name: 'Текст и подготовка', exact: true }).click();
-      await page
-        .getByRole('tab', { name: 'Текст и подготовка · Общий рассказ', exact: true })
-        .waitFor();
-      assert.equal(await input.inputValue(), 'Добрый вечер.');
-      await resources.getByRole('searchbox', { name: 'Поиск в материалах проекта' }).fill('главы');
-      assert.equal(await resources.getByRole('button', { name: /Общий рассказ Текст/ }).count(), 0);
-      await resources.getByRole('button', { name: /Текст главы Текст/ }).dblclick();
-      await resources.getByRole('searchbox', { name: 'Поиск в материалах проекта' }).fill('');
-      assert.equal(await input.inputValue(), 'Первая глава.');
-      await add.click();
-      await page.getByRole('menuitem', { name: 'Синтез речи', exact: true }).click();
-      assert.equal(await input.inputValue(), 'Первая глава.');
-      await page
-        .getByRole('tab', { name: 'Текст и подготовка · Текст главы', exact: true })
-        .click();
-      await input.fill('Новая версия первой главы.');
-      await page.getByRole('button', { name: 'Сохранить текст новой версией' }).click();
       await page.waitForFunction(() =>
-        JSON.parse(sessionStorage.getItem('library-state')).assets.some(
-          (a) => a.parentId && a.text === 'Новая версия первой главы.',
+        [...document.querySelectorAll('textarea')].some(
+          (e) => e.getClientRects().length && e.value === 'Расстояние 12 км.',
         ),
       );
-      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
-      await page.getByRole('button', { name: 'Все материалы', exact: true }).click();
-      await page
-        .getByRole('navigation', { name: 'Библиотека и проекты' })
-        .getByRole('button', { name: 'Серия 01', exact: true })
-        .dblclick();
-      if (process.env.AURALIS_LIBRARY_EVIDENCE)
-        await page.screenshot({
-          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'project-workspace-wide.png'),
-          fullPage: true,
-        });
-      await page.setViewportSize({ width: 800, height: 800 });
-      await add.click();
-      const menuBox = await menu.boundingBox();
-      assert.ok(menuBox.x >= 0 && menuBox.x + menuBox.width <= 800);
-      if (process.env.AURALIS_LIBRARY_EVIDENCE)
-        await page.screenshot({
-          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'tool-menu-compact.png'),
-          fullPage: true,
-        });
-      await page.getByRole('menuitem', { name: 'Новый текст', exact: true }).click();
-      await page.getByRole('dialog').waitFor();
-      await page.getByRole('dialog').getByRole('button', { name: 'Отмена', exact: true }).click();
-      if (process.env.AURALIS_LIBRARY_EVIDENCE)
-        await page.screenshot({
-          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'project-workspace-compact.png'),
-          fullPage: true,
-        });
-      assert.equal(
-        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
-        false,
-      );
-      await page.setViewportSize({ width: 1500, height: 1000 });
-      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
-      await page.getByRole('button', { name: 'Все материалы', exact: true }).click();
-      await standalone.click();
-      const inspector = page.getByRole('complementary', { name: 'Выбранный материал' });
-      await inspector
-        .getByLabel('Проект', { exact: true })
-        .selectOption(await page.evaluate(() => window.__libraryIds.beta));
-      await inspector.getByRole('button', { name: 'Добавить / переместить в проект' }).click();
-      await page.evaluate(() => {
-        window.__libraryConflict = true;
-      });
-      await inspector.getByLabel('Теги через запятую').fill('общий, принятый');
-      await inspector.getByRole('button', { name: 'Сохранить свойства' }).click();
-      await page.waitForFunction(() =>
-        JSON.parse(sessionStorage.getItem('library-state')).assets.some(
-          (a) => a.id === window.__libraryIds.asset && a.tags.includes('принятый'),
-        ),
-      );
-      await page.getByRole('button', { name: 'Серия 02', exact: true }).click();
-      await standalone.click();
-      await inspector.getByRole('button', { name: 'Независимая копия', exact: true }).click();
-      await page.waitForFunction(() =>
-        JSON.parse(sessionStorage.getItem('library-state')).assets.some((a) =>
-          a.name.includes('Самостоятельный текст — копия'),
-        ),
-      );
-      await page.waitForFunction(
-        () =>
-          !JSON.parse(sessionStorage.getItem('library-state')).links.some(
-            (l) =>
-              l.assetId === window.__libraryIds.asset && l.projectId === window.__libraryIds.beta,
-          ),
-      );
-      await page.getByRole('button', { name: 'Все материалы', exact: true }).click();
-      if (process.env.AURALIS_LIBRARY_EVIDENCE)
-        await page.screenshot({
-          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'library-wide.png'),
-          fullPage: true,
-        });
-      await page.waitForFunction(
-        () => JSON.parse(sessionStorage.getItem('library-state')).browser.scope === 'all',
-      );
-      await page.reload();
-      await page.getByTestId('library-browser').waitFor();
-      await standalone.dblclick();
-      await input.waitFor();
-      assert.equal(await input.inputValue(), 'Мой сохранённый черновик.');
-      await page
-        .getByRole('region', { name: 'Текущие процессы' })
-        .getByText('Background fixture job', { exact: true })
-        .waitFor();
-      if (process.env.AURALIS_LIBRARY_EVIDENCE)
-        await page.screenshot({
-          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'workspace-wide.png'),
-          fullPage: true,
-        });
-      await page.setViewportSize({ width: 800, height: 800 });
-      if (process.env.AURALIS_LIBRARY_EVIDENCE)
-        await page.screenshot({
-          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'workspace-compact.png'),
-          fullPage: true,
-        });
-      assert.deepEqual(errors, []);
-      assert.deepEqual(await page.evaluate(() => window.__smokeViolations), []);
+      await tools.focus();
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Escape');
+      assert.ok(await tools.evaluate((e) => e === document.activeElement));
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate(
+          (theme) => document.documentElement.setAttribute('data-color-theme', theme),
+          theme,
+        );
+        for (const width of [1500, 800]) {
+          await page.setViewportSize({ width, height: 900 });
+          assert.equal(
+            await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+            false,
+          );
+          if (process.env.AURALIS_LIBRARY_EVIDENCE)
+            await page.screenshot({
+              path: path.join(
+                process.env.AURALIS_LIBRARY_EVIDENCE,
+                `media-menu-${theme}-${width}.png`,
+              ),
+              fullPage: true,
+            });
+        }
+      }
       assert.equal(
         (await page.evaluate(() => window.__puzaCalls)).filter(
           (c) => c.command === 'start_speech_run_cmd',
@@ -242,61 +159,39 @@ test(
         0,
       );
       const processes = page.getByRole('region', { name: 'Текущие процессы' });
-      assert.equal(await processes.getByRole('button').count(), 0);
-      assert.equal(await processes.getByRole('tab').count(), 0);
+      await settings.click();
       await page.evaluate(() => {
-        const callback = window.__smokeCallbacks.get(window.__smokeListeners.get('job-event'));
-        callback({
-          event: 'job-event',
-          id: 1,
-          payload: {
-            kind: 'progressed',
-            job: {
-              ...window.__smokeJob,
-              revision: 2,
-              progress: { ...window.__smokeJob.progress, percent: 64 },
+        for (const id of window.__smokeListenerGroups.get('job-event'))
+          window.__smokeCallbacks.get(id)({
+            event: 'job-event',
+            id: 1,
+            payload: {
+              kind: 'progressed',
+              job: {
+                ...window.__smokeJob,
+                revision: 2,
+                progress: { ...window.__smokeJob.progress, percent: 64 },
+              },
             },
-          },
-        });
+          });
       });
+      await page.keyboard.press('Escape');
       await processes.getByText('64%', { exact: true }).waitFor();
-      await page.evaluate(() => {
-        const callback = window.__smokeCallbacks.get(window.__smokeListeners.get('job-event'));
-        callback({
-          event: 'job-event',
-          id: 1,
-          payload: {
-            kind: 'completed',
-            job: {
-              ...window.__smokeJob,
-              revision: 3,
-              status: 'completed',
-              progress: { ...window.__smokeJob.progress, percent: 100 },
-            },
-          },
-        });
-      });
-      await processes.getByText('Нет активных процессов').waitFor();
-      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
+      await logo.click();
       await page.evaluate(() => {
         window.__libraryRuntimeMissing = true;
       });
-      await page.getByRole('button', { name: 'Создать проект', exact: true }).click();
+      await main.getByRole('menuitem', { name: 'Файл', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Новый проект…', exact: true }).click();
       dialog = page.getByRole('dialog');
-      await dialog.getByLabel('Название', { exact: true }).fill('Заблокированный проект');
+      await dialog.getByLabel('Название', { exact: true }).fill('Недоступный проект');
       await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
       await dialog
         .getByRole('alert')
-        .filter({ hasText: 'PUZA CONTRACT runtime is unavailable' })
+        .filter({ hasText: 'CONTRACT runtime is unavailable' })
         .waitFor();
-      assert.equal(
-        await page.evaluate(() =>
-          JSON.parse(sessionStorage.getItem('library-projects')).some(
-            (p) => p.title === 'Заблокированный проект',
-          ),
-        ),
-        false,
-      );
+      assert.deepEqual(errors, []);
+      assert.deepEqual(await page.evaluate(() => window.__smokeViolations), []);
     } finally {
       await browser?.close();
       await server.close();

@@ -4,16 +4,21 @@ import { useLibrary } from '@/entities/library';
 import { button } from '@/widgets/library-browser';
 import { ProcessQueueStrip } from './ProcessQueueStrip';
 import { StudioTitlebar } from './StudioTitlebar';
+import { StudioCommands } from './StudioCommands';
 const LibraryBrowser = lazy(() =>
   import('@/widgets/library-browser').then((m) => ({ default: m.LibraryBrowser })),
 );
 const StudioWorkspace = lazy(() =>
   import('./StudioWorkspace').then((m) => ({ default: m.StudioWorkspace })),
 );
-const SettingsPage = lazy(() =>
-  import('@/pages/settings').then((m) => ({ default: m.SettingsPage })),
-);
 export function StudioShell() {
+  return (
+    <StudioCommands>
+      <StudioShellContent />
+    </StudioCommands>
+  );
+}
+function StudioShellContent() {
   const { state, view, workspaceId, error, refresh } = useLibrary();
   const jobs = useContext(JobContext);
   return (
@@ -56,7 +61,6 @@ export function StudioShell() {
               <StudioWorkspace workspace={workspace} />
             </div>
           ))}
-          {view === 'settings' && <SettingsPage />}
         </Suspense>
       </main>
       <ProcessQueueStrip jobs={Object.values(jobs?.jobs ?? {})} />

@@ -48,9 +48,9 @@ export const ProjectWorkspace: Story = {
     await userEvent.click(
       within(resources).getByRole('button', { name: /Вступление — русский текст/ }),
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Открыть инструмент' }));
+    await userEvent.click(canvas.getByRole('menuitem', { name: 'Инструменты', exact: true }));
     const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
-    await expect(within(menu).getByText('Вступление — русский текст')).toBeInTheDocument();
+    await expect(within(menu).getAllByRole('menuitem')).toHaveLength(6);
     await expect(within(menu).getByRole('menuitem', { name: 'Синтез речи' })).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     const processes = canvas.getByRole('region', { name: 'Текущие процессы' });

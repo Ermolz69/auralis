@@ -1,3 +1,8 @@
+#[path = "columns.rs"]
+mod columns;
+use columns::validate_columns;
+#[path = "media_project.rs"]
+mod media_project;
 use super::*;
 #[path = "puza_project.rs"]
 mod puza_project;
@@ -23,6 +28,13 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
             crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
         })?;
     let mut expected_tables = FINAL_TABLES.to_vec();
+    if schema_marker >= 19 {
+        expected_tables.extend([
+            "media_project_receipts",
+            "media_copy_operations",
+            "media_run_sources",
+        ]);
+    }
     if schema_marker >= 18 || table_names.iter().any(|name| name == "workspace_library") {
         expected_tables.push("workspace_library");
     }
@@ -73,7 +85,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
-        14..=18 => has_speech && has_queue && has_reviews,
+        14..=19 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();
@@ -218,6 +230,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     if schema_marker < 18 {
         crate::sqlite::library_migration::migrate(pool).await?;
     }
+    media_project::migrate_and_validate(pool, schema_marker).await?;
     validate_columns(pool, "workspace_library", &["id", "revision", "payload"]).await?;
     validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
@@ -364,31 +377,6 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     )
     .await?;
     Ok(false)
-}
-
-async fn validate_columns(
-    pool: &SqlitePool,
-    table: &'static str,
-    expected: &[&str],
-) -> Result<(), PortError> {
-    let columns: Vec<String> =
-        sqlx::query_scalar("SELECT name FROM pragma_table_info(?) ORDER BY cid")
-            .bind(table)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite table", e)
-            })?;
-
-    if columns
-        .iter()
-        .map(String::as_str)
-        .eq(expected.iter().copied())
-    {
-        Ok(())
-    } else {
-        Err(non_final_schema_error(table))
-    }
 }
 
 fn non_final_schema_error(component: &str) -> PortError {

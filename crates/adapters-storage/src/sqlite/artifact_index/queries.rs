@@ -19,6 +19,7 @@ pub async fn get_ready_artifact(
         FROM artifacts
         WHERE id = ? AND state = 'ready'
           AND NOT EXISTS (SELECT 1 FROM speech_publications p, json_each(p.publication_json, '$.files') f WHERE p.ready=0 AND json_extract(f.value, '$.artifact_id')=artifacts.id)
+          AND (NOT EXISTS (SELECT 1 FROM media_copy_operations c WHERE json_extract(c.asset_json,'$.id')=artifacts.id) OR EXISTS (SELECT 1 FROM media_copy_operations c WHERE json_extract(c.asset_json,'$.id')=artifacts.id AND c.state='ready'))
         "#,
     )
     .bind(id.to_string())
@@ -54,6 +55,7 @@ pub async fn list_ready_by_project(
         FROM artifacts
         WHERE project_id = ? AND state = 'ready'
           AND NOT EXISTS (SELECT 1 FROM speech_publications p, json_each(p.publication_json, '$.files') f WHERE p.ready=0 AND json_extract(f.value, '$.artifact_id')=artifacts.id)
+          AND (NOT EXISTS (SELECT 1 FROM media_copy_operations c WHERE json_extract(c.asset_json,'$.id')=artifacts.id) OR EXISTS (SELECT 1 FROM media_copy_operations c WHERE json_extract(c.asset_json,'$.id')=artifacts.id AND c.state='ready'))
         ORDER BY created_at ASC
         "#,
     )
@@ -83,6 +85,7 @@ pub async fn list_ready_by_project_and_kind(
         FROM artifacts
         WHERE project_id = ? AND kind = ? AND state = 'ready'
           AND NOT EXISTS (SELECT 1 FROM speech_publications p, json_each(p.publication_json, '$.files') f WHERE p.ready=0 AND json_extract(f.value, '$.artifact_id')=artifacts.id)
+          AND (NOT EXISTS (SELECT 1 FROM media_copy_operations c WHERE json_extract(c.asset_json,'$.id')=artifacts.id) OR EXISTS (SELECT 1 FROM media_copy_operations c WHERE json_extract(c.asset_json,'$.id')=artifacts.id AND c.state='ready'))
         ORDER BY created_at ASC
         "#,
     )

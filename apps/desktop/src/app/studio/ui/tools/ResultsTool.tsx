@@ -7,36 +7,55 @@ import type { LibraryAsset } from '@/shared/api/contracts/library';
 import { useLibrary } from '@/entities/library';
 import { button } from '@/widgets/library-browser';
 export function ResultsTool({ projectId, asset }: { projectId: string; asset?: LibraryAsset }) {
-  const { refresh } = useLibrary();
+  const { state, refresh } = useLibrary();
   const [files, setFiles] = useState<Artifact[]>([]);
   const [error, setError] = useState('');
   const [audio, setAudio] = useState('');
   const [busy, setBusy] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const materialIds = new Set(asset ? [asset.id] : []);
+  for (let q = 0; q < state.assets.length; q++)
+    for (const candidate of state.assets)
+      if (candidate.parentId && materialIds.has(candidate.parentId)) materialIds.add(candidate.id);
+  const signature = state.assets
+    .filter((a) => a.ownerProjectId === projectId)
+    .map((a) => `${a.id}:${a.parentId}:${a.artifactId}`)
+    .join('|');
   const load = async () => {
-    setBusy(true);
-    try {
-      setFiles(await invoke('list_project_artifacts_cmd', { projectId }));
-      await refresh();
-      setError('');
-    } catch (e) {
-      setError(describeCommandError(e));
-    } finally {
-      setBusy(false);
-    }
+    await refresh();
+    setRevision((v) => v + 1);
   };
   useEffect(() => {
     let active = true;
-    void invoke('list_project_artifacts_cmd', { projectId })
-      .then((items) => {
-        if (active) setFiles(items);
+    setBusy(true);
+    setFiles([]);
+    setAudio('');
+    setError('');
+    void Promise.all([
+      invoke('list_project_artifacts_cmd', { projectId }),
+      invoke('get_media_project_cmd', { projectId }),
+    ])
+      .then(([items, structure]) => {
+        const related = new Set<string>();
+        for (const a of state.assets)
+          if (materialIds.has(a.id) && a.artifactId) related.add(a.artifactId);
+        for (const result of (structure.results ?? []) as { id: string; asset_id: string }[])
+          if (materialIds.has(result.asset_id)) related.add(result.id);
+        if (active)
+          setFiles(
+            items.filter((item) => item.state === 'ready' && (!asset || related.has(item.id))),
+          );
       })
       .catch((e) => {
         if (active) setError(describeCommandError(e));
+      })
+      .finally(() => {
+        if (active) setBusy(false);
       });
     return () => {
       active = false;
     };
-  }, [projectId]);
+  }, [projectId, asset?.id, signature, revision]);
   const play = async (id: string) => {
     try {
       setAudio(convertFileSrc(await invoke('resolve_artifact_path_cmd', { artifactId: id })));

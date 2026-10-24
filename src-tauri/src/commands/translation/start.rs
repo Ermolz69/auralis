@@ -17,10 +17,15 @@ pub async fn start_translation_run_cmd(
     project_id: String,
     translation_id: String,
     usecases: State<'_, Arc<TranslationUseCases>>,
+    media: State<'_, Arc<dyn ports::media_project::MediaProjectStore>>,
     selected_runtime: State<'_, SelectedTranslationRuntime>,
     runtime: State<'_, ManagedJobRuntime>,
 ) -> Result<TranslationStartDto, CommandError> {
     crate::observability::command::observe("start_translation_run_cmd", async {
+        media
+            .ensure(&project_id)
+            .await
+            .map_err(application::error::ApplicationError::from)?;
         let selected = selected_runtime.read().await;
         let runtime_port = selected.as_ref().ok_or_else(|| {
             CommandError::NotFound("Translation model runtime is not installed".into())

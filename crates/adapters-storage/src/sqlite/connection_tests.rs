@@ -44,6 +44,9 @@ mod tests {
                 "artifacts",
                 "job_executions",
                 "jobs",
+                "media_copy_operations",
+                "media_project_receipts",
+                "media_run_sources",
                 "outbox_messages",
                 "outbox_sequence",
                 "project_pins",
@@ -73,7 +76,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            18
+            19
         );
 
         let project_columns: Vec<String> =

@@ -17,4 +17,5 @@ pub mod project_avatar;
 pub mod translation;
 pub mod tts;
 pub mod ui_preferences;
+pub mod video_preview;
 pub mod youtube_import;

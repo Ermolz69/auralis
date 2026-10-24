@@ -64,6 +64,8 @@ export function installLibraryFixture() {
       selectedId: null,
     },
   };
+  const operations = new Map();
+  const copies = new Map();
   const persist = () => {
     sessionStorage.setItem('library-state', JSON.stringify(state));
     sessionStorage.setItem('library-projects', JSON.stringify(projects));
@@ -72,6 +74,18 @@ export function installLibraryFixture() {
   window.__librarySaves = [];
   window.__libraryRuntimeMissing = false;
   window.__TAURI_INTERNALS__.invoke = async (command, args) => {
+    if (command === 'get_tool_context_cmd') {const asset=state.assets.find(a=>a.id===args.assetId);return {projectId:args.projectId,assetId:asset.id,version:null,artifactId:asset.artifactId,trackId:null};}
+    if (command === 'validate_media_project_cmd') return null;
+    if (command === 'get_media_project_cmd') return {version:1,project_id:args.projectId,assets:[],results:[]};
+    if (command === 'get_media_operation_cmd') return operations.get(args.operationId)??null;
+    if (command === 'attach_library_asset_cmd') {
+      const key=`${args.projectId}:${args.assetId}`;
+      const original=state.assets.find(a=>a.id===args.assetId);
+      let copy=copies.get(key);
+      if(!copy){copy={...structuredClone(original),id:crypto.randomUUID(),ownerProjectId:args.projectId};copies.set(key,copy);state.assets.push(copy);state.links.push({assetId:copy.id,projectId:args.projectId,folderId:null});state.revision++;}
+      operations.set(args.operationId,{id:args.operationId,projectId:args.projectId,assetId:copy.id,status:'ready',completedBytes:1,totalBytes:1,error:null});
+      persist();return structuredClone(state);
+    }
     if (command === 'get_library_cmd') return structuredClone(state);
     if (command === 'save_library_cmd') {
       if (window.__libraryConflict) {

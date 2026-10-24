@@ -17,6 +17,7 @@ import { useSpeechDraftSync } from './useSpeechDraftSync';
 
 export function useSpeechWorkflow({
   projectId,
+  assetId,
   profileId,
   voiceId,
   referenceId,
@@ -146,6 +147,7 @@ export function useSpeechWorkflow({
       if (!review) return;
       const result = await invoke('prepare_speech_plan_cmd', {
         projectId,
+        assetId,
         request: {
           decision_id: review.decision_id,
           expected_source_sha256: review.source.sha256,

@@ -11,12 +11,14 @@ import { TranslationReviewDecision } from './TranslationReviewDecision';
 
 export function TranslationReviewPanel({
   projectId,
+  sourceArtifactId,
   refreshRevision = 0,
 }: {
   projectId: string | null;
+  sourceArtifactId?: string;
   refreshRevision?: number;
 }) {
-  const review = useTranslationReview(projectId, refreshRevision);
+  const review = useTranslationReview(projectId, refreshRevision, sourceArtifactId);
   const [publication, setPublication] = useState<{
     projectId: string;
     record: TranslationPublication;

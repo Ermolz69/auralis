@@ -98,6 +98,7 @@ export function SpeechTool({
       )}
       {input ? (
         <SpeechCatalog
+          assetId={asset?.id}
           projectId={projectId}
           initialSource={input}
           draft={initial}

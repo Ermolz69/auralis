@@ -18,6 +18,7 @@ export function SpeechWorkflow({
   ...options
 }: SpeechWorkflowOptions & { renderVoiceSettings?: (disabled: boolean) => ReactNode }) {
   const { profileId, voiceId, referenceId } = options;
+  const workflow = useSpeechWorkflow(options);
   const {
     mode,
     setMode,
@@ -29,31 +30,11 @@ export function SpeechWorkflow({
     setSubtitleId,
     subtitleFiles,
     translations,
-    source,
-    review,
-    assignments,
-    runs,
-    selected,
-    setSelected,
-    error,
-    busy,
-    audio,
-    run,
-    active,
-    changed,
-    refreshSources,
-    load,
-    confirm,
-    prepare,
-    start,
-    play,
-    assign,
-    cancel,
-    markerPreparation,
-    markerApplied,
-    normalize,
-    applyPreparation,
-  } = useSpeechWorkflow(options);
+  } = workflow;
+  const { source, review, assignments } = workflow;
+  const { runs, selected, setSelected, error, busy, audio, run, active, changed } = workflow;
+  const { refreshSources, load, confirm, prepare, start, play, assign, cancel } = workflow;
+  const { markerPreparation, markerApplied, normalize, applyPreparation } = workflow;
   return (
     <div className="mt-4 space-y-3 border-t border-border pt-3 text-xs">
       <div hidden={stage === 'voices'} className="space-y-3">

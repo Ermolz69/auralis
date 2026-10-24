@@ -22,9 +22,13 @@ function failureMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : toCommandError(reason).message;
 }
 
-type Props = { projectId: string; onReadyResultsChanged?: () => void };
+type Props = { projectId: string; sourceArtifactId?: string; onReadyResultsChanged?: () => void };
 
-export function TranslationRunControl({ projectId, onReadyResultsChanged }: Props) {
+export function TranslationRunControl({
+  projectId,
+  sourceArtifactId,
+  onReadyResultsChanged,
+}: Props) {
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [snapshots, setSnapshots] = useState<Record<string, TranslationRunSnapshot>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -37,7 +41,10 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
     let active = true;
     let observation = 0;
     const dispose = observeTranslationRuns(projectId, {
-      onSnapshot: (current, statuses) => {
+      onSnapshot: (all, statuses) => {
+        const current = sourceArtifactId
+          ? all.filter((link) => link.sourceArtifactId === sourceArtifactId)
+          : all;
         const selectedResults = current
           .filter((link) => link.selectedResultId && link.outputArtifactId)
           .map((link) => `${link.translationId}:${link.selectedResultId}`)
@@ -73,7 +80,7 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
       active = false;
       dispose();
     };
-  }, [projectId, revision, onReadyResultsChanged]);
+  }, [projectId, sourceArtifactId, revision, onReadyResultsChanged]);
 
   const start = async (translationId: string) => {
     if (busyId) return;

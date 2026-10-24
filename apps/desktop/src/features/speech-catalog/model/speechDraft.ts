@@ -10,6 +10,7 @@ export type SpeechDraft = {
   originalRequest?: SpeechSourceRequest | null;
 };
 export type SpeechInput = {
+  assetId?: string;
   initialSource?: SpeechSourceRequest;
   draft?: SpeechDraft;
   onDraftChange?: (draft: SpeechDraft) => void;

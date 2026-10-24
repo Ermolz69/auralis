@@ -146,7 +146,7 @@ async fn version_seventeen_upgrade_preserves_projects_and_rejects_corrupt_catalo
     let project = projects
         .create(Project::new("Existing project".into())?)
         .await?;
-    sqlx::query("DROP TABLE workspace_library")
+    sqlx::raw_sql("DROP TABLE media_run_sources; DROP TABLE media_copy_operations; DROP TABLE media_project_receipts; DROP TABLE workspace_library")
         .execute(&pool)
         .await?;
     sqlx::query("PRAGMA user_version=17").execute(&pool).await?;
@@ -156,7 +156,7 @@ async fn version_seventeen_upgrade_preserves_projects_and_rejects_corrupt_catalo
         sqlx::query_scalar::<_, i64>("PRAGMA user_version")
             .fetch_one(&pool)
             .await?,
-        18
+        19
     );
     assert!(
         SqliteProjectRepository::new(pool.clone())

@@ -12,7 +12,7 @@ type Props = {
   inWorkspace?: boolean;
 };
 export function LibraryCreateDialog({ kind, destination, close, inWorkspace }: Props) {
-  const { mutate, refresh, openAsset, openTool } = useLibrary();
+  const { mutate, refresh, openAsset, openTool, projects } = useLibrary();
   const [name, setName] = useState('');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -68,6 +68,12 @@ export function LibraryCreateDialog({ kind, destination, close, inWorkspace }: P
         <h2 id="library-create-title" className="mb-4 text-xl font-semibold">
           {titles[kind]}
         </h2>
+        {kind !== 'project' && (
+          <p className="mb-4 text-sm text-muted">
+            Назначение:{' '}
+            {projects.find((p) => p.id === destination.projectId)?.title ?? 'Без проекта'}
+          </p>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();

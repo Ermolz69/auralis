@@ -1,10 +1,12 @@
-import { useLibrary } from '@/entities/library';
+import { useLibrary, useStudioActions } from '@/entities/library';
+import { StudioMenuBar } from './StudioCommands';
 import { Icon } from '@/shared/ui/icon';
 import { useWindowChrome } from '../model/useWindowChrome';
 
 export function StudioTitlebar() {
   const { state, projects, view, setView, workspaceId, refresh } = useLibrary();
   const windowChrome = useWindowChrome();
+  const actions = useStudioActions();
   const workspace = state.workspaces.find((item) => item.id === workspaceId);
   const workspaceName = workspace?.projectId
     ? projects.find((project) => project.id === workspace.projectId)?.title
@@ -33,6 +35,7 @@ export function StudioTitlebar() {
           >
             Auralis
           </button>
+          <StudioMenuBar />
           {view === 'workspace' && workspaceName && (
             <>
               <span data-tauri-drag-region className="text-muted" aria-hidden="true">
@@ -50,8 +53,7 @@ export function StudioTitlebar() {
             className={control}
             aria-label="Настройки"
             title="Настройки"
-            aria-pressed={view === 'settings'}
-            onClick={() => setView(view === 'settings' ? 'library' : 'settings')}
+            onClick={() => actions.run('settings')}
           >
             <Icon name="Settings" size={16} />
           </button>

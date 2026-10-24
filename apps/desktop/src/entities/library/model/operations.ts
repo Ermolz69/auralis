@@ -21,14 +21,35 @@ export async function createOwner(name: string, mutate: Mutate) {
   }
   return owner.id;
 }
-export function linkAsset(state: LibraryState, assetId: string, destination: Destination) {
-  if (!destination.projectId) return;
-  const link = state.links.find(
-    (l) => l.assetId === assetId && l.projectId === destination.projectId,
-  );
-  if (link) link.folderId = destination.folderId;
-  else
-    state.links.push({ assetId, projectId: destination.projectId, folderId: destination.folderId });
+export async function attachAssetToProject(
+  asset: LibraryAsset,
+  projectId: string,
+): Promise<LibraryAsset> {
+  const operationId = crypto.randomUUID();
+  await invoke('attach_library_asset_cmd', {
+    operationId,
+    projectId,
+    assetId: asset.id,
+    duplicate: false,
+  });
+  const deadline = Date.now() + 120000;
+  while (Date.now() < deadline) {
+    const state = await invoke('get_library_cmd');
+    const op = await invoke('get_media_operation_cmd', { operationId });
+    if (
+      !op &&
+      state.links.some((link) => link.projectId === projectId && link.assetId === asset.id)
+    )
+      return asset;
+    if (op?.status === 'ready') {
+      const copy = state.assets.find((a) => a.id === op.assetId);
+      if (copy) return copy;
+    }
+    if (op && ['failed', 'cancelled'].includes(op.status))
+      throw new Error(op.error ?? 'Добавление отменено');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error('Публикация материала продолжается. Он появится в проекте автоматически.');
 }
 export async function createText(
   name: string,
@@ -52,9 +73,8 @@ export async function createText(
   };
   await mutate((state) => {
     state.assets.push(asset);
-    linkAsset(state, asset.id, destination);
   });
-  return asset;
+  return destination.projectId ? attachAssetToProject(asset, destination.projectId) : asset;
 }
 export async function importFiles(
   destination: Destination,
@@ -115,7 +135,7 @@ export async function importFiles(
     ) {
       if (Date.now() > deadline)
         throw new Error(
-          'Импорт сохранён, но публикация файла ещё не завершена. Обновите библиотеку и проверьте результаты.',
+          'Импорт сохранён, но публикация файла ещё не завершена. Материал появится в библиотеке автоматически.',
         );
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
@@ -123,10 +143,18 @@ export async function importFiles(
     await mutate((state) => {
       for (const asset of state.assets.filter((a) => a.ownerProjectId === owner)) {
         asset.name = name;
-        linkAsset(state, asset.id, destination);
+
         imported.push(asset.id);
       }
     });
+    if (destination.projectId) {
+      const catalog = await invoke('get_library_cmd');
+      for (const original of catalog.assets.filter((a) => a.ownerProjectId === owner)) {
+        const copied = await attachAssetToProject(original, destination.projectId);
+        const index = imported.indexOf(original.id);
+        if (index >= 0) imported[index] = copied.id;
+      }
+    }
   }
   await refresh();
   return imported;
@@ -151,10 +179,6 @@ export async function copyAsset(
       item.name = `${asset.name} — копия`;
       item.tags = [...asset.tags];
     }
-    if (destination.projectId && copied.length)
-      state.links = state.links.filter(
-        (l) => l.assetId !== asset.id || l.projectId !== destination.projectId,
-      );
   });
 }
 export async function importYoutube(
@@ -168,8 +192,10 @@ export async function importYoutube(
     state.standaloneOwners.push(project.id);
   });
   await refresh();
-  await mutate((state) => {
+  if (destination.projectId) {
+    const state = await invoke('get_library_cmd');
     for (const asset of state.assets.filter((a) => a.ownerProjectId === project.id))
-      linkAsset(state, asset.id, destination);
-  });
+      await attachAssetToProject(asset, destination.projectId);
+    await refresh();
+  }
 }

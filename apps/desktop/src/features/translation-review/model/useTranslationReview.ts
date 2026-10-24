@@ -7,7 +7,11 @@ import type {
 
 export const COMPARISON_PAGE_SIZE = 25;
 
-export function useTranslationReview(projectId: string | null, refreshRevision = 0) {
+export function useTranslationReview(
+  projectId: string | null,
+  refreshRevision = 0,
+  sourceArtifactId?: string,
+) {
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [selectedTranslationId, setSelectedTranslationId] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ translationId: string; resultId: string } | null>(null);
@@ -25,7 +29,7 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
     setOffset(0);
     setPage(null);
     setError(null);
-  }, [projectId]);
+  }, [projectId, sourceArtifactId]);
 
   useEffect(() => {
     if (!projectId) {
@@ -36,8 +40,11 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
     setLoadingLinks(true);
     setError(null);
     void listProjectTranslations(projectId)
-      .then((found) => {
+      .then((all) => {
         if (!current) return;
+        const found = sourceArtifactId
+          ? all.filter((link) => link.sourceArtifactId === sourceArtifactId)
+          : all;
         setLinks(found);
         setSelectedTranslationId((selected) =>
           found.some((link) => link.translationId === selected && link.selectedResultId)
@@ -54,7 +61,7 @@ export function useTranslationReview(projectId: string | null, refreshRevision =
     return () => {
       current = false;
     };
-  }, [projectId, revision, refreshRevision]);
+  }, [projectId, sourceArtifactId, revision, refreshRevision]);
 
   const projectLinks = links.filter((link) => link.projectId === projectId);
   const selected =

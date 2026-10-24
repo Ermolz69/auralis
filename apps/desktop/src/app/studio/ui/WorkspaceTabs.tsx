@@ -10,7 +10,7 @@ export function WorkspaceTabs({
 }: {
   workspace: LibraryWorkspace;
   close: (id: string) => void;
-  add: ReactNode;
+  add?: ReactNode;
 }) {
   const { state, mutate } = useLibrary();
   const select = (id: string) =>

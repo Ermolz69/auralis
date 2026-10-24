@@ -1,6 +1,6 @@
 import { describeCommandError } from '@/shared/api/contracts/error';
 import { useState } from 'react';
-import { useLibrary, kindNames, toolNames } from '@/entities/library';
+import { useLibrary, kindNames, toolNames, useStudioActions } from '@/entities/library';
 import { copyAsset } from '@/entities/library';
 import type { LibraryAsset, LibraryBrowser, LibraryTool } from '@/shared/api/contracts/library';
 import { button, field } from './controls';
@@ -11,7 +11,7 @@ export function AssetInspector({ asset, browser, select }: Props) {
   const [name, setName] = useState(asset.name);
   const [tags, setTags] = useState(asset.tags.join(', '));
   const [target, setTarget] = useState(browser.projectId ?? '');
-  const [folder, setFolder] = useState('');
+  const actions = useStudioActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -44,14 +44,7 @@ export function AssetInspector({ asset, browser, select }: Props) {
         ];
       }),
     );
-  const attach = () =>
-    action(() =>
-      mutate((draft) => {
-        const link = draft.links.find((l) => l.assetId === asset.id && l.projectId === target);
-        if (link) link.folderId = folder || null;
-        else draft.links.push({ assetId: asset.id, projectId: target, folderId: folder || null });
-      }),
-    );
+  const attach = () => actions.drop(asset.id, target);
   const remove = () =>
     action(async () => {
       await mutate((draft) => {
@@ -135,7 +128,6 @@ export function AssetInspector({ asset, browser, select }: Props) {
           value={target}
           onChange={(e) => {
             setTarget(e.target.value);
-            setFolder('');
           }}
         >
           <option value="">Выберите проект</option>
@@ -151,30 +143,12 @@ export function AssetInspector({ asset, browser, select }: Props) {
             ))}
         </select>
       </label>
-      <label className="mt-2 block text-xs">
-        Папка
-        <select
-          aria-label="Папка"
-          className={field}
-          value={folder}
-          onChange={(e) => setFolder(e.target.value)}
-        >
-          <option value="">Корень проекта</option>
-          {state.folders
-            .filter((f) => f.projectId === target)
-            .map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-        </select>
-      </label>
       <button
         className={`${button} mt-2 w-full`}
         onClick={() => void attach()}
         disabled={busy || !target}
       >
-        Добавить / переместить в проект
+        Добавить копию в проект
       </button>
       {browser.projectId && (
         <>
@@ -200,7 +174,7 @@ export function AssetInspector({ asset, browser, select }: Props) {
               void action(async () => {
                 await copyAsset(
                   asset,
-                  { projectId: browser.projectId, folderId: browser.folderId },
+                  { projectId: browser.projectId, folderId: null },
                   mutate,
                   refresh,
                 );

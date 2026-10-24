@@ -6,7 +6,7 @@ assert.ok(root && title, 'Provide an application data root and the material name
 const database = new DatabaseSync(path.join(root, 'auralis.sqlite'), { readOnly: true });
 try {
   const { user_version: schema } = database.prepare('PRAGMA user_version').get();
-  assert.equal(schema, 18);
+  assert.equal(schema, 19);
   const row = database.prepare('SELECT revision,payload FROM workspace_library WHERE id=1').get();
   const catalog = JSON.parse(row.payload);
   const asset = catalog.assets.find((a) => a.name === title);

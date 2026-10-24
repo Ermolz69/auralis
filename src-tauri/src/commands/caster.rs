@@ -94,8 +94,10 @@ pub async fn assign_manual_cast_cmd(
     selections: BTreeMap<String, ManualSelection>,
     expected_revision: Option<String>,
     request_id: String,
+    media: State<'_, Arc<dyn ports::media_project::MediaProjectStore>>,
     caster: State<'_, Arc<CasterUseCases>>,
 ) -> Result<CastResult, CommandError> {
+    media.ensure(&project_id).await?;
     caster
         .assign_roles(
             &parse_project_id(&project_id)?,

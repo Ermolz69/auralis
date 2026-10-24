@@ -26,6 +26,10 @@ const config: StorybookConfig = {
 
     return {
       ...viteConfig,
+      optimizeDeps: {
+        ...viteConfig.optimizeDeps,
+        include: [...(viteConfig.optimizeDeps?.include ?? []), '@tauri-apps/api/app', '@tauri-apps/plugin-process', '@tauri-apps/plugin-updater'],
+      },
       plugins: viteConfig.plugins?.filter(
         (plugin) =>
           !plugin ||

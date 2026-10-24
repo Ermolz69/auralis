@@ -49,10 +49,16 @@ impl InspectTranslationSourceUseCase {
             .ok_or_else(|| ApplicationError::ProjectNotFound(request.project_id.clone()))?;
         let original = self
             .artifacts
-            .list_by_project_and_kind(&request.project_id, ArtifactKind::OriginalSubtitle)
+            .list_by_project(&request.project_id)
             .await?
             .into_iter()
-            .find(|artifact| artifact.id == request.source_artifact_id)
+            .find(|artifact| {
+                artifact.id == request.source_artifact_id
+                    && matches!(
+                        artifact.kind,
+                        ArtifactKind::OriginalSubtitle | ArtifactKind::TranslatedTranscript
+                    )
+            })
             .ok_or_else(|| ApplicationError::InvalidOperation {
                 message: "Original subtitle artifact does not belong to this project".into(),
             })?;

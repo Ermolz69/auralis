@@ -1,21 +1,17 @@
-import { describeCommandError } from '@/shared/api/contracts/error';
 import { useEffect, useRef, useState } from 'react';
-import { useLibrary, visibleAssets, kindNames } from '@/entities/library';
+import { useLibrary, visibleAssets, kindNames, useStudioActions } from '@/entities/library';
 import type { LibraryBrowser as Browser, LibraryKind } from '@/shared/api/contracts/library';
-import { importFiles } from '@/entities/library';
 import { LibraryNavigation } from './LibraryNavigation';
 import { LibraryCreateDialog } from './LibraryCreateDialog';
 import { AssetInspector } from './AssetInspector';
 import { AssetCards } from './AssetCards';
-import { LibraryProjectActions } from './LibraryProjectActions';
-import { button, field } from './controls';
+import { field } from './controls';
 export function LibraryBrowser() {
-  const { state, projects, mutate, refresh, openAsset, loading } = useLibrary();
+  const { state, projects, mutate, openAsset, loading } = useLibrary();
+  const actions = useStudioActions();
   const [browser, setBrowser] = useState(state.browser);
   const hydrated = useRef(false);
   const [dialog, setDialog] = useState<'text' | 'project' | 'folder' | 'youtube' | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const assets = visibleAssets(state, browser);
   const selected = assets.find((a) => a.id === browser.selectedId);
   useEffect(() => {
@@ -50,21 +46,17 @@ export function LibraryBrowser() {
     );
     return () => clearTimeout(timer);
   }, [browser, loading, mutate]);
-  const navigate = (patch: Partial<Browser>) => setBrowser((current) => ({ ...current, ...patch }));
+  const navigate = (patch: Partial<Browser>) => {
+    const next = { ...browser, ...patch };
+    setBrowser(next);
+    actions.select({
+      projectId: next.scope === 'project' ? next.projectId : null,
+      assetId: next.selectedId,
+    });
+  };
   const destination = {
     projectId: browser.scope === 'project' ? browser.projectId : null,
     folderId: browser.folderId,
-  };
-  const importNow = async () => {
-    setBusy(true);
-    setError('');
-    try {
-      await importFiles(destination, mutate, refresh);
-    } catch (e) {
-      setError(describeCommandError(e));
-    } finally {
-      setBusy(false);
-    }
   };
   const title =
     browser.scope === 'project'
@@ -85,31 +77,16 @@ export function LibraryBrowser() {
       data-testid="library-browser"
     >
       <LibraryNavigation browser={browser} navigate={navigate} create={setDialog} />
-      <section className="min-w-0 overflow-auto p-4 sm:p-6" aria-label="Библиотека материалов">
+      <section
+        className="min-w-0 overflow-auto p-4 sm:p-6"
+        aria-label="Библиотека материалов"
+        onContextMenu={(e) =>
+          actions.context(e, { projectId: destination.projectId, assetId: null })
+        }
+      >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">{title || 'Библиотека'}</h1>
-          <div className="flex flex-wrap gap-2">
-            <button className={button} disabled={busy} onClick={() => void importNow()}>
-              {busy ? 'Импортируем…' : 'Импорт файлов'}
-            </button>
-            <button className={button} onClick={() => setDialog('youtube')}>
-              YouTube
-            </button>
-            <button className={button} onClick={() => setDialog('text')}>
-              Новый текст
-            </button>
-            <button className={button} onClick={() => void refresh().catch(() => {})}>
-              Обновить
-            </button>
-          </div>
         </div>
-        {browser.projectId && (
-          <LibraryProjectActions
-            key={`${browser.projectId}:${browser.folderId}`}
-            browser={browser}
-            navigate={navigate}
-          />
-        )}
         <div className="mb-5 flex flex-wrap gap-2">
           <input
             type="search"
@@ -133,15 +110,11 @@ export function LibraryBrowser() {
             ))}
           </select>
         </div>
-        {error && (
-          <p role="alert" className="mb-3">
-            {error}
-          </p>
-        )}
         {loading ? (
           <p role="status">Загружаем библиотеку…</p>
         ) : assets.length ? (
           <AssetCards
+            projectId={destination.projectId}
             assets={assets}
             selectedId={browser.selectedId}
             select={(id) => navigate({ selectedId: id })}

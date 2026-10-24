@@ -115,3 +115,19 @@ test('reports both sides of contract drift', () => {
     /Rust-only \[rust-only\], TypeScript-only \[typescript-only\]/,
   );
 });
+
+test('distinguishes JSON objects from arbitrary JSON values', () => {
+  const rust = extractRustCommandSignatures([
+    '#[command] pub async fn object_cmd() -> Result<std::collections::BTreeMap<String, serde_json::Value>, Error> {}',
+    '#[command] pub async fn value_cmd() -> Result<serde_json::Value, Error> {}',
+  ]);
+  assert.equal(rust.object_cmd.result, 'Record<string, unknown>');
+  assert.equal(rust.value_cmd.result, 'unknown');
+  assert.throws(
+    () =>
+      assertCommandSignatures(rust, {
+        object_cmd: { args: [], result: 'unknown' },
+      }),
+    /IPC signature drift/,
+  );
+});

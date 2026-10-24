@@ -1,6 +1,6 @@
 pub async fn restore_legacy_outbox_shape(pool: &sqlx::SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::raw_sql(
-        "DROP TABLE IF EXISTS puza_contract_projects; DROP TABLE speech_discarded_artifacts;
+        "DROP TABLE IF EXISTS media_run_sources; DROP TABLE IF EXISTS media_project_receipts; DROP TABLE IF EXISTS media_copy_operations; DROP TABLE IF EXISTS puza_contract_projects; DROP TABLE speech_discarded_artifacts;
          DROP TABLE speech_run_reviews;
          DROP TABLE speech_publications;
          DROP TABLE speech_text_reviews;

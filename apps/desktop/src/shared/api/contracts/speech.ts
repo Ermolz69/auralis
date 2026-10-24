@@ -86,7 +86,7 @@ export interface SpeechCommandMap {
     result: SpeechReview;
   };
   prepare_speech_plan_cmd: {
-    args: { projectId: string; request: PrepareSpeechRequest };
+    args: { projectId: string; request: PrepareSpeechRequest; assetId?: string | null };
     result: SpeechRunView;
   };
   start_speech_run_cmd: { args: { projectId: string; runId: string }; result: SpeechRunView };

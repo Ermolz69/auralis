@@ -217,6 +217,7 @@ function parseRustParameter(parameter) {
 function normalizeRustType(type) {
   const compact = type.replace(/\s+/g, '');
   if (compact === '()') return 'null';
+  if (compact === 'serde_json::Value') return 'unknown';
   if (compact === 'String' || compact === '&str') return 'string';
   if (compact === 'bool') return 'boolean';
   if (/^u(?:8|16|32|64|128|size)$/.test(compact) || /^i(?:8|16|32|64|128|size)$/.test(compact)) {
@@ -226,7 +227,7 @@ function normalizeRustType(type) {
   if (vector !== null) return `${normalizeRustType(vector)}[]`;
   const option = unwrapGeneric(compact, 'Option');
   if (option !== null) return `${normalizeRustType(option)} | null`;
-  const map = unwrapGeneric(compact, 'BTreeMap');
+  const map = unwrapGeneric(compact.replace(/^std::collections::/, ''), 'BTreeMap');
   if (map !== null) {
     const [key, value] = splitTopLevel(map, ',');
     return `Record<${normalizeRustType(key)}, ${normalizeRustType(value)}>`;

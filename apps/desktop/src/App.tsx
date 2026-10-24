@@ -1,5 +1,5 @@
 import { AppUpdateNotifier, AppUpdateProvider } from './features/app-update';
-import { LibraryProvider, useLibrary } from './entities/library';
+import { LibraryProvider } from './entities/library';
 import { StudioShell } from './app/studio';
 
 export default function App() {
@@ -12,10 +12,9 @@ export default function App() {
   );
 }
 function Studio() {
-  const { setView } = useLibrary();
   return (
     <>
-      <AppUpdateNotifier onOpen={() => setView('settings')} />
+      <AppUpdateNotifier onOpen={() => window.dispatchEvent(new Event('auralis-open-settings'))} />
       <StudioShell />
     </>
   );

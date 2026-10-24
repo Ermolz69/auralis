@@ -30,6 +30,8 @@ const project = {
 let projects: (typeof project)[];
 beforeEach(() => {
   vi.resetAllMocks();
+  HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  HTMLDialogElement.prototype.close = function () { this.open = false; };
   state = emptyLibrary();
   projectEvents = [];
   projects = [project];
@@ -61,6 +63,7 @@ beforeEach(() => {
       );
       return catalog;
     }
+    if (command === 'validate_media_project_cmd') return null;
     if (command === 'list_projects_cmd') return projects;
     if (command === 'save_library_cmd') {
       state = structuredClone(args!.state!);
@@ -76,7 +79,7 @@ it('opens standalone assets outside the library and preserves tabs on return', a
   fireEvent.doubleClick(await screen.findByRole('button', { name: /Standalone Текст/ }));
   expect(await screen.findByRole('tab', { name: /Текст и подготовка/ })).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Все материалы' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Открыть инструмент' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Инструменты' }));
   fireEvent.click(screen.getByRole('menuitem', { name: 'Синтез речи' }));
   await screen.findByRole('tab', { name: /Синтез речи/ });
   fireEvent.click(screen.getByRole('button', { name: 'Auralis — библиотека' }));
@@ -97,19 +100,18 @@ it('opens the selected project material through the tab menu without replacing o
   });
   fireEvent.click(within(resources).getByRole('button', { name: /Standalone/ }));
   expect(screen.queryByRole('tab')).toBeNull();
-  const add = screen.getByRole('button', { name: 'Открыть инструмент' });
+  const add = screen.getByRole('menuitem', { name: 'Инструменты' });
+  add.focus();
   fireEvent.click(add);
   const menu = screen.getByRole('menu');
-  expect(menu.textContent).toContain('Standalone');
-  const source = within(menu).getByRole('menuitem', { name: 'Источник и субтитры' });
+  const source = within(menu).getByRole('menuitem', { name: /Источник и субтитры/ });
+  expect(source.getAttribute('aria-disabled')).toBe('true');
   expect(document.activeElement).toBe(source);
-  fireEvent.keyDown(source, { key: 'ArrowDown' });
-  expect(document.activeElement).toBe(
-    within(menu).getByRole('menuitem', { name: 'Текст и подготовка' }),
-  );
+  fireEvent.keyDown(menu, { key: 'ArrowDown' });
+  expect(document.activeElement).toBe(within(menu).getByRole('menuitem', { name: 'Текст и подготовка' }));
   fireEvent.keyDown(menu, { key: 'Escape' });
   expect(screen.queryByRole('menu')).toBeNull();
-  expect(document.activeElement).toBe(add);
+  await waitFor(() => expect(document.activeElement).toBe(add));
   fireEvent.click(add);
   fireEvent.click(screen.getByRole('menuitem', { name: 'Текст и подготовка' }));
   await screen.findByRole('tab', { name: 'Текст и подготовка · Standalone' });
@@ -132,6 +134,8 @@ it('keeps settings separate and recovers when the open project is removed elsewh
   await screen.findByRole('tablist');
   fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
   expect(await screen.findByRole('heading', { name: 'Settings page' })).toBeTruthy();
+  expect(screen.getByRole('tablist')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Закрыть настройки' }));
   projects = [];
   state.workspaces = [];
   await act(async () => projectEvents.forEach((notify) => notify()));

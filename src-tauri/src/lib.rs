@@ -101,6 +101,13 @@ pub fn run() -> Result<(), AppRunError> {
         })
         .invoke_handler(tauri::generate_handler![
             commands::library::get_library_cmd,
+            commands::library::get_tool_context_cmd,
+            commands::video_preview::get_video_preview_cmd,
+            commands::library::attach_library_asset_cmd,
+            commands::library::get_media_operation_cmd,
+            commands::library::cancel_media_operation_cmd,
+            commands::library::get_media_project_cmd,
+            commands::library::validate_media_project_cmd,
             commands::library::read_library_text_cmd,
             commands::library::save_library_cmd,
             commands::ui_preferences::get_color_theme_cmd,
@@ -278,3 +285,4 @@ fn configure_updater(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<taur
 
 #[cfg(test)]
 mod tests;
+// Media project commands are registered beside the existing library IPC below.

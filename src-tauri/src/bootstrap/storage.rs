@@ -134,6 +134,22 @@ async fn setup_storage_with_lease(
 
     Ok((
         RuntimeServices {
+            media_projects: Arc::new(
+                adapters_storage::sqlite::media_project::LocalMediaProjects::new(
+                    pool.clone(),
+                    app_paths.projects(),
+                    match adapters_tts::media_contract::MediaContractRuntime::load(
+                        &app_paths.root().join("project-runtime.json"),
+                    ) {
+                        Ok(runtime) => Arc::new(runtime),
+                        Err(error) => {
+                            Arc::new(adapters_tts::media_contract::UnavailableMediaContract(
+                                error.to_string(),
+                            ))
+                        }
+                    },
+                ),
+            ),
             library: Arc::new(
                 adapters_storage::sqlite::library_repository::SqliteLibraryRepository::new(
                     pool.clone(),

@@ -18,6 +18,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
+  const retryProject = useRef<string | null>(null);
   const [view, setView] = useState<'library' | 'workspace' | 'settings'>('library');
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const publish = (next: LibraryState) => {
@@ -43,6 +45,15 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           publish(catalog);
           setProjects(list);
           setError(null);
+          if (retryProject.current) {
+            try {
+              await invoke('validate_media_project_cmd', { projectId: retryProject.current });
+              retryProject.current = null;
+              setValidationWarning(null);
+            } catch (reason) {
+              setValidationWarning(toCommandError(reason).message);
+            }
+          }
         } finally {
           setLoading(false);
         }
@@ -55,10 +66,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     let active = true;
-    const subscription = listen('project-updated', () => {
+    const schedule = () => {
       clearTimeout(timer);
       timer = setTimeout(() => void refresh().catch(() => {}), 250);
-    });
+    };
+    const subscription = Promise.all([
+      listen('project-updated', schedule),
+      listen('job-event', ({ payload }) => {
+        if (['completed', 'failed', 'cancelled'].includes(payload.kind)) schedule();
+      }),
+    ]).then((stops) => () => stops.forEach((stop) => stop()));
     void subscription
       .then((stop) => {
         if (!active) stop();
@@ -95,6 +112,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [enqueue],
   );
   const openProject = async (id: string) => {
+    try {
+      await invoke('validate_media_project_cmd', { projectId: id });
+      setValidationWarning(null);
+      retryProject.current = null;
+    } catch (reason) {
+      retryProject.current = id;
+      setValidationWarning(toCommandError(reason).message);
+    }
     const key = workspaceKey(id, null);
     await mutate((draft) => {
       if (!draft.workspaces.some((w) => w.id === key))
@@ -115,6 +140,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           : null
         : contextProjectId;
     const key = workspaceKey(projectId, projectId ? null : asset.id);
+    try {
+      await invoke('validate_media_project_cmd', { projectId: projectId ?? asset.ownerProjectId });
+      setValidationWarning(null);
+      retryProject.current = null;
+    } catch (reason) {
+      retryProject.current = projectId ?? asset.ownerProjectId;
+      setValidationWarning(toCommandError(reason).message);
+    }
     await mutate((draft) => {
       let workspace = draft.workspaces.find((w) => w.id === key);
       if (!workspace) {
@@ -146,7 +179,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         state,
         projects,
         loading,
-        error,
+        error: error ?? validationWarning,
         view,
         workspaceId,
         setView,

@@ -34,6 +34,7 @@ export function installFixture() {
   window.__smokeUnknownCommands = [];
   window.__smokeCallbacks = new Map();
   window.__smokeListeners = new Map();
+  window.__smokeListenerGroups = new Map();
   window.__smokeJob = job;
   window.isTauri = true;
   window.__smokeWindow = { maximized: false, minimized: false, closed: false };
@@ -93,9 +94,18 @@ export function installFixture() {
       }
       if (command === 'plugin:event|listen') {
         window.__smokeListeners.set(args.event, args.handler);
+        const handlers = window.__smokeListenerGroups.get(args.event) ?? [];
+        handlers.push(args.handler);
+        window.__smokeListenerGroups.set(args.event, handlers);
         return ++callbackId;
       }
       if (command === 'plugin:event|unlisten') return null;
+      if (command === 'validate_media_project_cmd') return null;
+      if (command === 'get_media_project_cmd') return { version: 1, project_id: args.projectId, assets: [], tracks: [], results: [], documents: [], voices: [] };
+      if (command === 'get_tool_context_cmd') {
+        const asset = library.assets.find((item) => item.id === args.assetId);
+        return { projectId: args.projectId, assetId: args.assetId, artifactId: asset?.artifactId ?? null, version: null, trackId: null };
+      }
       if (command === 'get_library_cmd') return structuredClone(library);
       if (command === 'save_library_cmd') {
         library = { ...structuredClone(args.state), revision: library.revision + 1 };

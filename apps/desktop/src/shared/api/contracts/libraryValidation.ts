@@ -6,9 +6,27 @@ import {
   isNonNegativeSafeInteger,
 } from './validationPrimitives';
 export const libraryCommandResultValidators = {
+  get_tool_context_cmd: (v: unknown) =>
+    isRecord(v) &&
+    isString(v.projectId) &&
+    isString(v.assetId) &&
+    ['version', 'artifactId', 'trackId'].every((k) => isNullable(v[k], isString)),
   get_library_cmd: validateLibrary,
   save_library_cmd: validateLibrary,
   read_library_text_cmd: isString,
+  get_video_preview_cmd: isString,
+  attach_library_asset_cmd: validateLibrary,
+  get_media_operation_cmd: (v: unknown) =>
+    v === null ||
+    (isRecord(v) &&
+      ['id', 'projectId', 'assetId', 'status'].every((k) => isString(v[k])) &&
+      isNonNegativeSafeInteger(v.completedBytes) &&
+      isNonNegativeSafeInteger(v.totalBytes) &&
+      isNullable(v.error, isString)),
+  cancel_media_operation_cmd: (v: unknown) => v == null,
+  validate_media_project_cmd: (v: unknown) => v == null,
+  get_media_project_cmd: (v: unknown) =>
+    isRecord(v) && v.version === 1 && isString(v.project_id) && Array.isArray(v.assets),
 };
 const stringOrNull = (value: unknown) => isNullable(value, isString);
 export function validateLibrary(value: unknown): boolean {
