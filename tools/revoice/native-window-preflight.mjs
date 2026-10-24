@@ -6,7 +6,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const relative = 'tools/revoice/native-window-20261024-v1.json';
+const relative = process.argv[2] ?? 'tools/revoice/native-window-20261024-v1.json';
+if (!/^tools\/revoice\/native-window-20261024-v[12]\.json$/.test(relative))
+  throw new Error('Unknown frozen window audit');
 const spec = JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
 const committed = JSON.parse(
   execFileSync('git', ['show', `HEAD:${relative}`], {

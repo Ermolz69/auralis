@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "case_id": "NATIVE-WINDOW-20261024-v2",
+  "workspace_code_commit": "f82a9980eeacf466b4954764a18efe1e0f1eeafc",
+  "installed_code_commit": "72e58c84f17edc1e03227040140e2b86ca24e289",
+  "expected_application_sha256": "f3341ad4c1a7c5eb04689c4d9ce37ff58c801059f7dc4bb5746cb80c2c5a7618",
+  "previous_case": "NATIVE-WINDOW-20261024-v1 stopped before launch/capture because the current profile contains one project",
+  "scope": "Read-only observation of the existing installed Auralis window. Preserve existing project data. No import, project creation, model, download, TTS, voice changes or endpoint acceptance.",
+  "profile_precondition": { "schema": 18, "projects": 1, "active_jobs": 0 },
+  "max_existing_app_launches": 1,
+  "max_capture_attempts": 2,
+  "max_capture_seconds_each": 30,
+  "max_total_seconds": 120,
+  "protocol": "Use the official window2 API in a fresh JavaScript session. Select exactly one returned Auralis window; capture screenshot and accessibility once. On capture failure refresh selection and retry capture once. Do not send keyboard or pointer input, reuse stale bindings, infer lock state from a timeout, or reset the spent previous budget.",
+  "stop_condition": "Changed binary/profile precondition, ambiguous or absent window after one launch, lock screen, unrelated modal, second capture failure or total deadline."
+}
