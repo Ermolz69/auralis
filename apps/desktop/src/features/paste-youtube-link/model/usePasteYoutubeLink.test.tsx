@@ -20,8 +20,8 @@ vi.mock('@/shared/router', () => ({
 
 describe('usePasteYoutubeLink', () => {
   let mockContextValue: any;
-  const renderYoutubeHook = () =>
-    renderHook(() => usePasteYoutubeLink(), {
+  const renderYoutubeHook = (newProject = false) =>
+    renderHook(() => usePasteYoutubeLink(newProject), {
       wrapper: ({ children }) => (
         <ProjectContext.Provider value={mockContextValue}>{children}</ProjectContext.Provider>
       ),
@@ -45,6 +45,23 @@ describe('usePasteYoutubeLink', () => {
         token.generation === mockContextValue.operationGeneration &&
         token.projectId === mockContextValue.projectId,
     };
+  });
+
+  it('creates a separate home-page project while another project remains selected', async () => {
+    vi.mocked(createProjectFromYoutube).mockResolvedValueOnce({
+      id: 'p-new',
+      title: 'New source',
+    } as any);
+    const { result } = renderYoutubeHook(true);
+    act(() => result.current.setUrl('https://youtube.com/watch?v=new'));
+    await act(async () => {
+      await result.current.startProject();
+    });
+    expect(createProjectFromYoutube).toHaveBeenCalledWith('https://youtube.com/watch?v=new');
+    expect(mockContextValue.projectId).toBe('p-1');
+    expect(mockContextValue.setProject).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p-new' }),
+    );
   });
 
   it('exposes download states and retries the same source after failure', async () => {

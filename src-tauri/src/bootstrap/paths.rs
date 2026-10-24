@@ -41,6 +41,13 @@ impl AppPaths {
             return native_e2e_root(std::env::var_os(NATIVE_E2E_DATA_DIR_ENV)).map(Self::new);
         }
 
+        if let Some(root) = manager
+            .try_state::<crate::profile::ProfileDirectory>()
+            .and_then(|profile| profile.0.clone())
+        {
+            return Ok(Self::new(root));
+        }
+
         Ok(Self::new(manager.path().app_data_dir()?))
     }
 

@@ -4,7 +4,7 @@ import { Card, CardContent } from '../../../shared/ui/card';
 import { Icon } from '../../../shared/ui/icon';
 import { useImportLocalMedia } from '../model/useImportLocalMedia';
 
-export function ImportLocalMediaButton() {
+export function ImportLocalMediaButton({ newProject = false }: { newProject?: boolean }) {
   const {
     handleImport,
     openDraftProject,
@@ -14,7 +14,7 @@ export function ImportLocalMediaButton() {
     error,
     draftProject,
     sourceLabel,
-  } = useImportLocalMedia();
+  } = useImportLocalMedia(newProject);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const stageText =
     stage === 'selecting'

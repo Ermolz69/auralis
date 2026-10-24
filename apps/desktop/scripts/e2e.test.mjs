@@ -7,7 +7,9 @@ import { chromium } from 'playwright';
 import { installE2EFixture } from './e2e-fixture.mjs';
 import { serveProduction } from './production-server.mjs';
 
-const resultsDir = fileURLToPath(new URL('../e2e-results/', import.meta.url));
+const resultsDir =
+  process.env.AURALIS_BROWSER_E2E_RESULTS ??
+  fileURLToPath(new URL('../e2e-results/', import.meta.url));
 const timestamp = '2026-09-03T12:00:00Z';
 const youtubeProject = createProject({
   id: 'youtube-project',
@@ -80,15 +82,20 @@ e2e('02 validates an empty project name without leaving the project list', async
   });
 });
 
-e2e('03 creates a project and opens its source workspace', async () => {
+e2e('03 creates a project and opens its text workspace', async () => {
   await scenario(baseSeed(), async (page) => {
     await page.getByRole('textbox', { name: 'Project name' }).fill('Fresh Project');
     await page.getByRole('button', { name: 'Create project' }).click();
 
-    await page.getByTestId('source-workspace').waitFor();
-    await page.getByRole('heading', { name: 'Источник видео' }).waitFor();
+    await page.getByTestId('subtitle-workspace').waitFor();
+    await page.getByRole('region', { name: 'Голоса синтеза речи' }).waitFor();
     assert.deepEqual(await lastCallArgs(page, 'create_project_cmd'), { title: 'Fresh Project' });
-    assert.equal(await page.getByText('Project created', { exact: true }).isVisible(), true);
+    assert.equal(
+      await page
+        .getByText('Проект создан. Добавьте текст или субтитры.', { exact: true })
+        .isVisible(),
+      true,
+    );
   });
 });
 
@@ -488,7 +495,7 @@ e2e('26 explains when YouTube exposes no subtitle tracks', async () => {
   await scenario(baseSeed({ tracks: { [youtubeProject.id]: [] } }), async (page) => {
     await openSubtitleWorkspace(page);
 
-    await page.getByText('YouTube не вернул доступных VTT-дорожек', { exact: true }).waitFor();
+    await page.getByText('YouTube не вернул доступных SRT/VTT-дорожек', { exact: true }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Получить субтитры' }).isDisabled(), true);
   });
 });
@@ -854,7 +861,7 @@ async function openProject(page, title) {
 
 async function openSubtitleWorkspace(page) {
   await openProject(page, 'YouTube Project');
-  await page.getByRole('button', { name: /Субтитры/ }).click();
+  await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
   await page.getByTestId('subtitle-workspace').waitFor();
 }
 

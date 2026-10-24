@@ -41,6 +41,8 @@ selected objective; do not launch all goals merely by opening this directory.
 Documentation and prompts are in English to follow repository conventions.
 The active [TTS execution record](tts-execution.md) tracks implementation
 evidence and open acceptance gates.
+The [ordinary UI automation](ui-automation.md) commands retain separate fixture,
+native smoke and real component outcomes with isolated profiles.
 Component documentation continues to live in CONTRACT/Docs for the PUZA modules;
 these files specify their integration with Auralis rather than replacing those
 component manuals.

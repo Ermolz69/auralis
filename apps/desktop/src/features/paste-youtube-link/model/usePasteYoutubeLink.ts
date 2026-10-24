@@ -9,7 +9,7 @@ import { useNavigation } from '@/shared/router';
 import { toCommandError } from '@/shared/api/contracts';
 import type { YoutubeImportStatus } from './status';
 
-export function usePasteYoutubeLink() {
+export function usePasteYoutubeLink(newProject = false) {
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<YoutubeImportStatus>('Idle');
   const isStarting = status === 'Downloading';
@@ -36,9 +36,10 @@ export function usePasteYoutubeLink() {
     setStatus('Downloading');
     setError(null);
     try {
-      const project = projectId
-        ? await createProjectFromYoutube(trimmedUrl, projectId)
-        : await createProjectFromYoutube(trimmedUrl);
+      const project =
+        projectId && !newProject
+          ? await createProjectFromYoutube(trimmedUrl, projectId)
+          : await createProjectFromYoutube(trimmedUrl);
       if (!operation.isCurrent(attempt)) return null;
 
       setStatus('Ready');

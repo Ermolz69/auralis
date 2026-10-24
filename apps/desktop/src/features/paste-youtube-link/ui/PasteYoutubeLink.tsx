@@ -3,9 +3,9 @@ import { Input } from '../../../shared/ui/input';
 import { Button } from '../../../shared/ui/button';
 import { usePasteYoutubeLink } from '../model/usePasteYoutubeLink';
 
-export const PasteYoutubeLink = () => {
+export const PasteYoutubeLink = ({ newProject = false }: { newProject?: boolean }) => {
   const { url, setUrl, startProject, isStarting, status, isBlockedByDeletion, error } =
-    usePasteYoutubeLink();
+    usePasteYoutubeLink(newProject);
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const statusId = 'youtube-link-status';

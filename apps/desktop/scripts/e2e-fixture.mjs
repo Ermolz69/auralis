@@ -317,6 +317,8 @@ export function installE2EFixture(seed) {
       if (command === 'list_voice_catalog_cmd') return { items: [], next_after: null };
       if (command === 'get_manual_cast_cmd') return null;
       if (command === 'get_speech_catalog_cmd') return { profiles: [], voices: [] };
+      if (command === 'get_speech_voice_selection_cmd') return null;
+      if (command === 'list_speech_runs_cmd' || command === 'list_audio_assemblies_cmd') return [];
       if (command === 'get_translation_package_status_cmd')
         return {
           schemaVersion: 1,

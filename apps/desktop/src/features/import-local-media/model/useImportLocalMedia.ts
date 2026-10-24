@@ -8,7 +8,7 @@ import type { Project } from '@/entities/project';
 
 export type LocalImportStage = 'idle' | 'selecting' | 'probing' | 'importing';
 
-export function useImportLocalMedia() {
+export function useImportLocalMedia(newProject = false) {
   const [isImporting, setIsImporting] = useState(false);
   const [stage, setStage] = useState<LocalImportStage>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export function useImportLocalMedia() {
       setSourceLabel(filename);
 
       setStage('probing');
-      const project = currentProject ?? (await createProject(filename));
+      const project = (!newProject && currentProject) || (await createProject(filename));
       if (!operation.isCurrent(attempt)) return;
       setDraftProject(project);
 

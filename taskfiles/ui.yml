@@ -1,0 +1,71 @@
+version: '3'
+
+tasks:
+  check:
+    desc: Check UI runner isolation, reports, budgets and executable identities without models
+    cmds:
+      - task: check:runner
+      - 'cargo test --locked -p auralis-app --lib profile::'
+  check:runner:
+    cmds:
+      - node tools/ui-e2e/syntax.mjs
+      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs
+  fmt:runner:
+    cmds:
+      - pnpm prettier --write "tools/ui-e2e/*.mjs" "apps/desktop/scripts/ui-*.mjs" taskfiles/ui.yml docs/integration/ui-automation.md
+      - pnpm prettier --write apps/desktop/scripts/e2e.test.mjs apps/desktop/scripts/e2e-fixture.mjs apps/desktop/scripts/run-e2e.mjs
+  regression:
+    cmds:
+      - task: :fe:test:unit
+      - pnpm --filter desktop exec vitest run --project component src/features/paste-youtube-link/model/usePasteYoutubeLink.test.tsx src/features/paste-youtube-link/ui/PasteYoutubeLink.test.tsx src/features/import-local-media/model/useImportLocalMedia.test.tsx src/features/import-local-media/ui/ImportLocalMediaButton.test.tsx src/features/speech-catalog/ui/SpeechCatalog.test.tsx
+  fmt:
+    cmds:
+      - cargo fmt --all
+      - pnpm prettier --write "tools/ui-e2e/*.mjs" "apps/desktop/scripts/ui-*.mjs" taskfiles/ui.yml docs/integration/ui-automation.md
+      - pnpm prettier --write apps/desktop/src/features/speech-catalog/ui/SpeechVoiceSettings.tsx
+      - pnpm prettier --write apps/desktop/src/pages/home/ui/HomePage.tsx apps/desktop/src/features/paste-youtube-link/model/usePasteYoutubeLink.ts apps/desktop/src/features/paste-youtube-link/ui/PasteYoutubeLink.tsx apps/desktop/src/features/import-local-media/model/useImportLocalMedia.ts apps/desktop/src/features/import-local-media/ui/ImportLocalMediaButton.tsx
+      - pnpm prettier --write apps/desktop/src/features/paste-youtube-link/model/usePasteYoutubeLink.test.tsx apps/desktop/src/features/import-local-media/model/useImportLocalMedia.test.tsx
+  fixture:run:
+    cmds:
+      - node apps/desktop/scripts/ui-fixture.mjs
+  lint:
+    cmds:
+      - cargo clippy --locked -p auralis-app --all-targets -- -D warnings
+      - task: :fe:lint
+      - task: :q:frontend
+      - task: :q:file-size
+  build:
+    desc: Build the ordinary release application and retain a standalone candidate with verified media tools
+    env:
+      AURALIS_NATIVE_E2E: '0'
+    cmds:
+      - node tools/ui-e2e/candidate.mjs begin
+      - pnpm tauri build --no-bundle
+      - node tools/ui-e2e/candidate.mjs
+  fixture:
+    desc: Exercise the production interface with explicitly simulated IPC and retain a new report
+    cmds:
+      - task: :fe:build
+      - node apps/desktop/scripts/ui-fixture.mjs
+  smoke:
+    desc: Run ordinary packaged Windows Auralis through WebView2 without models
+    cmds:
+      - node tools/ui-e2e/run.mjs smoke
+  real:
+    desc: Run the frozen real UI scenario once with isolated data and sequential component ownership
+    requires:
+      vars: [SPEC]
+    cmds:
+      - node tools/ui-e2e/run.mjs real "{{.SPEC}}"
+  freeze:
+    desc: Freeze a new candidate-pinned readiness case without authorizing inference
+    requires:
+      vars: [CASE]
+    cmds:
+      - node tools/ui-e2e/freeze.mjs "{{.CASE}}"
+  report:
+    desc: Read the portable report for an existing UI run
+    requires:
+      vars: [RUN]
+    cmds:
+      - node tools/ui-e2e/report.mjs "{{.RUN}}"

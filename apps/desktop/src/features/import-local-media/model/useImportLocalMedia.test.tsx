@@ -31,8 +31,8 @@ const mockSetCurrentView = vi.fn();
 describe('useImportLocalMedia', () => {
   let mockContextValue: any;
 
-  const renderImportHook = () =>
-    renderHook(() => useImportLocalMedia(), {
+  const renderImportHook = (newProject = false) =>
+    renderHook(() => useImportLocalMedia(newProject), {
       wrapper: ({ children }) => (
         <ProjectContext.Provider value={mockContextValue}>{children}</ProjectContext.Provider>
       ),
@@ -56,6 +56,20 @@ describe('useImportLocalMedia', () => {
         token.generation === mockContextValue.operationGeneration &&
         token.projectId === mockContextValue.projectId,
     };
+  });
+
+  it('creates a separate home-page project without importing into the selected project', async () => {
+    mockContextValue.project = { id: 'p-1', title: 'Existing' };
+    vi.mocked(open).mockResolvedValueOnce('fixture/new.mp4');
+    vi.mocked(createProject).mockResolvedValueOnce({ id: 'p-new' } as any);
+    vi.mocked(importLocalMedia).mockResolvedValueOnce({ id: 'p-new' } as any);
+    const { result } = renderImportHook(true);
+    await act(async () => {
+      await result.current.handleImport();
+    });
+    expect(createProject).toHaveBeenCalledWith('new.mp4');
+    expect(importLocalMedia).toHaveBeenCalledWith('p-new', 'fixture/new.mp4');
+    expect(mockContextValue.project.id).toBe('p-1');
   });
 
   it('blocks handleImport and returns isBlockedByDeletion when deletingProjectId is active initially', async () => {

@@ -2,6 +2,7 @@ pub mod bootstrap;
 pub mod commands;
 pub mod dto;
 pub mod observability;
+mod profile;
 mod runtime_shutdown;
 pub mod state;
 
@@ -62,6 +63,14 @@ pub fn prepare_runtime_config(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> Result<(), AppRunError> {
+    let profile =
+        profile::ProfileDirectory::parse(std::env::args_os().skip(1)).map_err(|message| {
+            AppRunError::Configuration(application::error::ApplicationError::Configuration(
+                message.into(),
+            ))
+        })?;
+    let mut context = tauri::generate_context!();
+    let windows = profile.configure(&mut context);
     let outbox_config =
         application::worker::outbox::maintenance::OutboxMaintenanceConfig::try_default()
             .map_err(AppRunError::Configuration)?;
@@ -79,6 +88,7 @@ pub fn run() -> Result<(), AppRunError> {
     let shutdown_timeout = outbox_config.shutdown_timeout;
 
     let builder = tauri::Builder::default()
+        .manage(profile.clone())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_shell::init());
@@ -97,6 +107,7 @@ pub fn run() -> Result<(), AppRunError> {
     let app = builder
         .setup(move |app| {
             bootstrap::setup(app, outbox_config, validated_settings)?;
+            profile.create_windows(app, &windows)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -185,7 +196,7 @@ pub fn run() -> Result<(), AppRunError> {
             commands::media::probe_local_media_cmd,
             commands::media::import_local_media_cmd
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .map_err(AppRunError::TauriBuild)?;
 
     app.run(move |app_handle, event| {

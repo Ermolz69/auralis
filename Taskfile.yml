@@ -1,6 +1,8 @@
 version: '3'
 
 includes:
+  ui:
+    taskfile: ./taskfiles/ui.yml
   fe:
     taskfile: ./taskfiles/frontend.yml
     aliases: [frontend]
