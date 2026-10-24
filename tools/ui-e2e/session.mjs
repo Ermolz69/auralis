@@ -6,6 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import net from 'node:net';
 import { root, storage, hash, json, owned } from './core.mjs';
 import { stopOwned } from './processes.mjs';
+import { profileFacts } from './readiness.mjs';
 
 const { chromium } = createRequire(path.join(root, 'apps/desktop/package.json'))('playwright');
 export async function candidateIdentity(base = storage) {
@@ -144,10 +145,14 @@ export class DesktopSession {
     await this.page.getByRole('button', { name: 'Settings', exact: true }).waitFor();
     await fsp.access(path.join(profile, 'auralis.sqlite'));
     await fsp.access(path.join(profile, 'webview2', 'main'));
+    const facts = await profileFacts(profile);
+    if (this.launchNumber === 1 && (facts.projects !== 0 || facts.jobs !== 0))
+      throw new Error('The first UI launch requires an empty application database');
     return {
       candidate_sha256: this.candidate.receipt.sha256,
       profile_isolated: true,
       webview_url: this.page.url(),
+      profile: facts,
     };
   }
   async close() {

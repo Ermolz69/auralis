@@ -1,7 +1,17 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Blocked, UnconfirmedCleanup, json, overall, owned, runs, idPattern } from './core.mjs';
+import { createRequire } from 'node:module';
+import {
+  Blocked,
+  UnconfirmedCleanup,
+  json,
+  overall,
+  owned,
+  runs,
+  idPattern,
+  root,
+} from './core.mjs';
 
 const escape = (value) =>
   String(value ?? '').replace(
@@ -12,6 +22,12 @@ export class Report {
   constructor(run, layer, planned) {
     this.run = run;
     this.data = {
+      driver: {
+        node: process.version,
+        playwright: createRequire(path.join(root, 'apps/desktop/package.json'))(
+          'playwright/package.json',
+        ).version,
+      },
       version: 1,
       run_id: run.id,
       layer,
@@ -89,4 +105,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   process.stdout.write(
     `${report.layer}: ${report.status}\n${report.steps.map((s) => `${s.status}: ${s.id}${s.error ? ` — ${s.error}` : ''}`).join('\n')}\n${path.join(directory, 'index.html')}\n`,
   );
+  if (report.layer.startsWith('desktop-')) {
+    const { profileFacts } = await import('./readiness.mjs');
+    const facts = await profileFacts(path.join(directory, 'profile')).catch((error) => ({
+      unavailable: String(error.message),
+    }));
+    process.stdout.write(`Current isolated profile: ${JSON.stringify(facts)}\n`);
+  }
 }

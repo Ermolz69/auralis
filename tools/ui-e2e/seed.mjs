@@ -2,6 +2,38 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { root, storage, owned, hash, Blocked } from './core.mjs';
 
+export function validateSeedPath(value) {
+  if (typeof value !== 'string' || path.isAbsolute(value))
+    throw new Error('Seed files must have relative component paths');
+  const parts = value.replaceAll('\\', '/').split('/');
+  if (parts.some((part) => !part || part === '.' || part === '..' || part.includes(':')))
+    throw new Error('Seed paths cannot traverse directories');
+  const configs = new Set([
+    'tts-runtime.json',
+    'translation-runtime.json',
+    'translation-package-selection.json',
+    'caster-runtime.json',
+    'marker-runtime.json',
+    'speech-limits.json',
+  ]);
+  const assets = new Set([
+    'tts',
+    'translation-packages',
+    'runtime',
+    'models',
+    'voices',
+    'profiles',
+    'assets',
+    'model-cache',
+    'caster',
+    'marker',
+  ]);
+  if (
+    parts.length === 1 ? !configs.has(parts[0].toLowerCase()) : !assets.has(parts[0].toLowerCase())
+  )
+    throw new Error('Seed application databases, jobs, projects and WebView2 state are prohibited');
+}
+
 export async function seedProfile(spec, run) {
   if (!spec.runtime_seed) return { seeded: false };
   const seed = spec.runtime_seed;
@@ -14,6 +46,7 @@ export async function seedProfile(spec, run) {
   let bytes = 0;
   const seen = new Set();
   for (const item of seed.files) {
+    validateSeedPath(item.path);
     if (seen.has(item.path) || !Number.isSafeInteger(item.size_bytes) || item.size_bytes < 0)
       throw new Error('Invalid or duplicated seed file');
     seen.add(item.path);

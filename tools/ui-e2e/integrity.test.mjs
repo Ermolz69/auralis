@@ -9,6 +9,26 @@ import { candidateIdentity } from './session.mjs';
 import { inspectWav } from './wav.mjs';
 import { verifySources } from './media.mjs';
 import { DatabaseSync } from 'node:sqlite';
+import { validateSeedPath } from './seed.mjs';
+
+test('component seeds cannot carry projects, application jobs or browser state into startup', () => {
+  for (const name of [
+    'auralis.sqlite',
+    'auralis-translate.sqlite',
+    'projects/one/file',
+    'webview2/main/file',
+    'assets/../auralis.sqlite',
+    'tts/../../auralis.sqlite',
+  ])
+    assert.throws(() => validateSeedPath(name));
+  for (const name of [
+    'tts-runtime.json',
+    'tts/runtime/base/python.exe',
+    'models/model.gguf',
+    'translation-packages/cpu/runtime.exe',
+  ])
+    assert.doesNotThrow(() => validateSeedPath(name));
+});
 
 test('source evidence resolves managed keys below projects and rejects changed subtitles', async () => {
   const profile = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-ui-source-'));

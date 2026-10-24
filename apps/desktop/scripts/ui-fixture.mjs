@@ -10,6 +10,7 @@ import { uniqueRun } from '../../../tools/ui-e2e/core.mjs';
 import { Report } from '../../../tools/ui-e2e/report.mjs';
 import { story, storySteps } from '../../../tools/ui-e2e/story.mjs';
 import { playback } from '../../../tools/ui-e2e/media.mjs';
+import { frontendIdentity } from '../../../tools/ui-e2e/frontend.mjs';
 
 const run = await uniqueRun('fixture-ui');
 const report = new Report(run, 'fixture-ui', [
@@ -28,6 +29,7 @@ let browser, server, page;
 try {
   if (
     await report.step('launch', async () => {
+      report.data.versions = await frontendIdentity();
       server = await serveProduction();
       browser = await chromium.launch({ headless: true });
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });

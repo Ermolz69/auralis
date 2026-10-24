@@ -57,8 +57,39 @@ are remapped into the fresh profile. Symlinks, redirected files, outside paths,
 duplicates and oversized manifests are refused. Voice manifests retain their
 original bytes and qualification. Without an installed seed the real scenario
 reports readiness blockers instead of downloading or fabricating components.
+Only component configuration files and the `tts`, `translation-packages`,
+`runtime`, `models`, `voices`, `profiles`, `assets`, `model-cache`, `caster` and `marker` trees are
+accepted. Application databases, projects, job records and browser state cannot
+be seeded. The first launch verifies zero projects and jobs. Configuration-file
+presence is diagnostic evidence and does not establish runtime readiness.
 
 The real workflow deliberately records its review as an automated workflow test.
 It cannot establish linguistic correctness. System file dialogs are outside the
 first URL-based scenario. Native cancellation, restart and playback assertions
 remain distinct from simulated fixture assertions.
+
+## Verification checkpoint: 2026-10-24
+
+The ordinary Windows candidate was built from Auralis commit
+`0b9f65c2598e574bc938b615a6845f0eff7de770`, with Translate pinned to
+`44e7d4f3c6ce2443279f5d0d3acd07cbb931476e`. Its executable SHA-256 is
+`85aac8da263482866811d5cb3e9445cf4c67268b5124c2a369a6797c65d58285`.
+The driver used Node.js 24.14.0 and Playwright 1.61.1.
+
+| Layer                               | Result               | Scope                                                                                                                 |
+| ----------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Production browser with fixture IPC | 23 steps passed      | Both engine workflows, editing, stale approval, duplicate start, cancellation, timing conflicts and playback recovery |
+| Ordinary Windows release            | 9 steps passed       | Fresh profile, WebView2 connection, input checks, visible source refusal, navigation and confirmed process release    |
+| Frozen real source case             | Blocked, exit code 2 | `UI-REAL-SOURCE-20261024-v1`; downstream work remained `not_run`                                                      |
+
+The real case observed `Operation not supported` during source creation. Its
+isolated profile had no TTS or translation runtime configuration. Source creation
+requires a CONTRACT snapshot before URL validation or metadata acquisition, so
+this attempt does not establish YouTube availability. Prepare a verified
+component seed and a new frozen case ID before the next real attempt. The spent
+case forbids inference and must not be rerun as a model acceptance test.
+
+Additional checks passed: `task ui:check` (profile handling and runner policies),
+`task ui:regression` (234 unit and 31 component tests), `task fe:e2e` (35 existing
+browser tests), `task ui:lint` and `task docs:integration`. No real translation,
+TTS, assembled speech or video acceptance follows from this checkpoint.

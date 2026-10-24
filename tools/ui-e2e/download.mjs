@@ -22,7 +22,7 @@ export async function download(page, report, spec, remaining, admit = acquireDow
               .getByRole('region', { name: 'Connected video source', exact: true })
               .waitFor({ timeout }),
             error.waitFor({ timeout }).then(async () => {
-              throw new Blocked(`YouTube source unavailable: ${await error.innerText()}`);
+              throw new Blocked(`Application refused source import: ${await error.innerText()}`);
             }),
           ]);
           await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
