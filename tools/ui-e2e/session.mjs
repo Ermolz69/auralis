@@ -70,7 +70,8 @@ export class DesktopSession {
     this.log = '';
     this.errors = [];
   }
-  async start() {
+  async start(budget = () => 120000) {
+    const deadline = Date.now() + Math.min(120000, budget());
     this.launchNumber = (this.launchNumber ?? 0) + 1;
     const profile = path.join(this.run.directory, 'profile');
     await fsp.mkdir(profile, { recursive: true });
@@ -98,7 +99,6 @@ export class DesktopSession {
     this.child.on('error', (error) => {
       this.spawnError = error;
     });
-    const deadline = Date.now() + 120000;
     while (Date.now() < deadline) {
       if (this.spawnError) throw this.spawnError;
       if (this.child.exitCode !== null)
@@ -111,9 +111,11 @@ export class DesktopSession {
       if (ready) break;
       await delay(250);
     }
-    this.browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`, { timeout: 10000 });
+    this.browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`, {
+      timeout: Math.max(1, Math.min(10000, deadline - Date.now())),
+    });
     let pages = [];
-    const targetDeadline = Date.now() + 60000;
+    const targetDeadline = Math.min(deadline, Date.now() + 60000);
     while (Date.now() < targetDeadline) {
       pages = this.browser
         .contexts()
@@ -134,9 +136,11 @@ export class DesktopSession {
     if (pages.length !== 1)
       throw new Error(`Expected one ordinary Auralis webview; found ${pages.length}`);
     this.page = pages[0];
-    this.page.setDefaultTimeout(30000);
+    this.page.setDefaultTimeout(Math.max(1, Math.min(30000, deadline - Date.now())));
     this.page.on('pageerror', (error) => this.errors.push(error.message));
-    await this.page.context().tracing.start({ screenshots: false, snapshots: true, sources: false });
+    await this.page
+      .context()
+      .tracing.start({ screenshots: false, snapshots: true, sources: false });
     await this.page.getByRole('button', { name: 'Settings', exact: true }).waitFor();
     await fsp.access(path.join(profile, 'auralis.sqlite'));
     await fsp.access(path.join(profile, 'webview2', 'main'));

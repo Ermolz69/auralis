@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "case_id": "UI-REAL-SOURCE-20261024-v1",
+  "candidate_sha256": "85aac8da263482866811d5cb3e9445cf4c67268b5124c2a369a6797c65d58285",
+  "source_url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+  "source_subtitle_sha256": "868dc24073183cfd9e5f41ded3eb0cca34b6faad53e008a8b50ddb6f79c49735",
+  "track": {
+    "language": "zh",
+    "format": "srt",
+    "automatic": false
+  },
+  "edit_text": "Автоматическая проверка сохранения отдельной версии.",
+  "max_wall_seconds": 1200,
+  "max_attempts": 1,
+  "max_source_media_bytes": 1073741824,
+  "allow_inference": false,
+  "engines": [
+    {
+      "engine_id": "voxcpm2",
+      "profile_id": "unconfigured",
+      "voice_id": "unconfigured",
+      "reference_id": "unconfigured"
+    },
+    {
+      "engine_id": "espeech",
+      "profile_id": "unconfigured",
+      "voice_id": "unconfigured",
+      "reference_id": "unconfigured"
+    }
+  ]
+}

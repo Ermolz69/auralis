@@ -64,6 +64,6 @@ test('reports retain blockers, unexecuted dependencies, escaped HTML and nonzero
       /repeated/,
     );
   } finally {
-    await fsp.rm(directory, { recursive: true, force: true });
+    await fsp.rm(owned(os.tmpdir(), directory), { recursive: true, force: true });
   }
 });

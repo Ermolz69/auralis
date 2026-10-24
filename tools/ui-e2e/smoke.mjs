@@ -17,7 +17,25 @@ export async function smoke(page, report) {
     return;
   if (
     !(await report.step(
-      'url-validation',
+      'input-validation',
+      async () => {
+        const input = page.getByLabel('YouTube URL', { exact: true });
+        await input.fill('not a URL');
+        assert.equal(await input.evaluate((element) => element.validity.typeMismatch), true);
+        await input.fill('');
+        assert.equal(
+          await page.getByRole('button', { name: 'Add from YouTube', exact: true }).isEnabled(),
+          false,
+        );
+        return { scope: 'input-format-and-empty-value' };
+      },
+      page,
+    ))
+  )
+    return;
+  if (
+    !(await report.step(
+      'source-rejection',
       async () => {
         await page
           .getByLabel('YouTube URL', { exact: true })
@@ -25,6 +43,7 @@ export async function smoke(page, report) {
         await page.getByRole('button', { name: 'Add from YouTube', exact: true }).click();
         await page.getByRole('alert').waitFor();
         await page.getByText('No projects yet', { exact: true }).waitFor();
+        return { ui_error: await page.getByRole('alert').innerText(), project_created: false };
       },
       page,
     ))

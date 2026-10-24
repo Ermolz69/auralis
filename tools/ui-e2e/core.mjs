@@ -21,9 +21,9 @@ export function owned(parent, target) {
     throw new Error('Expected a child of the owned test directory');
   return path.resolve(target);
 }
-export async function json(file) {
+export async function json(file, maxBytes = 8 * 1024 * 1024) {
   const stat = await fsp.lstat(file);
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 8 * 1024 * 1024)
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maxBytes)
     throw new Error('Expected a bounded regular JSON file');
   return JSON.parse(await fsp.readFile(file, 'utf8'));
 }
@@ -48,6 +48,10 @@ export function overall(steps) {
   return 'passed';
 }
 export function validateSpec(spec) {
+  if (spec.max_attempts !== undefined && spec.max_attempts !== 1)
+    throw new Error('Real cases permit one attempt');
+  if (spec.max_source_media_bytes !== undefined && spec.max_source_media_bytes !== 1073741824)
+    throw new Error('This source case has a fixed 1 GiB byte budget');
   if (
     spec.allow_inference === true &&
     (!spec.runtime_seed ||

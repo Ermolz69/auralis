@@ -17,7 +17,9 @@ const report = new Report(run, `desktop-${mode}`, [
   'preflight',
   'seed',
   'launch',
-  ...(mode === 'smoke' ? ['empty-projects', 'url-validation', 'settings-and-return'] : storySteps),
+  ...(mode === 'smoke'
+    ? ['empty-projects', 'input-validation', 'source-rejection', 'settings-and-return']
+    : storySteps),
   'javascript-errors',
   'cleanup',
 ]);
@@ -34,7 +36,7 @@ const admitDownload = async () => {
   };
 };
 let completed = false;
-const deadline = Date.now() + (mode === 'smoke' ? 300000 : 28800000);
+let deadline = Date.now() + (mode === 'smoke' ? 300000 : 28800000);
 const remaining = () => {
   const ms = deadline - Date.now();
   if (ms <= 0) throw new Error('Frozen case deadline exhausted');
@@ -47,7 +49,8 @@ try {
         throw new Blocked('Windows x64 is required');
       release = await lockSession();
       if (mode === 'real') {
-        spec = validateSpec(await json(process.argv[3]));
+        spec = validateSpec(await json(process.argv[3], 32 * 1024 * 1024));
+        deadline = Date.now() + spec.max_wall_seconds * 1000;
         if (typeof spec.edit_text !== 'string' || !spec.edit_text.trim())
           throw new Error('Pin the edit text');
         const used = path.join(storage, 'cases');
@@ -68,7 +71,7 @@ try {
   ) {
     if (await report.step('seed', () => (spec ? seedProfile(spec, run) : { seeded: false }))) {
       session = new DesktopSession(run, candidate);
-      if (await report.step('launch', () => session.start())) {
+      if (await report.step('launch', () => session.start(remaining))) {
         if (mode === 'smoke') await smoke(session.page, report);
         else {
           const budgetEnd = Date.now() + spec.max_wall_seconds * 1000;
@@ -96,7 +99,7 @@ try {
               const old = await session.close();
               if (!old.confirmed || old.forced)
                 throw new Error('Ordinary close did not complete gracefully');
-              await session.start();
+              await session.start(remaining);
               const page = session.page;
               await page
                 .getByRole('button', { name: /^Open / })

@@ -8,7 +8,7 @@ export async function seedProfile(spec, run) {
   const directory = owned(path.join(storage, 'seeds'), path.resolve(root, seed.directory));
   if ((await fsp.realpath(directory)) !== directory)
     throw new Error('Seed directory must not be redirected');
-  if (!Array.isArray(seed.files) || seed.files.length > 8192)
+  if (!Array.isArray(seed.files) || seed.files.length > 65536)
     throw new Error('Invalid bounded seed file manifest');
   const destination = path.join(run.directory, 'profile');
   let bytes = 0;

@@ -15,6 +15,8 @@ const spec = {
   track: { language: 'zh', format: 'srt', automatic: false },
   edit_text: 'Автоматическая проверка сохранения отдельной версии.',
   max_wall_seconds: 1200,
+  max_attempts: 1,
+  max_source_media_bytes: 1073741824,
   allow_inference: false,
   engines: ['voxcpm2', 'espeech'].map((engine) => ({
     engine_id: engine,
