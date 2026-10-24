@@ -21,6 +21,11 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  revoice:native:window:preflight:
+    desc: Verify the frozen read-only installed-window audit without UI input or models
+    cmds:
+      - node --check tools/revoice/native-window-preflight.mjs
+      - node --disable-warning=ExperimentalWarning tools/revoice/native-window-preflight.mjs
   revoice:assembly:evidence:
     desc: Record portable candidate hashes and bounded model-free assembly check outcomes
     requires:
