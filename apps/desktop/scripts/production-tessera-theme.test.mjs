@@ -44,7 +44,7 @@ test(
       await page.addInitScript(installFixture);
       await page.addInitScript(installThemeFixture);
       await page.goto(server.url);
-      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await page.getByRole('button', { name: 'Настройки', exact: true }).click();
       const choice = page.getByLabel('Color theme', { exact: true });
       await choice.waitFor();
       await choice.locator('option').first().waitFor({ state: 'attached' });

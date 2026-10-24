@@ -71,6 +71,12 @@ export function LibraryNavigation({ browser, navigate, create }: Props) {
             className={`${button} w-full text-left ${browser.projectId === project.id && !browser.folderId ? 'bg-surface-active' : ''}`}
             onClick={() => navigate({ scope: 'project', projectId: project.id, folderId: null })}
             onDoubleClick={() => void openProject(project.id).catch(() => {})}
+            title="Двойной щелчок или Enter — открыть проект"
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return;
+              event.preventDefault();
+              void openProject(project.id).catch(() => {});
+            }}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => drop(e, project.id, null)}
           >

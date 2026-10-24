@@ -11,7 +11,7 @@ export function LibraryProjectActions({
   browser: LibraryBrowser;
   navigate: (value: Partial<LibraryBrowser>) => void;
 }) {
-  const { state, projects, mutate, refresh, openProject } = useLibrary();
+  const { state, projects, mutate, refresh } = useLibrary();
   const project = projects.find((p) => p.id === browser.projectId);
   const folder = state.folders.find((f) => f.id === browser.folderId);
   const [editing, setEditing] = useState(false);
@@ -59,9 +59,6 @@ export function LibraryProjectActions({
   };
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-      <button className={button} onClick={() => void openProject(project.id).catch(() => {})}>
-        Открыть рабочее пространство
-      </button>
       <button
         className={button}
         onClick={() => {

@@ -103,7 +103,7 @@ export function StudioStory({
             return draft;
           }),
         refresh: async () => {},
-        openProject: async () => {},
+        openProject: async () => setView('workspace'),
         openAsset: async () => {},
         openTool: async () => {},
       }}

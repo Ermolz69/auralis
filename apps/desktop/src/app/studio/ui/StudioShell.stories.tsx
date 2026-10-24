@@ -23,6 +23,15 @@ export const Library: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Все материалы' })).toBeInTheDocument();
     await expect(canvas.queryByRole('tablist')).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: /^Библиотека$|Очередь/ }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('combobox', { name: 'Открытые рабочие пространства' }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Настройки' }).querySelector('svg'),
+    ).toBeInTheDocument();
   },
 };
 export const EmptyLibrary: Story = { args: { empty: true } };
@@ -47,5 +56,13 @@ export const ProjectWorkspace: Story = {
     const processes = canvas.getByRole('region', { name: 'Текущие процессы' });
     await expect(within(processes).getAllByRole('listitem')).toHaveLength(3);
     await expect(within(processes).queryByRole('button')).not.toBeInTheDocument();
+    await expect(within(processes).getByText('В очереди')).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Auralis — библиотека' }));
+    await expect(await canvas.findByRole('heading', { name: 'Все материалы' })).toBeInTheDocument();
+    await expect(within(processes).getAllByRole('listitem')).toHaveLength(3);
+    await userEvent.dblClick(
+      canvas.getByRole('button', { name: 'Рассказ · глава первая', exact: true }),
+    );
+    await expect(await canvas.findByRole('tablist')).toBeInTheDocument();
   },
 };

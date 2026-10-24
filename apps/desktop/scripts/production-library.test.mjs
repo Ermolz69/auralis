@@ -66,7 +66,7 @@ test(
             parseFloat(getComputedStyle(element).paddingBottom) >= 12,
         ),
       );
-      await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
+      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
       await page.getByRole('heading', { name: 'Все материалы', exact: true }).waitFor();
       assert.equal(await page.getByRole('tablist').count(), 0);
 
@@ -138,11 +138,12 @@ test(
           (a) => a.parentId && a.text === 'Новая версия первой главы.',
         ),
       );
-      await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
+      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
       await page.getByRole('button', { name: 'Все материалы', exact: true }).click();
       await page
-        .getByRole('combobox', { name: 'Открытые рабочие пространства' })
-        .selectOption(`project:${await page.evaluate(() => window.__libraryIds.alpha)}`);
+        .getByRole('navigation', { name: 'Библиотека и проекты' })
+        .getByRole('button', { name: 'Серия 01', exact: true })
+        .dblclick();
       if (process.env.AURALIS_LIBRARY_EVIDENCE)
         await page.screenshot({
           path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'project-workspace-wide.png'),
@@ -170,7 +171,8 @@ test(
         false,
       );
       await page.setViewportSize({ width: 1500, height: 1000 });
-      await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
+      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
+      await page.getByRole('button', { name: 'Все материалы', exact: true }).click();
       await standalone.click();
       const inspector = page.getByRole('complementary', { name: 'Выбранный материал' });
       await inspector
@@ -208,16 +210,18 @@ test(
           path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'library-wide.png'),
           fullPage: true,
         });
+      await page.waitForFunction(
+        () => JSON.parse(sessionStorage.getItem('library-state')).browser.scope === 'all',
+      );
       await page.reload();
       await page.getByTestId('library-browser').waitFor();
-      await page
-        .getByRole('combobox', { name: 'Открытые рабочие пространства' })
-        .selectOption(`asset:${await page.evaluate(() => window.__libraryIds.asset)}`);
+      await standalone.dblclick();
       await input.waitFor();
       assert.equal(await input.inputValue(), 'Мой сохранённый черновик.');
-      await page.getByRole('button', { name: 'Очередь', exact: false }).click();
-      await page.getByText('Background fixture job', { exact: true }).last().waitFor();
-      await page.keyboard.press('Escape');
+      await page
+        .getByRole('region', { name: 'Текущие процессы' })
+        .getByText('Background fixture job', { exact: true })
+        .waitFor();
       if (process.env.AURALIS_LIBRARY_EVIDENCE)
         await page.screenshot({
           path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'workspace-wide.png'),
@@ -273,7 +277,7 @@ test(
         });
       });
       await processes.getByText('Нет активных процессов').waitFor();
-      await page.getByRole('button', { name: 'Библиотека', exact: true }).click();
+      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
       await page.evaluate(() => {
         window.__libraryRuntimeMissing = true;
       });

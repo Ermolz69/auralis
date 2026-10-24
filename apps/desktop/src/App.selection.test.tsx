@@ -79,11 +79,9 @@ it('opens standalone assets outside the library and preserves tabs on return', a
   fireEvent.click(screen.getByRole('button', { name: 'Открыть инструмент' }));
   fireEvent.click(screen.getByRole('menuitem', { name: 'Синтез речи' }));
   await screen.findByRole('tab', { name: /Синтез речи/ });
-  fireEvent.click(screen.getByRole('button', { name: 'Библиотека' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Auralis — библиотека' }));
   expect(screen.queryByRole('tablist')).toBeNull();
-  fireEvent.change(screen.getByRole('combobox', { name: 'Открытые рабочие пространства' }), {
-    target: { value: 'asset:a' },
-  });
+  fireEvent.doubleClick(await screen.findByRole('button', { name: /Standalone Текст/ }));
   expect(await screen.findByRole('tab', { name: /Синтез речи/ })).toBeTruthy();
   expect(state.workspaces[0].tabs).toHaveLength(2);
 });
@@ -132,7 +130,7 @@ it('keeps settings separate and recovers when the open project is removed elsewh
   render(<App />);
   fireEvent.doubleClick(await screen.findByRole('button', { name: 'Project one' }));
   await screen.findByRole('tablist');
-  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
   expect(await screen.findByRole('heading', { name: 'Settings page' })).toBeTruthy();
   projects = [];
   state.workspaces = [];
@@ -151,9 +149,16 @@ it('does not publish a broken catalog and exposes a retry after unavailable stor
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
 });
 it('keeps the global queue outside workspace selection', async () => {
+  projects.push({ ...project, id: 'project-2', title: 'Project two' });
   const jobs = {
     jobs: {
-      job1: { id: 'job1', status: 'running', title: 'Global job', progress: { percent: 42 } },
+      job1: {
+        id: 'job1',
+        projectId: project.id,
+        status: 'pending',
+        title: 'Global job',
+        progress: { percent: 0 },
+      },
     },
   };
   render(
@@ -161,13 +166,21 @@ it('keeps the global queue outside workspace selection', async () => {
       <App />
     </JobContext.Provider>,
   );
-  expect(await screen.findByRole('button', { name: 'Очередь · 1' })).toBeTruthy();
-  fireEvent.doubleClick(screen.getByRole('button', { name: 'Project one' }));
+  const queue = screen.getByRole('region', { name: 'Текущие процессы' });
+  expect(within(queue).getByText('Global job')).toBeTruthy();
+  expect(within(queue).getByText('В очереди')).toBeTruthy();
+  fireEvent.doubleClick(await screen.findByRole('button', { name: 'Project one' }));
   await screen.findByRole('tablist');
-  expect(screen.getByRole('region', { name: 'Текущие процессы' }).textContent).toContain(
-    'Global job',
-  );
-  expect(screen.getByText('42%')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Библиотека' }));
-  expect(screen.getByRole('button', { name: 'Очередь · 1' })).toBeTruthy();
+  expect(queue.textContent).toContain('Global job');
+  fireEvent.click(screen.getByRole('button', { name: 'Auralis — библиотека' }));
+  const second = await screen.findByRole('button', { name: 'Project two' });
+  fireEvent.keyDown(second, { key: 'Enter' });
+  await screen.findByRole('region', { name: 'Рабочее пространство Project two' });
+  expect(queue.textContent).toContain('Global job');
+  fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
+  await screen.findByRole('heading', { name: 'Settings page' });
+  expect(queue.textContent).toContain('Global job');
+  expect(within(queue).queryByRole('button')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Очередь|^Библиотека$/ })).toBeNull();
+  expect(screen.queryByRole('combobox', { name: 'Открытые рабочие пространства' })).toBeNull();
 });

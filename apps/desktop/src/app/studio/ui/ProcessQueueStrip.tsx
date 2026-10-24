@@ -16,7 +16,7 @@ export function ProcessQueueStrip({ jobs }: { jobs: JobDto[] }) {
       className="flex min-w-0 shrink-0 items-center gap-3 border-t border-border bg-surface px-3 py-3"
     >
       <h2 className="shrink-0 text-xs font-medium text-muted">
-        Процессы <span aria-label="Количество текущих процессов">{active.length}</span>
+        Очередь <span aria-label="Количество текущих процессов">{active.length}</span>
       </h2>
       {active.length ? (
         <ul
