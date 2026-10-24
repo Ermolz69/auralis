@@ -32,9 +32,9 @@ async fn pin_import_waits_for_a_writer_and_duplicate_startup_import_is_idempoten
     let early = tokio::time::timeout(std::time::Duration::from_millis(100), &mut importing).await;
     writer.commit().await.unwrap();
     let imported = match early {
-        Ok(result) => result
-            .unwrap()
-            .expect("pin import must wait for the existing writer"),
+        Ok(result) => result.unwrap().unwrap_or_else(|error| {
+            panic!("pin import must wait for the existing writer: {error}")
+        }),
         Err(_) => importing.await.unwrap().unwrap(),
     };
     assert!(imported.migrated);
@@ -168,7 +168,7 @@ async fn version_four_upgrade_is_atomic_and_preserves_existing_projects() {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            18
+            19
         );
         pool.close().await;
     }

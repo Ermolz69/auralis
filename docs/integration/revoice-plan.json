@@ -166,7 +166,7 @@
       "status": "blocked",
       "bindings": ["INT-V02", "INT-T05"],
       "evidence": [],
-      "blocker": "0/192 installed references qualified. Owner likes the new voices and asked to leave them unchanged; no per-engine score report was supplied or inferred."
+      "blocker": "0/192 installed references qualified. Preserve current reference stores and manifests. No scored per-engine listening decisions have been admitted or inferred."
     },
     {
       "id": "INT-R04",
@@ -193,7 +193,7 @@
         "docs/integration/acceptance/07-revoice-selected-srt-upgrade.md",
         "tools/revoice/evidence/SELECTED_SRT_UPGRADE_V1.json"
       ],
-      "blocker": "Ordinary installed app launches, but native window capture still times out after helper reset and owner confirmation of an active visible desktop. No URL import was confirmed. Continue independent implementation."
+      "blocker": "Installed app launches, but two bounded native window-capture attempts timed out. No native URL import is confirmed. Independent implementation remains possible."
     },
     {
       "id": "INT-R06",
@@ -243,6 +243,9 @@
         "docs/integration/revoice-ffmpeg-assembly.md",
         "docs/integration/revoice-chunk-bridge.md",
         "docs/integration/revoice-audio-publication.md",
+        "docs/integration/revoice-assembly-jobs.md",
+        "tools/revoice/evidence/AUDIO_ASSEMBLY_JOBS_V1.json",
+        "tools/revoice/evidence/AUDIO_ASSEMBLY_JOBS_V2.json",
         "docs/integration/acceptance/09-revoice-managed-ffmpeg.md"
       ],
       "blocker": null
@@ -251,9 +254,13 @@
       "id": "INT-R09",
       "title": "Publish managed WAV and separate playable video",
       "depends_on": ["INT-R08"],
-      "status": "planned",
+      "status": "in_progress",
       "bindings": ["VOICE-06", "INT-A02", "INT-A03"],
-      "evidence": [],
+      "evidence": [
+        "docs/integration/revoice-assembly-jobs.md",
+        "tools/revoice/evidence/AUDIO_ASSEMBLY_JOBS_V1.json",
+        "tools/revoice/evidence/AUDIO_ASSEMBLY_JOBS_V2.json"
+      ],
       "blocker": null
     },
     {

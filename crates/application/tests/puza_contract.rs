@@ -123,7 +123,8 @@ async fn missing_contract_rejects_project_creation_before_persisting_any_project
             title: "No contract".into(),
         })
         .await
-        .expect_err("must fail without CONTRACT");
+        .err()
+        .ok_or("must fail without CONTRACT")?;
     assert!(error.to_string().contains("CONTRACT unavailable"));
     assert!(repository.list().await?.is_empty());
     Ok(())

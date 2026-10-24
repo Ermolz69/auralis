@@ -42,6 +42,11 @@ mod tests {
             tables,
             [
                 "artifacts",
+                "audio_assembly_artifacts",
+                "audio_assembly_attempts",
+                "audio_assembly_discarded_artifacts",
+                "audio_assembly_intents",
+                "audio_assembly_publications",
                 "job_executions",
                 "jobs",
                 "outbox_messages",
@@ -72,7 +77,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            18
+            19
         );
 
         let project_columns: Vec<String> =

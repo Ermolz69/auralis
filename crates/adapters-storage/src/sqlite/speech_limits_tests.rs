@@ -128,7 +128,7 @@ async fn version_17_rebuild_preserves_referencing_rows_and_all_foreign_keys()
             sqlx::query_scalar::<_, i64>("PRAGMA user_version")
                 .fetch_one(&reopened)
                 .await?,
-            18
+            19
         );
         reopened.close().await;
     }

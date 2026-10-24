@@ -1,9 +1,9 @@
 # Chinese story revoicing execution
 
 Started: 23 October 2026. Status: active; no complete release candidate exists.
-This is the execution record for the owner's full three-input Goal. It extends
-the older subtitle-only prompts; their previous ASR/TXT exclusions do not apply
-to this Goal. Caster WPF, original media and existing accepted artifacts remain
+This execution record covers subtitles, Chinese TXT and subtitle-free video via
+ASR. All three inputs require short and long acceptance scenarios. Caster WPF,
+original media and existing accepted artifacts remain
 outside the mutation scope.
 
 ## Completion and ownership
@@ -27,10 +27,9 @@ integrity. Do not remove required cases or turn a missing resource into a pass.
 Read-only inspection found:
 
 - Auralis `b4af6e192329f29de41d07ab931a42439d7e9cb3`, branch
-  `feat/puza-tts-desktop`; pre-existing untracked `docs/maintenance/`.
+  `feat/puza-tts-desktop`.
 - Pinned Translate `44e7d4f3c6ce2443279f5d0d3acd07cbb931476e`; independent
-  checkout `4319177b7e41512a2aabfc5cd30f49357b25d405` has pre-existing staged
-  backlog/site changes. They are not interchangeable candidates.
+  checkout `4319177b7e41512a2aabfc5cd30f49357b25d405` is a distinct candidate.
 - CONTRACT `d9596ce435c55422ada7005c7b00427103b08c09` has unrelated documentation
   changes; TTS `22dcbb12a37bc1e54d0d8cf7f52adb9668de36a7`, CASTER
   `2dbab64abeb4d3e7eee7bc819a5578a7008b3c5d`, MARKER
@@ -68,7 +67,7 @@ Use owned copies, record both original and copied hashes, and never edit origina
 | SRC-STORY-SHORT    | Genuine short Chinese story, matched video and Chinese SRT/VTT or selectable YouTube Chinese track   | First candidate: 0–90-second owned excerpt of the YouTube manhua below; screening pending   |
 | SRC-STORY-LONG     | One complete natural long story, including more than 512 cues                                        | First candidate: complete 1:13:55 YouTube manhua below; cue count and accessibility pending |
 | SRC-LISTEN-1/2/3   | Three distinct scenes of 10–20 minutes with approved Russian text                                    | Pending story selection; freeze exact windows before synthesis                              |
-| SRC-TXT-SHORT/LONG | Chinese authored text with paragraph identity and provenance                                         | Pending owner material; derived captions are engineering input only                         |
+| SRC-TXT-SHORT/LONG | Chinese authored text with paragraph identity and provenance                                         | No admitted authored-text candidate; derived captions are engineering input only            |
 | SRC-ASR-SHORT/LONG | Chinese speech video and independently trustworthy timed transcript                                  | Pending; existing machine ASR cannot serve as ground truth                                  |
 | SRC-HOLDOUT        | At least 300 eligible sealed cues from independent works, matched published Chinese/Russian versions | DATA-04/05 open; existing exposed FLORES and technical screens are excluded                 |
 
@@ -134,9 +133,9 @@ prospective CONTRACT limit, configuration, a forward SQLite migration, bounded
 plan/checkpoint/result handling and >512-cue integration tests. Do not claim the
 whole long-story gate from the UI slice.
 
-The owner has been asked for the existing neutral listening JSON, actual story
-paths and a clean Windows target. Continue model-free implementation while those
-answers are pending. No qualification scores or source suitability are inferred.
+Neutral listening decisions, admitted story inputs and a clean Windows target
+remain required acceptance resources. Model-free implementation can proceed
+independently. No qualification scores or source suitability are inferred.
 
 The subsequent [long-source host slice](acceptance/04-revoice-long-host.md)
 adds configurable admission, schema 18, bounded plan/result reads, indexed cast
@@ -146,10 +145,10 @@ natural installed story has not run. The existing CONTRACT schema has no
 512-item cap; the [host policy](revoice-input-contract.md#speech-admission-policy)
 documents the new safety quotas without changing CONTRACT semantics.
 
-## Owner steering, 23 October
+## Source and environment status, 23 October
 
-The owner has no story folder and explicitly requested finding a webtoon on
-YouTube and exercising the application through its video URL. The selected first
+The subtitle-first scenario uses a YouTube manhua source through its video URL.
+The selected first
 candidate is [the Chinese manhua recap 千面演員](https://www.youtube.com/watch?v=HRaa8kb1EhE)
 from 天天动态漫. The browser player showed 1:13:55 and `Subtitles/CC Chinese`.
 The frozen one-attempt metadata specification is
@@ -157,11 +156,10 @@ The frozen one-attempt metadata specification is
 tracks, media access, alignment, source rights or translation quality. A 90-second
 excerpt is a short diagnostic, not a claim of a complete short-story gate.
 
-The owner said the new voices are good and requested leaving them alone. Keep
-the source voice store and current manifests unchanged. This feedback is source
-preference, not six per-engine listening scores; do not manufacture a qualified
-report. Keep the native qualification prerequisite visible and do independent
-work. Clean Windows is currently unavailable, as explicitly confirmed by the owner.
+Keep source voice stores and qualification manifests unchanged. Per-engine
+listening decisions must be recorded separately; no scores or qualified reports
+may be inferred from successful synthesis. The native qualification prerequisite
+remains visible. No clean Windows acceptance target has been admitted.
 
 The [explicit SRT candidate upgrade](acceptance/07-revoice-selected-srt-upgrade.md)
 is now installed with exact package/executable hashes and a retained profile
@@ -199,28 +197,42 @@ The [managed layout publication slice](revoice-audio-publication.md) connects th
 known-policy layout to the existing raw-speech transaction/outbox, including
 cancellation and restart. Assembly orchestration and native timing/export are
 still open.
-After the computer-use skill catalog changed to 26.1016.62342, the official
-JavaScript session was reset and a fresh installed window was tested. Both
-bounded capture attempts still timed out; no project/input or native workflow
-was confirmed. The native helper executable's binary version was not separately
-verified. The normal profile remains an empty test profile.
+A fresh installed window was tested with two bounded capture attempts. Both
+timed out; no project/input or native workflow was confirmed. The capture helper
+binary version was not independently verified. The normal profile remains an
+empty test profile.
 
 ## Native admission compatibility slice
 
-After the owner closed VALORANT/Riot, GPU use fell from 3,123 to 1,144 MiB and
-no model process was found. The remaining native-UI helper is the installed
-Codex `codex-computer-use.exe` under the user's versioned
-`OpenAI/Codex/runtimes/cua_node/<16-hex-id>/bin/node_modules/@oai/sky/bin/windows/`
-directory. The old guard recognized only the WindowsApps distribution path.
-The model-free six-case path control reproduces rejection of this legitimate
-location while rejecting model names and untrusted paths correctly.
+The resource baseline found no model process and measured 1,144 MiB of GPU use.
+The old admission guard recognized only one official Windows capture-helper
+distribution layout. The six-case path control verifies a second supported
+versioned runtime layout while rejecting model names and untrusted paths.
 
-The compatibility fix admits that exact executable name and constrained runtime
-path shape in addition to the existing distribution path. It does not admit
-games, arbitrary helpers, Python/model processes, unknown GPU owners or extra
+The compatibility fix admits the exact helper executable name and constrained
+runtime path shape in addition to the existing distribution layout. It rejects
+unrelated applications, arbitrary helpers, Python/model processes, unknown GPU owners or extra
 leases. Mutex/file admission, process-tree release, WSL/container refusal and GPU
 memory limits remain in force. Run path controls and both existing real admission
 checks before further asset/model work. The first asset-copy attempt also exposed
 an unavailable Windows PowerShell `Get-FileHash`; the bounded script uses streaming
-.NET SHA-256 instead. Failed attempts remain recorded; no assets were copied by
-the two refused attempts.
+.NET SHA-256 instead. Failed admission/hash-tool attempts remain recorded and did
+not complete the asset-copy phase.
+
+## Durable assembly application slice
+
+The [managed assembly workflow](revoice-assembly-jobs.md) now connects ready raw
+speech, immutable timing review, separate common jobs, verified staging and
+transaction/outbox publication. Schema 19 preserves existing source tables and
+adds normalized outputs with cancellation tombstones. The desktop panel shows
+whole-utterance measurements, continuous pauses or declared original-window
+timing, typed conflicts, saved plans, cancellation/resume and separate assembled
+WAV playback. It remains accessible without a working TTS catalog.
+
+The model-free receipt `tools/revoice/evidence/AUDIO_ASSEMBLY_JOBS_V2.json`
+binds source hashes to bounded tests and retains distinct failed attempts.
+Fixture execution and synthetic PCM demonstrate orchestration/storage/UI
+boundaries only. No new real FFmpeg or installed-native experiment was performed.
+INT-R08/INT-R09 remain in progress; all required endpoint cases remain pending.
+Video export, actual media-duration verification, permitted tempo, TXT, ASR,
+natural-story evaluation, listening and clean Windows remain open.

@@ -10,6 +10,7 @@ pub(super) fn classify_cleanup_outcome(
         ClassifiedJoinResult::ForcedAborted => RuntimeCleanupOutcome::ForcedAborted,
         ClassifiedJoinResult::Panicked => RuntimeCleanupOutcome::Panicked,
         ClassifiedJoinResult::JoinFailed => RuntimeCleanupOutcome::JoinFailed,
+        ClassifiedJoinResult::Unconfirmed => RuntimeCleanupOutcome::Unconfirmed,
     }
 }
 
@@ -19,6 +20,7 @@ enum ClassifiedJoinResult {
     ForcedAborted,
     Panicked,
     JoinFailed,
+    Unconfirmed,
 }
 
 fn classify_join_result(
@@ -33,11 +35,10 @@ fn classify_join_result(
         }
         Ok(RuntimeTaskOutcome::Cancelled) if was_aborted => ClassifiedJoinResult::ForcedAborted,
         Ok(RuntimeTaskOutcome::Cancelled) => ClassifiedJoinResult::CooperativeCancelled,
-        Ok(
-            RuntimeTaskOutcome::ApplicationFailed
-            | RuntimeTaskOutcome::RecoveryRequired
-            | RuntimeTaskOutcome::CleanupUnconfirmed,
-        ) => ClassifiedJoinResult::JoinFailed,
+        Ok(RuntimeTaskOutcome::ApplicationFailed | RuntimeTaskOutcome::RecoveryRequired) => {
+            ClassifiedJoinResult::JoinFailed
+        }
+        Ok(RuntimeTaskOutcome::CleanupUnconfirmed) => ClassifiedJoinResult::Unconfirmed,
         Ok(RuntimeTaskOutcome::Panicked) => ClassifiedJoinResult::Panicked,
         Err(error) if error.is_panic() => ClassifiedJoinResult::Panicked,
         Err(error) if error.is_cancelled() => ClassifiedJoinResult::ForcedAborted,
@@ -65,6 +66,9 @@ pub(super) fn classify_outcome(
         }
         ClassifiedJoinResult::JoinFailed => {
             report.join_failed_count += 1;
+        }
+        ClassifiedJoinResult::Unconfirmed => {
+            report.unconfirmed_count += 1;
         }
     }
 }

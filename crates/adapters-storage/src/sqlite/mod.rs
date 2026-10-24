@@ -1,5 +1,7 @@
 pub mod artifact_index;
+pub mod audio_assembly_store;
 pub mod connection;
+mod discarded_artifacts;
 pub mod job_executions;
 pub mod job_mapper;
 pub mod job_repository;
@@ -19,6 +21,7 @@ mod speech_run_migration;
 #[cfg(test)]
 mod speech_run_migration_tests;
 pub mod speech_run_repository;
+mod transaction_gateway;
 pub mod translation_edit_intents;
 mod translation_edit_intents_migration;
 pub mod translation_host_job_repository;
@@ -35,6 +38,7 @@ pub mod unit_of_work;
 
 pub mod helpers;
 pub use artifact_index::SqliteArtifactIndex;
+pub use audio_assembly_store::SqliteAudioAssemblyStore;
 pub use connection::connect_sqlite;
 pub use job_repository::SqliteJobRepository;
 pub use outbox_repository::SqliteOutboxRepository;

@@ -37,8 +37,13 @@ impl ArtifactFinalizationLookup for SqliteArtifactIndex {
         .await
         .map_err(|e| map_sqlite_error("finalization_artifact", e))?;
         let Some(row) = row else {
-            let discarded: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM speech_discarded_artifacts d JOIN speech_run_intents i ON i.run_id=d.run_id WHERE d.artifact_id=? AND i.project_id=?)")
-                .bind(artifact_id.to_string()).bind(project_id.to_string()).fetch_one(&mut *tx).await.map_err(|e| map_sqlite_error("discarded_speech_artifact", e))?;
+            let discarded = crate::sqlite::discarded_artifacts::is_discarded(
+                &mut tx,
+                project_id,
+                artifact_id,
+                None,
+            )
+            .await?;
             if discarded {
                 return Ok(FinalizationMetadata::ArtifactDiscarded);
             }

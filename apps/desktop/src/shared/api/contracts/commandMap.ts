@@ -1,6 +1,7 @@
 import type { Project, CreateProjectResponse } from './project';
 import type { VoiceCommandMap } from './voiceCommandMap';
 import type { SpeechCommandMap } from './speech';
+import type { AudioAssemblyCommandMap } from './audioAssembly';
 import type { StoredTheme, ProjectPin, ProjectPins, LegacyPin } from './uiPreferences';
 import type { Transcript } from './transcript';
 import type { Job, JobHistoryCursor, JobHistoryPage } from './job';
@@ -13,7 +14,8 @@ import type { Artifact, ArtifactKind } from './artifact';
 import type { EditHistoricalTranslationResult } from './translationHistoricalEdit';
 import type { TranslationCommandMap } from './translationCommandMap';
 
-export interface CommandMap extends VoiceCommandMap, SpeechCommandMap, TranslationCommandMap {
+export interface CommandMap
+  extends VoiceCommandMap, SpeechCommandMap, TranslationCommandMap, AudioAssemblyCommandMap {
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
   set_color_theme_cmd: { args: { value: string; expectedRevision: number }; result: StoredTheme };
   import_color_theme_cmd: { args: { value: string }; result: StoredTheme };

@@ -6,6 +6,7 @@ mod path_guard;
 mod resolver;
 mod staging;
 mod store;
+mod verified_copy;
 
 #[cfg(test)]
 mod extension_tests;

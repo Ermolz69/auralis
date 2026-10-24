@@ -63,11 +63,8 @@ impl SpeechUseCases {
         let task_completion = completion.clone();
         let cases = self.clone();
         let join_handle = tokio::spawn(async move {
-            let guard = CompletionGuard {
-                runtime: cases.runtime.clone(),
-                job_id: job.id().clone(),
-                completion: task_completion,
-            };
+            let guard =
+                CompletionGuard::new(cases.runtime.clone(), job.id().clone(), task_completion);
             let admitted =
                 tokio::select! { r = released => r.is_ok(), _ = token.cancelled() => false };
             let result = if admitted {
@@ -100,7 +97,7 @@ impl SpeechUseCases {
                     }
                 }
             };
-            guard.completion.record_outcome(outcome)
+            guard.complete(outcome)
         });
         let task = RuntimeTask {
             cancel: handle,

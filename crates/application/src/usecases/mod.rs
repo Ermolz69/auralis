@@ -1,4 +1,5 @@
 pub mod artifact;
+pub mod audio_assembly;
 pub mod caster;
 mod import_cleanup;
 pub mod job;

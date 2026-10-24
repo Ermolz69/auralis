@@ -232,7 +232,10 @@ impl JobManager {
                     outcome,
                 };
 
-                if job.kind() == &domain::job::JobKind::Speech {
+                if matches!(
+                    job.kind(),
+                    domain::job::JobKind::Speech | domain::job::JobKind::AudioAssembly
+                ) {
                     self.repo.save(&job, expected_revision).await?;
                 } else {
                     self.storage_uow.commit_terminal_job_update(command).await?;

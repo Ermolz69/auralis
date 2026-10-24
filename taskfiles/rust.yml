@@ -1,6 +1,74 @@
 version: '3'
 
 tasks:
+  fmt:audio:jobs:
+    desc: Format the durable audio assembly intent, SQLite gateway and job kind
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/cancellation/drop_guard.rs crates/ports/src/cancellation/handle.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/jobs/src/manager/outcome.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/src/sqlite/connection/columns.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/marker_tests.rs crates/adapters-tts/src/workflow.rs crates/adapters-storage/src/sqlite/ui_preferences/tests.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/application/tests/puza_contract.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/application/tests/support/observed_runtime.rs crates/application/src/usecases/speech/run.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/tests/support/legacy_outbox.rs crates/adapters-storage/tests/merge_schema_upgrade.rs crates/adapters-storage/tests/translation_reviews.rs crates/adapters-storage/tests/translation_edit_intents.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/src/sqlite/project_revision_migration_tests.rs crates/adapters-storage/src/sqlite/translation_host_jobs_migration_tests.rs crates/adapters-storage/src/sqlite/translation_links_migration_tests.rs crates/adapters-storage/src/sqlite/translation_publication_revisions_migration_tests.rs crates/adapters-storage/src/sqlite/translation_run_intents_migration_tests.rs crates/adapters-storage/src/sqlite/youtube_import_journal/tests.rs crates/adapters-storage/src/sqlite/unit_of_work/tests/mod.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/domain/src/job/kind.rs crates/jobs/src/manager/manager.rs crates/ports/src/lib.rs crates/ports/src/audio_jobs/mod.rs crates/ports/src/audio_jobs/artifact.rs crates/ports/src/audio_jobs/attempt.rs crates/ports/src/audio_jobs/intent.rs crates/ports/src/audio_jobs/plan.rs crates/ports/src/audio_jobs/publication.rs crates/ports/src/audio_jobs/store.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/src/sqlite/mod.rs crates/adapters-storage/src/sqlite/connection/validation.rs crates/adapters-storage/src/sqlite/connection/audio_assembly.rs crates/adapters-storage/src/sqlite/connection_tests.rs crates/adapters-storage/src/sqlite/speech_limits_tests.rs crates/adapters-storage/src/sqlite/discarded_artifacts.rs crates/adapters-storage/src/sqlite/artifact_index/finalization.rs crates/adapters-storage/src/sqlite/artifact_index/queries.rs crates/adapters-storage/src/sqlite/unit_of_work/artifact_writes.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/src/sqlite/audio_assembly_store/mod.rs crates/adapters-storage/src/sqlite/audio_assembly_store/entity.rs crates/adapters-storage/src/sqlite/audio_assembly_store/error.rs crates/adapters-storage/src/sqlite/audio_assembly_store/mapper.rs crates/adapters-storage/src/sqlite/audio_assembly_store/row.rs crates/adapters-storage/src/sqlite/audio_assembly_store/queries.rs crates/adapters-storage/src/sqlite/audio_assembly_store/store.rs crates/adapters-storage/src/sqlite/audio_assembly_store/validation.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/src/sqlite/transaction_gateway.rs crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_intent.rs crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_source.rs crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_attempt.rs crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_publication.rs crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_discard.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/storage.rs crates/ports/src/storage/verified_copy.rs crates/ports/src/cancellation/mod.rs crates/adapters-storage/src/local/artifact_store/mod.rs crates/adapters-storage/src/local/artifact_store/store.rs crates/adapters-storage/src/local/artifact_store/verified_copy.rs crates/adapters-storage/src/local/artifact_store/verified_copy/tests.rs crates/adapters-ffmpeg/src/assembly/control.rs crates/adapters-tts/src/verification_control.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/application/src/usecases/mod.rs crates/application/src/worker/mod.rs crates/application/src/worker/job_ownership.rs crates/application/src/usecases/speech/mod.rs crates/application/src/usecases/audio_assembly/mod.rs crates/application/src/usecases/audio_assembly/service.rs crates/application/src/usecases/audio_assembly/error.rs crates/application/src/usecases/audio_assembly/computed.rs crates/application/src/usecases/audio_assembly/request.rs crates/application/src/usecases/audio_assembly/source.rs crates/application/src/usecases/audio_assembly/prepare.rs crates/application/src/usecases/audio_assembly/state.rs crates/application/src/usecases/audio_assembly/plan.rs crates/application/src/usecases/audio_assembly/run.rs crates/application/src/usecases/audio_assembly/progress.rs crates/application/src/usecases/audio_assembly/publication.rs crates/application/src/usecases/audio_assembly/recovery.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/assembly/staging.rs crates/adapters-ffmpeg/src/assembly/staging/tests.rs crates/adapters-ffmpeg/src/assembly/adapter.rs crates/ports/src/speech_audio/port.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-storage/tests/audio_assembly.rs crates/adapters-storage/tests/support/assembly_source.rs crates/application/tests/audio_assembly.rs crates/application/tests/support/audio_assembly_fixture.rs
+      - rustfmt --edition 2024 --config skip_children=true src-tauri/src/lib.rs src-tauri/src/commands/mod.rs src-tauri/src/commands/audio_assembly.rs src-tauri/src/bootstrap/mod.rs src-tauri/src/bootstrap/services.rs src-tauri/src/bootstrap/storage.rs src-tauri/src/bootstrap/assembly_media.rs src-tauri/src/bootstrap/audio_assembly.rs
+  check:audio:jobs:
+    desc: Compile durable assembly contracts and storage gateway without launching the app or models
+    cmds:
+      - cargo check --locked -p adapters-storage -p application -p jobs -p adapters-ffmpeg -p adapters-tts
+  test:audio:staging:
+    desc: Verify cancellable hash-checked managed copies without models or media tools
+    cmds:
+      - cargo test --locked -p adapters-storage --lib local::artifact_store::verified_copy -- --test-threads=1
+  test:audio:ownership:
+    desc: Verify the shared cancellation handle and guard module boundary
+    cmds:
+      - cargo test --locked -p ports cancellation
+  test:audio:storage:
+    desc: Verify durable assembly transactions and schema upgrade with model-free fixtures
+    cmds:
+      - cargo test --locked -p adapters-storage --test audio_assembly
+  test:audio:jobs:
+    desc: Verify durable assembly publication and runtime recovery with model-free fixtures
+    cmds:
+      - cargo test --locked -p adapters-storage --test audio_assembly
+      - cargo test --locked -p application --test audio_assembly
+      - cargo test --locked -p jobs
+  clippy:audio:jobs:
+    desc: Lint durable assembly ports, storage, runtime, desktop composition and controls
+    cmds:
+      - cargo clippy --locked -p application -p adapters-storage -p adapters-ffmpeg -p adapters-tts -p jobs -p auralis-app --all-targets -- -D warnings
+  regression:audio:jobs:
+    desc: Run affected model-free assembly, storage, application, TTS and desktop regressions
+    cmds:
+      - task: test:audio:jobs
+      - task: test:storage
+      - task: test:application
+      - task: test:audio:bridge
+      - task: test:tts
+      - task: test:desktop
+  fmt:audio:inspection:
+    desc: Format only the ready managed speech source inspector and bounded controls
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/lib.rs crates/ports/src/audio_inspection/mod.rs crates/ports/src/audio_inspection/entity.rs crates/ports/src/audio_inspection/input.rs crates/ports/src/audio_inspection/request.rs crates/ports/src/audio_inspection/settings.rs crates/ports/src/audio_inspection/port.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/lib.rs crates/adapters-ffmpeg/src/assembly/mod.rs crates/adapters-ffmpeg/src/assembly/source.rs crates/adapters-ffmpeg/src/assembly/slicing.rs crates/adapters-ffmpeg/src/assembly/inspection/mod.rs crates/adapters-ffmpeg/src/assembly/inspection/adapter.rs crates/adapters-ffmpeg/src/assembly/inspection/files.rs crates/adapters-ffmpeg/src/assembly/inspection/manifest.rs crates/adapters-ffmpeg/src/assembly/inspection/measurement.rs crates/adapters-ffmpeg/src/assembly/inspection/tests.rs
+  test:audio:inspection:
+    desc: Verify ready managed PCM lineage, exact utterance hashes and timing conflicts without models or media tools
+    cmds:
+      - cargo test --locked -p adapters-ffmpeg --lib assembly::inspection -- --test-threads=1
+  clippy:audio:inspection:
+    desc: Lint the ready speech inspector and its model-free controls
+    cmds:
+      - cargo clippy --locked -p ports -p adapters-ffmpeg --lib --tests -- -D warnings
   fmt:audio:publication:
     desc: Format only the managed raw-speech layout publication slice
     cmds:

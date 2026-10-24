@@ -32,6 +32,13 @@ impl LocalArtifactStore {
 
 #[async_trait]
 impl ArtifactStore for LocalArtifactStore {
+    async fn stage_verified_copy(
+        &self,
+        request: ports::storage::VerifiedArtifactCopy,
+        cancel: ports::cancellation::CancellationToken,
+    ) -> Result<ports::storage::StagedArtifact, PortError> {
+        super::verified_copy::stage(self.base_dir.clone(), request, cancel).await
+    }
     async fn verify_storage_digest(
         &self,
         key: &str,

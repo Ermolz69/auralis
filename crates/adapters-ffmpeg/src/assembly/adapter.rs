@@ -211,6 +211,12 @@ impl AudioAssemblyPort for FfmpegAudioAssembler {
 
 #[async_trait]
 impl SpeechAudioAssemblyPort for FfmpegAudioAssembler {
+    async fn release_staged(&self, root: PathBuf) -> Result<(), PortError> {
+        let owned = self.staging_root.clone();
+        tokio::task::spawn_blocking(move || super::staging::release(&owned, &root))
+            .await
+            .map_err(|error| super::error::external(error.to_string()))?
+    }
     async fn assemble_speech(
         &self,
         request: SpeechAudioAssemblyRequest,

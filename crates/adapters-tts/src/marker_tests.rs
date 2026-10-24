@@ -20,13 +20,14 @@ fn source() -> SpeechSourceSnapshot {
 }
 
 #[test]
-fn normalization_preserves_cue_identity_window_and_counts_only_real_changes() {
+fn normalization_preserves_cue_identity_window_and_counts_only_real_changes()
+-> Result<(), Box<dyn std::error::Error>> {
     let original = source();
     let result = json!({"blocks":[{"id":"cue-1","text":"двенадцать километров",
         "targets":[{"id":"n1","raw":"12"},{"id":"n2","raw":"км"}],
         "replacements":[{"id":"n1","text":"двенадцать"},{"id":"n2","text":"км"}],
         "unresolved":[{"id":"n2"}]}]});
-    let prepared = build_preparation(original.clone(), &result, true).unwrap();
+    let prepared = build_preparation(original.clone(), &result, true)?;
     assert_eq!(prepared.original, original);
     assert_eq!(prepared.changed_targets, 1);
     assert_eq!(prepared.unresolved_targets, 1);
@@ -39,20 +40,23 @@ fn normalization_preserves_cue_identity_window_and_counts_only_real_changes() {
     reordered["blocks"][0]["id"] = json!("foreign-cue");
     assert!(build_preparation(original.clone(), &reordered, true).is_err());
     assert!(build_preparation(original, &json!({"blocks":[]}), true).is_err());
+    Ok(())
 }
 
 #[tokio::test]
-async fn exited_worker_cleanup_preserves_other_job_lock() {
-    let temporary = tempfile::tempdir().unwrap();
+async fn exited_worker_cleanup_preserves_other_job_lock() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temporary = tempfile::tempdir()?;
     let root = temporary.path().join("Normalizer");
     let lab = temporary.path().join("Algorithm Lab");
-    tokio::fs::create_dir_all(&root).await.unwrap();
-    tokio::fs::create_dir_all(&lab).await.unwrap();
+    tokio::fs::create_dir_all(&root).await?;
+    tokio::fs::create_dir_all(&lab).await?;
     let lock = lab.join(".normalizer.lock");
-    tokio::fs::write(&lock, "456").await.unwrap();
-    release_owned(&root, Some(123)).await.unwrap();
-    assert_eq!(tokio::fs::read_to_string(&lock).await.unwrap(), "456");
-    release_owned(&root, Some(456)).await.unwrap();
+    tokio::fs::write(&lock, "456").await?;
+    release_owned(&root, Some(123)).await?;
+    assert_eq!(tokio::fs::read_to_string(&lock).await?, "456");
+    release_owned(&root, Some(456)).await?;
     assert!(!lock.exists());
-    release_owned(&root, Some(456)).await.unwrap();
+    release_owned(&root, Some(456)).await?;
+    Ok(())
 }

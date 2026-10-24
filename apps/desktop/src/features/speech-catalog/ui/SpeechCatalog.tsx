@@ -4,6 +4,7 @@ import { describeCommandError } from '@/shared/api/contracts/error';
 import { invoke } from '@/shared/api/tauri';
 import { SpeechWorkflow } from './SpeechWorkflow';
 import { SpeechVoiceSettings } from './SpeechVoiceSettings';
+import { AudioAssemblyWorkspace } from './audio-assembly/AudioAssemblyWorkspace';
 
 export function SpeechCatalog({ projectId }: { projectId: string }) {
   const [catalog, setCatalog] = useState<SpeechCatalogSnapshot | null>(null);
@@ -189,6 +190,7 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
           />
         </>
       )}
+      <AudioAssemblyWorkspace key={projectId} projectId={projectId} />
     </section>
   );
 }

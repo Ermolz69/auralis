@@ -28,6 +28,45 @@ fn control() -> WorkControl {
     }
 }
 
+#[test]
+fn release_is_idempotent_and_cannot_remove_inputs_or_the_owned_root()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (directory, request) = fixture();
+    let stage_root = fs::canonicalize(directory.path().join("staging"))?;
+    let stage = stage_root.join("audio-assembly-release");
+    fs::create_dir(&stage)?;
+    fs::write(stage.join("output.wav"), b"fixture")?;
+    let input = request.inputs[0].path.clone();
+    let original = fs::read(&input)?;
+    assert!(release(&stage_root, &directory.path().join("inputs")).is_err());
+    assert!(release(&stage_root, &stage_root).is_err());
+    release(&stage_root, &stage)?;
+    release(&stage_root, &stage)?;
+    assert_eq!(fs::read(input)?, original);
+    assert!(stage_root.exists());
+    Ok(())
+}
+
+#[test]
+fn release_refuses_nested_or_unowned_directories_before_deleting_any_file()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (directory, _) = fixture();
+    let stage_root = fs::canonicalize(directory.path().join("staging"))?;
+    let stage = stage_root.join("audio-assembly-nested");
+    fs::create_dir(&stage)?;
+    let file = stage.join("output.wav");
+    fs::write(&file, b"preserve")?;
+    fs::create_dir(stage.join("child"))?;
+    assert!(release(&stage_root, &stage).is_err());
+    assert_eq!(fs::read(&file)?, b"preserve");
+    let external = directory.path().join("audio-assembly-external");
+    fs::create_dir(&external)?;
+    fs::write(external.join("original.wav"), b"source")?;
+    assert!(release(&stage_root, &external).is_err());
+    assert!(external.join("original.wav").exists());
+    Ok(())
+}
+
 fn fixture() -> (TempDir, AudioAssemblyRequest) {
     let parent = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/revoice/assembly-unit");
     assert!(fs::create_dir_all(&parent).is_ok());

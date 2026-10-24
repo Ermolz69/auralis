@@ -21,6 +21,12 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  revoice:assembly:evidence:
+    desc: Record portable candidate hashes and bounded model-free assembly check outcomes
+    requires:
+      vars: [CHECK_DIR, RETAIN_DIR]
+    cmds:
+      - powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/revoice/record-assembly-jobs.ps1 -CheckDirectory "{{.CHECK_DIR}}" -RetentionDirectory "{{.RETAIN_DIR}}" -Revision {{default "1" .REVISION}}
   revoice:bridge:evidence:
     desc: Record final chunk-bridge source hashes and retain distinct failed/successful check logs without models
     cmds:
@@ -38,6 +44,10 @@ tasks:
     desc: Retain raw-layout publication source hashes and distinct model-free check outcomes
     cmds:
       - powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/revoice/record-audio-publication.ps1
+  revoice:assembly:fmt:
+    desc: Format the durable managed audio assembly workflow contract
+    cmds:
+      - pnpm prettier --write docs/integration/revoice-assembly-jobs.md docs/integration/revoice-execution.md docs/integration/revoice-plan.json
   revoice:audio:prepare:
     desc: Freeze three synthetic PCM matrices and source hashes after committing the tested assembly candidate
     cmds:

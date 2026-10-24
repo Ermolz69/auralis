@@ -1,6 +1,17 @@
 version: '3'
 
 tasks:
+  fmt:audio:jobs:
+    desc: Format the durable audio assembly IPC and review panel
+    cmds:
+      - pnpm prettier --write apps/desktop/src/shared/api/contracts/transcriptValidation.ts
+      - pnpm prettier --write apps/desktop/src/features/speech-catalog/ui/SpeechCatalog.test.tsx
+      - pnpm prettier --write "apps/desktop/src/shared/api/contracts/audio*.ts" "apps/desktop/src/shared/api/contracts/commandMap.ts" "apps/desktop/src/shared/api/contracts/runtimeValidation.ts" "apps/desktop/src/shared/ui/paged-preview/*.tsx" "apps/desktop/src/features/speech-catalog/model/audio-assembly/*.ts" "apps/desktop/src/features/speech-catalog/ui/audio-assembly/*.tsx" "apps/desktop/src/features/speech-catalog/ui/SpeechWorkflow.tsx" "apps/desktop/src/features/speech-catalog/ui/SpeechCatalog.tsx" "apps/desktop/src/features/speech-catalog/ui/SpeechPreviewPage.tsx"
+  test:audio:jobs:
+    desc: Verify audio assembly IPC lineage, explicit review, conflicts and cancel/resume behavior
+    cmds:
+      - pnpm --filter desktop exec vitest run --project unit src/shared/api/contracts/audioAssemblyValidation.test.ts
+      - pnpm --filter desktop exec vitest run --project component src/features/speech-catalog/ui/audio-assembly/AudioAssemblyPanel.test.tsx src/features/speech-catalog/ui/SpeechWorkflow.test.tsx src/features/speech-catalog/ui/SpeechSourcePreview.test.tsx src/features/speech-catalog/ui/SpeechCatalog.test.tsx
   fmt:audio:publication:
     desc: Format only speech publication IPC validation and its controls
     cmds:

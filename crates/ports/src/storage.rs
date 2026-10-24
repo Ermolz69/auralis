@@ -5,6 +5,9 @@ use crate::error::PortError;
 use domain::media::{Artifact, ArtifactKind};
 use domain::project::ProjectId;
 
+mod verified_copy;
+pub use verified_copy::VerifiedArtifactCopy;
+
 pub struct StagedArtifact {
     pub artifact: Artifact,
     pub staging_key: String,
@@ -14,6 +17,15 @@ pub struct StagedArtifact {
 
 #[async_trait]
 pub trait ArtifactStore: Send + Sync {
+    async fn stage_verified_copy(
+        &self,
+        _request: VerifiedArtifactCopy,
+        _cancel: crate::cancellation::CancellationToken,
+    ) -> Result<StagedArtifact, PortError> {
+        Err(PortError::Unsupported {
+            message: "Verified cancellable artifact staging is not supported".into(),
+        })
+    }
     async fn verify_storage_digest(
         &self,
         _key: &str,
@@ -91,6 +103,13 @@ impl<T> ArtifactStore for Arc<T>
 where
     T: ArtifactStore + ?Sized,
 {
+    async fn stage_verified_copy(
+        &self,
+        request: VerifiedArtifactCopy,
+        cancel: crate::cancellation::CancellationToken,
+    ) -> Result<StagedArtifact, PortError> {
+        (**self).stage_verified_copy(request, cancel).await
+    }
     async fn verify_storage_digest(
         &self,
         key: &str,

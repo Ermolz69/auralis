@@ -1,4 +1,9 @@
 use super::*;
+#[path = "audio_assembly.rs"]
+mod audio_assembly;
+#[path = "columns.rs"]
+mod columns;
+use columns::validate_columns;
 #[path = "puza_project.rs"]
 mod puza_project;
 #[path = "speech_limits.rs"]
@@ -48,6 +53,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         expected_tables.push("outbox_sequence");
     }
     puza_project::extend_expected_tables(&mut expected_tables, schema_marker);
+    audio_assembly::extend_expected_tables(&mut expected_tables, schema_marker);
     let has_speech = table_names
         .iter()
         .any(|table| table == "speech_run_intents");
@@ -73,7 +79,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
-        14..=18 => has_speech && has_queue && has_reviews,
+        14..=19 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();
@@ -216,6 +222,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     speech_workflow::migrate_and_validate(pool, schema_marker).await?;
     puza_project::migrate_and_validate(pool, schema_marker).await?;
     speech_limits::migrate(pool, schema_marker).await?;
+    audio_assembly::migrate_and_validate(pool, schema_marker).await?;
     validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
@@ -361,31 +368,6 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     )
     .await?;
     Ok(false)
-}
-
-async fn validate_columns(
-    pool: &SqlitePool,
-    table: &'static str,
-    expected: &[&str],
-) -> Result<(), PortError> {
-    let columns: Vec<String> =
-        sqlx::query_scalar("SELECT name FROM pragma_table_info(?) ORDER BY cid")
-            .bind(table)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| {
-                crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite table", e)
-            })?;
-
-    if columns
-        .iter()
-        .map(String::as_str)
-        .eq(expected.iter().copied())
-    {
-        Ok(())
-    } else {
-        Err(non_final_schema_error(table))
-    }
 }
 
 fn non_final_schema_error(component: &str) -> PortError {

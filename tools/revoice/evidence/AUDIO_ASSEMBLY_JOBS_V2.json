@@ -1,0 +1,1103 @@
+{
+  "version": 1,
+  "revision": 2,
+  "case_id": "AUDIO-ASSEMBLY-JOBS-MODEL-FREE-v2",
+  "at": "2026-10-23T21:48:41.9090122Z",
+  "previous_checkpoint": {
+    "file": "tools/revoice/evidence/AUDIO_ASSEMBLY_JOBS_V1.json",
+    "sha256": "3c24bfac4f9d8540f4299709ea8b7a14628be3f29c8e46207d0df60481946bd3"
+  },
+  "base_commit": "c901c78d95f5b1fb5917671e0cc35dbf07a7295b",
+  "status": "model_free_checks_passed",
+  "scope": "Managed source inspection, immutable timing review, schema 19 transactions, common job cancellation/recovery, outbox WAV publication, desktop composition and UI controls.",
+  "models_loaded": false,
+  "real_ffmpeg_invoked": false,
+  "native_ui_pass": false,
+  "installed_profile_update_performed": false,
+  "checks": {
+    "verified_copy": 5,
+    "source_inspection": 11,
+    "assembly_adapter": 32,
+    "assembly_storage": 7,
+    "assembly_application": 12,
+    "common_jobs": 34,
+    "shared_cancellation": 4,
+    "ui_contract": 11,
+    "ui_components": 13,
+    "frontend_unit_regressions": 234
+  },
+  "failures": [
+    "The first storage fixture used a dynamic SQL string rejected by SQLx; fixed to literal statements.",
+    "Intermediate desktop/history compilation and a TypeScript narrowing error were corrected before final validation.",
+    "The first Vitest and IPC checker could not spawn child processes. Equivalent commands ran outside the restricted process environment.",
+    "Size limits required extracting column/transcript validation. Duplicate field-list and IPC argument-shape checks required structural corrections.",
+    "Clippy found a nested cleanup branch, test-only unwrap/expect usage and fixture result wrapping; fixed without weakening lint policy.",
+    "One Tauri resource preparation failed with access denied; the same build completed outside the restricted process environment.",
+    "Full storage regressions exposed seven legacy assertions expecting schema 18 and an in-memory outbox fixture missing assembly tombstones. Updated the expected schema and complete fixture; data-preservation assertions remain in place.",
+    "A later storage integration target exposed a shared legacy downgrade fixture retaining new assembly tables. Removed those tables only from the owned historical fixture, updated current/future-version assertions and preserved migration/data checks.",
+    "A deterministic cleanup-uncertainty control exposed shutdown classification as a generic join failure. Completed uncertain tasks now stay registered for cancellation, and cleanup/shutdown reports retain an explicit unconfirmed outcome.",
+    "The Markdown checker admits only Markdown link targets. JSON evidence is referenced as a repository-relative artifact path; the earlier evidence checkpoint remains immutable."
+  ],
+  "limitations": "Fixture renderer and synthetic PCM only. The installed application, real FFmpeg job path, natural stories, permitted tempo fitting, video export, TXT, ASR, listening and clean Windows are not accepted by this evidence.",
+  "sources": [
+    {
+      "file": "apps/desktop/src/features/speech-catalog/model/audio-assembly/conflictText.ts",
+      "bytes": 2365,
+      "sha256": "b9685b481a4ded1061ded85996ac925c452181b592d7418842e20af74e97126e",
+      "git_blob_sha1": "dbd8966ce21ec938f2deb9a479917ec0de9d0fa7"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/model/audio-assembly/useAudioAssembly.ts",
+      "bytes": 5721,
+      "sha256": "ff7613c5c69f75ee61d63fdad6e80585ceef99e84b84c323757d66c6c7c95c48",
+      "git_blob_sha1": "9cf808bd2789924d2db29e285e5958858aee42c1"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/audio-assembly/AssemblyPreview.tsx",
+      "bytes": 2735,
+      "sha256": "dd57641df65810358a6619707173485ef34df70f71296535dc7c9d7d04818b29",
+      "git_blob_sha1": "8d2011768d78bd191ac0ff3d74b410b0f926d954"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/audio-assembly/AudioAssemblyPanel.test.tsx",
+      "bytes": 9259,
+      "sha256": "2b6e08fd5a2dcc60f1e8d2df0f16492817a600dec23feec19d3ac2bdb4414d02",
+      "git_blob_sha1": "3b8b590cb2ff403f5acf10f4ad385a9db72bf22b"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/audio-assembly/AudioAssemblyPanel.tsx",
+      "bytes": 8512,
+      "sha256": "4899c056bf81d8985f603cf95fef85618ecbb5027e6ed704599f8b07ed7c8aa0",
+      "git_blob_sha1": "402b6db243f093c89fd0117f02576d5d0d727395"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/audio-assembly/AudioAssemblyWorkspace.tsx",
+      "bytes": 2445,
+      "sha256": "b063afcd550390bdded5a21e8abcdd8532599355fcc15becde38009384b883ee",
+      "git_blob_sha1": "9af841f29f02f067f8ec8b60985a1fd64fb80711"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/SpeechCatalog.test.tsx",
+      "bytes": 5443,
+      "sha256": "433f23c987e9f3f70aba2b4fc4c18c4a582a8f5bce93b90628fc42dcaa3089f7",
+      "git_blob_sha1": "7941c7da5bf631e42a846f2e5b7aab4973abe87a"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/SpeechCatalog.tsx",
+      "bytes": 7523,
+      "sha256": "72018ddba2481b9a4ea731314d637c785fa8aed3431c45e04560b91824e341a6",
+      "git_blob_sha1": "19fa599b86c7403460697a1cbe8fecd0a03fbc70"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/SpeechPreviewPage.tsx",
+      "bytes": 92,
+      "sha256": "af440b92a3a36adde04282873fe6107137765c198cbfc6f87ed2cdf7ed9e0a8a",
+      "git_blob_sha1": "f38370cbe2ef37e5b18bd7b9f0991fe53599a260"
+    },
+    {
+      "file": "apps/desktop/src/features/speech-catalog/ui/SpeechWorkflow.tsx",
+      "bytes": 7552,
+      "sha256": "eef94fe002b7bd3995d5e377e777a402d6e1c1dff81fe5b919718dccec7446f9",
+      "git_blob_sha1": "f81581e4f8b320899a4cddfc7039b5a20f6537de"
+    },
+    {
+      "file": "apps/desktop/src/shared/api/contracts/audioAssembly.ts",
+      "bytes": 3337,
+      "sha256": "e39b43505f99d6fb054fa384bdfaf588b1dc2336914fdccb908f43cc6c46f069",
+      "git_blob_sha1": "c0b1b4329d870b06ae375caf0861bb2a61273507"
+    },
+    {
+      "file": "apps/desktop/src/shared/api/contracts/audioAssemblyValidation.test.ts",
+      "bytes": 4637,
+      "sha256": "943eb40cc4fef4e2657ffb1b445c225b169258804ad0d2b90d2a72a9f128429f",
+      "git_blob_sha1": "60cc9b45854596ac2e2eda0719b41064d075d177"
+    },
+    {
+      "file": "apps/desktop/src/shared/api/contracts/audioAssemblyValidation.ts",
+      "bytes": 5090,
+      "sha256": "d91a9c922d7febebe8e65534179596dde7240df3160d8698d379bccc85442a4d",
+      "git_blob_sha1": "22d99a7c89f6a43521e2c6d98c6de07f00b73893"
+    },
+    {
+      "file": "apps/desktop/src/shared/api/contracts/audioConflictValidation.ts",
+      "bytes": 1345,
+      "sha256": "e571f149a2b1d7d8442f43af81f274e0a89c69a4e5f83bb4813081e1bc176c86",
+      "git_blob_sha1": "b996fb19814d766ff38ea265bd9e305d76e3efea"
+    },
+    {
+      "file": "apps/desktop/src/shared/api/contracts/commandMap.ts",
+      "bytes": 4400,
+      "sha256": "6fcead7c7a2403fac060622256ba797bf201787f71f443315d49ea2b06e43b70",
+      "git_blob_sha1": "90480049689de4fc352c7783742ce81769b57d91"
+    },
+    {
+      "file": "apps/desktop/src/shared/api/contracts/runtimeValidation.ts",
+      "bytes": 8147,
+      "sha256": "05052f2569d909907b8da76ce48f126292e4d842af9731e4368ca08635859441",
+      "git_blob_sha1": "e6d7f07e5d3a75c317a5ebd9ed8fa37424a2bc50"
+    },
+    {
+      "file": "apps/desktop/src/shared/api/contracts/transcriptValidation.ts",
+      "bytes": 829,
+      "sha256": "495f4c4806ce54a5c41f6b6067584329dc6b98ffe3c64231e3d57563be556f2f",
+      "git_blob_sha1": "c574b1a51f706f3f55a05fdf999cf6fb6d6da1e2"
+    },
+    {
+      "file": "apps/desktop/src/shared/ui/paged-preview/PagedPreview.tsx",
+      "bytes": 2294,
+      "sha256": "b24fb1f1fb60afd4fa9385a37c8057fcd29cc3b11ac642466e2f2d5ae30cc7a9",
+      "git_blob_sha1": "a00c428f1cae74482327a3ad9d1dd91bab7891b7"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/adapter.rs",
+      "bytes": 9280,
+      "sha256": "48a05c691a6b42949b4d2ddafe88bf9f98aa19b4ed124493d8f202e0ec808c32",
+      "git_blob_sha1": "25053e8c6b095499044723302484f7d2b8378858"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/control.rs",
+      "bytes": 909,
+      "sha256": "bbb315044b8ffcf3c953e43b193bd15608089856e9b8235b3238ef5be74e0a65",
+      "git_blob_sha1": "bdc0c06aa1c60e0b8648aa7eac7f33565ae63505"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/inspection/adapter.rs",
+      "bytes": 4986,
+      "sha256": "54921891ec7c07d8f5cdd2b8802fea03bb823de9f0108467364acad1ae8c84ba",
+      "git_blob_sha1": "31bcbbbbf503be4e63eecdc45e972577162d97c6"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/inspection/files.rs",
+      "bytes": 2526,
+      "sha256": "9a387fccbf0f0cc9f6215ee1d124f1d1b8dd204e5eb71558bc71dc1960b4ce45",
+      "git_blob_sha1": "a6c80b82fb073c2c14b83697deaa038282de9d73"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/inspection/manifest.rs",
+      "bytes": 2709,
+      "sha256": "e3065f9efb57af13ee1a8c51b1ae3d4a2be334abc2c20cd05ca540f2461f357f",
+      "git_blob_sha1": "4b87c51ba5ec7f0a243d3edb7197868bdd227329"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/inspection/measurement.rs",
+      "bytes": 2221,
+      "sha256": "276264833db9821f67918dac07e258cae3b0a6f403c054030cd6c8fb51a6cb0f",
+      "git_blob_sha1": "b13c72b704b84522140f1375cc478214de745e82"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/inspection/mod.rs",
+      "bytes": 123,
+      "sha256": "34a481f90ea535ffae1150821b947408fd0dd502c40710219fe21b4246550ddc",
+      "git_blob_sha1": "2ec9ee972c53aacbe719dee89bd941f73a709e99"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/inspection/tests.rs",
+      "bytes": 15853,
+      "sha256": "df81b9d079992de0ae99481e48079e00a7b090e518f99e7a34ed743bd6d97cb6",
+      "git_blob_sha1": "9cd5c0fa7432666252e48d2e593d1db4924d490f"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/mod.rs",
+      "bytes": 259,
+      "sha256": "3ca68b17c2d42b5879cd27fb365c693ef4df3b15e910fc5f4d019c44f25105d9",
+      "git_blob_sha1": "20db01e8c07a9ab7e61a436e7b1079c073639bd5"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/slicing.rs",
+      "bytes": 2329,
+      "sha256": "2cd05534b3f42578be9770de49cb6183bd7d1ad37e1013f619526cfba4691e17",
+      "git_blob_sha1": "76d906eaf5a5c4117546608ea0a9311a330b3c8a"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/source.rs",
+      "bytes": 6482,
+      "sha256": "ce861d41179401dec8a3f26b1be3a43b43a00dba717dd2cf9592d9c18fe28594",
+      "git_blob_sha1": "dfe51c4ae79885dda0252e1f6509cfda298dd1b6"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/staging.rs",
+      "bytes": 7170,
+      "sha256": "caf26467e90841de9437f094d3f4a17b9be804420996a4abf0871f3186d512a4",
+      "git_blob_sha1": "e0cf9d6bb642452ec83f8030b3cc821340c5f642"
+    },
+    {
+      "file": "crates/adapters-ffmpeg/src/assembly/staging/tests.rs",
+      "bytes": 7604,
+      "sha256": "b9358139910fff2fcbc40537aafbfe4e838ac6f03ec0436e69bfaf77272c9ccc",
+      "git_blob_sha1": "4e6c4c432c05e81a66ab3a0ef53e80899922b0b5"
+    },
+    {
+      "file": "crates/adapters-storage/src/local/artifact_store/mod.rs",
+      "bytes": 298,
+      "sha256": "1a23e483f629e3def23a0814eb074f8b85285f63cc316bb2475f24c2cfe179cd",
+      "git_blob_sha1": "006a7149dc341a410abe2c60a23139bdf47be2bd"
+    },
+    {
+      "file": "crates/adapters-storage/src/local/artifact_store/store.rs",
+      "bytes": 5496,
+      "sha256": "453afe97f351e16a1fd5ff61c39e9e05cd77a199b5f1ecbd49a176cf3785937d",
+      "git_blob_sha1": "1c3111c709f460ebfc0526c216c045112eda5ed4"
+    },
+    {
+      "file": "crates/adapters-storage/src/local/artifact_store/verified_copy.rs",
+      "bytes": 6743,
+      "sha256": "987054581ed8c8339acdb122bcc6ab8e1283df70ab63c30920453481a4b5eeef",
+      "git_blob_sha1": "488ca4bfdf574c8ff388a0b1b340df095ee0fcfd"
+    },
+    {
+      "file": "crates/adapters-storage/src/local/artifact_store/verified_copy/tests.rs",
+      "bytes": 5458,
+      "sha256": "ef74f854590846ff74b51de76e2e92797e7d85e3699a5b67de046cfb66787bfc",
+      "git_blob_sha1": "40946052d4c8be8e09002b7edaf8244cc66946fa"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/artifact_index/finalization.rs",
+      "bytes": 1971,
+      "sha256": "588fa5731c7a05b899bb1f66b6a22b2db224122fd7327a56c94c764e1760f1ef",
+      "git_blob_sha1": "0bde157901de7e75b52e2d2731e18d258f33fbde"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/artifact_index/queries.rs",
+      "bytes": 3921,
+      "sha256": "088924d0d0b4893b418b937a3e06e204ae2827f896a0393a15182b3ebaddc7e5",
+      "git_blob_sha1": "4942cba6331c391c7e3c6adf8f3b8cdf60658fd1"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_schema.sql",
+      "bytes": 2279,
+      "sha256": "a29216aa91089567e22e46237986d2c4ffc2f20f6327d4ebfd289c52878ff8f3",
+      "git_blob_sha1": "b11edabb4e7e1a06ca3522fbb8ab2a5c77cdecea"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/entity.rs",
+      "bytes": 202,
+      "sha256": "a1caf2f528dccc2d798a6a39676368e202d3316f7d012be5df6e6d884d89da2b",
+      "git_blob_sha1": "9cc311d646451d64414e3df41ba15534db385819"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/error.rs",
+      "bytes": 996,
+      "sha256": "d94a56de4446bd7214c1bc55c0c45e4ad80f501c968e9c81fd1def8235f45ebf",
+      "git_blob_sha1": "eb3f8a82121b6145a7045dec0f5a85eec572e4bc"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/mapper.rs",
+      "bytes": 807,
+      "sha256": "f604bcfc7ebbd2c1b73f4a308abd6e0666b167ffdfc75875f14bfc2b2267b6ca",
+      "git_blob_sha1": "ffa2c608f06b4bfeb92b41750377f39995d713a8"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/mod.rs",
+      "bytes": 171,
+      "sha256": "acd40005f0e5147ac60894e5f2b36a66210366f5c9ad87be09240b1662ffee7f",
+      "git_blob_sha1": "f9eeec149697b6c482afc4b72ca308c328102087"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/queries.rs",
+      "bytes": 3932,
+      "sha256": "ee2be23d62d772b993839fd50d5b4050badc064053fdd57611def32a7e53f309",
+      "git_blob_sha1": "bb29e219fb182c4cfd0d9cbe46e0a9ec99d153c6"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/row.rs",
+      "bytes": 244,
+      "sha256": "015975f1b3c244a6ad23d71c3aae98986acd00206a78e1adcc671cf953196963",
+      "git_blob_sha1": "e72994fc033e0b393dd4c353550eff7b502a9e28"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/store.rs",
+      "bytes": 2721,
+      "sha256": "2d0833672ded9e004f74cbe321f13abc430577d8335e5e246744b4c0a3cc49b7",
+      "git_blob_sha1": "ee4828bdf269d8229ed9f02469eb315487524e91"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/audio_assembly_store/validation.rs",
+      "bytes": 3746,
+      "sha256": "4480e1369da382726dd3604be9db061efa180ffcbae97cc77f6dcdbca62d54c4",
+      "git_blob_sha1": "6452eba065e35ab5a6fd186d667daa063688946d"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/connection/audio_assembly.rs",
+      "bytes": 2452,
+      "sha256": "40ad4c47a9b5efb489e7dcdce514d03d4d68dfb4f0e70cc6353160c91fd5b738",
+      "git_blob_sha1": "93622710b0934a463d9f9bd678a063dbec9d96af"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/connection/columns.rs",
+      "bytes": 713,
+      "sha256": "c6ee2607aae122d355aabc6016200f472766a93d131c9d220de22aa7826a004c",
+      "git_blob_sha1": "142c012aa9c86184d245d3239f3f9ea01a50caa8"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/connection/validation.rs",
+      "bytes": 11150,
+      "sha256": "ca2616cca2476c7e82dc20788c1df1aacddc8855bc8893f460ce0ca3159021b2",
+      "git_blob_sha1": "713bf7e67d25e7cc466c61ec9be0cd87c0aa52f5"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/connection_tests.rs",
+      "bytes": 4766,
+      "sha256": "a12adab8a851ee7aa44643e49e623ecb78bbf09d18595a4a6e624448869d432d",
+      "git_blob_sha1": "db1255e211d915bea2c2d37a7781a0f2e91c67cd"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/discarded_artifacts.rs",
+      "bytes": 966,
+      "sha256": "39b9f76b62d9a0981cf4db492ce88561040d79ec4bfe0d66e398de60d676d15f",
+      "git_blob_sha1": "7199e02c068f2d36cb350c672c8adf90ab0a3a1d"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/mod.rs",
+      "bytes": 2244,
+      "sha256": "2bcacb8659751c2f30647ebaed415bbf97800c9f85378c28c44a82c03894c95c",
+      "git_blob_sha1": "e667efd6a60dc4e3b3a608dc78eb8f5a86c3c18b"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/project_revision_migration_tests.rs",
+      "bytes": 5258,
+      "sha256": "712eb546c7cd2bf958a293e72eb08cfffa54eb4b7ffc82350356e1fbb183cd59",
+      "git_blob_sha1": "bdf47f146ac795dacb2cf41503a89ccd525fb59d"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/speech_limits_tests.rs",
+      "bytes": 9849,
+      "sha256": "940ee9229eb648b9d00a8e6ab1dd814a8fb62e56aa8d8e84fa71c9abe5d4940f",
+      "git_blob_sha1": "0a7437588d8aa077fcb3fd960a4a2e91610770c7"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/transaction_gateway.rs",
+      "bytes": 486,
+      "sha256": "8d8a7757480121cbc6d683fccf748e3f58240d575a527659a7d697619c289972",
+      "git_blob_sha1": "14debfc7db2f8ee5b6dcbadba345cc2135fd9d85"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_attempt.rs",
+      "bytes": 4605,
+      "sha256": "cabff251dd5226bbfa39fd95bb565e4a2df688111ddf54a8f3d30c7e619be34a",
+      "git_blob_sha1": "7e18cb346c9ec2335d5ce35222bfa117f1fa6ddf"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_discard.rs",
+      "bytes": 4469,
+      "sha256": "ae585a645a5159f1704b2577149b10a68a6945282134712b1c8bd1f07d65c209",
+      "git_blob_sha1": "3878a8327b0b5d7233d23a4af84531ba8fd8ca02"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_intent.rs",
+      "bytes": 1708,
+      "sha256": "418bf8b8a5897a616d7847d7b9b64c558afcc743407a167c79f762f1e80998e3",
+      "git_blob_sha1": "0947771ab682d2ddc7e1c8d9d063b24f62fb210c"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_publication.rs",
+      "bytes": 8219,
+      "sha256": "1860a9a14a95543dbb26036c88a15bab1946902b406cd8b201d36c7883139ab2",
+      "git_blob_sha1": "4bc15e1dae61b16a33020f014b6dff83ef0171c2"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/transaction_gateway/audio_assembly_source.rs",
+      "bytes": 2750,
+      "sha256": "b12fa98c0ebbb89f34eb741cec46d067b018c5b4d3c288dabdbd3f03c4350173",
+      "git_blob_sha1": "d7ce0825afa858e9db9d4fd2dcf0ea677398630e"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/translation_host_jobs_migration_tests.rs",
+      "bytes": 3973,
+      "sha256": "09639d139b7915f41e8068bff0acf352c4499deb0655ee6e32a3a09d1dfd9ace",
+      "git_blob_sha1": "7a8c23645a700a1db8267f003e4749017e15c6d0"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/translation_links_migration_tests.rs",
+      "bytes": 4058,
+      "sha256": "6d61392275d089b8191a2eebe6b896591df61e7b96d92775fae76e4b7d8f29d0",
+      "git_blob_sha1": "4964149a3cd5338e853a7f9489e8548d6f3ca808"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/translation_publication_revisions_migration_tests.rs",
+      "bytes": 2897,
+      "sha256": "844faaa251d7d7c61564fa7125b399b41ddcf6eb748595778a5d1be8e3998733",
+      "git_blob_sha1": "fba9c88aff0b3118fc7832e5b5b051244d752e6c"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/translation_run_intents_migration_tests.rs",
+      "bytes": 2181,
+      "sha256": "6ed8b04b416cb5746f3718d2a29bcf8b737972aac2491e9fb8cf286be5cf3633",
+      "git_blob_sha1": "41c93b85f67c5e4bf753c1456f383d89cbab85b3"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/ui_preferences/tests.rs",
+      "bytes": 6589,
+      "sha256": "a29e6399994848b2b0e5a4f6da4e35d52f76f548b7596ee526373173433136e5",
+      "git_blob_sha1": "cc22981603f6853eed99a9a508eaff238370a84b"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/unit_of_work/artifact_writes.rs",
+      "bytes": 10416,
+      "sha256": "08eab3211b9e20a6545a3dbcd5572c1cd44c78b8ec0e8adde5a95c30c6678ed6",
+      "git_blob_sha1": "d7747ef2f7e17e84eea01f5e7e6189d1993ce805"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/unit_of_work/tests/mod.rs",
+      "bytes": 989,
+      "sha256": "5a87e24ddf04e817be2c0b01f4f9b76d62eaf1e12086213464cbdee1122fd72c",
+      "git_blob_sha1": "66a9b52d72de0f3de258c3122ce1d0df914a9ecd"
+    },
+    {
+      "file": "crates/adapters-storage/src/sqlite/youtube_import_journal/tests.rs",
+      "bytes": 8525,
+      "sha256": "176d0378cb1e0b696297fa69230b0d34a2903ae0c58b6017cbbc5085b9c70491",
+      "git_blob_sha1": "27ba3ea5c48d998f201a1a2923bfa153f47aa582"
+    },
+    {
+      "file": "crates/adapters-storage/tests/audio_assembly.rs",
+      "bytes": 16887,
+      "sha256": "4b5616af85bc9ab9e368baa78e0c86123891f5d650ee17372bd58a5bd881c855",
+      "git_blob_sha1": "7f1e78a4b921c21b7f44251d901499f15c32ce38"
+    },
+    {
+      "file": "crates/adapters-storage/tests/merge_schema_upgrade.rs",
+      "bytes": 2516,
+      "sha256": "9c39e88ad50424b30d458b2f7b57bcee3f2e17704d5f0bb3493347fffa80b033",
+      "git_blob_sha1": "d6c00efe2f1a0154c6ce96b10b54c301329bb164"
+    },
+    {
+      "file": "crates/adapters-storage/tests/support/assembly_source.rs",
+      "bytes": 12132,
+      "sha256": "3e5838e918a6f62b87fb4a9bb1f0ce57e754b2b4dfc6e0b31a99b17ed6a4aa8c",
+      "git_blob_sha1": "2d5089c7637cc7bbda86a8ec1d557a50645788c5"
+    },
+    {
+      "file": "crates/adapters-storage/tests/support/legacy_outbox.rs",
+      "bytes": 812,
+      "sha256": "c6c795ae83a953ea827e5dd77973ccd0c5ddb61ef1d0b3a27fa86bd7291db9ec",
+      "git_blob_sha1": "5727f758d02e9606b64d32f2a28f1bd9e34a1281"
+    },
+    {
+      "file": "crates/adapters-storage/tests/translation_edit_intents.rs",
+      "bytes": 10442,
+      "sha256": "6016e5b6974ffbb8fcc572977c180bbef8c6b43f3aaf95f08825da106dc8f13a",
+      "git_blob_sha1": "5121bdebf52f398adfa1bf0f888f743f3bc66375"
+    },
+    {
+      "file": "crates/adapters-storage/tests/translation_reviews.rs",
+      "bytes": 8974,
+      "sha256": "ba282494ab63c58da60abebeeafc1df8e140e2f2a44ebd204a6f4dc7c23fc669",
+      "git_blob_sha1": "a08d48fbc1213132b6dfbdea49dd636b997f3479"
+    },
+    {
+      "file": "crates/adapters-tts/src/marker_tests.rs",
+      "bytes": 2512,
+      "sha256": "2c5aa3b463fb160957a50fc330e3c8d6d3ec07ad754925b049f86a4ff29a9d82",
+      "git_blob_sha1": "869e6492f63a4fb8da637e4e7938829094fb28ff"
+    },
+    {
+      "file": "crates/adapters-tts/src/verification_control.rs",
+      "bytes": 313,
+      "sha256": "9b706a59bedcbca6751fe3bcda15a85dd6cd1b85c46790f86ddd0cd96372bfd7",
+      "git_blob_sha1": "f5fa131480f36dea56594012ebb559ac94657821"
+    },
+    {
+      "file": "crates/adapters-tts/src/workflow.rs",
+      "bytes": 12372,
+      "sha256": "64c73155fccce49ff538dbefc78112854b7ebcbce1e12afc4168e452777b7ecc",
+      "git_blob_sha1": "8b517123a5de27b71cebcd5b516f7dd7cc59d36f"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/computed.rs",
+      "bytes": 300,
+      "sha256": "183b311061b2cf819f0e38957593b87618f012522ce19848fb10cb7cb499bbdc",
+      "git_blob_sha1": "018403a8812ecd6fd05182e88ee28c729e5ebac6"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/error.rs",
+      "bytes": 336,
+      "sha256": "e9d95fd312d7ff4d61c6d0782d0de6b12d79ad3a0d67dbdc2b764c18ab1d8877",
+      "git_blob_sha1": "9cea66268ae9e95597f133e30de1821937b0e968"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/mod.rs",
+      "bytes": 332,
+      "sha256": "2dc199e480f97ca970f414fd56d27250f8022d8044c9fba6c212855d4d1b37cc",
+      "git_blob_sha1": "589408b5f37d9f4782e73f032bcd4fc50dee7a25"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/plan.rs",
+      "bytes": 2865,
+      "sha256": "89e4c7e2fa3304c231158f155c77515601174b1d17b2e1ea6c54a246da9d5cd9",
+      "git_blob_sha1": "0500c644d94843a309c533e4bf0da5a887aae4fb"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/prepare.rs",
+      "bytes": 3085,
+      "sha256": "c06fee71bd147c9d7c2ce761fe9c3fbb58e08445fe77e614fdfcdb4342134da5",
+      "git_blob_sha1": "2fab2041229ce72d1c135d338a12a59cf4c8d631"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/progress.rs",
+      "bytes": 907,
+      "sha256": "9f5aed7eed4dacf221c766b74022c99b53faa74f44304784339429afcffe17dc",
+      "git_blob_sha1": "1b2d368a6b10e997d12da732b1d6e4f14fd32963"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/publication.rs",
+      "bytes": 5797,
+      "sha256": "a2221517580603bebf7af416a4a4bebeb4efc9812dec37a4ea1b5e349e4397fc",
+      "git_blob_sha1": "d0c3572e5a83ff256fe8ac949616d358b11ba5d5"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/recovery.rs",
+      "bytes": 2996,
+      "sha256": "702161bd987d9b44fa5ea1bbf0d6f64171cf98024bce0ca005fd8a0f525fde0a",
+      "git_blob_sha1": "ef0a7655d77f7db7741b2ee7c7755422cdad86b7"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/request.rs",
+      "bytes": 517,
+      "sha256": "fbb9205e67cdfee246b75d75df45f8e6c7c434c9ed8322da99e060bac3c4bc7a",
+      "git_blob_sha1": "60266db6e96f56f2904ed1b0f0c7c5588a2877f9"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/run.rs",
+      "bytes": 7817,
+      "sha256": "dbaf62b38ab275563ecbc3628ccc935953b906e0d8f163178025dbac60cd4baa",
+      "git_blob_sha1": "a4c136ce73152e126afd24faca537d9daff28622"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/service.rs",
+      "bytes": 985,
+      "sha256": "552e78969be98248a83ff7bdee7d6946c2165e87dddd16be551233dd84e86106",
+      "git_blob_sha1": "48dec59302bd36fb54557d72efb9951b4feb1aaa"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/source.rs",
+      "bytes": 7246,
+      "sha256": "f548443da1ddffa29f6f9f09aeb6cfd1962c146ebecc6e217c0d5e1b5f7ddb43",
+      "git_blob_sha1": "a1da9ccf104b7003198f0feda2035f0a42187209"
+    },
+    {
+      "file": "crates/application/src/usecases/audio_assembly/state.rs",
+      "bytes": 6976,
+      "sha256": "79f6b6ec3378e057837267437d778864c254aabd85fb415647a0484ebaa8af5f",
+      "git_blob_sha1": "7c3d60b9838b3653b09528bc63a8659196dd732e"
+    },
+    {
+      "file": "crates/application/src/usecases/mod.rs",
+      "bytes": 259,
+      "sha256": "89f47fe895e1d3067fdfb1df65c803a32cad00472b10c67d7e8235d1298a1374",
+      "git_blob_sha1": "d34f6390005f228237b40385912bba10acf02e4b"
+    },
+    {
+      "file": "crates/application/src/usecases/speech/mod.rs",
+      "bytes": 463,
+      "sha256": "73a90331384263f55b1756ee74a9c788e11ab1df2923d54941bb3bed36b764c1",
+      "git_blob_sha1": "9221224c04afa67d95980b7e33f36f365705b1e2"
+    },
+    {
+      "file": "crates/application/src/usecases/speech/run.rs",
+      "bytes": 7833,
+      "sha256": "836126e487ac16e85c429e6305ad305cdffe482488ff65c35376ac780a0550fe",
+      "git_blob_sha1": "85672fbbdd6ade8a527f684cee12aaac01b385ba"
+    },
+    {
+      "file": "crates/application/src/worker/job_ownership.rs",
+      "bytes": 1078,
+      "sha256": "e384bdaf2d1a1ed836d0119a0f3c025af6cc6bcf47a758fd3c1ff53a12bfa9e3",
+      "git_blob_sha1": "42e3a5a1d01a9960a6d8efea865f7011f22f642c"
+    },
+    {
+      "file": "crates/application/src/worker/mod.rs",
+      "bytes": 77,
+      "sha256": "264dfac8d3eb27d5ec234bc842446da8b27d8fde8dcfe5b84af3146fe1a17f23",
+      "git_blob_sha1": "4cc18deb03f8318db53a3324709ef941450b184a"
+    },
+    {
+      "file": "crates/application/tests/audio_assembly.rs",
+      "bytes": 21783,
+      "sha256": "6e9749c27dd3328e0d9372fd0d0b63b35e3627e5107aa1c2534f42135095af47",
+      "git_blob_sha1": "0fb747c9cce6131aa78d872ad18a4b4fe61d93e6"
+    },
+    {
+      "file": "crates/application/tests/puza_contract.rs",
+      "bytes": 7224,
+      "sha256": "ad2cee2be45c1669ec6cac57bd20cfa96bc1b4b9843fd1649c34bf7f3ff9a501",
+      "git_blob_sha1": "b9bd0deff660b937670542e7ef2db859d629eda5"
+    },
+    {
+      "file": "crates/application/tests/support/audio_assembly_fixture.rs",
+      "bytes": 10003,
+      "sha256": "e3e91777f14abe4f389ddf76129808d797ba14e7a0185b483a2499e6ffd66acf",
+      "git_blob_sha1": "0ed9d3371f7169e0307a70516880dfe4eaa6d9f4"
+    },
+    {
+      "file": "crates/application/tests/support/observed_runtime.rs",
+      "bytes": 2081,
+      "sha256": "d3c59811ccfaa4958fec7552e323b7f2e6fc2d431571d12239f8ee6157671091",
+      "git_blob_sha1": "d14daa04eae9c61f0f6a5aaeaf3249e56e77437a"
+    },
+    {
+      "file": "crates/domain/src/job/kind.rs",
+      "bytes": 218,
+      "sha256": "c88f609ae1338caa1b47947af1a8154551e77f9a555bab20c3d84911af452f8d",
+      "git_blob_sha1": "e3080fb8f52ed060d10973dc13d1adcc3cd515a3"
+    },
+    {
+      "file": "crates/jobs/src/manager/manager.rs",
+      "bytes": 8670,
+      "sha256": "64ad8fbcee183383671156bf80b973ff71cbbb6d51dd2983d7ab4c28be4433a5",
+      "git_blob_sha1": "2872fe701d42c4e6862943a0b0e2c3691db2e09b"
+    },
+    {
+      "file": "crates/jobs/src/manager/outcome.rs",
+      "bytes": 2984,
+      "sha256": "9585d25c3bf9bae6894590d83999b81c8bea6dca78623b5a9e512c6967585290",
+      "git_blob_sha1": "16cd06a1b7c113b96d331387ade9c6f8117df5b4"
+    },
+    {
+      "file": "crates/ports/src/audio_inspection/entity.rs",
+      "bytes": 359,
+      "sha256": "65c583d252485c937b685bf468f71d1a4e33162c15b50814f98cba1c9f1400f2",
+      "git_blob_sha1": "51e600c687709f7c96653d7a1a95887e6b3548a6"
+    },
+    {
+      "file": "crates/ports/src/audio_inspection/input.rs",
+      "bytes": 194,
+      "sha256": "d322dd6c203d076856ff23937b8fa13eb5b68d7289c0953362db9676c41686c1",
+      "git_blob_sha1": "204296dd5bde690fa4edaa8696cdd70a96826310"
+    },
+    {
+      "file": "crates/ports/src/audio_inspection/mod.rs",
+      "bytes": 262,
+      "sha256": "562eec7a27c4022cb71a1e84f817c23328efad57b261eb2769491d5dabf14fd4",
+      "git_blob_sha1": "e043e93939546b48d8e7efc94527ed284ccc5f29"
+    },
+    {
+      "file": "crates/ports/src/audio_inspection/port.rs",
+      "bytes": 392,
+      "sha256": "96fc581d5a0ed2f6ba09ee233c642c702554b33bf1273885176f53d0a5d9144b",
+      "git_blob_sha1": "3de6e89dd45902918f87bdae9d9d7ad76d0d2473"
+    },
+    {
+      "file": "crates/ports/src/audio_inspection/request.rs",
+      "bytes": 408,
+      "sha256": "e064bb236a1cd0913021fd4edadaadaad5cb70a30fcf3d9caac1f17e845443d8",
+      "git_blob_sha1": "3dcf0fbf88af9f5b642d3aaa6f45911be06bfaa6"
+    },
+    {
+      "file": "crates/ports/src/audio_inspection/settings.rs",
+      "bytes": 300,
+      "sha256": "5c68de155294412887e63fabdaaad9664d8422e0c9b7f0d318c17fd0a663e8b3",
+      "git_blob_sha1": "c4a90025f1383587f03ab222226fee9093c4f155"
+    },
+    {
+      "file": "crates/ports/src/audio_jobs/artifact.rs",
+      "bytes": 312,
+      "sha256": "3be82140ee22698f2b2144a67cd3b977157db5cc282900d21822b5f644be1ddd",
+      "git_blob_sha1": "47c7c123126dab11d29e98332616170c787304c9"
+    },
+    {
+      "file": "crates/ports/src/audio_jobs/attempt.rs",
+      "bytes": 171,
+      "sha256": "0b7435dd54387525d036149edfbf8e4f29fe7bf3bb9873f7220a67b15252b1f0",
+      "git_blob_sha1": "a93b9a8ae5774fe5a3b1c8772ffb4ec82d45c19f"
+    },
+    {
+      "file": "crates/ports/src/audio_jobs/intent.rs",
+      "bytes": 391,
+      "sha256": "d10e54a291bc611844d4ee60ba09e6cbaaef2ecc19a5a1786b369d3887187b8a",
+      "git_blob_sha1": "c4c42eb016b38b13a7640a38e67814cbe24e7f12"
+    },
+    {
+      "file": "crates/ports/src/audio_jobs/mod.rs",
+      "bytes": 339,
+      "sha256": "be2e03b6deada150c5dc95e10be618eb9e532b91c05261761d1fa0790714d862",
+      "git_blob_sha1": "94d0647577196c73672880fac018ac34dd4bf993"
+    },
+    {
+      "file": "crates/ports/src/audio_jobs/plan.rs",
+      "bytes": 646,
+      "sha256": "f88ca84be020162e68cf04c42e8393bf98dbc0f566cca76efb794c7c023ea984",
+      "git_blob_sha1": "f7cf2464f6d5fd42b816362c2ab2ba65c8ad848e"
+    },
+    {
+      "file": "crates/ports/src/audio_jobs/publication.rs",
+      "bytes": 507,
+      "sha256": "17ae48b47679c880d101d4d339eb8b954d5411d5f39e48eec4cbfc817214455c",
+      "git_blob_sha1": "f2c581dc109a91d1ea275158b7811a874990cc4f"
+    },
+    {
+      "file": "crates/ports/src/audio_jobs/store.rs",
+      "bytes": 1587,
+      "sha256": "4c1d649932824f1e63b13a44981a99d31d3d0eb092ce5a841dccbe8693c4d85d",
+      "git_blob_sha1": "bacdef3e683f83afdbbd65036f970eda1b930e5e"
+    },
+    {
+      "file": "crates/ports/src/cancellation/drop_guard.rs",
+      "bytes": 167,
+      "sha256": "46a0c1cefecaca066e627a5815224917602e3d1f97b8dcbd51083670066a214e",
+      "git_blob_sha1": "6a5cb6908d2a3ff7cce24442e22854cb92f9dc31"
+    },
+    {
+      "file": "crates/ports/src/cancellation/handle.rs",
+      "bytes": 491,
+      "sha256": "f5956aabd48f8e31d2391ec4b68ec5f8ce41a2eb31444405e026de5c77a380f0",
+      "git_blob_sha1": "61fa544fe89462b402921d00bda7fe7abc8eb10c"
+    },
+    {
+      "file": "crates/ports/src/cancellation/mod.rs",
+      "bytes": 163,
+      "sha256": "a4fe002660a9d5aff20a6d6410b554603beee83a4ac1703b8afb6d1944bb7a81",
+      "git_blob_sha1": "c634f2261f8af7ff34b232a1b5b4f066077b4f98"
+    },
+    {
+      "file": "crates/ports/src/lib.rs",
+      "bytes": 1741,
+      "sha256": "80992249ed19a37bc62f4c027555ae0a3efd7f0fee7cb8833eaf376d45a655b3",
+      "git_blob_sha1": "7d3ef5abcbbfeb551bdeceb960a40df5258f7757"
+    },
+    {
+      "file": "crates/ports/src/speech_audio/port.rs",
+      "bytes": 626,
+      "sha256": "576ed533b7af284beb861ad99d08418cbc7de342bb4e1a3503947e890cebe5dc",
+      "git_blob_sha1": "30b1779990ec2771fd74cef9fbb50b3c015b2afc"
+    },
+    {
+      "file": "crates/ports/src/storage.rs",
+      "bytes": 6444,
+      "sha256": "e7acd59270839881ad41ebad0266e274777c8aa4cf4493b853ccdb2fef2b0df8",
+      "git_blob_sha1": "6df404545c9fda2f603c13957435acc04724deb7"
+    },
+    {
+      "file": "crates/ports/src/storage/verified_copy.rs",
+      "bytes": 329,
+      "sha256": "4bf275791f476ad02987f40f20ac3f7d4055ae644637534791e3e4b244decdda",
+      "git_blob_sha1": "4f3144778b6ef14fc4940b2909848865bd45c9ee"
+    },
+    {
+      "file": "docs/integration/revoice-assembly-jobs.md",
+      "bytes": 8129,
+      "sha256": "5d4ce38c24ae866e3b726c9ca1bef9d90d9142f74fa9bc0c0354ed7119ed9bf1",
+      "git_blob_sha1": "0c5c4a1f9446216e7f92aad34c529750d92e8568"
+    },
+    {
+      "file": "docs/integration/revoice-execution.md",
+      "bytes": 18875,
+      "sha256": "fccf4a3bbee9b1826966355d9cb9f73f29925f35e9cfb1c4406e75345d6e5d83",
+      "git_blob_sha1": "f50e61184481e01279bc75e3aae8684561bfeb95"
+    },
+    {
+      "file": "docs/integration/revoice-plan.json",
+      "bytes": 10668,
+      "sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd",
+      "git_blob_sha1": "53304a2a3e1dc10fd8314ea4c4185128c3c3aad1"
+    },
+    {
+      "file": "src-tauri/src/bootstrap/assembly_media.rs",
+      "bytes": 3350,
+      "sha256": "0dcf0b497e2dc76c59a192f4bb8e4905e278b58eb0d6643eb0c3d84d666ab087",
+      "git_blob_sha1": "e82e264231d8a3f51a9de6cb44daf22c232c1fd4"
+    },
+    {
+      "file": "src-tauri/src/bootstrap/audio_assembly.rs",
+      "bytes": 1923,
+      "sha256": "550e0aff46922657a27b370e8040dd6c2962454d3e05479fe1b318fe477b0292",
+      "git_blob_sha1": "faad754804cb74c69f7ac4da692b3d2abafad9f0"
+    },
+    {
+      "file": "src-tauri/src/bootstrap/mod.rs",
+      "bytes": 9939,
+      "sha256": "5532bd379270ff96117804f4b5dcb0dac936c1e1c3f8c2f42aa6b2150bc1861f",
+      "git_blob_sha1": "80ad565b2ef9a39ab05800c2cc03bea90b743f7a"
+    },
+    {
+      "file": "src-tauri/src/bootstrap/services.rs",
+      "bytes": 2191,
+      "sha256": "8ab7ca44e021556148cafd53ab86f5debefa4577c686a0d1664bfd1898dc62aa",
+      "git_blob_sha1": "18d5048032812c8405e935c45d280445fdb5efc2"
+    },
+    {
+      "file": "src-tauri/src/bootstrap/storage.rs",
+      "bytes": 6844,
+      "sha256": "fbf1064bf6b7ac20e8402019530e0e6b01cf125683eed762503425827bf8b51b",
+      "git_blob_sha1": "f6de579d8a2dda90b313fdd81e1d70e151039520"
+    },
+    {
+      "file": "src-tauri/src/commands/audio_assembly.rs",
+      "bytes": 3173,
+      "sha256": "31d1d0da064b028ffac08301e19e992da592984cdb9700e90b3365ecaecf76ab",
+      "git_blob_sha1": "c664b8861eba80688371e84a1081d78ac6d3cd63"
+    },
+    {
+      "file": "src-tauri/src/commands/mod.rs",
+      "bytes": 484,
+      "sha256": "eb834b405ccab1cd06ea96a171af7fb5fc451f1b0b1ad57b56219a785f8a595f",
+      "git_blob_sha1": "ba44bf5c6f101a9f38f89731d2c96cbbcfdf60f8"
+    },
+    {
+      "file": "src-tauri/src/lib.rs",
+      "bytes": 12629,
+      "sha256": "4002a01826ae007a1f6e01165d5cc1fb746e8d0ab3c3a8b122e57bf89b948531",
+      "git_blob_sha1": "9ac04242810c37fbcb9434f42a3fd363d763804c"
+    },
+    {
+      "file": "Taskfile.yml",
+      "bytes": 26960,
+      "sha256": "a78a62849fde638f2ac185b04f0d176a39dd4ba67d828cab64777076524c2b9a",
+      "git_blob_sha1": "c6a1cb2ad4f0dac05493eb55627e64ca40f38a2b"
+    },
+    {
+      "file": "taskfiles/frontend.yml",
+      "bytes": 7700,
+      "sha256": "04e397f638f04515b60be4f631755097b62773baa9dbd4c83bd2cec19dbe3823",
+      "git_blob_sha1": "d0d6ffb6ad7b2759da3dd857bf7557e7afaf0677"
+    },
+    {
+      "file": "taskfiles/rust.yml",
+      "bytes": 41959,
+      "sha256": "e2d399fcae4e0a4213068a32e813792670ccc2c4b032d9467ebb1ed0a3caa63a",
+      "git_blob_sha1": "f417c633214a0ee104dc08c6aa70ac8e5900849f"
+    },
+    {
+      "file": "tools/revoice/record-assembly-jobs.ps1",
+      "bytes": 10738,
+      "sha256": "52f8af52c1845ad1e63bfcc1c3d7e5ae5a2123014048b110fe5ea3d5a45635b0",
+      "git_blob_sha1": "98c62be1a24a80697a6b82e723897a39721e0641"
+    }
+  ],
+  "removed_sources": ["crates/application/src/usecases/speech/ownership.rs"],
+  "check_receipts": [
+    {
+      "id": "copy-controls",
+      "outcome": "passed",
+      "bytes": 1282,
+      "sha256": "166e7840f60c3ccd1ed48aede47deb21e5b12fbf5c4e950ddae1d51d9f8cb2ea"
+    },
+    {
+      "id": "initial-storage-compile",
+      "outcome": "failed",
+      "bytes": 1675,
+      "sha256": "b4ca68bf32c8b618c4425a9c124cb3d2cc7dd41fab2140c1de8393a279b133b2"
+    },
+    {
+      "id": "initial-workflow-controls",
+      "outcome": "passed",
+      "bytes": 6515,
+      "sha256": "46783e50de72ca378625ed6d5261895de4ed7a4b562c21805038751567a19092"
+    },
+    {
+      "id": "initial-desktop-compile",
+      "outcome": "failed",
+      "bytes": 2102,
+      "sha256": "cafccdcf37318352cefaf06a2cf9387734d2b43d5ebdd2465cb6a02689d43890"
+    },
+    {
+      "id": "history-refactor-compile",
+      "outcome": "failed",
+      "bytes": 3081,
+      "sha256": "20f0a1d9219d38f51da0d61452632ac556c3ae396cc19d72839da44559b433b9"
+    },
+    {
+      "id": "history-refactor-controls",
+      "outcome": "passed",
+      "bytes": 5678,
+      "sha256": "cc6030ca9d3616f297b0affc27f3017561aff945210022b5c3a7a669e1c14be6"
+    },
+    {
+      "id": "initial-ui-startup",
+      "outcome": "failed",
+      "bytes": 9286,
+      "sha256": "8a3b78f163ae7d1bdd1e358303d6fff01e4d9704b54878233fee3a332f212aab"
+    },
+    {
+      "id": "initial-ui-controls",
+      "outcome": "passed",
+      "bytes": 911,
+      "sha256": "c3e63cc4a193a42818b43f463938a1525559a6b0e16c6449e0a2b0ef05899ab9"
+    },
+    {
+      "id": "catalog-independent-ui-controls",
+      "outcome": "passed",
+      "bytes": 963,
+      "sha256": "c9855abcf725e145457b487dab559c08253a1f24d497f9820d882e25378cd3c1"
+    },
+    {
+      "id": "saved-plan-ui-controls",
+      "outcome": "passed",
+      "bytes": 962,
+      "sha256": "422495cd23902fb2f608c3ca1da9f55c79e15606624caf4d1a56590c487886a5"
+    },
+    {
+      "id": "final-ui-controls",
+      "outcome": "passed",
+      "bytes": 966,
+      "sha256": "91fd45243acba58533dbb93fcce376e3d95544ad347d1949fa86648fedcdcf14"
+    },
+    {
+      "id": "frontend-unit-regressions",
+      "outcome": "passed",
+      "bytes": 7921,
+      "sha256": "aa23c1ff0588e66c92ae1ffbe19d6237546aa19d1c4ede7d7037e1fec02ab29c"
+    },
+    {
+      "id": "rust-format",
+      "outcome": "passed",
+      "bytes": 43,
+      "sha256": "77e36c601aef5338204f431e85aa7fb999aee39773fc57154c82974ca0224b17"
+    },
+    {
+      "id": "final-source-size",
+      "outcome": "passed",
+      "bytes": 867,
+      "sha256": "c11d75064d2d24fb0cdf7577bd8cd68b372c31b5f0680d627933921cd0793ed9"
+    },
+    {
+      "id": "final-frontend-lint",
+      "outcome": "passed",
+      "bytes": 54,
+      "sha256": "483216595700ae681407ab383af3347fe9ed8c3dce36b95bfbe6df7f1096bdd1"
+    },
+    {
+      "id": "initial-typecheck",
+      "outcome": "failed",
+      "bytes": 383,
+      "sha256": "d1437d0b2b85fa0e1a7f3a224b365e9c926a229637b4abc8005a9bd7e358e28e"
+    },
+    {
+      "id": "intermediate-typecheck",
+      "outcome": "passed",
+      "bytes": 64,
+      "sha256": "ee97e1e46228e19891851ffb46a492dbd3c14e0852a9f6305db4f1f4717a2b5f"
+    },
+    {
+      "id": "initial-size-check",
+      "outcome": "failed",
+      "bytes": 1046,
+      "sha256": "d0c27e310a0d181bc4262a9b8b457fa8334b77d3c9202530927d67e8594d0eff"
+    },
+    {
+      "id": "initial-quality-startup",
+      "outcome": "failed",
+      "bytes": 1121,
+      "sha256": "2e1127f52264fbaf1e3e5bf2b1c422ebeb98dd90a2533c5da9077717ea27b6fd"
+    },
+    {
+      "id": "initial-duplicate-check",
+      "outcome": "failed",
+      "bytes": 3485,
+      "sha256": "693ea48a575870ee858701a051431b4b21947769729ee8d79b0d341984c0dc57"
+    },
+    {
+      "id": "initial-ipc-args-check",
+      "outcome": "failed",
+      "bytes": 5680,
+      "sha256": "14619018317ffdaa0aa30738893407fda1ddbcf90ea43b5f816c88e00e08e62e"
+    },
+    {
+      "id": "initial-ipc-name-check",
+      "outcome": "failed",
+      "bytes": 5836,
+      "sha256": "2cfe9a1811a216f204ae0b0800722b8b192529972d35b8d8e11bcda8f6b66177"
+    },
+    {
+      "id": "final-quality",
+      "outcome": "passed",
+      "bytes": 7353,
+      "sha256": "175836672f45ca537f3b4f75d45d22ec030c9c9e35a08779c7c4797e2fffd815"
+    },
+    {
+      "id": "initial-clippy",
+      "outcome": "failed",
+      "bytes": 8126,
+      "sha256": "00cc6e1645d47d2ea056334fa424c20267459ffdc35b54d3c4e1e370e52774d4"
+    },
+    {
+      "id": "desktop-build-access",
+      "outcome": "failed",
+      "bytes": 2153,
+      "sha256": "076fb01614410b40d5eefa2e3f7e6098b02e3f93c09f9ad171a5bf6d218f7212"
+    },
+    {
+      "id": "fixture-clippy",
+      "outcome": "failed",
+      "bytes": 2405,
+      "sha256": "e5136256c73d7c41147468b7b6665ae590541662a6d923c9ed13c3c41e1c2a52"
+    },
+    {
+      "id": "intermediate-clippy",
+      "outcome": "passed",
+      "bytes": 427,
+      "sha256": "13afb307cc4e65899e45b588f2827f495536001d460576fe85de2aa3f3dbca95"
+    },
+    {
+      "id": "initial-schema-regressions",
+      "outcome": "failed",
+      "bytes": 26686,
+      "sha256": "f8c6e87cf485ea153962a5faa201ee617b915d437522ebd5bec607bd9297a673"
+    },
+    {
+      "id": "legacy-fixture-regressions",
+      "outcome": "failed",
+      "bytes": 24707,
+      "sha256": "2e87facec1701f9fa3dff9f51288dd67d8f93024f68300b4f6a7f125c715fc38"
+    },
+    {
+      "id": "intermediate-clippy-after-module-split",
+      "outcome": "passed",
+      "bytes": 1401,
+      "sha256": "b3b562a83c6d1708332c0d73700e6b67dafe3a64f0d9cca43adaf5676e317b28"
+    },
+    {
+      "id": "intermediate-regressions",
+      "outcome": "passed",
+      "bytes": 76783,
+      "sha256": "ccf3cd8f7f7c460f57017c78e1aa7f3c5e4d8918d356674059976371852df688"
+    },
+    {
+      "id": "cleanup-shutdown-control",
+      "outcome": "failed",
+      "bytes": 3051,
+      "sha256": "8f0382c161d87e65ac8c2597e5b853177bd2161a955e3d22b64b531bb76ceb4b"
+    },
+    {
+      "id": "final-clippy",
+      "outcome": "passed",
+      "bytes": 507,
+      "sha256": "ac028c778a05b1ce5f199721fc2e12a15b5198216ca63a0abcdf1ec645ab5745"
+    },
+    {
+      "id": "final-regressions",
+      "outcome": "passed",
+      "bytes": 78039,
+      "sha256": "47d81bffe6060a55088e093f165f1762bd8cf25c8a94b1afa5e50f65319a82b5"
+    },
+    {
+      "id": "window-and-legacy-controls",
+      "outcome": "passed",
+      "bytes": 1379,
+      "sha256": "7cea59f01e226f5cf13c16985488df54e94cf0d00304cf0c93dbdd7f5c520efa"
+    },
+    {
+      "id": "shared-cancellation-module",
+      "outcome": "passed",
+      "bytes": 798,
+      "sha256": "59073fee72afa83b4db70c13acf3521ab77ad7abb2d78fb6055901eb5320dd42"
+    },
+    {
+      "id": "intermediate-assembly-boundaries",
+      "outcome": "passed",
+      "bytes": 6856,
+      "sha256": "b17b7c090a371d93847c435a1d5fee11752780668f0bf4db578baf78cb305770"
+    },
+    {
+      "id": "frontend-build",
+      "outcome": "passed",
+      "bytes": 5717,
+      "sha256": "bc43e03d3c02af07fd6a2188b818bb19d32bdfce89a8b56e7887b560158e6ede"
+    },
+    {
+      "id": "initial-documentation-links",
+      "outcome": "failed",
+      "bytes": 980,
+      "sha256": "2f47e8ab3e02ae81cfee399c03c77c1eacefbded6d4d5901a431a28b40c051bb"
+    }
+  ]
+}

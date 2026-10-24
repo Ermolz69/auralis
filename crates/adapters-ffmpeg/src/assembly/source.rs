@@ -129,7 +129,7 @@ pub(super) fn prepare(
     Ok(prepared)
 }
 
-fn validate(source: &SpeechAudioLayout) -> Result<(), PortError> {
+pub(super) fn validate(source: &SpeechAudioLayout) -> Result<(), PortError> {
     if source.assembly_policy != POLICY
         || source.sample_rate != 48000
         || !matches!(source.channels, 1 | 2)

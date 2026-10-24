@@ -1,4 +1,6 @@
 mod app_root_lease;
+mod assembly_media;
+pub mod audio_assembly;
 pub mod caster;
 pub mod media_tools;
 #[cfg(feature = "native-e2e")]
@@ -162,6 +164,15 @@ pub fn setup(
     tauri::async_runtime::block_on(speech.recover())?;
     app.manage(speech_catalog);
     app.manage(speech);
+    let assembly = audio_assembly::setup(
+        &app_handle,
+        &app_paths,
+        &services,
+        job_manager.clone(),
+        prepared_bridge.emitter(),
+    )?;
+    tauri::async_runtime::block_on(assembly.recover())?;
+    app.manage(assembly);
 
     // 4. Register all static Tauri state & use cases BEFORE spawning any tasks
     app.manage(crate::state::ManagedJobRuntime(

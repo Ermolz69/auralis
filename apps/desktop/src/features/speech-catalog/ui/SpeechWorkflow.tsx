@@ -17,6 +17,7 @@ export function SpeechWorkflow({
   ...options
 }: SpeechWorkflowOptions & { renderVoiceSettings?: (disabled: boolean) => ReactNode }) {
   const { profileId, voiceId, referenceId } = options;
+  const workflow = useSpeechWorkflow(options);
   const {
     mode,
     setMode,
@@ -26,33 +27,11 @@ export function SpeechWorkflow({
     setTranslationId,
     subtitleId,
     setSubtitleId,
-    subtitleFiles,
-    translations,
-    source,
-    review,
-    assignments,
-    runs,
-    selected,
-    setSelected,
-    error,
-    busy,
-    audio,
-    run,
-    active,
-    changed,
-    refreshSources,
-    load,
-    confirm,
-    prepare,
-    start,
-    play,
-    assign,
-    cancel,
-    markerPreparation,
-    markerApplied,
-    normalize,
-    applyPreparation,
-  } = useSpeechWorkflow(options);
+  } = workflow;
+  const { subtitleFiles, translations, source, review, assignments } = workflow;
+  const { runs, selected, setSelected, error, busy, audio, run, active } = workflow;
+  const { changed, refreshSources, load, confirm, prepare, start, play, assign, cancel } = workflow;
+  const { markerPreparation, markerApplied, normalize, applyPreparation } = workflow;
   return (
     <div className="mt-4 space-y-3 border-t border-border pt-3 text-xs">
       <h3 className="text-sm font-medium text-text">1. Текст и подготовка</h3>
@@ -218,7 +197,7 @@ export function SpeechWorkflow({
         play={play}
       />
       <p className="text-muted">
-        Временные окна сохраняются. Подгонка речи под видео и экспорт видео — следующий этап.
+        Паузы и исходные временные окна можно проверить в разделе итогового аудио ниже.
       </p>
     </div>
   );

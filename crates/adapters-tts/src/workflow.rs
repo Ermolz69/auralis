@@ -277,24 +277,6 @@ async fn read_bounded_json(path: &std::path::Path) -> Result<Vec<u8>, PortError>
     Ok(bytes)
 }
 
-#[cfg(test)]
-mod tests {
-    #[tokio::test]
-    async fn retained_json_is_bounded_before_deserialization()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let root = tempfile::tempdir()?;
-        let path = root.path().join("oversized.json");
-        let file = std::fs::File::create(&path)?;
-        file.set_len(super::MAX_SPEECH_PLAN_BYTES as u64 + 1)?;
-        drop(file);
-        assert!(super::read_bounded_json(&path).await.is_err());
-        assert!(super::read_bounded_json(root.path()).await.is_err());
-        std::fs::write(&path, b"{\"kept\":true}")?;
-        assert_eq!(super::read_bounded_json(&path).await?, b"{\"kept\":true}");
-        Ok(())
-    }
-}
-
 struct Observer {
     observer: Arc<dyn SpeechProgressObserver>,
     run_id: Uuid,
@@ -332,5 +314,23 @@ fn invalid(message: &str) -> PortError {
 fn io_error(e: std::io::Error) -> PortError {
     PortError::Io {
         message: e.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    async fn retained_json_is_bounded_before_deserialization()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = tempfile::tempdir()?;
+        let path = root.path().join("oversized.json");
+        let file = std::fs::File::create(&path)?;
+        file.set_len(super::MAX_SPEECH_PLAN_BYTES as u64 + 1)?;
+        drop(file);
+        assert!(super::read_bounded_json(&path).await.is_err());
+        assert!(super::read_bounded_json(root.path()).await.is_err());
+        std::fs::write(&path, b"{\"kept\":true}")?;
+        assert_eq!(super::read_bounded_json(&path).await?, b"{\"kept\":true}");
+        Ok(())
     }
 }

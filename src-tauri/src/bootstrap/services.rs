@@ -26,6 +26,7 @@ pub struct RuntimeServices {
     pub translation_reviews: Arc<dyn ports::translation_reviews::TranslationReviewStore>,
     pub translation_host_jobs: Arc<dyn ports::translation_host_job::TranslationHostJobStore>,
     pub speech: Arc<dyn ports::speech_workflow::SpeechWorkflowStore>,
+    pub audio_assembly: Arc<dyn ports::audio_jobs::AudioAssemblyStore>,
 }
 
 pub fn build_job_scheduler(

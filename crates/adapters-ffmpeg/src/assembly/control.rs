@@ -7,13 +7,7 @@ pub(super) struct WorkControl {
     pub deadline: Instant,
 }
 
-pub(super) struct CancelOnDrop(pub CancellationToken);
-
-impl Drop for CancelOnDrop {
-    fn drop(&mut self) {
-        self.0.cancel();
-    }
-}
+pub(super) use ports::cancellation::CancelOnDrop;
 
 impl WorkControl {
     pub fn new(cancel: CancellationToken, timeout: Duration) -> Result<Self, PortError> {

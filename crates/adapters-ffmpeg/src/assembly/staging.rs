@@ -24,6 +24,59 @@ pub(super) struct PreparedAssembly {
     pub raw_source: Option<ports::speech_audio::SpeechAudioLayout>,
 }
 
+pub(super) fn release(owned_root: &Path, directory: &Path) -> Result<(), PortError> {
+    if !directory.is_absolute()
+        || directory.parent() != Some(owned_root)
+        || !directory
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("audio-assembly-"))
+    {
+        return Err(error::invalid(
+            "Assembly cleanup target is outside its owned staging root",
+        ));
+    }
+    let metadata = match fs::symlink_metadata(directory) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(super::error::io(error)),
+    };
+    let canonical = fs::canonicalize(directory).map_err(error::io)?;
+    if !directory.is_absolute()
+        || !metadata.is_dir()
+        || metadata.file_type().is_symlink()
+        || canonical.parent() != Some(owned_root)
+        || !canonical
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("audio-assembly-"))
+    {
+        return Err(error::invalid(
+            "Assembly cleanup target is not a generated child of its owned staging root",
+        ));
+    }
+    let mut files = Vec::new();
+    for entry in fs::read_dir(&canonical).map_err(error::io)? {
+        let entry = entry.map_err(error::io)?;
+        if !entry.file_type().map_err(error::io)?.is_file() || files.len() >= 32772 {
+            return Err(error::invalid(
+                "Assembly staging cleanup requires a bounded flat directory of generated files",
+            ));
+        }
+        files.push(entry.path());
+    }
+    for file in files {
+        fs::remove_file(file).map_err(|error| PortError::CleanupFailed {
+            resource: "audio_assembly_staging".into(),
+            message: error.to_string(),
+        })?;
+    }
+    fs::remove_dir(canonical).map_err(|error| PortError::CleanupFailed {
+        resource: "audio_assembly_staging".into(),
+        message: error.to_string(),
+    })
+}
+
 pub(super) fn prepare(
     request: &AudioAssemblyRequest,
     timeline: AudioTimeline,

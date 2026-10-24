@@ -25,7 +25,9 @@ pub(super) async fn setup_db() -> SqlitePool {
         .unwrap();
     sqlx::raw_sql(concat!(
         include_str!("../../speech_workflow_schema.sql"),
-        include_str!("../../speech_discard_schema.sql")
+        include_str!("../../speech_discard_schema.sql"),
+        include_str!("../../speech_limits_schema.sql"),
+        include_str!("../../audio_assembly_schema.sql")
     ))
     .execute(&pool)
     .await

@@ -6,4 +6,5 @@ pub enum JobKind {
     Dubbing,
     Translation,
     Speech,
+    AudioAssembly,
 }

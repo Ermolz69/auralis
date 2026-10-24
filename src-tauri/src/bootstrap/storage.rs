@@ -164,6 +164,9 @@ async fn setup_storage_with_lease(
             speech: Arc::new(adapters_storage::sqlite::SqliteSpeechRunStore::new(
                 pool.clone(),
             )),
+            audio_assembly: Arc::new(adapters_storage::sqlite::SqliteAudioAssemblyStore::new(
+                pool.clone(),
+            )),
             translation_host_jobs: Arc::new(SqliteTranslationHostJobStore::new(pool)),
         },
         outbox_repo,

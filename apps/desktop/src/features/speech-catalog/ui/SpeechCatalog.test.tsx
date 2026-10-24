@@ -87,12 +87,49 @@ describe('SpeechCatalog', () => {
   });
 
   it('shows a catalog loading failure without exposing an empty selection', async () => {
-    invoke.mockRejectedValue(new Error('Catalog unavailable'));
+    invoke.mockImplementation((command: string) =>
+      command === 'get_speech_catalog_cmd'
+        ? Promise.reject(new Error('Catalog unavailable'))
+        : Promise.resolve([]),
+    );
     render(<SpeechCatalog projectId="project-two" />);
     expect(await screen.findByRole('alert')).toHaveProperty(
       'textContent',
       expect.stringContaining('Catalog unavailable'),
     );
     expect(screen.queryByLabelText('Голос')).toBeNull();
+  });
+
+  it('keeps ready raw speech and assembly history accessible when the TTS catalog is unavailable', async () => {
+    invoke.mockImplementation((command: string) => {
+      if (command === 'get_speech_catalog_cmd')
+        return Promise.reject(new Error('TTS runtime unavailable'));
+      if (command === 'list_speech_runs_cmd')
+        return Promise.resolve([
+          {
+            run_id: 'raw-ready',
+            profile_id: 'fixture-profile',
+            utterance_count: 1,
+            chunk_count: 1,
+            job: null,
+            result: { ready: true },
+          },
+        ]);
+      return Promise.resolve([]);
+    });
+    render(<SpeechCatalog projectId="project-three" />);
+    await screen.findByText('TTS runtime unavailable');
+    await screen.findByRole('option', { name: /raw-read/ });
+    fireEvent.change(screen.getByLabelText('Готовый исходный синтез'), {
+      target: { value: 'raw-ready' },
+    });
+    expect(screen.getByRole('button', { name: 'Измерить и показать тайминг' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(screen.getByLabelText('Сборка итогового аудио')).not.toBeNull();
+    expect(invoke).toHaveBeenCalledWith('list_audio_assemblies_cmd', {
+      projectId: 'project-three',
+    });
   });
 });
