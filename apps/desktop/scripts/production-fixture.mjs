@@ -35,6 +35,8 @@ export function installFixture() {
   window.__smokeCallbacks = new Map();
   window.__smokeListeners = new Map();
   window.__smokeJob = job;
+  window.isTauri = true;
+  window.__smokeWindow = { maximized: false, minimized: false, closed: false };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
     unregisterListener(_event, id) {
       window.__smokeCallbacks.delete(id);
@@ -63,6 +65,7 @@ export function installFixture() {
     },
   };
   window.__TAURI_INTERNALS__ = {
+    metadata: { currentWindow: { label: 'main' }, currentWebview: { label: 'main' } },
     transformCallback(callback) {
       window.__smokeCallbacks.set(++callbackId, callback);
       return callbackId;
@@ -72,6 +75,22 @@ export function installFixture() {
     },
     async invoke(command, args) {
       window.__smokeCommands.push(command);
+      if (command === 'plugin:app|version') return '0.1.0';
+      if (command === 'plugin:updater|check') return null;
+      if (command === 'plugin:window|is_maximized') return window.__smokeWindow.maximized;
+      if (command === 'plugin:window|toggle_maximize') {
+        window.__smokeWindow.maximized = !window.__smokeWindow.maximized;
+        return null;
+      }
+      if (command === 'plugin:window|minimize') {
+        if (window.__smokeWindowFailure) throw new Error('Window action rejected');
+        window.__smokeWindow.minimized = true;
+        return null;
+      }
+      if (command === 'plugin:window|close') {
+        window.__smokeWindow.closed = true;
+        return null;
+      }
       if (command === 'plugin:event|listen') {
         window.__smokeListeners.set(args.event, args.handler);
         return ++callbackId;
