@@ -1,7 +1,7 @@
 import { describeCommandError } from '@/shared/api/contracts/error';
 import { useEffect, useState } from 'react';
-import { useLibrary, toolNames, defaultTool } from '@/entities/library';
-import type { LibraryTool, LibraryWorkspace } from '@/shared/api/contracts/library';
+import { useLibrary, defaultTool } from '@/entities/library';
+import type { LibraryWorkspace } from '@/shared/api/contracts/library';
 import { LibraryCreateDialog } from '@/widgets/library-browser';
 import { importFiles } from '@/entities/library';
 import { button, field } from '@/widgets/library-browser';
@@ -10,8 +10,9 @@ import { panelKey, workspacePanels } from '../model/panels';
 import { parseDraft } from '../model/tabDraft';
 import { WorkspaceAssetBrowser } from './WorkspaceAssetBrowser';
 import { WorkspaceTabs } from './WorkspaceTabs';
+import { WorkspaceToolMenu } from './WorkspaceToolMenu';
 export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) {
-  const { state, projects, mutate, refresh, openTool } = useLibrary();
+  const { state, projects, mutate, refresh, openTool, view, workspaceId } = useLibrary();
   const activeAssetId = workspace.tabs.find((tab) => tab.id === workspace.activeTab)?.assetId;
   const [assetId, setAssetId] = useState(activeAssetId ?? workspace.assetId ?? '');
   useEffect(() => {
@@ -29,6 +30,7 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
   const title = workspace.projectId
     ? projects.find((p) => p.id === workspace.projectId)?.title
     : state.assets.find((a) => a.id === workspace.assetId)?.name;
+  const selectedAsset = assets.find((asset) => asset.id === assetId);
   const close = async (id: string) => {
     const tab = workspace.tabs.find((t) => t.id === id)!;
     const draft = parseDraft(tab.draft);
@@ -64,7 +66,8 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
       {workspace.projectId && (
         <WorkspaceAssetBrowser
           projectId={workspace.projectId}
-          selectedId={assetId || null}
+          selectedId={selectedAsset?.id ?? null}
+          onSelect={(asset) => setAssetId(asset.id)}
           onOpen={(asset) => {
             setAssetId(asset.id);
             void act(() => openTool(defaultTool(asset), asset.id));
@@ -72,49 +75,43 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
         />
       )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-border p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {!workspace.projectId && (
-              <select
-                aria-label="Материал для инструмента"
-                className={`${field} !w-auto max-w-72`}
-                value={assetId}
-                onChange={(e) => setAssetId(e.target.value)}
-              >
-                <option value="">Новый ввод</option>
-                {assets.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {(Object.entries(toolNames) as [LibraryTool, string][]).map(([tool, name]) => (
-              <button
-                className={button}
-                key={tool}
-                onClick={() => void act(() => openTool(tool, assetId || null))}
-              >
-                {name}
-              </button>
-            ))}
-            <button className={button} onClick={() => setDialog(true)}>
-              + Текст
-            </button>
-            <button
-              className={button}
-              onClick={() => void act(() => importFiles(destination, mutate, refresh))}
+        {!workspace.projectId && (
+          <div className="shrink-0 px-3 pt-3">
+            <select
+              aria-label="Материал для инструмента"
+              className={`${field} !w-auto max-w-72`}
+              value={assetId}
+              onChange={(e) => setAssetId(e.target.value)}
             >
-              Импорт
-            </button>
+              <option value="">Новый ввод</option>
+              {assets.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
           </div>
-          {error && (
-            <p role="alert" className="mt-2 text-sm">
-              {error}
-            </p>
-          )}
-        </div>
-        <WorkspaceTabs workspace={workspace} close={(id) => void act(() => close(id))} />
+        )}
+        {error && (
+          <p role="alert" className="px-3 pt-3 text-sm">
+            {error}
+          </p>
+        )}
+        <WorkspaceTabs
+          workspace={workspace}
+          close={(id) => void act(() => close(id))}
+          add={
+            view === 'workspace' &&
+            workspaceId === workspace.id && (
+              <WorkspaceToolMenu
+                materialName={selectedAsset?.name}
+                onTool={(tool) => void act(() => openTool(tool, selectedAsset?.id ?? null))}
+                onCreateText={() => setDialog(true)}
+                onImport={() => void act(() => importFiles(destination, mutate, refresh))}
+              />
+            )
+          }
+        />
         <div className="mx-3 mb-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-bg">
           {workspacePanels(workspace.tabs, workspace.activeTab).map((panel) => (
             <div
@@ -132,8 +129,8 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
             <div className="p-6">
               <p className="mb-4 text-muted">
                 {workspace.projectId
-                  ? 'Выберите материал слева или откройте инструмент.'
-                  : 'Выберите материал и откройте нужный инструмент.'}
+                  ? 'Выберите материал слева и нажмите «+» рядом с вкладками, чтобы открыть инструмент.'
+                  : 'Нажмите «+» рядом с вкладками и выберите инструмент.'}
               </p>
               {!workspace.projectId && (
                 <div className="grid gap-2 sm:grid-cols-2">

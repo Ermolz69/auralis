@@ -8,10 +8,12 @@ const icons = { text: 'FileText', subtitle: 'Subtitles', audio: 'Volume2', video
 export function WorkspaceAssetBrowser({
   projectId,
   selectedId,
+  onSelect,
   onOpen,
 }: {
   projectId: string;
   selectedId: string | null;
+  onSelect: (asset: LibraryAsset) => void;
   onOpen: (asset: LibraryAsset) => void;
 }) {
   const { state, refresh } = useLibrary();
@@ -29,7 +31,8 @@ export function WorkspaceAssetBrowser({
         className={`flex w-full min-w-0 items-start gap-2 rounded-md border px-2 py-2 text-left text-sm hover:bg-surface-raised ${selectedId === asset.id ? 'border-border-strong bg-surface-active' : 'border-transparent'}`}
         aria-current={selectedId === asset.id ? 'page' : undefined}
         title={asset.name}
-        onClick={() => onOpen(asset)}
+        onClick={() => onSelect(asset)}
+        onDoubleClick={() => onOpen(asset)}
       >
         <Icon name={icons[asset.kind]} size={16} className="mt-0.5 shrink-0" />
         <span className="min-w-0">

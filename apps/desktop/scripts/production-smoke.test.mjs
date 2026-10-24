@@ -23,14 +23,17 @@ test(
       await page.getByText('Background fixture job', { exact: true }).last().waitFor();
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Review fixture', exact: true }).dblclick();
-      await page.getByRole('button', { name: 'Источник и субтитры', exact: true }).click();
+      await page.getByRole('button', { name: 'Открыть инструмент', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Источник и субтитры', exact: true }).click();
       await page.getByTestId('source-workspace').waitFor();
       await queue.click();
       await page.getByText('Background fixture job', { exact: true }).last().waitFor();
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
       await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
-      await page.getByRole('combobox', { name: 'Открытые рабочие пространства' }).selectOption('project:review-project');
+      await page
+        .getByRole('combobox', { name: 'Открытые рабочие пространства' })
+        .selectOption('project:review-project');
       await page.getByTestId('source-workspace').waitFor();
       assert.deepEqual(errors, []);
       assert.deepEqual(await page.evaluate(() => window.__smokeUnknownCommands), []);

@@ -42,7 +42,9 @@ test(
           w.tabs.some((t) => t.draft.includes('Мой сохранённый черновик.')),
         ),
       );
-      await page.getByRole('button', { name: 'Синтез речи', exact: true }).click();
+      const add = page.getByRole('button', { name: 'Открыть инструмент', exact: true });
+      await add.click();
+      await page.getByRole('menuitem', { name: 'Синтез речи', exact: true }).click();
       assert.equal(await input.inputValue(), 'Мой сохранённый черновик.');
       const tabs = page.getByRole('tablist', { name: 'Вкладки рабочего пространства' });
       const tabBoxes = await tabs.getByRole('tab').evaluateAll((elements) =>
@@ -98,13 +100,33 @@ test(
         0,
       );
       await resources.getByRole('button', { name: /Общий рассказ Текст/ }).click();
+      assert.equal(await input.inputValue(), 'Первая глава.');
+      await add.click();
+      const menu = page.getByRole('menu', { name: 'Инструменты для материала' });
+      await menu.getByText('Общий рассказ', { exact: true }).waitFor();
+      await page.keyboard.press('ArrowDown');
+      assert.equal(
+        await page
+          .getByRole('menuitem', { name: 'Текст и подготовка', exact: true })
+          .evaluate((element) => element === document.activeElement),
+        true,
+      );
+      await page.keyboard.press('Escape');
+      assert.equal(await menu.count(), 0);
+      assert.equal(await add.evaluate((element) => element === document.activeElement), true);
+      await add.click();
+      await page.getByRole('menuitem', { name: 'Текст и подготовка', exact: true }).click();
+      await page
+        .getByRole('tab', { name: 'Текст и подготовка · Общий рассказ', exact: true })
+        .waitFor();
       assert.equal(await input.inputValue(), 'Добрый вечер.');
       await resources.getByRole('searchbox', { name: 'Поиск в материалах проекта' }).fill('главы');
       assert.equal(await resources.getByRole('button', { name: /Общий рассказ Текст/ }).count(), 0);
-      await resources.getByRole('button', { name: /Текст главы Текст/ }).click();
+      await resources.getByRole('button', { name: /Текст главы Текст/ }).dblclick();
       await resources.getByRole('searchbox', { name: 'Поиск в материалах проекта' }).fill('');
       assert.equal(await input.inputValue(), 'Первая глава.');
-      await page.getByRole('button', { name: 'Синтез речи', exact: true }).click();
+      await add.click();
+      await page.getByRole('menuitem', { name: 'Синтез речи', exact: true }).click();
       assert.equal(await input.inputValue(), 'Первая глава.');
       await page
         .getByRole('tab', { name: 'Текст и подготовка · Текст главы', exact: true })
@@ -127,6 +149,17 @@ test(
           fullPage: true,
         });
       await page.setViewportSize({ width: 800, height: 800 });
+      await add.click();
+      const menuBox = await menu.boundingBox();
+      assert.ok(menuBox.x >= 0 && menuBox.x + menuBox.width <= 800);
+      if (process.env.AURALIS_LIBRARY_EVIDENCE)
+        await page.screenshot({
+          path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'tool-menu-compact.png'),
+          fullPage: true,
+        });
+      await page.getByRole('menuitem', { name: 'Новый текст', exact: true }).click();
+      await page.getByRole('dialog').waitFor();
+      await page.getByRole('dialog').getByRole('button', { name: 'Отмена', exact: true }).click();
       if (process.env.AURALIS_LIBRARY_EVIDENCE)
         await page.screenshot({
           path: path.join(process.env.AURALIS_LIBRARY_EVIDENCE, 'project-workspace-compact.png'),

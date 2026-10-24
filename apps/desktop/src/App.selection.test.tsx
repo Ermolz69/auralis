@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { invoke, listen } from '@/shared/api/tauri';
 import { emptyLibrary, type LibraryState } from '@/shared/api/contracts/library';
@@ -76,7 +76,8 @@ it('opens standalone assets outside the library and preserves tabs on return', a
   fireEvent.doubleClick(await screen.findByRole('button', { name: /Standalone Текст/ }));
   expect(await screen.findByRole('tab', { name: /Текст и подготовка/ })).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Все материалы' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Синтез речи' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть инструмент' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Синтез речи' }));
   await screen.findByRole('tab', { name: /Синтез речи/ });
   fireEvent.click(screen.getByRole('button', { name: 'Библиотека' }));
   expect(screen.queryByRole('tablist')).toBeNull();
@@ -85,6 +86,47 @@ it('opens standalone assets outside the library and preserves tabs on return', a
   });
   expect(await screen.findByRole('tab', { name: /Синтез речи/ })).toBeTruthy();
   expect(state.workspaces[0].tabs).toHaveLength(2);
+});
+it('opens the selected project material through the tab menu without replacing other tabs', async () => {
+  state.assets.push({ ...state.assets[0], id: 'b', name: 'Second material' });
+  state.links.push(
+    ...['a', 'b'].map((assetId) => ({ projectId: project.id, assetId, folderId: null })),
+  );
+  render(<App />);
+  fireEvent.doubleClick(await screen.findByRole('button', { name: 'Project one' }));
+  const resources = await screen.findByRole('complementary', {
+    name: 'Материалы текущего проекта',
+  });
+  fireEvent.click(within(resources).getByRole('button', { name: /Standalone/ }));
+  expect(screen.queryByRole('tab')).toBeNull();
+  const add = screen.getByRole('button', { name: 'Открыть инструмент' });
+  fireEvent.click(add);
+  const menu = screen.getByRole('menu');
+  expect(menu.textContent).toContain('Standalone');
+  const source = within(menu).getByRole('menuitem', { name: 'Источник и субтитры' });
+  expect(document.activeElement).toBe(source);
+  fireEvent.keyDown(source, { key: 'ArrowDown' });
+  expect(document.activeElement).toBe(
+    within(menu).getByRole('menuitem', { name: 'Текст и подготовка' }),
+  );
+  fireEvent.keyDown(menu, { key: 'Escape' });
+  expect(screen.queryByRole('menu')).toBeNull();
+  expect(document.activeElement).toBe(add);
+  fireEvent.click(add);
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Текст и подготовка' }));
+  await screen.findByRole('tab', { name: 'Текст и подготовка · Standalone' });
+  fireEvent.click(within(resources).getByRole('button', { name: /Second material/ }));
+  expect(screen.getAllByRole('tab')).toHaveLength(1);
+  fireEvent.click(add);
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Синтез речи' }));
+  await screen.findByRole('tab', { name: 'Синтез речи · Second material' });
+  expect(state.workspaces[0].tabs.map((tab) => [tab.tool, tab.assetId])).toEqual([
+    ['text', 'a'],
+    ['speech', 'b'],
+  ]);
+  fireEvent.click(add);
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Синтез речи' }));
+  await waitFor(() => expect(screen.getAllByRole('tab')).toHaveLength(2));
 });
 it('keeps settings separate and recovers when the open project is removed elsewhere', async () => {
   render(<App />);

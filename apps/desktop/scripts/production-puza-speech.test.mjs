@@ -5,7 +5,6 @@ import { serveProduction } from './production-server.mjs';
 import { installFixture } from './production-fixture.mjs';
 import { installSpeechFixture } from './library-speech-fixture.mjs';
 
-
 test(
   'production speech panel previews, confirms and prepares explicit user selections',
   { timeout: 45000 },
@@ -21,7 +20,8 @@ test(
       await page.addInitScript(installSpeechFixture);
       await page.goto(server.url);
       await page.getByRole('button', { name: 'Review fixture', exact: true }).dblclick();
-      await page.getByRole('button', { name: 'Текст и подготовка', exact: true }).click();
+      await page.getByRole('button', { name: 'Открыть инструмент', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Текст и подготовка', exact: true }).click();
       const panel = page.getByRole('region', { name: 'Голоса синтеза речи' });
       await panel.getByText('Проект проверен · библиотека голосов подключена').waitFor();
       await panel.getByLabel('Русский текст для озвучки').fill('Расстояние 12 км.');
@@ -31,7 +31,8 @@ test(
         .getByRole('button', { name: 'Использовать подготовленный текст', exact: true })
         .click();
       await panel.getByRole('button', { name: 'Текст проверен', exact: true }).click();
-      await page.getByRole('button', { name: 'Синтез речи', exact: true }).click();
+      await page.getByRole('button', { name: 'Открыть инструмент', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Синтез речи', exact: true }).click();
       await panel.getByLabel('Движок', { exact: true }).selectOption('espeech');
       await panel.getByLabel('Голос', { exact: true }).selectOption('geralt_espeech');
       await panel.getByRole('button', { name: 'Сохранить голос проекта', exact: true }).click();
