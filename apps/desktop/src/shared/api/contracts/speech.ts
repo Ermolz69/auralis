@@ -68,7 +68,7 @@ export interface SpeechCommandMap {
       profileId: string;
       voiceId: string;
       referenceId: string;
-      allowUnverifiedNeutral?: boolean;
+      allowUnverifiedNeutral?: boolean | null;
     };
     result: PuzaVoiceBinding;
   };
