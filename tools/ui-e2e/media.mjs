@@ -4,6 +4,8 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { hash, owned, json } from './core.mjs';
 import { inspectWav } from './wav.mjs';
+import { createHash } from 'node:crypto';
+import { verifySpeechEvidence } from './speech-evidence.mjs';
 
 export async function verifySources(profile, spec) {
   const db = new DatabaseSync(path.join(profile, 'auralis.sqlite'), { readOnly: true });
@@ -78,6 +80,25 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
         .prepare('SELECT plan_json,plan_sha256 FROM speech_run_intents WHERE run_id=?')
         .get(row.source_run_id);
       const speech = JSON.parse(raw.plan_json);
+      const digest = (value) => createHash('sha256').update(value).digest('hex');
+      assert.equal(digest(raw.plan_json), raw.plan_sha256);
+      assert.equal(digest(row.plan_json), row.plan_sha256);
+      const reviewed = db
+        .prepare(
+          'SELECT r.snapshot_json FROM speech_text_reviews r JOIN speech_run_reviews s USING(decision_id) WHERE s.run_id=?',
+        )
+        .get(row.source_run_id);
+      assert.ok(reviewed, 'Speech has no saved approval snapshot');
+      const review = JSON.parse(reviewed.snapshot_json);
+      verifySpeechEvidence(speech, review, selections);
+      if (review.source.kind === 'translation') {
+        const decision = db
+          .prepare(
+            'SELECT decision FROM translation_review_events WHERE project_id=? AND translation_id=? AND result_sha256=? ORDER BY sequence DESC LIMIT 1',
+          )
+          .get(review.project_id, review.source.source_id, review.source.sha256);
+        assert.equal(decision?.decision, 'approved', 'The translated source is not approved');
+      }
       if (plan.video) {
         assert.equal(publication.files.length, 4);
         assert.equal(publication.files.filter((file) => file.kind === 'video').length, 1);
@@ -97,18 +118,6 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
           ?.ready,
         1,
       );
-      assert.ok(speech.review.decision_id);
-      for (const utterance of speech.utterances)
-        assert.ok(
-          selections.some(
-            (item) =>
-              item.engine_id === utterance.engine_id &&
-              item.profile_id === utterance.profile_id &&
-              item.voice_id === utterance.voice_id &&
-              item.reference_id === utterance.reference_id,
-          ),
-          'Speech selection differs from the frozen case',
-        );
       assert.equal(publication.full_scale_samples, 0);
       assert.ok(publication.peak_sample_abs < 32768);
       for (const file of [

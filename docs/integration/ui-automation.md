@@ -140,3 +140,20 @@ the report requires the corresponding verified-boundary diagnostic. URL refusal
 alone cannot establish that installed components are connected. This case forbids
 inference and creates no project or job. Actual source acquisition, translation,
 TTS, native MP4 encoding and real-media playback require a distinct real case.
+
+The ordinary connected Windows smoke passed all ten steps for
+`UI-COMPONENT-SMOKE-20261025-v1`. Its candidate was built from
+`f1d31f3cfe2ca583171ab3e9ea40866ca6ff5e75` with executable SHA-256
+`4e893efa00597dad1a11cd25b1438a2e03a329e2d4216e7d9c46ade9e9812ebd`.
+The application verified the installed CONTRACT boundary, refused the invalid
+host, retained an empty isolated profile and closed without forced termination.
+No inference or real-media acceptance was performed.
+
+The real artifact verifier resolves engine/profile from the plan and voice from
+its cast, matching the persisted CONTRACT schema. It compares cue order, text and
+timing with the saved approval snapshot, requires the matching translation
+approval, and verifies both immutable plan hashes. `task ui:check:runner` passed
+13 checks, including changed source, timing, cast and selection refusal.
+`task ui:lint`, `task ui:check:video`, `task ui:check:frontend`,
+`task ui:regression`, `task fe:e2e` and `task docs:integration` passed without
+model inference. The existing browser suite retained 35 passing tests.
