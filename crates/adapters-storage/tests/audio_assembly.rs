@@ -1,6 +1,8 @@
 #[allow(dead_code)]
 #[path = "support/assembly_source.rs"]
 mod source;
+#[path = "support/video_publication.rs"]
+mod video_publication;
 
 use adapters_storage::sqlite::{
     SqliteArtifactIndex, SqliteAudioAssemblyStore, SqliteSpeechRunStore, SqliteStorageUnitOfWork,
@@ -423,7 +425,7 @@ async fn schema18_upgrade_keeps_ready_raw_speech_and_foreign_keys()
         sqlx::query_scalar::<_, i64>("PRAGMA user_version")
             .fetch_one(&reopened)
             .await?,
-        19
+        20
     );
     assert!(
         sqlx::query("PRAGMA foreign_key_check")

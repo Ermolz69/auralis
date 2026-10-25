@@ -192,13 +192,45 @@ impl AudioAssemblyUseCases {
                 invalid("Verified assembly measurements differ from the reviewed plan").into(),
             );
         }
+        if plan.video.is_some()
+            && let Err(error) = self
+                .stage(
+                    &mut job,
+                    attempt,
+                    75,
+                    domain::dubbing::DubbingPipelineStage::ExportResult,
+                    "Сборка видео с русской озвучкой",
+                )
+                .await
+        {
+            self.cleanup_unpublished(&[], Some(result.staging_root))
+                .await?;
+            return Err(error);
+        }
+        let video = match self.render_video(&plan, &result, cancel.clone()).await {
+            Ok(video) => video,
+            Err(error) => {
+                if !matches!(
+                    &error,
+                    ApplicationError::Port(PortError::CleanupFailed { .. })
+                ) {
+                    self.cleanup_unpublished(&[], Some(result.staging_root))
+                        .await?;
+                }
+                return Err(error);
+            }
+        };
         if let Err(error) = self
             .stage(
                 &mut job,
                 attempt,
                 90,
                 domain::dubbing::DubbingPipelineStage::ExportResult,
-                "Проверка и публикация WAV",
+                if plan.video.is_some() {
+                    "Проверка и публикация WAV и MP4"
+                } else {
+                    "Проверка и публикация WAV"
+                },
             )
             .await
         {
@@ -206,7 +238,7 @@ impl AudioAssemblyUseCases {
                 .await?;
             return Err(error);
         }
-        self.publish_result(&intent, attempt, &job, result, cancel)
+        self.publish_result(&intent, attempt, &job, result, video, cancel)
             .await
     }
 }

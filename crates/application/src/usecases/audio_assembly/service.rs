@@ -18,6 +18,7 @@ pub struct AudioAssemblyUseCases {
     pub inspector: Arc<dyn SpeechAudioInspectionPort>,
     pub renderer: Option<Arc<dyn SpeechAudioAssemblyPort>>,
     pub renderer_error: Option<String>,
+    pub video_export: Option<Arc<dyn ports::video_export::VideoExportPort>>,
     pub ffmpeg_sha256: Sha256Digest,
     pub runtime: Arc<dyn JobRuntimeControlPort>,
     pub emitter: Arc<dyn Fn(JobLifecycleEvent) + Send + Sync>,

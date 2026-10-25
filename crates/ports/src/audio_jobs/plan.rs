@@ -9,6 +9,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AudioAssemblyPlan {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video: Option<crate::video_export::VideoAssemblySource>,
     pub project_id: ProjectId,
     pub source_run_id: Uuid,
     pub source_attempt_id: Uuid,

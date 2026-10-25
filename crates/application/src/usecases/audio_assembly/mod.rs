@@ -10,6 +10,7 @@ mod run;
 mod service;
 mod source;
 mod state;
+mod video;
 
 pub use prepare::AudioAssemblyPreview;
 pub use request::{InspectAssemblyRequest, PrepareAssemblyRequest};

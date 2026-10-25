@@ -79,7 +79,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
-        14..=19 => has_speech && has_queue && has_reviews,
+        14..=20 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();

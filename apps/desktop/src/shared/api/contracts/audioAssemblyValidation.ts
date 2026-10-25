@@ -15,6 +15,26 @@ const digest = (value: unknown) => isString(value) && /^[a-f0-9]{64}$/.test(valu
 const id = (value: unknown) => isString(value) && value.length > 0;
 const positive = (value: unknown): value is number => integer(value) && value > 0;
 const channels = (value: unknown) => value === 1 || value === 2;
+function videoSource(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  return (
+    isRecord(value) &&
+    value.policy_id === 'replace_original_audio_pad_silence_h264_aac_v1' &&
+    isRecord(value.artifact) &&
+    isRecord(value.media) &&
+    id(value.artifact.artifact_id) &&
+    digest(value.artifact.sha256) &&
+    positive(value.artifact.size_bytes) &&
+    value.artifact.size_bytes === value.media.size_bytes &&
+    value.artifact.sha256 === value.media.sha256 &&
+    positive(value.media.duration_ms) &&
+    value.media.duration_ms <= 28800000 &&
+    positive(value.media.width) &&
+    positive(value.media.height) &&
+    isString(value.media.video_codec) &&
+    digest(value.media.ffprobe_sha256)
+  );
+}
 function settings(value: unknown): boolean {
   return (
     isRecord(value) &&
@@ -51,6 +71,7 @@ export function validateAssemblyPreview(value: unknown): boolean {
     return false;
   return (
     id(value.source_run_id) &&
+    videoSource(value.video) &&
     digest(value.source_plan_sha256) &&
     digest(value.preview_sha256) &&
     id(value.profile_id) &&
@@ -73,6 +94,7 @@ export function validateAssemblyPreview(value: unknown): boolean {
 }
 function publication(value: unknown, assembly: Record<string, unknown>): boolean {
   if (!isRecord(value) || !isRecord(assembly.job) || !Array.isArray(value.files)) return false;
+  const files = value.files;
   return (
     value.assembly_id === assembly.assembly_id &&
     id(value.attempt_id) &&
@@ -87,25 +109,34 @@ function publication(value: unknown, assembly: Record<string, unknown>): boolean
     value.peak_sample_abs <= 32768 &&
     integer(value.full_scale_samples) &&
     value.full_scale_samples <= Number(value.frames) * Number(value.channels) &&
-    value.files.length === 2 &&
+    value.files.length === (assembly.video ? 4 : 2) &&
     isArrayOf(
       value.files,
       (file) =>
         isRecord(file) &&
         id(file.artifact_id) &&
-        ['wav', 'manifest'].includes(String(file.kind)) &&
+        (assembly.video
+          ? ['wav', 'manifest', 'video', 'video_manifest']
+          : ['wav', 'manifest']
+        ).includes(String(file.kind)) &&
         digest(file.sha256) &&
         positive(file.size_bytes),
     ) &&
     value.files.filter((file) => isRecord(file) && file.kind === 'wav').length === 1 &&
     value.files.filter((file) => isRecord(file) && file.kind === 'manifest').length === 1 &&
-    new Set(value.files.map((file) => (isRecord(file) ? file.artifact_id : null))).size === 2
+    (!assembly.video ||
+      ['video', 'video_manifest'].every(
+        (role) => files.filter((file) => isRecord(file) && file.kind === role).length === 1,
+      )) &&
+    new Set(value.files.map((file) => (isRecord(file) ? file.artifact_id : null))).size ===
+      value.files.length
   );
 }
 export function validateAssemblyView(value: unknown): boolean {
   return (
     isRecord(value) &&
     id(value.assembly_id) &&
+    videoSource(value.video) &&
     id(value.source_run_id) &&
     digest(value.plan_sha256) &&
     settings(value.settings) &&

@@ -35,5 +35,17 @@ pub(super) async fn require_ready_source(
             ));
         }
     }
+    if let Some(video) = &plan.video {
+        let ready: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM artifacts WHERE id=? AND project_id=? AND state='ready' AND location_kind='StorageKey' AND kind IN (?,?) AND size_bytes=?)")
+            .bind(video.artifact.artifact_id.to_string()).bind(plan.project_id.to_string())
+            .bind(serialize_enum(&ArtifactKind::SourceVideo, "video source")?)
+            .bind(serialize_enum(&ArtifactKind::DownloadedVideo, "video source")?)
+            .bind(integer(video.artifact.size_bytes)?).fetch_one(&mut **tx).await.map_err(database)?;
+        if !ready {
+            return Err(conflict(
+                "Reviewed video source ownership, size or readiness changed",
+            ));
+        }
+    }
     Ok(())
 }

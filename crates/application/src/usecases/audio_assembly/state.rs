@@ -19,6 +19,7 @@ use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct AudioAssemblyView {
+    pub video: Option<ports::video_export::VideoAssemblySource>,
     pub assembly_id: Uuid,
     pub source_run_id: Uuid,
     pub plan_sha256: Sha256Digest,
@@ -145,10 +146,11 @@ impl AudioAssemblyUseCases {
                     || artifact.state != ArtifactState::Ready
                     || artifact.size_bytes != Some(file.size_bytes)
                     || artifact.kind
-                        != if file.kind == "wav" {
-                            ArtifactKind::MixedAudio
-                        } else {
-                            ArtifactKind::SpeechManifest
+                        != match file.kind.as_str() {
+                            "wav" => ArtifactKind::MixedAudio,
+                            "video" => ArtifactKind::FinalVideo,
+                            "manifest" | "video_manifest" => ArtifactKind::SpeechManifest,
+                            _ => return Err(invalid("Unknown published assembly role").into()),
                         }
                 {
                     return Err(invalid("Published assembly artifact failed its hash check").into());
@@ -156,6 +158,7 @@ impl AudioAssemblyUseCases {
             }
         }
         Ok(AudioAssemblyView {
+            video: plan.video,
             assembly_id: intent.assembly_id,
             source_run_id: intent.source_run_id,
             plan_sha256: intent.plan_sha256,

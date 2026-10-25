@@ -27,10 +27,10 @@ pub(crate) async fn publish_assembly(
 ) -> Result<(), PortError> {
     if job.kind() != &JobKind::AudioAssembly
         || job.status() != &JobStatus::Running
-        || staged.len() != 2
+        || !matches!(staged.len(), 2 | 4)
     {
         return Err(invalid(
-            "Assembly publication requires its running job and two staged files",
+            "Assembly publication requires its running job and a complete staged file set",
         ));
     }
     let mut tx = pool.begin_with("BEGIN IMMEDIATE").await.map_err(database)?;
@@ -46,10 +46,11 @@ pub(crate) async fn publish_assembly(
         ));
     }
     for (artifact, file) in staged.iter().zip(&publication.files) {
-        let kind = if file.kind == "wav" {
-            ArtifactKind::MixedAudio
-        } else {
-            ArtifactKind::SpeechManifest
+        let kind = match file.kind.as_str() {
+            "wav" => ArtifactKind::MixedAudio,
+            "video" => ArtifactKind::FinalVideo,
+            "manifest" | "video_manifest" => ArtifactKind::SpeechManifest,
+            _ => return Err(invalid("Unknown assembly output role")),
         };
         if artifact.artifact.id != file.artifact_id
             || artifact.size_bytes != file.size_bytes

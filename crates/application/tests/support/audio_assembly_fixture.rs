@@ -176,6 +176,7 @@ impl Fixture {
             entered: Notify::new(),
         });
         let cases = AudioAssemblyUseCases {
+            video_export: None,
             projects: Arc::new(SqliteProjectRepository::new(source.pool.clone())),
             speech: source.speech.clone(),
             store: Arc::new(SqliteAudioAssemblyStore::new(source.pool.clone())),
@@ -201,6 +202,7 @@ impl Fixture {
 
     pub fn request(&self, pause: u64) -> InspectAssemblyRequest {
         InspectAssemblyRequest {
+            video_artifact_id: None,
             source_run_id: self.source.source.run_id,
             settings: SpeechTimingSettings {
                 mode: TimingMode::Continuous,

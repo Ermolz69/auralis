@@ -9,6 +9,18 @@ use tauri::{AppHandle, Manager};
 
 pub(super) const WINDOWS_FFMPEG_SHA256: &str =
     "4044b3924c977ad31229d504c5d5b8685f9553124fbaff6e9c99048b42830341";
+pub(super) const WINDOWS_FFPROBE_SHA256: &str =
+    "fc37ca23d31ee08bb8f7e108edf3822f6ef3efc1a8d306bbe0b779190230710b";
+
+pub(super) fn pinned_ffprobe(app: &AppHandle) -> Result<(PathBuf, Sha256Digest), String> {
+    let (ffmpeg, _) = pinned_ffmpeg(app)?;
+    let path = ffmpeg.with_file_name("ffprobe-x86_64-pc-windows-msvc.exe");
+    verify(&path, WINDOWS_FFPROBE_SHA256)?;
+    Ok((
+        path,
+        Sha256Digest::parse(WINDOWS_FFPROBE_SHA256).map_err(str::to_string)?,
+    ))
+}
 
 pub(super) fn pinned_ffmpeg(app: &AppHandle) -> Result<(PathBuf, Sha256Digest), String> {
     if !cfg!(all(target_os = "windows", target_arch = "x86_64")) {

@@ -6,6 +6,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InspectAssemblyRequest {
+    #[serde(default)]
+    pub video_artifact_id: Option<domain::media::ArtifactId>,
     pub source_run_id: Uuid,
     pub settings: SpeechTimingSettings,
 }

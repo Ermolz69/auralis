@@ -5,7 +5,24 @@ export type AssemblySettings = {
   source_duration_ms: number | null;
   pause_after_ms: number[];
 };
-export type InspectAssemblyRequest = { source_run_id: string; settings: AssemblySettings };
+export type InspectAssemblyRequest = {
+  source_run_id: string;
+  settings: AssemblySettings;
+  video_artifact_id?: string;
+};
+export type VideoAssemblySource = {
+  policy_id: 'replace_original_audio_pad_silence_h264_aac_v1';
+  artifact: { artifact_id: string; sha256: string; size_bytes: number };
+  media: {
+    sha256: string;
+    size_bytes: number;
+    duration_ms: number;
+    width: number;
+    height: number;
+    video_codec: string;
+    ffprobe_sha256: string;
+  };
+};
 export type PrepareAssemblyRequest = {
   source: InspectAssemblyRequest;
   expected_preview_sha256: string;
@@ -39,6 +56,7 @@ export type TimingConflict =
     }
   | { kind: 'riff_size_limit'; frames: number; channels: number };
 export type AudioAssemblyPreview = {
+  video?: VideoAssemblySource | null;
   source_run_id: string;
   source_plan_sha256: string;
   preview_sha256: string;
@@ -61,10 +79,16 @@ export type AssemblyPublication = {
   pcm_sha256: string;
   peak_sample_abs: number;
   full_scale_samples: number;
-  files: { artifact_id: string; kind: 'wav' | 'manifest'; sha256: string; size_bytes: number }[];
+  files: {
+    artifact_id: string;
+    kind: 'wav' | 'manifest' | 'video' | 'video_manifest';
+    sha256: string;
+    size_bytes: number;
+  }[];
   ready: boolean;
 };
 export type AudioAssemblyView = {
+  video?: VideoAssemblySource | null;
   assembly_id: string;
   source_run_id: string;
   plan_sha256: string;

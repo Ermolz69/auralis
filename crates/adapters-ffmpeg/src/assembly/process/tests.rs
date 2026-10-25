@@ -32,6 +32,9 @@ fn fixture() {
         "flood" => {
             let _ = std::io::stderr().write_all(&vec![b'x'; 512 * 1024]);
         }
+        "stdout" => {
+            let _ = std::io::stdout().write_all(&vec![b'x'; 512 * 1024]);
+        }
         _ => {}
     }
     std::thread::sleep(Duration::from_secs(30));
@@ -44,6 +47,22 @@ fn temporary() -> tempfile::TempDir {
         Ok(value) => value,
         Err(error) => panic!("{error}"),
     }
+}
+
+#[tokio::test]
+async fn captured_stdout_is_bounded_and_waits_for_owned_exit_on_overflow() {
+    let directory = temporary();
+    let marker = directory.path().join("stdout-started");
+    let result = super::capture(
+        child("stdout", &marker),
+        CancellationToken::new(),
+        Duration::from_secs(5),
+        8192,
+        1024,
+    )
+    .await;
+    assert!(matches!(result, Err(PortError::ExternalToolFailed { .. })));
+    assert!(marker.exists());
 }
 
 #[tokio::test]

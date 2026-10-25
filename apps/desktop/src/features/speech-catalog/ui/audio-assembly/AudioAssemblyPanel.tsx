@@ -35,6 +35,28 @@ export function AudioAssemblyPanel({
       )}
       <fieldset disabled={work.busy} className="space-y-2">
         <label className="block">
+          Видеоэкспорт
+          <select
+            aria-label="Видеоэкспорт"
+            className="ml-2 rounded border border-border bg-surface p-2 text-text"
+            value={work.videoId}
+            onChange={(event) => work.setVideoId(event.target.value)}
+          >
+            <option value="">Только WAV</option>
+            {work.videos.map((video) => (
+              <option key={video.id} value={video.id}>
+                MP4 с русской озвучкой · {video.id.slice(0, 8)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {work.videoId && (
+          <p>
+            Исходная звуковая дорожка заменяется русской. Короткая озвучка дополняется тишиной; речь
+            длиннее видео требует пересмотра тайминга.
+          </p>
+        )}
+        <label className="block">
           Режим тайминга
           <select
             aria-label="Режим тайминга"
@@ -84,6 +106,12 @@ export function AudioAssemblyPanel({
           setPause={work.setPause}
         />
       )}
+      {work.current?.video && (
+        <p>
+          Видео проверено: {(work.current.video.media.duration_ms / 1000).toFixed(3)} с · SHA-256{' '}
+          {work.current.video.media.sha256.slice(0, 12)}. Эти данные входят в одобряемый план.
+        </p>
+      )}
       {work.current && work.current.conflicts.length === 0 && (
         <label className="flex items-start gap-2">
           <input
@@ -122,7 +150,8 @@ export function AudioAssemblyPanel({
             <option value="">Выберите сборку</option>
             {work.history.map((item) => (
               <option key={item.assembly_id} value={item.assembly_id}>
-                {item.assembly_id.slice(0, 8)} · источник {item.source_run_id.slice(0, 8)} ·{' '}
+                {item.assembly_id.slice(0, 8)} · {item.video ? 'WAV + MP4' : 'WAV'} · источник{' '}
+                {item.source_run_id.slice(0, 8)} ·{' '}
                 {item.settings.mode === 'continuous' ? 'непрерывно' : 'по окнам'} ·{' '}
                 {(item.frames / 48000).toFixed(2)} с ·{' '}
                 {item.job ? statuses[item.job.status] : 'план готов'}
@@ -159,7 +188,7 @@ export function AudioAssemblyPanel({
                 disabled={work.busy}
                 onClick={() => void work.start(false)}
               >
-                Собрать WAV
+                {work.run.video ? 'Собрать WAV и MP4' : 'Собрать WAV'}
               </button>
             )}
             {work.run.job &&
@@ -197,7 +226,20 @@ export function AudioAssemblyPanel({
         </div>
       )}
       {work.audio && <audio controls autoPlay src={work.audio} aria-label="Итоговое аудио" />}
-      <p>Проверка длительности исходного видео и отдельный видеоэкспорт ещё не подключены.</p>
+      {work.run?.result?.files.some((file) => file.kind === 'video') && (
+        <button className={button} disabled={work.busy} onClick={() => void work.playVideo()}>
+          Воспроизвести русское видео
+        </button>
+      )}
+      {work.video && (
+        <video
+          controls
+          autoPlay
+          src={work.video}
+          aria-label="Видео с русской озвучкой"
+          className="max-h-96 w-full"
+        />
+      )}
     </section>
   );
 }

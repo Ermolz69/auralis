@@ -22,12 +22,13 @@ impl AudioAssemblyUseCases {
         attempt: Uuid,
         job: &Job,
         result: StagedAudioAssembly,
+        video: Option<ports::video_export::StagedVideoExport>,
         cancel: CancellationToken,
     ) -> Result<(), ApplicationError> {
         let mut staged = Vec::new();
         let mut files = Vec::new();
         let renderer_root = result.staging_root.clone();
-        for (role, kind, path, hash, cap, name) in [
+        let mut outputs = vec![
             (
                 "wav",
                 ArtifactKind::MixedAudio,
@@ -44,7 +45,28 @@ impl AudioAssemblyUseCases {
                 16 * 1024 * 1024,
                 "assembly.json",
             ),
-        ] {
+        ];
+        if let Some(video) = video {
+            outputs.extend([
+                (
+                    "video",
+                    ArtifactKind::FinalVideo,
+                    video.video_path,
+                    video.video_sha256,
+                    1_u64 << 32,
+                    "russian.mp4",
+                ),
+                (
+                    "video_manifest",
+                    ArtifactKind::SpeechManifest,
+                    video.manifest_path,
+                    video.manifest_sha256,
+                    16 * 1024 * 1024,
+                    "video-export.json",
+                ),
+            ]);
+        }
+        for (role, kind, path, hash, cap, name) in outputs {
             if cancel.is_cancelled() {
                 self.cleanup_unpublished(&staged, Some(renderer_root))
                     .await?;

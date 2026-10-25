@@ -31,7 +31,7 @@ async fn review_only_v11_reaches_combined_schema() -> Result<(), Box<dyn Error>>
     pool.close().await;
 
     let upgraded = connect_sqlite(&database).await?;
-    assert_eq!(version(&upgraded).await?, 19);
+    assert_eq!(version(&upgraded).await?, 20);
     assert_eq!(
         table_count(&upgraded, "translation_review_events").await?,
         1
@@ -40,7 +40,7 @@ async fn review_only_v11_reaches_combined_schema() -> Result<(), Box<dyn Error>>
     assert_eq!(table_count(&upgraded, "job_executions").await?, 1);
     upgraded.close().await;
     let reopened = connect_sqlite(&database).await?;
-    assert_eq!(version(&reopened).await?, 19);
+    assert_eq!(version(&reopened).await?, 20);
     reopened.close().await;
     Ok(())
 }
@@ -58,7 +58,7 @@ async fn speech_queue_v12_reaches_combined_schema() -> Result<(), Box<dyn Error>
     pool.close().await;
 
     let upgraded = connect_sqlite(&database).await?;
-    assert_eq!(version(&upgraded).await?, 19);
+    assert_eq!(version(&upgraded).await?, 20);
     assert_eq!(
         table_count(&upgraded, "translation_review_events").await?,
         1

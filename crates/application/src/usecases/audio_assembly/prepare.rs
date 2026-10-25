@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct AudioAssemblyPreview {
+    pub video: Option<ports::video_export::VideoAssemblySource>,
     pub source_run_id: Uuid,
     pub source_plan_sha256: Sha256Digest,
     pub preview_sha256: Sha256Digest,
@@ -40,6 +41,7 @@ impl AudioAssemblyUseCases {
         let settings = request.settings.clone();
         let computed = self.compute(project, request, cancel).await?;
         Ok(AudioAssemblyPreview {
+            video: computed.plan.video,
             source_run_id: computed.intent.source_run_id,
             source_plan_sha256: computed.plan.timeline.source_plan_sha256,
             preview_sha256: computed.intent.plan_sha256,

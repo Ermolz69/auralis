@@ -8,6 +8,7 @@ import type {
   AudioAssemblyView as AssemblyView,
 } from '@/shared/api/contracts/audioAssembly';
 import type { SpeechRunView } from '@/shared/api/contracts/speech';
+import type { Artifact } from '@/shared/api/contracts/artifact';
 
 export function useAudioAssembly(projectId: string, source: SpeechRunView | undefined) {
   const [mode, setMode] = useState<AssemblySettings['mode']>('continuous');
@@ -18,6 +19,9 @@ export function useAudioAssembly(projectId: string, source: SpeechRunView | unde
   const [history, setHistory] = useState<AssemblyView[]>([]);
   const [selected, setSelected] = useState('');
   const [audio, setAudio] = useState<string | null>(null);
+  const [video, setVideo] = useState<string | null>(null);
+  const [videos, setVideos] = useState<Artifact[]>([]);
+  const [videoId, setVideoId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
@@ -30,7 +34,11 @@ export function useAudioAssembly(projectId: string, source: SpeechRunView | unde
       mode === 'continuous' ? (pauses[index] ?? 0) : 0,
     ),
   };
-  const request = { source_run_id: source?.run_id ?? '', settings };
+  const request = {
+    source_run_id: source?.run_id ?? '',
+    settings,
+    ...(videoId ? { video_artifact_id: videoId } : {}),
+  };
   const key = JSON.stringify(request);
   const current = preview?.key === key ? preview.value : null;
   const run = history.find((item) => item.assembly_id === selected);
@@ -39,6 +47,16 @@ export function useAudioAssembly(projectId: string, source: SpeechRunView | unde
 
   useEffect(() => {
     alive.current = true;
+    void Promise.all([
+      invoke('list_project_artifacts_cmd', { projectId, kind: 'downloadedVideo' }),
+      invoke('list_project_artifacts_cmd', { projectId, kind: 'sourceVideo' }),
+    ])
+      .then((items) => {
+        if (alive.current) setVideos(items.flat());
+      })
+      .catch((reason) => {
+        if (alive.current) setError(describeCommandError(reason));
+      });
     let running = false;
     const refresh = async () => {
       if (running) return;
@@ -79,6 +97,7 @@ export function useAudioAssembly(projectId: string, source: SpeechRunView | unde
     ]);
     setSelected(result.assembly_id);
     setAudio(null);
+    setVideo(null);
   };
   const changed = () => {
     setReviewed(false);
@@ -95,6 +114,13 @@ export function useAudioAssembly(projectId: string, source: SpeechRunView | unde
     selected,
     run,
     audio,
+    video,
+    videos,
+    videoId,
+    setVideoId: (value: string) => {
+      changed();
+      setVideoId(value);
+    },
     busy,
     error,
     active,
@@ -116,6 +142,7 @@ export function useAudioAssembly(projectId: string, source: SpeechRunView | unde
     select: (value: string) => {
       setSelected(value);
       setAudio(null);
+      setVideo(null);
     },
     inspect: () =>
       action(async () => {
@@ -170,6 +197,19 @@ export function useAudioAssembly(projectId: string, source: SpeechRunView | unde
         if (!file) return;
         const path = await invoke('resolve_artifact_path_cmd', { artifactId: file.artifact_id });
         if (alive.current) setAudio(convertFileSrc(path));
+      }),
+    playVideo: () =>
+      action(async () => {
+        setVideo(null);
+        if (!run?.result) return;
+        const verified = await invoke('verify_audio_assembly_cmd', {
+          projectId,
+          assemblyId: run.assembly_id,
+        });
+        const file = verified.result?.files.find((item) => item.kind === 'video');
+        if (!file) return;
+        const path = await invoke('resolve_artifact_path_cmd', { artifactId: file.artifact_id });
+        if (alive.current) setVideo(convertFileSrc(path));
       }),
   };
 }

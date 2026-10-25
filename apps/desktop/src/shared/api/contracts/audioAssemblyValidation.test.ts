@@ -75,6 +75,45 @@ const view = {
 };
 
 describe('managed audio assembly IPC', () => {
+  it('requires a complete unique video publication and exact source facts', () => {
+    const video = {
+      policy_id: 'replace_original_audio_pad_silence_h264_aac_v1',
+      artifact: { artifact_id: 'source-video', sha256: hash, size_bytes: 100 },
+      media: {
+        sha256: hash,
+        size_bytes: 100,
+        duration_ms: 5000,
+        width: 320,
+        height: 180,
+        video_codec: 'h264',
+        ffprobe_sha256: hash,
+      },
+    };
+    const videoFiles = [
+      ...files,
+      ...['video', 'video_manifest'].map((kind) => ({
+        artifact_id: kind,
+        kind,
+        sha256: hash,
+        size_bytes: 100,
+      })),
+    ];
+    const complete = { ...view, video, result: { ...publication, files: videoFiles } };
+    expect(validateAssemblyView(complete)).toBe(true);
+    expect(validateAssemblyView({ ...complete, result: { ...publication, files } })).toBe(false);
+    expect(
+      validateAssemblyView({
+        ...complete,
+        video: { ...video, media: { ...video.media, sha256: 'b'.repeat(64) } },
+      }),
+    ).toBe(false);
+    expect(
+      validateAssemblyView({
+        ...complete,
+        result: { ...publication, files: [...files, videoFiles[2], videoFiles[2]] },
+      }),
+    ).toBe(false);
+  });
   it('accepts a complete immutable preview and 600 distinct utterances', () => {
     expect(validateAssemblyPreview(preview)).toBe(true);
     const utterances = Array.from({ length: 600 }, (_, index) => ({

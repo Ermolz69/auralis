@@ -53,6 +53,24 @@ pub(crate) fn intent(intent: &AudioAssemblyIntent) -> Result<AudioAssemblyPlan, 
             "Assembly source limits, measurements or timing are invalid",
         ));
     }
+    if let Some(video) = &plan.video {
+        let frames = plan_audio_timeline(&plan.timeline)
+            .map_err(|_| invalid("Invalid video timing"))?
+            .frame_count;
+        if video.policy_id != ports::video_export::REPLACE_AUDIO_POLICY
+            || video.artifact.sha256 != video.media.sha256
+            || video.artifact.size_bytes != video.media.size_bytes
+            || video.artifact.size_bytes == 0
+            || video.artifact.size_bytes > 1_u64 << 32
+            || video.media.duration_ms == 0
+            || video.media.duration_ms > 28800000
+            || frames > video.media.duration_ms * 48
+        {
+            return Err(invalid(
+                "Reviewed video source or speech coverage is invalid",
+            ));
+        }
+    }
     Ok(plan)
 }
 
@@ -68,7 +86,7 @@ pub(crate) fn publication(
         || value.frames != timeline.frame_count
         || value.peak_sample_abs > 32768
         || value.full_scale_samples > value.frames * u64::from(value.channels)
-        || value.files.len() != 2
+        || value.files.len() != if plan.video.is_some() { 4 } else { 2 }
         || value.files.iter().filter(|file| file.kind == "wav").count() != 1
         || value
             .files
@@ -84,6 +102,24 @@ pub(crate) fn publication(
     {
         return Err(invalid(
             "Assembly publication does not cover its immutable timing plan",
+        ));
+    }
+    let roles = if plan.video.is_some() {
+        vec!["wav", "manifest", "video", "video_manifest"]
+    } else {
+        vec!["wav", "manifest"]
+    };
+    if roles
+        .iter()
+        .any(|role| value.files.iter().filter(|file| &file.kind == role).count() != 1)
+        || value.files.iter().enumerate().any(|(index, file)| {
+            value.files[..index]
+                .iter()
+                .any(|other| other.artifact_id == file.artifact_id)
+        })
+    {
+        return Err(invalid(
+            "Assembly publication has missing, extra or repeated outputs",
         ));
     }
     for file in &value.files {

@@ -105,10 +105,14 @@ impl AudioAssemblyUseCases {
                     expected_utterance_ids: ids,
                     settings: request.settings,
                 },
-                cancel,
+                cancel.clone(),
             )
             .await?;
         let plan = AudioAssemblyPlan {
+            video: match request.video_artifact_id {
+                Some(id) => Some(self.inspect_video(&project, id, cancel).await?),
+                None => None,
+            },
             project_id: project.clone(),
             source_run_id: source.run_id,
             source_attempt_id: publication.attempt_id,
@@ -119,6 +123,17 @@ impl AudioAssemblyUseCases {
             assembly_policy: "pcm16_48k_exact_concat_v1".into(),
             timeline: inspection.timeline_request.clone(),
         };
+        if let (Some(video), Some(timeline)) = (&plan.video, &inspection.timeline)
+            && timeline.frame_count > video.media.duration_ms * 48
+        {
+            return Err(ApplicationError::InvalidOperation {
+                message: format!(
+                    "Озвучка длиннее исходного видео ({} мс > {} мс). Проверьте тайминг и текст перед сборкой видео.",
+                    timeline.frame_count.div_ceil(48),
+                    video.media.duration_ms
+                ),
+            });
+        }
         let plan_json = serde_json::to_string(&plan)
             .map_err(|_| invalid("Assembly preview cannot be serialized"))?;
         if plan_json.len() > ports::audio_jobs::MAX_ASSEMBLY_PLAN_BYTES {

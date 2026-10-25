@@ -49,6 +49,10 @@ impl AudioAssemblyUseCases {
             .compute(
                 intent.project_id.clone(),
                 InspectAssemblyRequest {
+                    video_artifact_id: plan
+                        .video
+                        .as_ref()
+                        .map(|video| video.artifact.artifact_id.clone()),
                     source_run_id: intent.source_run_id,
                     settings: SpeechTimingSettings {
                         mode: plan.timeline.mode,

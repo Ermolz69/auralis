@@ -1,3 +1,5 @@
+#[path = "support/audio_video.rs"]
+mod audio_video;
 #[path = "support/audio_assembly_fixture.rs"]
 mod fixture;
 #[path = "support/observed_runtime.rs"]

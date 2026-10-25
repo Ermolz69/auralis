@@ -247,6 +247,7 @@ impl AssemblySource {
         let raw_wav = self.reference("wav")?;
         let raw_manifest = self.reference("manifest")?;
         Ok(AudioAssemblyPlan {
+            video: None,
             project_id: self.project_id.clone(),
             source_run_id: self.source.run_id,
             source_attempt_id: self.publication.attempt_id,

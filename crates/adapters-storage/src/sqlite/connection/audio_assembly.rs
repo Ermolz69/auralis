@@ -27,6 +27,20 @@ pub(super) async fn migrate_and_validate(pool: &SqlitePool, marker: i64) -> Resu
             crate::sqlite::helpers::map_sqlite_error("migrate_audio_assembly", error)
         })?;
     }
+    if marker < 20 {
+        let mut transaction = pool.begin_with("BEGIN IMMEDIATE").await.map_err(|error| {
+            crate::sqlite::helpers::map_sqlite_error("migrate_video_assembly", error)
+        })?;
+        sqlx::raw_sql(include_str!("../video_assembly_migration.sql"))
+            .execute(&mut *transaction)
+            .await
+            .map_err(|error| {
+                crate::sqlite::helpers::map_sqlite_error("migrate_video_assembly", error)
+            })?;
+        transaction.commit().await.map_err(|error| {
+            crate::sqlite::helpers::map_sqlite_error("migrate_video_assembly", error)
+        })?;
+    }
     validate_columns(
         pool,
         "audio_assembly_intents",

@@ -52,6 +52,7 @@ pub mod translation_run_recovery;
 pub mod translation_run_registration;
 pub mod translation_start_guard;
 pub mod ui_preferences;
+pub mod video_export;
 pub mod workspace;
 
 pub use control::*;
