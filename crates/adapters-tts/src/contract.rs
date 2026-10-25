@@ -108,6 +108,7 @@ impl PuzaContractPort for TtsWorkerClient {
             if format!("{:x}", Sha256::digest(canonical)) != snapshot.sha256 {
                 return Err(invalid("CONTRACT project receipt hash differs"));
             }
+            tracing::info!(event_name = "contract_snapshot_verified", contract_version = %snapshot.contract_version, project_id = %project, "CONTRACT project metadata verified");
             Ok(snapshot)
         })
         .await;

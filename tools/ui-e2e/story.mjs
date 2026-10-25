@@ -4,12 +4,15 @@ import { playback } from './media.mjs';
 import { requireQuiescent } from './processes.mjs';
 import { download } from './download.mjs';
 import { readyOrError } from './observe.mjs';
+import { setupTranslation } from './translation.mjs';
+import { exportVideo } from './video.mjs';
 
 export const storySteps = [
   'url-import',
   'chinese-srt',
   'download-release',
   'source-identities',
+  'translation-setup',
   'translation-ready',
   'translate-edit-approve',
   ...['voxcpm2', 'espeech'].flatMap((engine) => [
@@ -21,6 +24,7 @@ export const storySteps = [
   'verify-artifacts',
   'restart-playback',
 ];
+export const videoSteps = ['voxcpm2-video', 'espeech-video'];
 export async function story(
   page,
   report,
@@ -36,6 +40,8 @@ export async function story(
   };
   if (!(await download(page, report, spec, remaining, admit))) return false;
   if (!(await step('source-identities', sourceCheck))) return false;
+  if (!(await step('translation-setup', () => setupTranslation(page, spec, remaining))))
+    return false;
   if (
     !(await step('translation-ready', async () => {
       const model = page.getByRole('region', { name: 'Модель перевода', exact: true });
@@ -92,6 +98,13 @@ export async function story(
     if (
       !(await step(`${engine}-selection`, async () => {
         await quiescent();
+        if (spec.allow_unverified_neutral === true)
+          await panel
+            .getByRole('checkbox', {
+              name: 'Разрешаю неподтверждённый нейтральный образец для технического прогона',
+              exact: true,
+            })
+            .check();
         const engineControl = panel.getByLabel('Движок', { exact: true });
         if (!(await engineControl.count()))
           throw new Blocked((await panel.innerText()).slice(0, 3000));
@@ -188,6 +201,11 @@ export async function story(
           .click();
         return playback(page, 'Итоговое аудио');
       }))
+    )
+      return false;
+    if (
+      spec.export_video === true &&
+      !(await step(`${engine}-video`, () => exportVideo(page, assembly, remaining, quiescent)))
     )
       return false;
   }

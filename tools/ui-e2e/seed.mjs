@@ -1,6 +1,8 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { root, storage, owned, hash, Blocked } from './core.mjs';
+import { relocateTts } from './relocate.mjs';
+import { installComponents } from './components.mjs';
 
 export function validateSeedPath(value) {
   if (typeof value !== 'string' || path.isAbsolute(value))
@@ -28,6 +30,7 @@ export function validateSeedPath(value) {
     'caster',
     'marker',
   ]);
+  if (parts[0] === 'cache' && parts[1] === 'translation-downloads' && parts.length === 3) return;
   if (
     parts.length === 1 ? !configs.has(parts[0].toLowerCase()) : !assets.has(parts[0].toLowerCase())
   )
@@ -84,5 +87,16 @@ export async function seedProfile(spec, run) {
       JSON.stringify(remap(JSON.parse(await fsp.readFile(file, 'utf8'))), null, 2),
     );
   }
-  return { seeded: true, files: seed.files.length, bytes, qualification_modified: false };
+  const relocated = seen.has('tts-runtime.json') ? await relocateTts(destination, directory) : null;
+  const components = spec.component_wheels
+    ? await installComponents(destination, spec.component_wheels)
+    : null;
+  return {
+    seeded: true,
+    files: seed.files.length,
+    bytes,
+    qualification_modified: false,
+    relocated,
+    components,
+  };
 }

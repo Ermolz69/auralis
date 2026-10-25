@@ -139,6 +139,7 @@ dependencies = [
  "sha2",
  "tempfile",
  "tokio",
+ "tracing",
  "uuid",
  "windows 0.62.2",
 ]

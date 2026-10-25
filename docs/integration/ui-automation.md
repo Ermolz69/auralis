@@ -3,14 +3,24 @@
 The external Node.js runner drives the ordinary release frontend inside Windows
 WebView2 using Playwright CDP. It does not enable the native test-runner screen.
 Business actions use visible controls; SQLite and file reads only corroborate
-published results. The first endpoint is assembled WAV. Video export, linguistic
-quality, listening, TXT, ASR and clean installation retain separate acceptance.
+published results. WAV-only cases remain supported. An `export_video` case adds
+the [reviewed MP4 policy](revoice-video-export.md) after each engine's WAV.
+Linguistic quality, listening, TXT, ASR and clean installation retain separate acceptance.
 
 ## Commands
 
 - `task ui:build` builds and retains an ordinary release executable and resources.
+- `task ui:assets SEED=new-id` copies installed components and pinned translator
+  acquisition files into a new owned seed without executing components or models.
+- `task ui:components:build ID=new-id` builds CONTRACT and retains the pinned
+  streamed TTS wheel without loading models or changing voice files.
+- `task ui:components:probe ID=new-id SEED=seed-id COMPONENTS=component-id`
+  validates installed neutral-reference plans without importing model engines.
 - `task ui:fixture` drives production browser UI with explicit simulated IPC.
 - `task ui:smoke` launches the retained Windows candidate without models.
+- `task ui:freeze:connected CASE=new-id SEED=seed-id COMPONENTS=component-id`
+  freezes a model-free component smoke specification. Run it with
+  `task ui:smoke SPEC=.cache/ui-e2e/specs/new-id.json`.
 - `task ui:real SPEC=relative/case.json` consumes one frozen real case once.
 - `task ui:freeze CASE=new-case-id` freezes a readiness-only case for the retained candidate.
 - `task ui:report RUN=run-id` prints a report and its local HTML location.
@@ -31,8 +41,9 @@ component admission is not relocated into the test profile.
 
 The runner uses one session lock, a fresh profile and a hash-verified retained
 candidate. It does not inherit native E2E flags, disable the browser sandbox,
-install components, change voice qualification or fall back to the ordinary
-profile. It closes only its application process and stops subsequent attempts
+change voice qualification or fall back to the ordinary profile. Explicitly pinned
+offline wheels may be installed only into the fresh profile before launch.
+It closes only its application process and stops subsequent attempts
 when process release is unconfirmed. Model and downloader work remains owned by
 the application's existing shared admission.
 
@@ -62,6 +73,21 @@ Only component configuration files and the `tts`, `translation-packages`,
 accepted. Application databases, projects, job records and browser state cannot
 be seeded. The first launch verifies zero projects and jobs. Configuration-file
 presence is diagnostic evidence and does not establish runtime readiness.
+The dedicated `cache/translation-downloads` seed directory admits only cached
+acquisition files; installation and selection still use the ordinary UI.
+Absolute native dependency paths and Python home are relocated inside each
+profile, with a new verified inventory digest. Optional `component_wheels` pin
+the two offline component wheels installed into a new profile-owned package
+directory before launch. Source seeds and voice bytes remain unchanged.
+
+`install_translation: true` drives installation and selection through UI controls.
+`allow_unverified_neutral: true` checks an explicit technical-permission control.
+The default remains strict: rejected and unverified emotional references cannot
+use this exception. The permission is bound to the saved plan and shown again
+after reopening; it neither qualifies voices nor establishes listening quality.
+`export_video: true` requires ready videos for both engines and playback after
+reopening. Fixture video is synthetic WebM/VP8; its UI playback does not test
+the native H.264/AAC encoder.
 
 The real workflow deliberately records its review as an automated workflow test.
 It cannot establish linguistic correctness. System file dialogs are outside the
@@ -93,3 +119,24 @@ Additional checks passed: `task ui:check` (profile handling and runner policies)
 `task ui:regression` (234 unit and 31 component tests), `task fe:e2e` (35 existing
 browser tests), `task ui:lint` and `task docs:integration`. No real translation,
 TTS, assembled speech or video acceptance follows from this checkpoint.
+
+## Connected-component preparation: 2026-10-25
+
+The next candidate adds explicit neutral-reference technical permission, optional
+reviewed MP4 publication, profile-relative runtime relocation and pinned offline
+component installation. Strict qualification remains the default; the permission
+neither changes reference manifests nor accepts speech quality.
+
+`task ui:fixture` passed 27 steps with simulated IPC, including translator setup,
+both engine workflows, persisted permission, four-file publication, corrupt-video
+refusal and synthetic video playback. `task ui:components:probe` validated four
+neutral-reference plans against the installed CONTRACT wheel built from
+`3f3498e87b4cfb68c67d0d718497c6286330f6b8`, with streamed TTS pinned to
+`e18f64d1bad80012b085d907673451c9e5b886f7`. No engine module or model was loaded.
+
+The connected smoke case submits an invalid non-YouTube host through ordinary UI.
+Source creation verifies the real CONTRACT receipt before rejecting the host;
+the report requires the corresponding verified-boundary diagnostic. URL refusal
+alone cannot establish that installed components are connected. This case forbids
+inference and creates no project or job. Actual source acquisition, translation,
+TTS, native MP4 encoding and real-media playback require a distinct real case.

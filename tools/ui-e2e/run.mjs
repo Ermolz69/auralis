@@ -1,11 +1,12 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { uniqueRun, storage, json, hash, validateSpec, Blocked } from './core.mjs';
+import { uniqueRun, storage, json, hash, validateSpec, Blocked, idPattern } from './core.mjs';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Report } from './report.mjs';
 import { candidateIdentity, DesktopSession, lockSession } from './session.mjs';
 import { requireQuiescent } from './processes.mjs';
 import { smoke } from './smoke.mjs';
-import { story, storySteps } from './story.mjs';
+import { story, storySteps, videoSteps } from './story.mjs';
 import { seedProfile } from './seed.mjs';
 import { verifyAssembly, verifySources, playback } from './media.mjs';
 import { acquireDownloadAdmission } from './admission.mjs';
@@ -50,6 +51,13 @@ try {
       release = await lockSession();
       if (mode === 'real') {
         spec = validateSpec(await json(process.argv[3], 32 * 1024 * 1024));
+        if (spec.export_video === true)
+          for (const id of videoSteps) {
+            const index = report.data.steps.findIndex(
+              (step) => step.id === id.replace(/-video$/, '-assembly'),
+            );
+            report.data.steps.splice(index + 1, 0, { id, status: 'not_run' });
+          }
         deadline = Date.now() + spec.max_wall_seconds * 1000;
         if (typeof spec.edit_text !== 'string' || !spec.edit_text.trim())
           throw new Error('Pin the edit text');
@@ -62,6 +70,33 @@ try {
         );
         await fsp.copyFile(process.argv[3], path.join(run.directory, 'spec.json'));
       }
+      if (mode === 'smoke' && process.argv[3]) {
+        spec = await json(process.argv[3], 32 * 1024 * 1024);
+        if (
+          spec.mode !== 'component-smoke' ||
+          spec.allow_inference !== false ||
+          !idPattern.test(spec.case_id ?? '') ||
+          spec.max_attempts !== 1 ||
+          !spec.runtime_seed ||
+          !spec.component_wheels ||
+          spec.max_wall_seconds !== 1800
+        )
+          throw new Error('Expected a frozen model-free component smoke case');
+        deadline = Date.now() + spec.max_wall_seconds * 1000;
+        const used = path.join(storage, 'cases');
+        await fsp.mkdir(used, { recursive: true });
+        await fsp.writeFile(
+          path.join(used, `${spec.case_id}.json`),
+          JSON.stringify({ run_id: run.id, spec_sha256: await hash(process.argv[3]) }),
+          { flag: 'wx' },
+        );
+        await fsp.copyFile(process.argv[3], path.join(run.directory, 'spec.json'));
+        report.data.steps.splice(
+          report.data.steps.findIndex((step) => step.id === 'javascript-errors'),
+          0,
+          { id: 'components-connected', status: 'not_run' },
+        );
+      }
       candidate = await candidateIdentity();
       if (spec && candidate.receipt.sha256 !== spec.candidate_sha256)
         throw new Error('The frozen case belongs to another candidate');
@@ -72,8 +107,29 @@ try {
     if (await report.step('seed', () => (spec ? seedProfile(spec, run) : { seeded: false }))) {
       session = new DesktopSession(run, candidate);
       if (await report.step('launch', () => session.start(remaining))) {
-        if (mode === 'smoke') await smoke(session.page, report);
-        else {
+        if (mode === 'smoke') {
+          await smoke(session.page, report);
+          if (spec?.mode === 'component-smoke')
+            await report.step(
+              'components-connected',
+              async () => {
+                const stop = Date.now() + 5000;
+                while (!session.log.includes('contract_snapshot_verified') && Date.now() < stop)
+                  await delay(100);
+                if (!session.log.includes('contract_snapshot_verified'))
+                  throw new Error(
+                    'No verified CONTRACT boundary after ordinary UI source submission',
+                  );
+                return {
+                  contract_snapshot_verified: true,
+                  model_inference: false,
+                  profiles_copied: true,
+                  voices_modified: false,
+                };
+              },
+              session.page,
+            );
+        } else {
           const budgetEnd = Date.now() + spec.max_wall_seconds * 1000;
           const budget = () => {
             const ms = Math.min(remaining(), budgetEnd - Date.now());
@@ -92,7 +148,12 @@ try {
           if (completed) {
             await report.step(
               'verify-artifacts',
-              () => verifyAssembly(path.join(run.directory, 'profile'), spec.engines),
+              () =>
+                verifyAssembly(
+                  path.join(run.directory, 'profile'),
+                  spec.engines,
+                  spec.export_video === true,
+                ),
               session.page,
             );
             await report.step('restart-playback', async () => {
@@ -117,11 +178,33 @@ try {
               const saved = await assembly
                 .locator('option')
                 .evaluateAll((nodes) => nodes.filter((n) => n.value).map((n) => n.value));
-              await assembly.selectOption(saved[0]);
+              if (spec.export_video === true) {
+                const video = await assembly
+                  .locator('option')
+                  .evaluateAll(
+                    (nodes, rawId) =>
+                      nodes.find(
+                        (node) =>
+                          node.value &&
+                          node.textContent.includes('MP4') &&
+                          node.textContent.includes(`источник ${rawId.slice(0, 8)}`),
+                      )?.value,
+                    options[0],
+                  );
+                if (!video) throw new Error('Ready video disappeared after restart');
+                await assembly.selectOption(video);
+              } else await assembly.selectOption(saved[0]);
               await page
                 .getByRole('button', { name: 'Прослушать итоговый WAV', exact: true })
                 .click();
-              return playback(page, 'Итоговое аудио');
+              const wav = await playback(page, 'Итоговое аудио');
+              if (spec.export_video === true) {
+                await page
+                  .getByRole('button', { name: 'Воспроизвести русское видео', exact: true })
+                  .click();
+                return { wav, video: await playback(page, 'Видео с русской озвучкой') };
+              }
+              return wav;
             });
           }
         }

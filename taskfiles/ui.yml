@@ -1,6 +1,56 @@
 version: '3'
 
 tasks:
+  components:probe:
+    desc: Verify installed CONTRACT and exact neutral-reference permissions without importing model engines or changing voices
+    requires:
+      vars: [ID, SEED, COMPONENTS]
+    cmds:
+      - node tools/ui-e2e/component-probe.mjs "{{.ID}}" "{{.SEED}}" "{{.COMPONENTS}}"
+  components:build:
+    desc: Build CONTRACT and retain the pinned streamed TTS wheel without model loading or voice changes
+    requires:
+      vars: [ID]
+    cmds:
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/ui-e2e/build-components.ps1 -Id "{{.ID}}"
+  check:video:
+    desc: Verify video policy, durable assembly publication and profile schema without models
+    cmds:
+      - 'cargo test --locked -p adapters-ffmpeg --lib assembly::video::'
+      - 'cargo test --locked -p adapters-ffmpeg --lib assembly::process::'
+      - cargo test --locked -p application --test audio_assembly
+      - cargo test --locked -p adapters-storage --test audio_assembly
+      - cargo test --locked -p adapters-storage --lib
+  check:technical:
+    desc: Verify explicit unverified-neutral permission without loading models
+    cmds:
+      - task: :rs:test:speech-workflow
+      - cargo test --locked -p application --test puza_contract
+      - pnpm --filter desktop exec vitest run --project component src/features/speech-catalog/ui/SpeechCatalog.test.tsx src/features/speech-catalog/ui/SpeechWorkflow.test.tsx
+      - task: :fe:typecheck
+  fmt:technical:
+    cmds:
+      - cargo fmt --all
+      - pnpm prettier --write "apps/desktop/src/features/speech-catalog/model/*.ts" "apps/desktop/src/features/speech-catalog/ui/SpeechCatalog*.tsx" apps/desktop/src/features/speech-catalog/ui/SpeechVoiceSettings.tsx apps/desktop/src/shared/api/contracts/speech.ts
+      - pnpm prettier --write apps/desktop/src/features/speech-catalog/ui/SpeechSourcePreview.tsx apps/desktop/src/features/speech-catalog/ui/SpeechWorkflow.tsx apps/desktop/src/features/speech-catalog/ui/SpeechRunControls.tsx
+      - pnpm prettier --write "apps/desktop/src/features/speech-catalog/model/audio-assembly/*.ts" "apps/desktop/src/features/speech-catalog/ui/audio-assembly/*.tsx" "apps/desktop/src/shared/api/contracts/audioAssembly*.ts" docs/integration/revoice-video-export.md
+  check:frontend:
+    cmds:
+      - task: :fe:typecheck
+      - pnpm --filter desktop exec vitest run --project unit src/shared/api/contracts/audioAssemblyValidation.test.ts
+      - pnpm --filter desktop exec vitest run --project component src/features/speech-catalog/ui/SpeechCatalog.test.tsx src/features/speech-catalog/ui/SpeechWorkflow.test.tsx src/features/speech-catalog/ui/audio-assembly/AudioAssemblyPanel.test.tsx
+  assets:
+    desc: Copy verified installed components and pinned translator assets into a new owned UI seed without model loading
+    requires:
+      vars: [SEED]
+    cmds:
+      - node tools/ui-e2e/assets.mjs "{{.SEED}}"
+  assets:resume:
+    desc: Verify existing copied bytes and continue an interrupted component seed without overwriting files
+    requires:
+      vars: [SEED]
+    cmds:
+      - node tools/ui-e2e/assets.mjs "{{.SEED}}" resume
   check:
     desc: Check UI runner isolation, reports, budgets and executable identities without models
     cmds:
@@ -9,7 +59,7 @@ tasks:
   check:runner:
     cmds:
       - node tools/ui-e2e/syntax.mjs
-      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs
+      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs tools/ui-e2e/seed.test.mjs
   fmt:runner:
     cmds:
       - pnpm prettier --write "tools/ui-e2e/*.mjs" "apps/desktop/scripts/ui-*.mjs" taskfiles/ui.yml docs/integration/ui-automation.md
@@ -49,8 +99,10 @@ tasks:
       - node apps/desktop/scripts/ui-fixture.mjs
   smoke:
     desc: Run ordinary packaged Windows Auralis through WebView2 without models
+    vars:
+      SPEC: '{{default "" .SPEC}}'
     cmds:
-      - node tools/ui-e2e/run.mjs smoke
+      - node tools/ui-e2e/run.mjs smoke "{{.SPEC}}"
   real:
     desc: Run the frozen real UI scenario once with isolated data and sequential component ownership
     requires:
@@ -63,6 +115,14 @@ tasks:
       vars: [CASE]
     cmds:
       - node tools/ui-e2e/freeze.mjs "{{.CASE}}"
+  freeze:connected:
+    desc: Freeze exact installed-component inputs for a model-free smoke or a later sequential real UI case
+    requires:
+      vars: [CASE, SEED, COMPONENTS]
+    vars:
+      MODE: '{{default "smoke" .MODE}}'
+    cmds:
+      - node tools/ui-e2e/freeze-connected.mjs "{{.CASE}}" "{{.SEED}}" "{{.COMPONENTS}}" "{{.MODE}}"
   report:
     desc: Read the portable report for an existing UI run
     requires:

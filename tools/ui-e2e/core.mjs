@@ -48,6 +48,9 @@ export function overall(steps) {
   return 'passed';
 }
 export function validateSpec(spec) {
+  for (const flag of ['allow_unverified_neutral', 'install_translation', 'export_video'])
+    if (spec[flag] !== undefined && typeof spec[flag] !== 'boolean')
+      throw new Error(`Invalid ${flag} policy`);
   if (spec.max_attempts !== undefined && spec.max_attempts !== 1)
     throw new Error('Real cases permit one attempt');
   if (spec.max_source_media_bytes !== undefined && spec.max_source_media_bytes !== 1073741824)

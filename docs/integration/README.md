@@ -43,6 +43,8 @@ The active [TTS execution record](tts-execution.md) tracks implementation
 evidence and open acceptance gates.
 The [ordinary UI automation](ui-automation.md) commands retain separate fixture,
 native smoke and real component outcomes with isolated profiles.
+The [reviewed video policy](revoice-video-export.md) extends managed assembly to
+separate MP4 output without modifying the original video or voice catalog.
 Component documentation continues to live in CONTRACT/Docs for the PUZA modules;
 these files specify their integration with Auralis rather than replacing those
 component manuals.

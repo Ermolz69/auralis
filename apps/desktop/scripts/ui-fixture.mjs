@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import { installE2EFixture } from './e2e-fixture.mjs';
 import { installUiTranslationFixture } from './ui-translation-fixture.mjs';
 import { installUiSpeechFixture } from './ui-speech-fixture.mjs';
+import { installUiVideoFixture } from './ui-video-fixture.mjs';
 import { serveProduction } from './production-server.mjs';
 import { uniqueRun } from '../../../tools/ui-e2e/core.mjs';
 import { Report } from '../../../tools/ui-e2e/report.mjs';
@@ -15,8 +16,11 @@ import { frontendIdentity } from '../../../tools/ui-e2e/frontend.mjs';
 const run = await uniqueRun('fixture-ui');
 const report = new Report(run, 'fixture-ui', [
   'launch',
-  ...storySteps.filter((id) => !['verify-artifacts', 'restart-playback'].includes(id)),
+  ...storySteps
+    .filter((id) => !['verify-artifacts', 'restart-playback'].includes(id))
+    .flatMap((id) => (id.endsWith('-assembly') ? [id, id.replace(/-assembly$/, '-video')] : [id])),
   'timing-conflict',
+  'video-verification-error',
   'stale-preview',
   'assembly-cancel-resume',
   'reload-playback',
@@ -36,7 +40,7 @@ try {
       await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
       page = await context.newPage();
       await page.addInitScript({
-        content: `(${installE2EFixture.toString()})();(${installUiTranslationFixture.toString()})();(${installUiSpeechFixture.toString()})();`,
+        content: `(${installE2EFixture.toString()})();(${installUiTranslationFixture.toString()})();(${installUiSpeechFixture.toString()})();(${installUiVideoFixture.toString()})();`,
       });
       await page.goto(server.url);
       await page.getByLabel('YouTube URL', { exact: true }).waitFor();
@@ -48,6 +52,9 @@ try {
       {
         source_url: 'https://www.youtube.com/watch?v=HRaa8kb1EhE',
         allow_inference: true,
+        allow_unverified_neutral: true,
+        install_translation: true,
+        export_video: true,
         edit_text: 'Здравствуйте, мир.',
         engines: ['voxcpm2', 'espeech'].map((engine) => ({
           engine_id: engine,
@@ -62,6 +69,29 @@ try {
     );
     if (complete) {
       const assembly = page.getByRole('region', { name: 'Сборка итогового аудио', exact: true });
+      await report.step(
+        'video-verification-error',
+        async () => {
+          await page.evaluate(() => {
+            window.__ui.verifyFailure = true;
+          });
+          await assembly
+            .getByRole('button', { name: 'Воспроизвести русское видео', exact: true })
+            .click();
+          await assembly
+            .getByRole('alert')
+            .filter({ hasText: 'Fixture integrity verification failed' })
+            .waitFor();
+          assert.equal(
+            await page.getByLabel('Видео с русской озвучкой', { exact: true }).count(),
+            0,
+          );
+          await page.evaluate(() => {
+            window.__ui.verifyFailure = false;
+          });
+        },
+        page,
+      );
       await report.step(
         'timing-conflict',
         async () => {
@@ -128,6 +158,13 @@ try {
           await page.reload();
           await page.getByRole('button', { name: /^Open YouTube project/ }).click();
           await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
+          await page.getByLabel('Сохранённые запуски', { exact: true }).selectOption('fixture-raw');
+          await page
+            .getByText(
+              'Технический прогон с неподтверждённым образцом. Качество озвучки не принято.',
+              { exact: true },
+            )
+            .waitFor();
           await page
             .getByLabel('Готовый исходный синтез', { exact: true })
             .selectOption('fixture-raw');
@@ -178,6 +215,14 @@ try {
           await review.getByText('Решение ещё не принято', { exact: false }).waitFor();
           assert.equal(await review.getByText('Одобрено:', { exact: false }).count(), 0);
           const speech = page.getByRole('region', { name: 'Голоса синтеза речи', exact: true });
+          await speech
+            .getByRole('checkbox', {
+              name: 'Разрешаю неподтверждённый нейтральный образец для технического прогона',
+              exact: true,
+            })
+            .check();
+          await speech.getByLabel('Движок', { exact: true }).selectOption('espeech');
+          await speech.getByLabel('Голос', { exact: true }).selectOption('fixture-speaker');
           await speech.getByRole('button', { name: 'Субтитры', exact: true }).click();
           await speech.getByRole('button', { name: 'Обновить источники', exact: true }).click();
           const input = speech.getByLabel('Источник субтитров', { exact: true });
@@ -218,10 +263,27 @@ try {
             observed.calls.filter((c) => c.command === 'resume_speech_run_cmd').length,
             2,
           );
+          assert.equal(
+            observed.calls.filter((c) => c.command === 'install_translation_package_cmd').length,
+            1,
+          );
+          assert.equal(
+            observed.calls.filter((c) => c.command === 'select_translation_package_cmd').length,
+            1,
+          );
+          assert.equal(
+            observed.calls.filter(
+              (c) =>
+                c.command === 'prepare_speech_plan_cmd' &&
+                c.args.request.allow_unverified_neutral === true,
+            ).length,
+            2,
+          );
           return {
             ui_only_actions: true,
             simulated_ipc: true,
             model_execution: false,
+            video_fixture_codec: 'synthetic WebM/VP8; MP4 encoding is not exercised by fixture IPC',
             commands: observed.calls.map((c) => c.command),
           };
         },
