@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct SpeechRunView {
+    pub technical_reference_permission: Option<String>,
     pub run_id: Uuid,
     pub profile_id: String,
     pub utterance_count: u32,
@@ -111,7 +112,12 @@ impl SpeechUseCases {
             .latest_job(intent.run_id)
             .await?
             .map(|job| ScheduledJob::from(job.to_snapshot()));
+        let plan: serde_json::Value = serde_json::from_str(&intent.plan_json)
+            .map_err(|error| invalid(format!("Saved speech plan is invalid: {error}")))?;
         Ok(SpeechRunView {
+            technical_reference_permission: plan["review"]["technical_reference_permission"]
+                .as_str()
+                .map(str::to_owned),
             run_id: intent.run_id,
             profile_id: intent.profile_id,
             utterance_count: intent.expected_utterances,

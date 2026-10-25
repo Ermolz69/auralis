@@ -35,6 +35,7 @@ export type SpeechAssignment = {
   reference_id: string;
 };
 export type PrepareSpeechRequest = {
+  allow_unverified_neutral?: boolean;
   decision_id: string;
   expected_source_sha256: string;
   profile_id: string;
@@ -50,6 +51,7 @@ export type SpeechPublication = {
   files: { artifact_id: string; kind: string; sha256: string; size_bytes: number }[];
 };
 export type SpeechRunView = {
+  technical_reference_permission?: string | null;
   run_id: string;
   profile_id: string;
   utterance_count: number;
@@ -61,7 +63,13 @@ export type SpeechRunView = {
 export interface SpeechCommandMap {
   get_speech_voice_selection_cmd: { args: { projectId: string }; result: PuzaVoiceBinding | null };
   save_speech_voice_selection_cmd: {
-    args: { projectId: string; profileId: string; voiceId: string; referenceId: string };
+    args: {
+      projectId: string;
+      profileId: string;
+      voiceId: string;
+      referenceId: string;
+      allowUnverifiedNeutral?: boolean;
+    };
     result: PuzaVoiceBinding;
   };
   prepare_speech_text_cmd: {
@@ -103,6 +111,7 @@ export type MarkerPreparation = {
   unresolved_targets: number;
 };
 export type PuzaVoiceBinding = {
+  technical_reference_permission?: string;
   role_id: string;
   display_name: string;
   voice_id: string;

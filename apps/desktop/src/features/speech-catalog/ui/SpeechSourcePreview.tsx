@@ -2,10 +2,12 @@ import type { SpeechAssignment, SpeechSourceSnapshot } from '@/shared/api/contra
 import type { SpeechVoiceOption } from '@/shared/api/contracts/speechCatalog';
 import { useMemo } from 'react';
 import { SpeechPreviewPage } from './SpeechPreviewPage';
+import { referenceAllowed } from '../model/referenceAllowed';
 type Props = {
   source: SpeechSourceSnapshot | null;
   voices: SpeechVoiceOption[];
   engineId: string;
+  allowUnverifiedNeutral?: boolean;
   assignments: SpeechAssignment[];
   assign: (scope: 'role' | 'cue', target: string, voice: string, reference?: string) => void;
 };
@@ -25,6 +27,7 @@ function SourcePreview({
   source,
   voices,
   engineId,
+  allowUnverifiedNeutral = false,
   assignments,
   assign,
 }: Props & { source: SpeechSourceSnapshot }) {
@@ -40,7 +43,7 @@ function SourcePreview({
         .find((voice) => voice.voice_id === current?.voice_id)
         ?.references.filter(
           (reference) =>
-            reference.engine_id === engineId && reference.qualification_status === 'qualified',
+            reference.engine_id === engineId && referenceAllowed(reference, allowUnverifiedNeutral),
         ) ?? [];
     return (
       <span className="flex flex-wrap gap-1">
@@ -56,7 +59,7 @@ function SourcePreview({
               voice.references.some(
                 (reference) =>
                   reference.engine_id === engineId &&
-                  reference.qualification_status === 'qualified',
+                  referenceAllowed(reference, allowUnverifiedNeutral),
               ),
             )
             .map((voice) => (

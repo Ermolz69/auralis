@@ -19,6 +19,8 @@ pub struct SpeechAssignment {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PrepareSpeechRequest {
+    #[serde(default)]
+    pub allow_unverified_neutral: bool,
     pub decision_id: Uuid,
     pub expected_source_sha256: String,
     pub profile_id: String,
@@ -89,6 +91,9 @@ impl SpeechUseCases {
             }
         }
         let run_id = Uuid::new_v4();
+        let permission = request
+            .allow_unverified_neutral
+            .then(|| Uuid::new_v4().to_string());
         let mut cast = Vec::new();
         let mut utterances = Vec::new();
         let mut contract_bindings = Vec::new();
@@ -98,6 +103,7 @@ impl SpeechUseCases {
             voice_id: request.voice_id.clone(),
             reference_id: request.reference_id.clone(),
             engine_id: profile.engine_id.clone(),
+            technical_reference_permission: permission.clone(),
         });
         let inputs = if review.source.kind == "text" {
             vec![(
@@ -141,7 +147,11 @@ impl SpeechUseCases {
                 .ok_or_else(|| {
                     invalid("Voice reference is incompatible with the selected engine")
                 })?;
-            if reference.qualification_status != "qualified" {
+            if reference.qualification_status != "qualified"
+                && !(permission.is_some()
+                    && reference.qualification_status == "unverified"
+                    && reference.emotion_id == "neutral")
+            {
                 return Err(invalid(format!(
                     "Reference {voice_id}/{reference_id} requires human qualification for {}",
                     profile.engine_id
@@ -156,6 +166,7 @@ impl SpeechUseCases {
                 voice_id: voice_id.into(),
                 reference_id: reference_id.into(),
                 engine_id: profile.engine_id.clone(),
+                technical_reference_permission: permission.clone(),
             });
             cast.push(json!({"role_id": role_id,"voice_id": voice_id,"manifest_sha256": voice.manifest_sha256}));
             utterances.push(json!({"utterance_id": format!("utterance-{:04}", q+1), "cue_id": window.map(|_| id.clone()),
@@ -168,11 +179,15 @@ impl SpeechUseCases {
             "espeech" => "f582b6e5897fe8a5835059405a8439d13bdf7684",
             _ => return Err(invalid("Unsupported speech engine").into()),
         };
-        let draft = json!({"version":1,"plan_id":run_id,"project_id":project,"mode":if review.source.kind=="text" {"continuous"} else {"subtitle_utterances"},
+        let mut draft = json!({"version":1,"plan_id":run_id,"project_id":project,"mode":if review.source.kind=="text" {"continuous"} else {"subtitle_utterances"},
             "source":{"source_sha256":review.source.sha256,"text_revision":review.source.revision,"reviewed_text":if review.source.kind=="text" {Some(review.source.text.clone())}else{None}},
             "review":{"decision_id":review.decision_id,"status":"approved"},
             "profile":{"profile_id":profile.profile_id,"profile_sha256":profile.profile_sha256,"engine_id":profile.engine_id,"model_revision":revision},
-            "cast":cast,"utterances":utterances}).to_string();
+            "cast":cast,"utterances":utterances});
+        if let Some(permission) = permission {
+            draft["review"]["technical_reference_permission"] = json!(permission);
+        }
+        let draft = draft.to_string();
         if draft.len() > MAX_SPEECH_PLAN_BYTES {
             return Err(invalid(format!("Speech draft exceeds {MAX_SPEECH_PLAN_BYTES} bytes; reduce the admitted source or assignments")).into());
         }

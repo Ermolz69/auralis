@@ -150,6 +150,7 @@ export function SpeechWorkflow({
           source={source}
           voices={options.voices}
           engineId={options.engineId}
+          allowUnverifiedNeutral={options.allowUnverifiedNeutral}
           assignments={assignments}
           assign={assign}
         />

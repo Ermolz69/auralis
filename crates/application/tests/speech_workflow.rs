@@ -271,6 +271,7 @@ fn source() -> SpeechSourceRequest {
 }
 fn request(review: &ports::speech_workflow::SpeechReview) -> PrepareSpeechRequest {
     PrepareSpeechRequest {
+        allow_unverified_neutral: false,
         decision_id: review.decision_id,
         expected_source_sha256: review.source.sha256.clone(),
         profile_id: "native-plan-voxcpm2".into(),
@@ -298,6 +299,57 @@ async fn qualified_emotional_reference_keeps_its_emotion_in_the_canonical_plan()
     let plan: serde_json::Value = serde_json::from_str(&intent.plan_json)?;
     assert_eq!(plan["utterances"][0]["reference_id"], "joy");
     assert_eq!(plan["utterances"][0]["emotion_id"], "joy");
+    Ok(())
+}
+
+#[tokio::test]
+async fn technical_permission_is_explicit_neutral_and_saved_in_the_plan()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (fixture, mut cases, _, _) = fixture().await?;
+    cases.catalog = Some(Arc::new(Catalog { qualified: false }));
+    let review = cases
+        .review(fixture.project_id.clone(), source(), true)
+        .await?;
+    assert!(
+        cases
+            .prepare(fixture.project_id.clone(), request(&review))
+            .await
+            .is_err()
+    );
+    let mut allowed = request(&review);
+    allowed.allow_unverified_neutral = true;
+    let prepared = cases.prepare(fixture.project_id.clone(), allowed).await?;
+    let intent = cases
+        .store
+        .get_run(prepared.run_id)
+        .await?
+        .ok_or("Missing saved plan")?;
+    let plan: serde_json::Value = serde_json::from_str(&intent.plan_json)?;
+    assert!(
+        plan["review"]["technical_reference_permission"]
+            .as_str()
+            .is_some()
+    );
+    assert_eq!(plan["cast"][0]["manifest_sha256"], "b".repeat(64));
+    let mut emotional = request(&review);
+    emotional.allow_unverified_neutral = true;
+    emotional.reference_id = "joy".into();
+    assert!(
+        cases
+            .prepare(fixture.project_id.clone(), emotional)
+            .await
+            .is_err()
+    );
+    let catalog = cases
+        .catalog
+        .as_ref()
+        .ok_or("Missing catalog")?
+        .snapshot(&fixture.project_id)
+        .await?;
+    assert_eq!(
+        catalog.voices[0].references[0].qualification_status,
+        "unverified"
+    );
     Ok(())
 }
 

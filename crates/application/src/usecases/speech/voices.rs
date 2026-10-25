@@ -19,6 +19,7 @@ impl SpeechUseCases {
         profile_id: String,
         voice_id: String,
         reference_id: String,
+        allow_unverified_neutral: bool,
     ) -> Result<PuzaVoiceBinding, ApplicationError> {
         let catalog = self
             .catalog
@@ -37,6 +38,8 @@ impl SpeechUseCases {
             voice_id,
             reference_id,
             engine_id: profile.engine_id.clone(),
+            technical_reference_permission: allow_unverified_neutral
+                .then(|| uuid::Uuid::new_v4().to_string()),
         };
         self.contract
             .as_ref()

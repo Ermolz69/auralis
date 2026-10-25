@@ -49,6 +49,7 @@ async fn installed_contract_checks_empty_projects_sources_and_all_four_voice_ass
         {
             qualified_checks += 1;
             let binding = PuzaVoiceBinding {
+                technical_reference_permission: None,
                 role_id: "narrator".into(),
                 display_name: "Рассказчик".into(),
                 voice_id: voice.voice_id.clone(),

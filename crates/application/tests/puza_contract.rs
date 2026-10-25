@@ -37,6 +37,7 @@ async fn saved_default_voice_preserves_reviewed_source_and_other_roles_after_reo
         unavailable_reason: "missing".into(),
     };
     let narrator = PuzaVoiceBinding {
+        technical_reference_permission: None,
         role_id: "narrator".into(),
         display_name: "Рассказчик".into(),
         voice_id: "marina_elevenlabs_ru".into(),

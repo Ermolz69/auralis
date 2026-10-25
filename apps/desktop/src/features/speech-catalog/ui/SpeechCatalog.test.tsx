@@ -86,6 +86,21 @@ describe('SpeechCatalog', () => {
     ).not.toBeNull();
   });
 
+  it('requires explicit consent for an unverified neutral reference and revokes the selection when unchecked', async () => {
+    render(<SpeechCatalog projectId="project-one" />);
+    await screen.findByRole('option', { name: 'Голос Один' });
+    fireEvent.change(screen.getByLabelText('Движок и профиль'), {
+      target: { value: 'profile-two' },
+    });
+    fireEvent.change(screen.getByLabelText('Голос'), { target: { value: 'voice-two' } });
+    expect(screen.getByLabelText('Референс')).toHaveProperty('value', '');
+    fireEvent.click(screen.getByRole('checkbox', { name: /Разрешаю неподтверждённый/ }));
+    fireEvent.change(screen.getByLabelText('Голос'), { target: { value: 'voice-two' } });
+    expect(screen.getByLabelText('Референс')).not.toHaveProperty('value', '');
+    fireEvent.click(screen.getByRole('checkbox', { name: /Разрешаю неподтверждённый/ }));
+    expect(screen.getByLabelText('Референс')).toHaveProperty('value', '');
+  });
+
   it('shows a catalog loading failure without exposing an empty selection', async () => {
     invoke.mockImplementation((command: string) =>
       command === 'get_speech_catalog_cmd'

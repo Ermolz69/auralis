@@ -14,6 +14,11 @@ export function SpeechRunControls({ run, busy, active, audio, start, cancel, pla
     <>
       {run && (
         <div className="space-y-2 text-muted">
+          {run.technical_reference_permission && (
+            <p role="status">
+              Технический прогон с неподтверждённым образцом. Качество озвучки не принято.
+            </p>
+          )}
           <p>
             {run.utterance_count} реплик · {run.chunk_count} частей
             {run.job ? ` · ${run.job.progress.percent}% · ${run.job.progress.message}` : ''}

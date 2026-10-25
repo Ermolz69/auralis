@@ -5,6 +5,7 @@ import { invoke } from '@/shared/api/tauri';
 import { SpeechWorkflow } from './SpeechWorkflow';
 import { SpeechVoiceSettings } from './SpeechVoiceSettings';
 import { AudioAssemblyWorkspace } from './audio-assembly/AudioAssemblyWorkspace';
+import { referenceAllowed } from '../model/referenceAllowed';
 
 export function SpeechCatalog({ projectId }: { projectId: string }) {
   const [catalog, setCatalog] = useState<SpeechCatalogSnapshot | null>(null);
@@ -15,9 +16,11 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
   const [revision, setRevision] = useState(0);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [technical, setTechnical] = useState(false);
   useEffect(() => {
     let active = true;
     setCatalog(null);
+    setTechnical(false);
     setError(null);
     void invoke('get_speech_catalog_cmd', { projectId })
       .then(async (result) => {
@@ -86,11 +89,10 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
         (reference) =>
           reference.engine_id === engine &&
           reference.emotion_id === 'neutral' &&
-          reference.qualification_status === 'qualified',
+          referenceAllowed(reference, technical),
       )?.reference_id ??
         references.find(
-          (reference) =>
-            reference.engine_id === engine && reference.qualification_status === 'qualified',
+          (reference) => reference.engine_id === engine && referenceAllowed(reference, technical),
         )?.reference_id ??
         '',
     );
@@ -99,9 +101,7 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
     const next = catalog?.profiles.find((p) => p.profile_id === id);
     setProfileId(id);
     const voice = catalog?.voices.find((v) =>
-      v.references.some(
-        (r) => r.engine_id === next?.engine_id && r.qualification_status === 'qualified',
-      ),
+      v.references.some((r) => r.engine_id === next?.engine_id && referenceAllowed(r, technical)),
     );
     chooseVoice(voice?.voice_id ?? '', next?.engine_id);
   };
@@ -115,8 +115,13 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
         profileId,
         voiceId,
         referenceId,
+        ...(technical ? { allowUnverifiedNeutral: true } : {}),
       });
-      setNotice('Голос проекта сохранён и проверен.');
+      setNotice(
+        technical
+          ? 'Технический выбор сохранён; качество образца не подтверждено.'
+          : 'Голос проекта сохранён и проверен.',
+      );
     } catch (reason) {
       setError(describeCommandError(reason));
     } finally {
@@ -160,6 +165,7 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
             referenceId={referenceId}
             voices={voices}
             engineId={profile?.engine_id ?? ''}
+            allowUnverifiedNeutral={technical}
             renderVoiceSettings={(disabled) => (
               <>
                 <SpeechVoiceSettings
@@ -169,6 +175,12 @@ export function SpeechCatalog({ projectId }: { projectId: string }) {
                   voiceId={voiceId}
                   referenceId={referenceId}
                   disabled={disabled || saving}
+                  technical={technical}
+                  setTechnical={(value) => {
+                    setTechnical(value);
+                    setReferenceId('');
+                    setVoiceId('');
+                  }}
                   chooseProfile={chooseProfile}
                   chooseVoice={chooseVoice}
                   chooseReference={setReferenceId}

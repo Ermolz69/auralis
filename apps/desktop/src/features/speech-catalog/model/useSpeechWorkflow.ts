@@ -12,6 +12,7 @@ import type { SpeechVoiceOption } from '@/shared/api/contracts/speechCatalog';
 import { describeCommandError } from '@/shared/api/contracts/error';
 import { useSpeechSources } from './useSpeechSources';
 import { useMarkerPreparation } from './useMarkerPreparation';
+import { referenceAllowed } from './referenceAllowed';
 
 export type SpeechWorkflowOptions = {
   projectId: string;
@@ -20,6 +21,7 @@ export type SpeechWorkflowOptions = {
   referenceId: string;
   voices: SpeechVoiceOption[];
   engineId: string;
+  allowUnverifiedNeutral?: boolean;
 };
 const describe = describeCommandError;
 
@@ -30,6 +32,7 @@ export function useSpeechWorkflow({
   referenceId,
   voices,
   engineId,
+  allowUnverifiedNeutral = false,
 }: SpeechWorkflowOptions) {
   const [mode, setMode] = useState<'text' | 'subtitles'>('text');
   const [text, setText] = useState('');
@@ -90,7 +93,7 @@ export function useSpeechWorkflow({
   useEffect(() => {
     setAssignments([]);
     setSelected('');
-  }, [profileId]);
+  }, [profileId, allowUnverifiedNeutral]);
 
   const action = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -133,6 +136,7 @@ export function useSpeechWorkflow({
       const result = await invoke('prepare_speech_plan_cmd', {
         projectId,
         request: {
+          ...(allowUnverifiedNeutral ? { allow_unverified_neutral: true } : {}),
           decision_id: review.decision_id,
           expected_source_sha256: review.source.sha256,
           profile_id: profileId,
@@ -172,7 +176,7 @@ export function useSpeechWorkflow({
     const compatible = voices
       .find((v) => v.voice_id === assignedVoice)
       ?.references.filter(
-        (r) => r.engine_id === engineId && r.qualification_status === 'qualified',
+        (r) => r.engine_id === engineId && referenceAllowed(r, allowUnverifiedNeutral),
       );
     const reference = assignedReference
       ? compatible?.find((r) => r.reference_id === assignedReference)

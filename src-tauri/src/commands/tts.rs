@@ -20,6 +20,7 @@ pub async fn save_speech_voice_selection_cmd(
     profile_id: String,
     voice_id: String,
     reference_id: String,
+    allow_unverified_neutral: Option<bool>,
     speech: State<'_, Arc<SpeechUseCases>>,
 ) -> Result<PuzaVoiceBinding, CommandError> {
     speech
@@ -28,6 +29,7 @@ pub async fn save_speech_voice_selection_cmd(
             profile_id,
             voice_id,
             reference_id,
+            allow_unverified_neutral.unwrap_or(false),
         )
         .await
         .map_err(CommandError::from)

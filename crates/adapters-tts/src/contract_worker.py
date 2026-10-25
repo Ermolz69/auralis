@@ -35,7 +35,14 @@ def run(request):
         voice = load_voice_manifest(Path(sys.argv[2]) / voice_id / "voice.json")
         if voice.voice_id != voice_id:
             raise ValueError("Voice manifest identity differs")
-        require_qualified_reference(voice, binding["reference_id"], binding["engine_id"], "neutral")
+        reference = next((item for item in voice.references
+                          if item.reference_id == binding["reference_id"]
+                          and item.engine_id == binding["engine_id"]
+                          and item.emotion_id == "neutral"), None)
+        technical = (reference is not None and reference.qualification.status == "unverified"
+                     and binding.get("technical_reference_permission"))
+        if not technical:
+            require_qualified_reference(voice, binding["reference_id"], binding["engine_id"], "neutral")
         cast["roles"][role] = {"display_name": binding["display_name"], "voice_id": voice_id}
     if source is not None:
         configuration["documents"] = [{"document_id": "document-000001", "input": "source.txt"}]

@@ -23,6 +23,8 @@ pub struct PuzaVoiceBinding {
     pub voice_id: String,
     pub reference_id: String,
     pub engine_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub technical_reference_permission: Option<String>,
 }
 
 #[async_trait]

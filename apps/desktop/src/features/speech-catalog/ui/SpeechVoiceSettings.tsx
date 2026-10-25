@@ -2,6 +2,7 @@ import type {
   SpeechCatalogSnapshot,
   SpeechVoiceOption,
 } from '@/shared/api/contracts/speechCatalog';
+import { referenceAllowed } from '../model/referenceAllowed';
 type Props = {
   catalog: SpeechCatalogSnapshot;
   voices: SpeechVoiceOption[];
@@ -9,6 +10,8 @@ type Props = {
   voiceId: string;
   referenceId: string;
   disabled: boolean;
+  technical: boolean;
+  setTechnical: (value: boolean) => void;
   chooseProfile: (id: string) => void;
   chooseVoice: (id: string) => void;
   chooseReference: (id: string) => void;
@@ -22,6 +25,8 @@ export function SpeechVoiceSettings(props: Props) {
     voiceId,
     referenceId,
     disabled,
+    technical,
+    setTechnical,
     chooseProfile,
     chooseVoice,
     chooseReference,
@@ -36,6 +41,19 @@ export function SpeechVoiceSettings(props: Props) {
   return (
     <fieldset className="space-y-3 rounded border border-border p-3" disabled={disabled}>
       <legend className="px-1 text-sm font-medium text-text">2. Голос и движок</legend>
+      <label className="flex gap-2 text-xs text-muted">
+        <input
+          type="checkbox"
+          checked={technical}
+          onChange={(event) => setTechnical(event.target.checked)}
+        />
+        Разрешаю неподтверждённый нейтральный образец для технического прогона
+      </label>
+      {technical && (
+        <p role="status" className="text-xs text-muted">
+          Качество не подтверждено. Разрешение сохраняется в плане; каталог голосов не изменяется.
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs text-muted">
           Движок
@@ -79,6 +97,12 @@ export function SpeechVoiceSettings(props: Props) {
         <p role="status" className="text-xs text-muted">
           Образец «{current.emotion_id}» подтверждён прослушиванием.
         </p>
+      ) : technical &&
+        current?.qualification_status === 'unverified' &&
+        current.emotion_id === 'neutral' ? (
+        <p role="status" className="text-xs text-muted">
+          Нейтральный образец разрешён только для технического прогона.
+        </p>
       ) : (
         <p role="status" className="text-xs text-muted">
           Для этого голоса и движка ещё нужен подтверждённый образец.
@@ -97,7 +121,7 @@ export function SpeechVoiceSettings(props: Props) {
             <option
               key={r.reference_id}
               value={r.reference_id}
-              disabled={r.qualification_status !== 'qualified'}
+              disabled={!referenceAllowed(r, technical)}
             >
               {r.emotion_id} · {r.transcript || r.reference_id}
               {r.qualification_status !== 'qualified' ? ' · не подтверждён' : ''}
