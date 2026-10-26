@@ -47,6 +47,7 @@ export class Report {
       if (evidence !== undefined) step.evidence = evidence;
     } catch (error) {
       if (error instanceof UnconfirmedCleanup) this.data.cleanup_unconfirmed = true;
+      if (this.abortReason && id !== 'cleanup') error = this.abortReason;
       step.status = error instanceof Blocked ? 'blocked' : 'failed';
       step.error = String(error.message).slice(0, 8000);
     }
@@ -58,6 +59,10 @@ export class Report {
         step.screenshot = image;
       } catch (error) {
         step.screenshot_error = String(error.message).slice(0, 500);
+        if (step.status === 'passed') {
+          step.status = 'failed';
+          step.error = `Required screenshot was not retained: ${step.screenshot_error}`;
+        }
       }
     }
     await this.save();
@@ -67,6 +72,9 @@ export class Report {
   async save() {
     this.data.status = overall(this.data.steps);
     this.data.updated_at = new Date().toISOString();
+    this.data.artifacts = (await fsp.readdir(this.run.directory)).filter((name) =>
+      /\.(png|zip|log|txt|jsonl)$/.test(name),
+    );
     await fsp.writeFile(
       path.join(this.run.directory, 'report.json'),
       JSON.stringify(this.data, null, 2),
@@ -79,7 +87,7 @@ export class Report {
       .join('');
     await fsp.writeFile(
       path.join(this.run.directory, 'index.html'),
-      `<!doctype html><meta charset="utf-8"><title>Auralis UI ${escape(this.run.id)}</title><style>body{font:15px system-ui;margin:2rem;background:#15171d;color:#eee}table{border-collapse:collapse;width:100%}td,th{border:1px solid #555;padding:.6rem;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#8acfff}</style><h1>${escape(this.data.layer)} · ${escape(this.data.status)}</h1><p>${escape(this.run.id)}</p><a href="report.json">JSON report</a> · <a href="junit.xml">JUnit report</a><table><tr><th>Step</th><th>Status</th><th>ms</th><th>Evidence</th></tr>${rows}</table>`,
+      `<!doctype html><meta charset="utf-8"><title>Auralis UI ${escape(this.run.id)}</title><style>body{font:15px system-ui;margin:2rem;background:#15171d;color:#eee}table{border-collapse:collapse;width:100%}td,th{border:1px solid #555;padding:.6rem;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#8acfff}</style><h1>${escape(this.data.layer)} · ${escape(this.data.status)}</h1><p>${escape(this.run.id)}</p><a href="report.json">JSON report</a> · <a href="junit.xml">JUnit report</a><p>${this.data.artifacts.map((name) => `<a href="${escape(name)}">${escape(name)}</a>`).join(' · ')}</p><table><tr><th>Step</th><th>Status</th><th>ms</th><th>Evidence</th></tr>${rows}</table>`,
     );
     const cases = this.data.steps
       .map(
