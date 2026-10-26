@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import threading
 
 root = Path(__file__).parent
 config = json.loads((root / "metadata-guard.json").read_text(encoding="utf-8"))
@@ -87,6 +88,7 @@ def profile(frame, event, returned):
 
 def finish():
     state["profile_active_before_exit"] = sys.getprofile() is profile
+    state["thread_profile_active_before_exit"] = threading.getprofile() is profile
     sys.setprofile(None)
     state["imports"] = sorted(set(state["imports"]) | set(sys.modules))
     state["thin_adapter_imports"] = [name for name in state["imports"] if name.startswith("src.tts.engine")]
@@ -104,3 +106,4 @@ for name in list(sys.modules):
     if any(name == item or name.startswith(item + ".") for item in blocked_modules):
         denied("model/framework already loaded " + name)
 sys.setprofile(profile)
+threading.setprofile(profile)

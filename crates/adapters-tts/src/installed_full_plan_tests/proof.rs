@@ -45,15 +45,26 @@ pub(super) fn exited(_: u32, _: u64) -> TestResult<bool> {
 }
 
 pub fn audit_reports(root: &Path) -> TestResult<Vec<Value>> {
-    let mut entries: Vec<_> = std::fs::read_dir(root)?.collect::<Result<_, _>>()?;
+    let mut entries: Vec<_> = std::fs::read_dir(root)
+        .map_err(|error| lifecycle::unconfirmed(error.to_string()))?
+        .collect::<Result<_, _>>()
+        .map_err(|error| lifecycle::unconfirmed(error.to_string()))?;
     entries.sort_by_key(std::fs::DirEntry::file_name);
     if entries.len() != 6 {
-        return Err("expected one audited CONTRACT and two TTS processes per engine".into());
+        return Err(lifecycle::unconfirmed(
+            "expected one audited CONTRACT and two TTS processes per engine",
+        )
+        .into());
     }
     let mut reports = Vec::new();
     let mut adapters = 0;
     for entry in entries {
-        let mut report: Value = serde_json::from_slice(&std::fs::read(entry.path())?)?;
+        let mut report: Value = serde_json::from_slice(
+            &std::fs::read(entry.path())
+                .map_err(|error| lifecycle::unconfirmed(error.to_string()))?,
+        )
+        .map_err(|error| lifecycle::unconfirmed(error.to_string()))?;
+        confirm_report(&report)?;
         if report["contract_version"] != "0.2.0"
             || report["tts_version"] != "0.3.0"
             || report["model_file_opens"] != 0
@@ -68,19 +79,13 @@ pub fn audit_reports(root: &Path) -> TestResult<Vec<Value>> {
             );
         }
         if report["profile_active_before_exit"] != true
+            || report["thread_profile_active_before_exit"] != true
             || !report["framework_modules_loaded"]
                 .as_array()
                 .ok_or("framework audit missing")?
                 .is_empty()
         {
             return Err("model-free profile guard was inactive or a framework loaded".into());
-        }
-        let pid = u32::try_from(report["pid"].as_u64().ok_or("audit PID missing")?)?;
-        let created = report["creation_time"]
-            .as_u64()
-            .ok_or("audit creation time missing")?;
-        if !exited(pid, created)? {
-            return Err("audited metadata worker exit unconfirmed".into());
         }
         report["exit_confirmed"] = json!(true);
         if !report["thin_adapter_imports"]
@@ -99,6 +104,22 @@ pub fn audit_reports(root: &Path) -> TestResult<Vec<Value>> {
         );
     }
     Ok(reports)
+}
+
+pub fn confirm_report(report: &Value) -> TestResult<()> {
+    let pid = report["pid"]
+        .as_u64()
+        .and_then(|pid| u32::try_from(pid).ok())
+        .ok_or_else(|| lifecycle::unconfirmed("independent worker PID missing"))?;
+    let creation = report["creation_time"]
+        .as_u64()
+        .ok_or_else(|| lifecycle::unconfirmed("independent worker creation time missing"))?;
+    if !exited(pid, creation)
+        .map_err(|error| lifecycle::unconfirmed(format!("worker identity query failed: {error}")))?
+    {
+        return Err(lifecycle::unconfirmed("independent worker exit unconfirmed").into());
+    }
+    Ok(())
 }
 
 fn chunk_preview(root: &Path, audit: &Value) -> TestResult<()> {

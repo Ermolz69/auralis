@@ -1,6 +1,10 @@
 version: '3'
 
 tasks:
+  test:metadata-lifecycle:
+    desc: Verify uncertain metadata exit retains a fake lease without native admission or Python
+    cmds:
+      - cargo test --locked -p adapters-tts --lib installed_full_plan_tests::lifecycle
   test:tts:installed-long:
     desc: Validate a fresh synthetic4004 persisted plan through pinned installed CONTRACT/TTS metadata without models
     requires:
@@ -10,7 +14,17 @@ tasks:
       AURALIS_METADATA_CASE: '{{.CASE}}'
       AURALIS_METADATA_INVENTORY_SHA: '{{.INVENTORY_SHA}}'
     cmds:
-      - cargo test --locked -p adapters-tts --lib installed_full_plan_tests -- --ignored --test-threads=1 --nocapture
+      - cargo test --locked -p adapters-tts --lib installed_full_plan_tests::installed_four_thousand_cues_compose_and_validate_without_models -- --ignored --exact --test-threads=1 --nocapture
+  test:tts:metadata-guard:
+    desc: Run a new inert metadata guard-only case including threaded negatives without full-plan retry
+    requires:
+      vars: [CONFIG, CASE, INVENTORY_SHA]
+    env:
+      AURALIS_TEST_PUZA_RUNTIME: '{{.CONFIG}}'
+      AURALIS_METADATA_CASE: '{{.CASE}}'
+      AURALIS_METADATA_INVENTORY_SHA: '{{.INVENTORY_SHA}}'
+    cmds:
+      - cargo test --locked -p adapters-tts --lib installed_full_plan_tests::installed_guard_only_rejects_threaded_engine_actions -- --ignored --exact --test-threads=1 --nocapture
   check:tts:installed-long:
     desc: Compile and lint the ignored installed metadata control without starting Python
     cmds:
@@ -103,6 +117,7 @@ tasks:
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/owned_process.rs crates/adapters-tts/src/owned_process/tests.rs crates/adapters-tts/src/marker.rs crates/adapters-translate/src/managed_runtime/lease.rs crates/adapters-translate/src/managed_runtime/owned_process/windows.rs crates/adapters-translate/src/managed_runtime/owned_process/windows/tests.rs crates/adapters-translate/src/managed_runtime/owned_process/unix.rs
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/owned_process/tests/job_wait.rs
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/lib.rs crates/adapters-tts/src/installed_full_plan_tests.rs crates/adapters-tts/src/installed_full_plan_tests/inputs.rs crates/adapters-tts/src/installed_full_plan_tests/data.rs crates/adapters-tts/src/installed_full_plan_tests/proof.rs crates/adapters-tts/src/installed_full_plan_tests/guard_control.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/installed_full_plan_tests/lifecycle.rs
   clippy:backend-review:
     desc: Lint speech review, CONTRACT bridge and native admission regression targets without models
     cmds:
