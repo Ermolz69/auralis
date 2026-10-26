@@ -19,6 +19,7 @@ async fn installed_contract_checks_empty_projects_sources_and_all_four_voice_ass
             .ok_or_else(|| std::io::Error::other(format!("Missing {name}")))
     };
     let client = TtsWorkerClient::new(TtsRuntimeConfig {
+        execution_budget: Default::default(),
         python_executable: path("python_executable")?,
         package_root: path("package_root")?,
         voice_store: path("voice_store")?,
