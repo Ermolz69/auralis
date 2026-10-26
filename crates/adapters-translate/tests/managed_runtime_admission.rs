@@ -7,6 +7,9 @@ use std::error::Error;
 use std::time::Duration;
 use uuid::Uuid;
 
+// These fixtures exercise the same native machine lease from separate runtimes.
+static NATIVE_ADMISSION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 const UNCHECKED_PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.experimental.json"
 );
@@ -17,6 +20,7 @@ const CHECKED_PROFILE: &str = include_str!(
 #[tokio::test]
 async fn cancelled_admission_does_not_open_files_and_releases_its_slot()
 -> Result<(), Box<dyn Error>> {
+    let _admission = NATIVE_ADMISSION.lock().await;
     let directory = tempfile::tempdir()?;
     let runtime = ManagedLlamaRuntime::new(ManagedRuntimeConfig {
         executable: directory.path().join("missing-server.exe"),
@@ -60,6 +64,7 @@ fn intent(profile: &str) -> TranslationRunIntent {
 #[tokio::test]
 async fn rejects_unchecked_or_mismatched_model_before_process_start() -> Result<(), Box<dyn Error>>
 {
+    let _admission = NATIVE_ADMISSION.lock().await;
     let directory = tempfile::tempdir()?;
     let executable = directory.path().join("llama-server.exe");
     let model = directory.path().join("model.gguf");
@@ -74,10 +79,15 @@ async fn rejects_unchecked_or_mismatched_model_before_process_start() -> Result<
         startup_timeout: Duration::from_secs(1),
         readiness_interval: Duration::from_millis(100),
     })?;
-    assert!(matches!(
-        runtime.acquire(&intent(UNCHECKED_PROFILE)).await,
-        Err(PortError::Unsupported { .. })
-    ));
+    let unchecked = runtime
+        .acquire(&intent(UNCHECKED_PROFILE))
+        .await
+        .err()
+        .ok_or("unchecked profile was admitted")?;
+    assert!(
+        matches!(unchecked, PortError::Unsupported { .. }),
+        "Unexpected unchecked profile refusal: {unchecked}"
+    );
     assert!(matches!(
         runtime.acquire(&intent(CHECKED_PROFILE)).await,
         Err(PortError::Conflict { .. })
