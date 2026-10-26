@@ -61,12 +61,17 @@ test('component relocation preserves voice bytes and pins the new profile invent
   };
   await scan(directory);
   const result = await seedProfile(
-    { runtime_seed: { directory: path.relative(root, directory), files } },
+    {
+      runtime_seed: { directory: path.relative(root, directory), files },
+      tts_execution_budget_seconds: 2700,
+    },
     { directory: output },
   );
   assert.equal(result.qualification_modified, false);
   const profile = path.join(output, 'profile');
   const config = await json(path.join(profile, 'tts-runtime.json'));
+  assert.equal(config.execution_budget_seconds, 2700);
+  assert.equal(result.tts_runtime_sha256, await hash(path.join(profile, 'tts-runtime.json')));
   assert.ok(config.package_root.startsWith(profile + path.sep));
   const inventoryFile = path.join(config.package_root, 'integrity.json');
   assert.equal(await hash(inventoryFile), config.integrity_sha256);

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { owned, overall, validateSpec, Blocked } from './core.mjs';
 import { Report } from './report.mjs';
+import { inferenceDraft } from './spec-defaults.mjs';
 
 test('owned paths reject roots, traversal and sibling prefix collisions', () => {
   const root = path.join(os.tmpdir(), 'ui-owned');
@@ -39,6 +40,33 @@ test('finite real specifications require a pinned candidate and engine order', (
   assert.throws(() => validateSpec({ ...spec, engines: [...spec.engines].reverse() }));
   assert.throws(() => validateSpec({ ...spec, max_wall_seconds: Infinity }));
   assert.throws(() => validateSpec({ ...spec, candidate_sha256: 'latest' }));
+  const full = {
+    ...spec,
+    ...inferenceDraft(),
+    allow_inference: true,
+    export_video: true,
+    runtime_seed: { files: [{ path: 'models/model.gguf' }] },
+  };
+  full.candidate_receipt_sha256 = 'a'.repeat(64);
+  full.engine_identities = full.engines.map((e) => ({
+    ...e,
+    profile_sha256: 'c'.repeat(64),
+    voice_manifest_sha256: 'd'.repeat(64),
+    reference_audio_sha256: 'e'.repeat(64),
+    model_revision: 'f'.repeat(40),
+  }));
+  assert.equal(validateSpec(full), full);
+  for (const change of [
+    { expected_cue_count: 4003 },
+    { case_scope: 'short-full' },
+    { export_video: false },
+    { exercise_cancellation: true },
+    { resource_budget: { ...full.resource_budget, max_vram_bytes: 16 * 1024 ** 3 } },
+  ])
+    assert.throws(() => validateSpec({ ...full, ...change }));
+  const diagnostic = { ...full, ...inferenceDraft('diagnostic'), allow_inference: true };
+  assert.equal(validateSpec(diagnostic), diagnostic);
+  assert.throws(() => validateSpec({ ...diagnostic, diagnostic_text: '' }));
 });
 test('reports retain blockers, unexecuted dependencies, escaped HTML and nonzero exit', async () => {
   const directory = await fsp.mkdtemp(path.join(os.tmpdir(), 'auralis-ui-report-'));
