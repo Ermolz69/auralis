@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "One technical YouTube Chinese-subtitle to Russian WAV/MP4 candidate for sequential VoxCPM2 and ESpeech",
-  "status": "blocked",
+  "status": "failed",
   "updated_date": "2026-10-26",
   "branch": "feat/revoice-release-integration",
   "baseline_commit": "defc0b0b13b2352fc5c32d8c3ae8d54e942adf64",
@@ -191,6 +191,54 @@
       "owner": "UI Developer",
       "description": "Restart must await project list loading before checking project uniqueness",
       "status": "blocked"
+    },
+    {
+      "id": "RC-D14",
+      "owner": "UI Developer",
+      "description": "Late child creation between parent samples must not escape confirmed process cleanup",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D15",
+      "owner": "UI Developer",
+      "description": "Process-tree RAM budget must include all owned executable working sets",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D16",
+      "owner": "UI Developer",
+      "description": "Installer deadline/observer failures must not leave an unowned child running",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D17",
+      "owner": "UI Developer",
+      "description": "Raw chunk/layout coverage must bind to the actual aggregate WAV hashes and measured frames",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D18",
+      "owner": "UI Developer",
+      "description": "Build freeze and candidate reuse must cover effective Taskfile/media inputs and complete dependency identity",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D19",
+      "owner": "UI Developer",
+      "description": "Resource diagnostic write failures must still stop owned work immediately and preserve the primary observer error",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D20",
+      "owner": "Backend Developer",
+      "description": "Native admission regression still fails on integrated default suite after test mutex fix",
+      "status": "failed"
+    },
+    {
+      "id": "RC-D21",
+      "owner": "Backend Developer",
+      "description": "Hard45min TTS whole-plan deadline needs an explicit bounded long-case configuration consistent with frozen budgets",
+      "status": "blocked"
     }
   ],
   "commits": [
@@ -201,6 +249,30 @@
       "review_status": "passed",
       "integration_checks": "not_run",
       "scope": "Exact approved speech plan with host4004 fixture; production CONTRACT and native inference remain separate"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "c62c222939d7d27dd6c9302f48f13aa572781de4",
+      "integration_commit": "3afdc7443ad7355c145d6b92c1a99282b295ee51",
+      "review_status": "passed",
+      "integration_checks": "passed",
+      "scope": "Long bridge/cast/reference fixture only"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "9175dc61d1e244df77c996e3d332f686671b58cb",
+      "integration_commit": "b4cdb5165887361f62152dedc0385ab5019478c5",
+      "review_status": "passed",
+      "integration_checks": "passed",
+      "scope": "MP4 policy controls only; actual AAC rendering not_run"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "57f393c081f9137bf27e2698cfac9e4c703e02c6",
+      "integration_commit": "1129456587f83d25e4407c4a1de5f68ddffec684",
+      "review_status": "passed",
+      "integration_checks": "failed",
+      "scope": "Default native-admission regression failed on integration; RC-D20 remains open"
     }
   ],
   "results": [
@@ -297,6 +369,54 @@
       "status": "passed",
       "exit_code": 0,
       "scope": "Bundled media tool hashes, licenses, provenance and executable version checks only"
+    },
+    {
+      "command": "Read-only preservation comparison after component probe",
+      "status": "passed",
+      "exit_code": 0,
+      "files_checked": 109,
+      "changed": 0,
+      "scope": "Normal profile and existing voice store hashes unchanged"
+    },
+    {
+      "command": "task rs:test:contract-bridge",
+      "commit": "1129456587f83d25e4407c4a1de5f68ddffec684",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 14.889,
+      "scope": "Integrated backend model-free check; no installed inference acceptance"
+    },
+    {
+      "command": "task rs:test:speech-workflow",
+      "commit": "1129456587f83d25e4407c4a1de5f68ddffec684",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 17.63,
+      "scope": "Integrated backend model-free check; no installed inference acceptance"
+    },
+    {
+      "command": "task rs:test:translate",
+      "commit": "1129456587f83d25e4407c4a1de5f68ddffec684",
+      "status": "failed",
+      "exit_code": 201,
+      "wall_seconds": 11.288,
+      "scope": "Integrated backend model-free check; no installed inference acceptance"
+    },
+    {
+      "command": "task rs:test:tts",
+      "commit": "1129456587f83d25e4407c4a1de5f68ddffec684",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 33.587,
+      "scope": "Integrated backend model-free check; no installed inference acceptance"
+    },
+    {
+      "command": "task ui:check:video",
+      "commit": "1129456587f83d25e4407c4a1de5f68ddffec684",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 37.946,
+      "scope": "Integrated backend model-free check; no installed inference acceptance"
     }
   ],
   "engine_results": [
@@ -378,7 +498,14 @@
     "ffprobe": "8.1.2",
     "note": "Prospective retained inputs; reverify every byte after relocation and before final freeze. Profile hashes bind complete settings.",
     "original_seed_manifest_sha256": "fa328c73f77970d52cb0ff7881157bc83a59dac56caf03fed13bd51cfa38842f",
-    "validation_scope": "Full seed hashes and installed CONTRACT plan metadata only; model loading and inference remain not_run"
+    "validation_scope": "Full seed hashes and installed CONTRACT plan metadata only; model loading and inference remain not_run",
+    "execution_budget_contract": {
+      "spec_field": "tts_execution_budget_seconds",
+      "runtime_field": "execution_budget_seconds",
+      "default_seconds": 2700,
+      "implementation_status": "not_run",
+      "maximum_seconds": 172800
+    }
   },
   "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd"
 }

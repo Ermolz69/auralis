@@ -27,6 +27,7 @@ function complete() {
   record.candidate_commit = 'a'.repeat(40);
   record.candidate_executable_sha256 = 'b'.repeat(64);
   record.source.video_duration_verification = record.prospective_runtime.status = 'passed';
+  record.prospective_runtime.execution_budget_contract.implementation_status = 'passed';
   for (const task of record.tasks) {
     task.status = 'passed';
     task.evidence = [

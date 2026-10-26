@@ -9,7 +9,7 @@ const sha = /^[a-f0-9]{64}$/;
 const commit = /^[a-f0-9]{40}$/;
 const required = Array.from({ length: 8 }, (_, i) => `RC-0${i + 1}`);
 const requiredDefects = Array.from(
-  { length: 13 },
+  { length: 21 },
   (_, i) => `RC-D${String(i + 1).padStart(2, '0')}`,
 );
 
@@ -29,6 +29,9 @@ export function technicalStatus(record, readEvidence) {
   assert.ok(states.has(record.source.video_duration_verification));
   const runtime = record.prospective_runtime;
   assert.ok(runtime && states.has(runtime.status));
+  assert.ok(states.has(runtime.execution_budget_contract?.implementation_status));
+  assert.equal(runtime.execution_budget_contract.default_seconds, 2700);
+  assert.equal(runtime.execution_budget_contract.maximum_seconds, 172800);
   assert.match(runtime.seed_manifest_sha256 ?? '', sha);
   for (const key of ['contract', 'tts']) assert.match(runtime.component_commits[key] ?? '', commit);
   assert.equal(runtime.wheels.length, 2);
@@ -89,6 +92,7 @@ export function technicalStatus(record, readEvidence) {
     record.specification_status,
     record.source.video_duration_verification,
     runtime.status,
+    runtime.execution_budget_contract.implementation_status,
     ...record.tasks.map((task) => task.status),
   ];
   for (const defect of record.defects) {

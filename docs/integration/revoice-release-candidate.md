@@ -1,6 +1,7 @@
 # Subtitle revoicing technical candidate
 
-Status: **blocked**. The technical route has not passed for either engine.
+Status: **failed**. A mandatory integration regression is failing; the real
+technical route has not passed for either engine.
 This record coordinates one candidate for YouTube Chinese subtitles, Russian
 translation, exact-version review, speech, WAV, MP4 and ordinary Auralis playback.
 The [release matrix](revoice-execution.md#mandatory-acceptance-cases) remains
@@ -76,8 +77,32 @@ The preceding sandbox attempt failed to spawn test subprocesses (Task exit 201);
 it did not execute the assertions. Both outcomes remain distinct.
 This checkpoint is not evidence for the changed integration candidate.
 
+The owned runtime snapshot contains 46,487 files. Full byte verification passed
+in 56.895 seconds; the relocated manifest SHA-256 is
+`b91323fa8a9b6e5a86015badbc96f69ccd8cd878e15dae55c51d4d888dba580c`.
+Installed CONTRACT metadata validated four unchanged neutral-reference plans.
+`task media:verify` passed for the retained tools. These checks loaded no engines
+and establish neither model execution nor native workflow acceptance.
+
+After integration through `1129456587f83d25e4407c4a1de5f68ddffec684`, the
+following checks ran on that source:
+
+| Task                      | Result                                 | Scope                                                                           |
+| ------------------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
+| `rs:test:speech-workflow` | passed, exit 0                         | 15 checks, including the host 4,004-cue fixture                                 |
+| `rs:test:contract-bridge` | passed, exit 0                         | Fixture API, 4,005 bindings and reference refusal controls                      |
+| `rs:test:tts`             | passed, exit 0                         | 51 checks; four explicit installed/real checks remained ignored                 |
+| `ui:check:video`          | passed, exit 0                         | 195 policy, lifecycle, publication and storage checks                           |
+| `rs:test:translate`       | failed, Task exit 201 / Cargo exit 101 | Two native-admission fixtures failed; their exact refusal still needs diagnosis |
+
+The sequence stopped on that failure; subsequent contract-adapter and lint
+commands were not run by this integration attempt. Earlier owner-side passes do
+not replace this result. The absolute 45-minute TTS plan deadline also needs an
+explicit bounded long-case configuration before freezing the complete-source case.
+No source coverage or duration policy may be reduced to pass these gates.
+
 VoxCPM2, ESpeech, actual translation, real WAV/MP4 and native playback are
-**not_run**. The overall result remains **blocked**.
+**not_run**. The overall result remains **failed**.
 Automated exact-version approval proves a workflow boundary only. Translation
 quality, actual listening, voice qualification, TXT/ASR, clean Windows and the
 broader release matrix require their own factual assessments.
