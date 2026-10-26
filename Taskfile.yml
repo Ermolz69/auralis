@@ -36,7 +36,7 @@ tasks:
   revoice:release:fmt:
     desc: Format only the technical candidate coordination register and controls
     cmds:
-      - pnpm prettier --write docs/integration/revoice-release-candidate.md docs/integration/revoice-release-candidate.json tools/revoice/release-status.mjs tools/revoice/release-status.test.mjs
+      - pnpm prettier --write docs/integration/revoice-release-candidate.md docs/integration/revoice-release-candidate.json tools/revoice/release-status.mjs tools/revoice/release-status.test.mjs tools/revoice/release-evidence.mjs
 
   revoice:native:window:preflight:
     desc: Verify the frozen read-only installed-window audit without UI input or models

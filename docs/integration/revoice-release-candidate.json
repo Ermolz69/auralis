@@ -45,7 +45,8 @@
         "docs/integration/revoice-release-candidate.json",
         "tools/revoice/release-status.mjs",
         "tools/revoice/release-status.test.mjs",
-        "Taskfile.yml"
+        "Taskfile.yml",
+        "tools/revoice/release-evidence.mjs"
       ],
       "agreement": "confirmed"
     }
@@ -213,6 +214,21 @@
       "exit_code": 201,
       "child_exit_code": 2,
       "scope": "Required technical stages remain blocked or unrun"
+    },
+    {
+      "command": "Read-only preservation hash comparison",
+      "status": "passed",
+      "exit_code": 0,
+      "files_checked": 109,
+      "changed": 0,
+      "scope": "Normal profile top-level files and complete existing voice store after preparation"
+    },
+    {
+      "command": "task revoice:release:check",
+      "status": "passed",
+      "exit_code": 0,
+      "checks": 6,
+      "scope": "Reviewed status controls: actual reports, immutable source/runtime/candidate binding and full-source scope"
     }
   ],
   "engine_results": [
@@ -234,5 +250,65 @@
   "broader_release_matrix": "docs/integration/revoice-plan.json",
   "broader_release_matrix_changed": false,
   "translation_quality": "not_run",
-  "listening_acceptance": "not_run"
+  "listening_acceptance": "not_run",
+  "prospective_runtime": {
+    "status": "not_run",
+    "seed_manifest_sha256": "fa328c73f77970d52cb0ff7881157bc83a59dac56caf03fed13bd51cfa38842f",
+    "seed_files": 46487,
+    "seed_bytes": 17567032303,
+    "component_commits": {
+      "contract": "3f3498e87b4cfb68c67d0d718497c6286330f6b8",
+      "tts": "e18f64d1bad80012b085d907673451c9e5b886f7"
+    },
+    "wheels": [
+      {
+        "name": "voxscript_contract",
+        "version": "0.2.0",
+        "sha256": "c8dcb3ecfbd64f821c56347ee8df039c8bff1d486c8d29f5967ac26a270e5381"
+      },
+      {
+        "name": "puza_tts",
+        "version": "0.3.0",
+        "sha256": "40af9aba28b42c02220fe941805a114c23ad905737b5dc5df54d89e873e82723"
+      }
+    ],
+    "translation": {
+      "model": "Hy-MT2-1.8B-Q4_K_M.gguf",
+      "sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
+      "runtime": "llama-b10977-bin-win-cpu-x64.zip",
+      "runtime_sha256": "bdbb1ee5368b44112fa3fa9b3ac168a15d0d492e5c2f9fbe2074dd2f4628a4b9"
+    },
+    "engines": [
+      {
+        "engine_id": "voxcpm2",
+        "model_revision": "32279effe8c19989596f05d353d1447f51d9e915",
+        "profile_id": "native-plan-voxcpm2",
+        "profile_sha256": "62c6fb690aa1a07b47c28118b9f0fd7dc00da52f6f4081c16405246bde03edea",
+        "voice_id": "marina_elevenlabs_ru",
+        "voice_manifest_sha256": "6c69208f30421111e827ec3a1e6f8cd8a5793bcae8c42127cc7ed84fe3b02c28",
+        "reference_id": "ref-voxcpm2-neutral",
+        "reference_sha256": "069515a44e0be0eb47aef4a23a303b58d5e7fbfa297eddc68b19dbbc1624291d"
+      },
+      {
+        "engine_id": "espeech",
+        "model_revision": "f582b6e5897fe8a5835059405a8439d13bdf7684",
+        "profile_id": "native-plan-espeech",
+        "profile_sha256": "5722577a062664cc31c8be2d99fd55b6092cc7a7928ef96904d23cfd8eab3c39",
+        "voice_id": "alex_analyst_elevenlabs_ru",
+        "voice_manifest_sha256": "7e2433bc4f7d531bd8a860a7427565190ac27888da0ad3aa0963b2474338788d",
+        "reference_id": "ref-espeech-neutral",
+        "reference_sha256": "cd4b0ca355c08eb517f7d5dc5bd84e4af694395ba326b0377adc391aad7b6406"
+      }
+    ],
+    "python": "3.12.14",
+    "torch": "2.8.0+cu128",
+    "torchaudio": "2.8.0+cu128",
+    "transformers": "5.17.0",
+    "voxcpm": "2.0.3",
+    "f5_tts": "1.1.21",
+    "ffmpeg": "8.1.2",
+    "ffprobe": "8.1.2",
+    "note": "Prospective retained inputs; reverify every byte after relocation and before final freeze. Profile hashes bind complete settings."
+  },
+  "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd"
 }
