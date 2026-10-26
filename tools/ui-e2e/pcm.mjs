@@ -4,6 +4,14 @@ import assert from 'node:assert/strict';
 import { root, hash, json, owned, idPattern, UnconfirmedCleanup } from './core.mjs';
 import { runInstaller } from './installer.mjs';
 
+export function numericalLibraryFiles(files) {
+  return files.filter((item) =>
+    /\/venv\/Lib\/site-packages\/(numpy|scipy|soundfile|_soundfile|_cffi_backend|cffi|typing_extensions|pycparser)/i.test(
+      item.path.replaceAll('\\', '/'),
+    ),
+  );
+}
+
 export function pinnedPcmHelper(profile, packageRoot, inventory) {
   const entries = inventory.package_files.filter((item) => {
     const name = item.path.replaceAll('\\', '/');
@@ -41,13 +49,10 @@ export async function verifyPcmReadOnly(
   assert.equal(await hash(helper, remaining), helperSha);
   const runtime = path.dirname(path.dirname(config.python_executable));
   const site_packages = owned(profile, path.join(runtime, 'venv/Lib/site-packages'));
-  const library_files = spec.runtime_seed.files
-    .filter((item) =>
-      /\/venv\/Lib\/site-packages\/(numpy|scipy|soundfile|_soundfile|_cffi_backend|cffi)/i.test(
-        item.path.replaceAll('\\', '/'),
-      ),
-    )
-    .map((item) => ({ path: owned(profile, path.join(profile, item.path)), sha256: item.sha256 }));
+  const library_files = numericalLibraryFiles(spec.runtime_seed.files).map((item) => ({
+    path: owned(profile, path.join(profile, item.path)),
+    sha256: item.sha256,
+  }));
   for (const name of ['numpy', 'scipy', 'soundfile'])
     assert.ok(
       library_files.some((item) =>
