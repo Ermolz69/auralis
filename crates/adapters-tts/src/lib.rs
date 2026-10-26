@@ -3,6 +3,8 @@ mod catalog;
 mod client;
 mod execute;
 mod framed;
+#[cfg(test)]
+mod installed_full_plan_tests;
 mod integrity;
 #[cfg(test)]
 mod integrity_tests;

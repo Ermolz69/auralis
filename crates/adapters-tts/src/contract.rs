@@ -29,13 +29,17 @@ impl PuzaContractPort for TtsWorkerClient {
             return Err(invalid("CONTRACT request exceeds its limit"));
         }
         let config = self.runtime();
+        let code = include_str!("contract_worker.py");
+        #[cfg(test)]
+        let code = crate::installed_full_plan_tests::guarded_script(&config.managed_root, code);
         let mut command = tokio::process::Command::new(&config.python_executable);
         command
             .arg("-I")
+            .arg("-B")
             .arg("-X")
             .arg("utf8")
             .arg("-c")
-            .arg(include_str!("contract_worker.py"))
+            .arg(code)
             .arg(&config.package_root)
             .arg(&config.voice_store)
             .env_remove("PYTHONPATH")
@@ -43,6 +47,8 @@ impl PuzaContractPort for TtsWorkerClient {
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
+        #[cfg(test)]
+        crate::installed_full_plan_tests::configure_guard(&mut command, &config.managed_root);
         let mut child = owned_process::spawn(command).map_err(|e| invalid(e.to_string()))?;
         let result = tokio::time::timeout(std::time::Duration::from_secs(45), async {
             let mut stdin = child
