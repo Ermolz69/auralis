@@ -9,7 +9,7 @@ const sha = /^[a-f0-9]{64}$/;
 const commit = /^[a-f0-9]{40}$/;
 const required = Array.from({ length: 8 }, (_, i) => `RC-0${i + 1}`);
 const requiredDefects = Array.from(
-  { length: 28 },
+  { length: 29 },
   (_, i) => `RC-D${String(i + 1).padStart(2, '0')}`,
 );
 

@@ -114,6 +114,32 @@ the real installed verifier wrapper. Its helper lookup incorrectly omitted the
 wheel's `src/` prefix (RC-D28). The wrapper must be corrected and tested before
 any expensive speech case is admitted.
 
+The corrected wrapper subsequently resolved the installed helper but its first
+installed run failed on an omitted numerical dependency (`typing_extensions`).
+That failed case and confirmed cleanup remain separate from the earlier oracle
+pass. The dependency closure must be hash-pinned and tested through the wrapper.
+
+Windows descendant confirmation also remains blocked (RC-D29). In the pinned
+process wrapper, a cancelled wait can preserve a cached root exit status before
+descendants finish, and a completion-port notification alone does not prove an
+empty job. Cleanup needs independent all-process confirmation under its existing
+deadline; otherwise admission and owned locks must remain retained. This is a
+code-review finding, not a reproduced claim that a model process leaked.
+
+The subsequent model-free regression reproduced false cleanup confirmation on
+the unchanged Windows wrapper in both component and synthesis paths. The
+fixtures independently confirmed their inert descendant processes were gone
+before completing the failing assertions. A query-based local correction of
+the same dependency version is pending; model execution remains prohibited.
+
+Integrated UI checks on `000beac472a12a91b3d59cff81bf3fc0594bbff5` passed:
+runner controls, frontend types and components, both production-browser fixture
+routes, frontend regressions, 35 existing browser cases, lint, architecture and
+integration-document checks. The fixture retained 32 full-workflow and 18
+diagnostic steps. These simulated results do not establish native media or model
+acceptance. After the numerical dependency followup, runner controls passed
+33 checks on `bcc057318c0972a2cf994dedbb43f5399038b3d5`.
+
 VoxCPM2, ESpeech, actual translation, real WAV/MP4 and native playback are
 **not_run**. The overall result remains **failed**.
 Automated exact-version approval proves a workflow boundary only. Translation

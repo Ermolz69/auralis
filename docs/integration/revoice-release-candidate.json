@@ -26,7 +26,14 @@
   "ownership": [
     {
       "owner": "Backend Developer",
-      "paths": ["crates/**", "src-tauri/**", "taskfiles/rust.yml"],
+      "paths": [
+        "crates/**",
+        "src-tauri/**",
+        "taskfiles/rust.yml",
+        "Cargo.toml",
+        "Cargo.lock",
+        "vendor/process-wrap-10.0.0/**"
+      ],
       "agreement": "confirmed"
     },
     {
@@ -281,6 +288,12 @@
       "owner": "UI Developer",
       "description": "Real PCM verifier wrapper must resolve the installed src/tts/audio/joiner.py path from the pinned inventory",
       "status": "blocked"
+    },
+    {
+      "id": "RC-D29",
+      "owner": "Backend Developer",
+      "description": "Windows descendant release confirmation must survive a cancelled prior process-wrap wait with cached root exit status",
+      "status": "failed"
     }
   ],
   "commits": [
@@ -315,6 +328,134 @@
       "review_status": "passed",
       "integration_checks": "failed",
       "scope": "Default native-admission regression failed on integration; RC-D20 remains open"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "294a1611341f2b1b6f342fad846ab1f117afb6f5",
+      "integration_commit": "38a4d019009d5a974a5e89acc4239f8be7d27e46",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Validate metadata and cancellation before native admission; retain real digest and launch under guard"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "c181b469e67b320a2987f2a2044739b588f544fe",
+      "integration_commit": "ee93c15f7d312a1ba896fe28cf214c83fafa13fc",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Finite per-plan execution budgets including dispatch, observer waits and cancellation"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "98b84c79b92bea837dbd58bef583aae331b1e6b6",
+      "integration_commit": "ce566ffb6c8650c3b31499746ae7c2f37e02bc7f",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Nonblocking forced termination and one bounded confirmation wait"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "b1f9686982d8469a9623255c369f7fec922a52e2",
+      "integration_commit": "a707c05a2605436de912b562dfc6f3a9112c0de0",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Observable job identity and both-engine persisted media playback"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "a567891bf118fcec3218156f7e507ee507811827",
+      "integration_commit": "d2cad37d3c8747a22bbe7dfc73dca3efc8ca5b31",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Fresh resume attempt and delayed project recovery controls"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "208c31afd5718494791d16db51787136023ffc83",
+      "integration_commit": "894de35fc82c5242267564652c24229d7416d615",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Source-relative cue and chunk layout verification; strengthened by later PCM followup"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "6d766cc5d41a23760ed24e85a6c55681e0c81ad8",
+      "integration_commit": "b3c30fbecfd38b99ec345fdbe62cd2adf59ed921",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Process ownership, resource observation, installer deadlines and failure retention"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "8296c25ca6b8739cce7ad318dcc30aeeec544dae",
+      "integration_commit": "8aefefa31b0e26108a8538ad2f939d7f26a58d41",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Complete candidate, dependency, runtime and inference input identities"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "373b647d82008660a753794ba0f58ca840c0968c",
+      "integration_commit": "c9209fa4fd60d493ddc12b38b1e57023f95580f3",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Explicit accessible saved-media playback controls"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "ae2d55836dd14ea08c417fd1c3ecbc2fe7c0af0d",
+      "integration_commit": "a73353128eeced8c51adfe5715978a21fb076a02",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Approved translation lineage, per-utterance signal and deterministic PCM oracle; installed wrapper remains RC-D28"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "033bf504c3ee17b754b3d0046b6b8f7c64657192",
+      "integration_commit": "8830ed70306006543670c5869139902009d2b662",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Visible source-job observation and explicit translator install and selection actions"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "cf0bea1839e6302d240d7a7ee024f89536c49e27",
+      "integration_commit": "c8dcdd17096be595c5d0dc1821db363e87012e91",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Frozen case deadlines, runtime budget application and sequential ordinary UI orchestration"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "cb278b21c170839cd5e2973617523d4dd342aed4",
+      "integration_commit": "b1c7c5c3111abdf6fec5a808ed61e3528c0aa72c",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Document model-free and ordinary UI verification scope"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "a6b51a4711685225aceb1cb1f5ab9e085227f244",
+      "integration_commit": "7ae7d54bd07bfa1879df1e1f76fc3946516fce95",
+      "review_status": "blocked",
+      "integration_checks": "not_run",
+      "scope": "Bounded component cleanup; descendant confirmation remains blocked by RC-D29"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "f7e7463fbd8eee8936950439c1e9256da4a8d8d0",
+      "integration_commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Inventory-backed installed helper path and actual wrapper fixture; numerical dependency closure followup remains open"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "30c093650a2b6eee9b9a753e07cd28ff26842d6b",
+      "integration_commit": "bcc057318c0972a2cf994dedbb43f5399038b3d5",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Shared hash-pinned numerical dependency closure; installed wrapper run awaits a new window"
     }
   ],
   "results": [
@@ -473,6 +614,85 @@
       "status": "passed",
       "exit_code": 0,
       "scope": "Model-free DSP oracle and substitution/silent-cue/helper/library/policy refusal controls; child/admission release confirmed. Real installed wrapper entrypoint remains blocked by RC-D28."
+    },
+    {
+      "command": "task ui:check:pcm",
+      "case_id": "2026-10-26T16-09-48-454Z-pcm-model-free-d062033e",
+      "status": "failed",
+      "exit_code": 1,
+      "scope": "Oracle and refusal controls passed; installed wrapper failed because the numerical dependency closure omitted typing_extensions. Owned children and admission release confirmed."
+    },
+    {
+      "command": "task ui:check:runner",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 6.153,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task ui:check:frontend",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 24.816,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task ui:fixture",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 113.604,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task ui:regression",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 16.749,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task fe:e2e",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 46.57,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task fe:lint",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 1.017,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task q:frontend",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 13.021,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task docs:integration",
+      "commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 3.791,
+      "scope": "Integrated model-free runner, production frontend or simulated-IPC workflow; no native model or media acceptance"
+    },
+    {
+      "command": "task ui:check:runner",
+      "commit": "bcc057318c0972a2cf994dedbb43f5399038b3d5",
+      "status": "passed",
+      "exit_code": 0,
+      "checks": 33,
+      "scope": "Installed helper path, numerical closure and model-free runner refusal controls"
     }
   ],
   "engine_results": [
