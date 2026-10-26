@@ -1,7 +1,8 @@
 # Subtitle revoicing technical candidate
 
-Status: **failed**. A mandatory integration regression is failing; the real
-technical route has not passed for either engine.
+Status: **blocked**. Integrated code regressions pass; mandatory native admission
+controls are blocked by machine prerequisites. The real technical route has not
+passed for either engine.
 This record coordinates one candidate for YouTube Chinese subtitles, Russian
 translation, exact-version review, speech, WAV, MP4 and ordinary Auralis playback.
 The [release matrix](revoice-execution.md#mandatory-acceptance-cases) remains
@@ -170,8 +171,24 @@ diagnostic steps. These simulated results do not establish native media or model
 acceptance. After the numerical dependency followup, runner controls passed
 33 checks on `bcc057318c0972a2cf994dedbb43f5399038b3d5`.
 
+On `fd38c67b650dc079ac9e8904ab4c1d6b7aac476d`, all 18 affected integration
+commands passed in 535.095 seconds. They include the four independent inert
+Windows descendant controls, retained uncertain leases, default Translate
+regressions, speech budgets, video/storage policies, runner controls, lint,
+formatting and dependency checks. A separate fixture CONTRACT bridge passed.
+The synthetic common-admission tests passed five checks with one explicit
+installed-interoperability check ignored.
+
+The held-lease native Translate control then failed before acquiring its test
+lease because an active game GPU process was outside the admission policy.
+Three other assertions passed. This is a retained failed command, not proof of
+the held-lease behavior. The new threaded guard-only case has not started.
+Do not stop unrelated applications, relax admission or consume another complete
+source case to work around this prerequisite. An ordinary build can be retained
+as preparation while admission and real-route acceptance remain blocked.
+
 VoxCPM2, ESpeech, actual translation, real WAV/MP4 and native playback are
-**not_run**. The overall result remains **failed**.
+**not_run**. The overall result remains **blocked**.
 Automated exact-version approval proves a workflow boundary only. Translation
 quality, actual listening, voice qualification, TXT/ASR, clean Windows and the
 broader release matrix require their own factual assessments.

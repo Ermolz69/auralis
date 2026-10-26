@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "One technical YouTube Chinese-subtitle to Russian WAV/MP4 candidate for sequential VoxCPM2 and ESpeech",
-  "status": "failed",
+  "status": "blocked",
   "updated_date": "2026-10-26",
   "branch": "feat/revoice-release-integration",
   "baseline_commit": "defc0b0b13b2352fc5c32d8c3ae8d54e942adf64",
@@ -70,14 +70,14 @@
       "owner": "Integration Coordinator",
       "description": "Review and integrate compatible owner commits",
       "depends_on": [],
-      "status": "blocked"
+      "status": "passed"
     },
     {
       "id": "RC-02",
       "owner": "Integration Coordinator",
       "description": "Affected integrated fast checks and actual installed4004 metadata-only preflight",
       "depends_on": ["RC-01"],
-      "status": "not_run"
+      "status": "blocked"
     },
     {
       "id": "RC-03",
@@ -127,188 +127,219 @@
       "id": "RC-D01",
       "owner": "Backend Developer",
       "description": "Saved review must match canonical speech utterance text, order and timing",
-      "status": "blocked",
-      "fix_commit": "997caf8a2ba6bec3cfdaf9f4c20ade6403711f69"
+      "status": "passed",
+      "fix_commit": "997caf8a2ba6bec3cfdaf9f4c20ade6403711f69",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D02",
       "owner": "UI Developer",
       "description": "Verify complete frozen source coverage at every accepted stage",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D03",
       "owner": "UI Developer",
       "description": "Reopen and play WAV and MP4 for both pinned engine runs",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D04",
       "owner": "UI Developer",
       "description": "Confirm owned descendant process release before next component or session unlock",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D05",
       "owner": "UI Developer",
       "description": "Freeze complete build inputs including dependency source identity",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D06",
       "owner": "UI Developer",
       "description": "Measure and enforce stage time, RAM, VRAM and disk budgets; retain observer failures",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D07",
       "owner": "UI Developer",
       "description": "Reject all-silent WAV and require expected native streams and media policy",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D08",
       "owner": "UI Developer",
       "description": "Support separate bounded diagnostic and complete-source cases without whole-case retries",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D09",
       "owner": "Backend Developer",
       "description": "Legacy CONTRACT worker binding cap 513 rejects the 4004-cue host plan",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D10",
       "owner": "Backend Developer",
       "description": "Bridge must preserve qualified emotional selection and keep unverified exception neutral-only",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D11",
       "owner": "Backend Developer",
       "description": "Decoded MP4 codec tolerance must not permit speech tail truncation",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D12",
       "owner": "UI Developer",
       "description": "Resume must wait for a new attempt instead of interpreting the stale cancelled job as the resumed result",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D13",
       "owner": "UI Developer",
       "description": "Restart must await project list loading before checking project uniqueness",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D14",
       "owner": "UI Developer",
       "description": "Late child creation between parent samples must not escape confirmed process cleanup",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D15",
       "owner": "UI Developer",
       "description": "Process-tree RAM budget must include all owned executable working sets",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D16",
       "owner": "UI Developer",
       "description": "Installer deadline/observer failures must not leave an unowned child running",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D17",
       "owner": "UI Developer",
       "description": "Raw chunk/layout coverage must bind to the actual aggregate WAV hashes and measured frames",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D18",
       "owner": "UI Developer",
       "description": "Build freeze and candidate reuse must cover effective Taskfile/media inputs and complete dependency identity",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D19",
       "owner": "UI Developer",
       "description": "Resource diagnostic write failures must still stop owned work immediately and preserve the primary observer error",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D20",
       "owner": "Backend Developer",
       "description": "Native admission regression still fails on integrated default suite after test mutex fix",
-      "status": "failed"
+      "status": "blocked",
+      "validation_scope": "Default Translate regression passed; held native lease control refused active game GPU prerequisite before its assertion"
     },
     {
       "id": "RC-D21",
       "owner": "Backend Developer",
       "description": "Hard45min TTS whole-plan deadline needs an explicit bounded long-case configuration consistent with frozen budgets",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D22",
       "owner": "Backend Developer",
       "description": "Whole-plan execution budget must include checkpoint observer waits and initial dispatch, with cancellation and confirmed worker release",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D23",
       "owner": "UI Developer",
       "description": "Every nonblank approved utterance must contain nonzero audio rather than relying on one audible cue in the aggregate",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D24",
       "owner": "UI Developer",
       "description": "Aggregate PCM must equal the deterministic assembly of verified chunk PCM, not merely match frame counts",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D25",
       "owner": "UI Developer",
       "description": "Complete source verification must require approved translation lineage explicitly",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D26",
       "owner": "Backend Developer",
       "description": "Forced worker termination must not await an unbounded kill before starting its cleanup deadline",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D27",
       "owner": "Backend Developer",
       "description": "Route preflight and Translate stop paths must not await unbounded kill before their cleanup wait deadline",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D28",
       "owner": "UI Developer",
       "description": "Real PCM verifier wrapper must resolve the installed src/tts/audio/joiner.py path from the pinned inventory",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D29",
       "owner": "Backend Developer",
       "description": "Windows descendant release confirmation must survive a cancelled prior process-wrap wait with cached root exit status",
-      "status": "failed"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D30",
       "owner": "Backend Developer",
       "description": "Installed metadata fixture must retain admission and report unconfirmed cleanup when a worker or independent exit proof fails",
-      "status": "blocked"
+      "status": "passed",
+      "validation_scope": "Independent source review and integrated model-free regressions; actual route acceptance is tracked separately by engine"
     },
     {
       "id": "RC-D31",
       "owner": "Backend Developer",
       "description": "Metadata execution audit must cover worker-created Python threads and reject inert threaded engine or render calls",
-      "status": "blocked"
+      "status": "blocked",
+      "validation_scope": "Thread profiling source reviewed; fresh guard-only v2 unconsumed while native machine prerequisite is blocked"
     }
   ],
   "commits": [
@@ -317,7 +348,7 @@
       "source_commit": "ca43712a4a2d59d801722d677797ae4246845b98",
       "integration_commit": "997caf8a2ba6bec3cfdaf9f4c20ade6403711f69",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Exact approved speech plan with host4004 fixture; production CONTRACT and native inference remain separate"
     },
     {
@@ -349,7 +380,7 @@
       "source_commit": "294a1611341f2b1b6f342fad846ab1f117afb6f5",
       "integration_commit": "38a4d019009d5a974a5e89acc4239f8be7d27e46",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "blocked",
       "scope": "Validate metadata and cancellation before native admission; retain real digest and launch under guard"
     },
     {
@@ -357,7 +388,7 @@
       "source_commit": "c181b469e67b320a2987f2a2044739b588f544fe",
       "integration_commit": "ee93c15f7d312a1ba896fe28cf214c83fafa13fc",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Finite per-plan execution budgets including dispatch, observer waits and cancellation"
     },
     {
@@ -365,7 +396,7 @@
       "source_commit": "98b84c79b92bea837dbd58bef583aae331b1e6b6",
       "integration_commit": "ce566ffb6c8650c3b31499746ae7c2f37e02bc7f",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Nonblocking forced termination and one bounded confirmation wait"
     },
     {
@@ -373,7 +404,7 @@
       "source_commit": "b1f9686982d8469a9623255c369f7fec922a52e2",
       "integration_commit": "a707c05a2605436de912b562dfc6f3a9112c0de0",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Observable job identity and both-engine persisted media playback"
     },
     {
@@ -381,7 +412,7 @@
       "source_commit": "a567891bf118fcec3218156f7e507ee507811827",
       "integration_commit": "d2cad37d3c8747a22bbe7dfc73dca3efc8ca5b31",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Fresh resume attempt and delayed project recovery controls"
     },
     {
@@ -389,7 +420,7 @@
       "source_commit": "208c31afd5718494791d16db51787136023ffc83",
       "integration_commit": "894de35fc82c5242267564652c24229d7416d615",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Source-relative cue and chunk layout verification; strengthened by later PCM followup"
     },
     {
@@ -397,7 +428,7 @@
       "source_commit": "6d766cc5d41a23760ed24e85a6c55681e0c81ad8",
       "integration_commit": "b3c30fbecfd38b99ec345fdbe62cd2adf59ed921",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Process ownership, resource observation, installer deadlines and failure retention"
     },
     {
@@ -405,7 +436,7 @@
       "source_commit": "8296c25ca6b8739cce7ad318dcc30aeeec544dae",
       "integration_commit": "8aefefa31b0e26108a8538ad2f939d7f26a58d41",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Complete candidate, dependency, runtime and inference input identities"
     },
     {
@@ -413,7 +444,7 @@
       "source_commit": "373b647d82008660a753794ba0f58ca840c0968c",
       "integration_commit": "c9209fa4fd60d493ddc12b38b1e57023f95580f3",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Explicit accessible saved-media playback controls"
     },
     {
@@ -421,15 +452,15 @@
       "source_commit": "ae2d55836dd14ea08c417fd1c3ecbc2fe7c0af0d",
       "integration_commit": "a73353128eeced8c51adfe5715978a21fb076a02",
       "review_status": "passed",
-      "integration_checks": "not_run",
-      "scope": "Approved translation lineage, per-utterance signal and deterministic PCM oracle; installed wrapper remains RC-D28"
+      "integration_checks": "passed",
+      "scope": "Approved translation lineage, per-utterance signal and deterministic PCM oracle; actual installed wrapper corrections passed"
     },
     {
       "owner": "UI Developer",
       "source_commit": "033bf504c3ee17b754b3d0046b6b8f7c64657192",
       "integration_commit": "8830ed70306006543670c5869139902009d2b662",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Visible source-job observation and explicit translator install and selection actions"
     },
     {
@@ -437,7 +468,7 @@
       "source_commit": "cf0bea1839e6302d240d7a7ee024f89536c49e27",
       "integration_commit": "c8dcdd17096be595c5d0dc1821db363e87012e91",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Frozen case deadlines, runtime budget application and sequential ordinary UI orchestration"
     },
     {
@@ -445,32 +476,32 @@
       "source_commit": "cb278b21c170839cd5e2973617523d4dd342aed4",
       "integration_commit": "b1c7c5c3111abdf6fec5a808ed61e3528c0aa72c",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Document model-free and ordinary UI verification scope"
     },
     {
       "owner": "Backend Developer",
       "source_commit": "a6b51a4711685225aceb1cb1f5ab9e085227f244",
       "integration_commit": "7ae7d54bd07bfa1879df1e1f76fc3946516fce95",
-      "review_status": "blocked",
-      "integration_checks": "not_run",
-      "scope": "Bounded component cleanup; descendant confirmation remains blocked by RC-D29"
+      "review_status": "passed",
+      "integration_checks": "passed",
+      "scope": "Bounded component cleanup with descendant confirmation corrected by7e1af4a; all four integrated inert Windows job controls passed"
     },
     {
       "owner": "UI Developer",
       "source_commit": "f7e7463fbd8eee8936950439c1e9256da4a8d8d0",
       "integration_commit": "000beac472a12a91b3d59cff81bf3fc0594bbff5",
       "review_status": "passed",
-      "integration_checks": "not_run",
-      "scope": "Inventory-backed installed helper path and actual wrapper fixture; numerical dependency closure followup remains open"
+      "integration_checks": "passed",
+      "scope": "Inventory-backed installed helper path; corrected numerical dependency closure and actual wrapper case passed"
     },
     {
       "owner": "UI Developer",
       "source_commit": "30c093650a2b6eee9b9a753e07cd28ff26842d6b",
       "integration_commit": "bcc057318c0972a2cf994dedbb43f5399038b3d5",
       "review_status": "passed",
-      "integration_checks": "not_run",
-      "scope": "Shared hash-pinned numerical dependency closure; installed wrapper run awaits a new window"
+      "integration_checks": "passed",
+      "scope": "Shared hash-pinned numerical dependency closure; actual installed wrapper case cf353c1f passed"
     },
     {
       "owner": "UI Developer",
@@ -485,7 +516,7 @@
       "source_commit": "7e1af4acf184d594f416704d22358218e5b711fe",
       "integration_commit": "f97198f2296743e34de72a7cc361cfcefa338b0c",
       "review_status": "passed",
-      "integration_checks": "not_run",
+      "integration_checks": "passed",
       "scope": "Same-version Windows Job native-handle confirmation, preserved observation failures, bounded cleanup and exact archive provenance"
     },
     {
@@ -502,7 +533,7 @@
       "integration_commit": "0e56c31f8fe9eed9da05ffac83e6a4f22f727e2d",
       "scope": "Installed synchronous synthetic4004 metadata compatibility; same synthetic voice for both engines; no final ESpeech voice-path or model/audio/UI acceptance",
       "review_status": "passed",
-      "integration_checks": "not_run"
+      "integration_checks": "blocked"
     },
     {
       "owner": "Backend Developer",
@@ -510,7 +541,7 @@
       "integration_commit": "eda2f5765892ed7be7c64512bc97cda3603366b1",
       "scope": "Typed uncertain cleanup retains metadata admission; new-thread profiling and separate inert threaded guard controls; guard-only runtime check pending machine prerequisite",
       "review_status": "passed",
-      "integration_checks": "not_run"
+      "integration_checks": "blocked"
     }
   ],
   "results": [
@@ -828,6 +859,181 @@
       "scope": "Ambient Python admission refusal after input snapshot; no guard control Python worker launched; frozen inputs retained; threaded negative controls remain not_run",
       "models_loaded": false,
       "owned_metadata_children_started": 0
+    },
+    {
+      "batch_id": "INTEGRATED-FAST-V3",
+      "command": "Sequential affected Taskfile code checks",
+      "commit": "fd38c67b650dc079ac9e8904ab4c1d6b7aac476d",
+      "status": "passed",
+      "exit_code": 0,
+      "commands": 18,
+      "wall_seconds": 535.095,
+      "receipt_sha256": "349b3389087d068f57827573f79737ec26d176527fbd16da5c8e835a50a7f389",
+      "scope": "Model-free code, synthetic owned processes and policy fixtures; actual source/model/media/UI acceptance remains not_run",
+      "checks": [
+        {
+          "command": "task rs:process-wrap:verify",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 0.756,
+          "log_sha256": "6fc7945076816946e63d0e2641310479c5c0ea181ba2b368f614549c56963776"
+        },
+        {
+          "command": "task rs:test:job-query",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 9.892,
+          "log_sha256": "d3da618dc89f4a2557c4287822399630731b898ddebc6dfde36b26dfb1f063dc"
+        },
+        {
+          "command": "task rs:test:tts",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 179.706,
+          "log_sha256": "3ff3d1944883125b56481ab80afbf43f3c01dc100476044875e2f15b985e96f0"
+        },
+        {
+          "command": "task rs:test:translate",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 40.867,
+          "log_sha256": "e6d6b2cb056e28aafed5d93655f3eda5cc82146334d3735146008d1bf1cdff55"
+        },
+        {
+          "command": "task rs:test:speech-budget",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 102.294,
+          "log_sha256": "f057d632302484cfe8dda88cdcd31c7615f267283adc545774ba2913b02c7c75"
+        },
+        {
+          "command": "task rs:test:contract-adapter",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 12.506,
+          "log_sha256": "278886d22524179294deef9914db37414c5bb4df305a5b24ed5b31440bdf4f82"
+        },
+        {
+          "command": "task ui:check:video",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 47.328,
+          "log_sha256": "91360d27df2cd552d4cce98099acdefdd32ba8d9cf34205611cd66b2d048ba31"
+        },
+        {
+          "command": "task ui:check",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 9.732,
+          "log_sha256": "60d4264753b26bf69cddc27d3b10092ab3177a7f3b37d2357da49ea5ae7bea73"
+        },
+        {
+          "command": "task ui:check:processes",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 4.903,
+          "log_sha256": "d2193c7e635cf6be5c4bf131ecbaa95f19d644bd1c414ebe822ed1afbc97ffdd"
+        },
+        {
+          "command": "task rs:check:tts:installed-long",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 13.856,
+          "log_sha256": "1ceebef4ccdaef441d587ba8a2e257a4d352c6032d281f08389d1582963b8bc7"
+        },
+        {
+          "command": "task rs:clippy:backend-review",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 33.922,
+          "log_sha256": "b4480f25daa222e1b0df241780af4eb1268100ac475054745e5d6605b670af29"
+        },
+        {
+          "command": "task rs:clippy:speech-budget",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 56.33,
+          "log_sha256": "90c155d22a8c8eb16af156f8aaca52070b855c774f280b698d60ec8a2d9c4417"
+        },
+        {
+          "command": "task rs:clippy:component-cleanup",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 4.934,
+          "log_sha256": "4c988e7c176b0f14f3890f4b02de6aa472b899fea62bf96887cc4a301a94494b"
+        },
+        {
+          "command": "task rs:fmt",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 4.986,
+          "log_sha256": "77e36c601aef5338204f431e85aa7fb999aee39773fc57154c82974ca0224b17"
+        },
+        {
+          "command": "task q:file-size",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 1.112,
+          "log_sha256": "244f177a268c12c50a384b2e93f454891828e0891fe1d0f734c670f080bbcd7b"
+        },
+        {
+          "command": "task rs:dependencies:verify",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 5.553,
+          "log_sha256": "ee085a86869388ec08cb154f167a9721346bbabc1dd738844a0b8e0ed8b719b1"
+        },
+        {
+          "command": "task docs:integration",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 6.114,
+          "log_sha256": "608535bffe678ad72572391ec463890576bf701a55032224ff6c9448e07637e6"
+        },
+        {
+          "command": "task revoice:release:check",
+          "status": "passed",
+          "exit_code": 0,
+          "wall_seconds": 0.304,
+          "log_sha256": "c099d2365d8004ca985635657c27bfe5130232bc3ec046188f3e4a900e289e7e"
+        }
+      ]
+    },
+    {
+      "result_id": "NATIVE-CONTROLS-V3/task rs:test:model-admission",
+      "command": "task rs:test:model-admission",
+      "commit": "fd38c67b650dc079ac9e8904ab4c1d6b7aac476d",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 11.494,
+      "log_sha256": "d56468b0fc18f4480101b38803d9b6992f7a553295a95c5780e4e569c5dc4ea3",
+      "checks_passed": 5,
+      "checks_ignored": 1,
+      "scope": "Synthetic mutex, lock exclusion and crash recovery only; installed Python interoperability remains ignored"
+    },
+    {
+      "result_id": "NATIVE-CONTROLS-V3/task rs:test:translate:admission",
+      "command": "task rs:test:translate:admission",
+      "commit": "fd38c67b650dc079ac9e8904ab4c1d6b7aac476d",
+      "status": "failed",
+      "exit_code": 201,
+      "wall_seconds": 4.7,
+      "log_sha256": "da9579303972e9c89b53b8b3b33c26aad02b26b4886a5da1f29bf357d1e33269",
+      "cargo_exit_code": 101,
+      "checks_passed": 3,
+      "checks_failed": 1,
+      "scope": "Native prerequisite refused active game GPU process before the held test lease was acquired; no model or Python guard controls started"
+    },
+    {
+      "result_id": "CONTRACT-BRIDGE-V3",
+      "command": "task rs:test:contract-bridge PYTHON=<pinned seed Python>",
+      "commit": "fd38c67b650dc079ac9e8904ab4c1d6b7aac476d",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 9.366,
+      "scope": "Fixture CONTRACT API only; no installed engine or model imports; no shared native admission acceptance",
+      "log_sha256": "35750d24b406143466befcfff048b67f59602161317daaaf36f28af5e54c7ae9",
+      "checks": 1
     }
   ],
   "engine_results": [
@@ -942,7 +1148,7 @@
       "spec_field": "tts_execution_budget_seconds",
       "runtime_field": "execution_budget_seconds",
       "default_seconds": 2700,
-      "implementation_status": "not_run",
+      "implementation_status": "passed",
       "maximum_seconds": 172800
     },
     "yt_dlp": "2026.08.19",
@@ -993,5 +1199,6 @@
       "ui_owned_cleanup": 60
     }
   },
-  "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd"
+  "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd",
+  "validation_scope": "Code defects reflect model-free regressions; unresolved machine prerequisites remain blocked and no real engine route is accepted"
 }
