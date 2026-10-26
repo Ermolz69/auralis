@@ -12,6 +12,7 @@ import { Report } from '../../../tools/ui-e2e/report.mjs';
 import { story, workflowSteps } from '../../../tools/ui-e2e/story.mjs';
 import { playback } from '../../../tools/ui-e2e/media.mjs';
 import { reopenPlayback, workflowRecords } from '../../../tools/ui-e2e/reopen.mjs';
+import { jobState } from '../../../tools/ui-e2e/observe.mjs';
 import { frontendIdentity } from '../../../tools/ui-e2e/frontend.mjs';
 
 const run = await uniqueRun('fixture-ui');
@@ -24,6 +25,7 @@ const report = new Report(run, 'fixture-ui', [
   'timing-conflict',
   'video-verification-error',
   'stale-preview',
+  'assembly-error-resume',
   'assembly-cancel-resume',
   'reload-playback',
   'verification-error',
@@ -158,6 +160,42 @@ try {
         page,
       );
       await report.step(
+        'assembly-error-resume',
+        async () => {
+          await assembly.getByRole('button', { name: 'Подготовить сборку', exact: true }).click();
+          await page.evaluate(() => {
+            window.__ui.failNextAssembly = true;
+          });
+          await assembly.getByRole('button', { name: 'Собрать WAV', exact: true }).click();
+          await assembly
+            .getByRole('alert')
+            .filter({ hasText: 'Fixture assembly execution failed' })
+            .waitFor();
+          await assert.rejects(
+            jobState(assembly, 'Состояние сборки', ['отменено'], 1000),
+            /Fixture assembly execution failed/,
+          );
+          assert.equal(
+            await assembly
+              .getByRole('button', { name: 'Прослушать итоговый WAV', exact: true })
+              .count(),
+            0,
+          );
+          const previous = {
+            job_id: (
+              await assembly
+                .getByRole('status', { name: 'Состояние сборки', exact: true })
+                .innerText()
+            )
+              .split(' · ')[0]
+              .replace(/^Задание /, ''),
+          };
+          await assembly.getByRole('button', { name: 'Продолжить сборку', exact: true }).click();
+          return jobState(assembly, 'Состояние сборки', ['готово'], 10000, previous);
+        },
+        page,
+      );
+      await report.step(
         'assembly-cancel-resume',
         async () => {
           await assembly.getByRole('button', { name: 'Подготовить сборку', exact: true }).click();
@@ -282,6 +320,21 @@ try {
             observed.calls.filter((c) => c.command === 'resume_speech_run_cmd').length,
             2,
           );
+          const starts = observed.calls.filter((c) => c.command === 'start_speech_run_cmd');
+          assert.equal(
+            new Set(starts.map((c) => c.args.runId)).size,
+            2,
+            'Duplicate start reused a run',
+          );
+          const state = await page.evaluate(() => ({
+            speech: Object.values(window.__ui.speeches),
+            assemblies: Object.values(window.__ui.assemblies),
+          }));
+          assert.equal(new Set(state.speech.map((r) => r.job.id)).size, 2);
+          assert.equal(new Set(state.speech.map((r) => r.result.attempt_id)).size, 2);
+          assert.equal(state.assemblies.length, 6);
+          assert.equal(new Set(state.assemblies.map((r) => r.job.id)).size, 6);
+
           assert.equal(
             observed.calls.filter((c) => c.command === 'install_translation_package_cmd').length,
             1,

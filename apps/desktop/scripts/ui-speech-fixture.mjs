@@ -14,7 +14,7 @@ export function installUiSpeechFixture() {
     cues: [],
   });
   const job = (kind, status) => ({
-    id: `fixture-${kind}-${kind === 'speech' ? state.speech.run_id : state.assembly.assembly_id}`,
+    id: `fixture-${kind}-${kind === 'speech' ? state.speech.run_id : state.assembly.assembly_id}-${kind === 'speech' ? state.speech.attempt : state.assembly.attempt}`,
     kind,
     revision: 1,
     projectId: '00000000-0000-4000-8000-000000000001',
@@ -60,10 +60,12 @@ export function installUiSpeechFixture() {
       job: job('speech', 'completed'),
       result: {
         run_id: state.speech.run_id,
-        attempt_id: `fixture-attempt-${state.speech.run_id}`,
+        attempt_id: `fixture-attempt-${state.speech.run_id}-${state.speech.attempt}`,
         duration_ms: 5000,
         ready: true,
-        files: ['wav', 'manifest', 'segment', 'audio_layout'].map(kind => file(kind, state.speech.run_id)),
+        files: ['wav', 'manifest', 'segment', 'audio_layout'].map((kind) =>
+          file(kind, state.speech.run_id),
+        ),
       },
     };
   };
@@ -73,7 +75,7 @@ export function installUiSpeechFixture() {
       job: job('audioAssembly', 'completed'),
       result: {
         assembly_id: state.assembly.assembly_id,
-        attempt_id: `fixture-attempt-${state.assembly.assembly_id}`,
+        attempt_id: `fixture-attempt-${state.assembly.assembly_id}-${state.assembly.attempt}`,
         sample_rate: 48000,
         channels: 1,
         frames: 240000,
@@ -84,7 +86,7 @@ export function installUiSpeechFixture() {
         files: (state.assembly.video
           ? ['wav', 'manifest', 'video', 'video_manifest']
           : ['wav', 'manifest']
-        ).map(kind => file(kind, state.assembly.assembly_id)),
+        ).map((kind) => file(kind, state.assembly.assembly_id)),
       },
     };
   };
@@ -174,9 +176,16 @@ export function installUiSpeechFixture() {
     else if (command === 'get_speech_run_cmd') value = state.speeches[args.runId];
     else if (command === 'start_speech_run_cmd') {
       state.speech = state.speeches[args.runId];
+      state.speech.attempt = 1;
       value = state.speech = { ...state.speech, job: job('speech', 'running') };
+      if (state.completeSpeechOnStart) {
+        finishSpeech();
+        value = state.speech;
+      }
     } else if (command === 'resume_speech_run_cmd') {
+      await new Promise((resolve) => setTimeout(resolve, 300));
       state.speech = state.speeches[args.runId];
+      state.speech.attempt++;
       finishSpeech();
       value = state.speech;
     } else if (command === 'cancel_job_cmd') {
@@ -239,12 +248,21 @@ export function installUiSpeechFixture() {
       };
     else if (command === 'start_audio_assembly_cmd') {
       state.assembly = state.assemblies[args.assemblyId];
+      state.assembly.attempt = 1;
       if (!state.assembly.video) state.assemblyStarts = (state.assemblyStarts ?? 0) + 1;
       state.assembly = { ...state.assembly, job: job('audioAssembly', 'running') };
-      if (state.assembly.video || state.assemblyStarts <= 2) finishAssembly();
+      if (state.failNextAssembly) {
+        state.failNextAssembly = false;
+        state.assembly.job = {
+          ...job('audioAssembly', 'failed'),
+          error: 'Fixture assembly execution failed',
+        };
+      } else if (state.assembly.video || state.assemblyStarts <= 2) finishAssembly();
       value = state.assembly;
     } else if (command === 'resume_audio_assembly_cmd') {
+      await new Promise((resolve) => setTimeout(resolve, 300));
       state.assembly = state.assemblies[args.assemblyId];
+      state.assembly.attempt++;
       finishAssembly();
       value = state.assembly;
     } else if (command === 'get_audio_assembly_cmd' || command === 'verify_audio_assembly_cmd') {
