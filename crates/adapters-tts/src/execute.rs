@@ -157,7 +157,7 @@ impl TtsWorkerClient {
 }
 
 async fn terminate(child: &mut Box<dyn ChildWrapper>) -> Result<(), PortError> {
-    let _ = Box::into_pin(child.kill()).await;
+    let _ = child.start_kill();
     timeout(EXIT_DEADLINE, child.wait())
         .await
         .map_err(|_| PortError::CleanupFailed {
@@ -182,3 +182,6 @@ use worker::run_worker;
 
 #[cfg(all(test, windows))]
 mod tests;
+
+#[cfg(test)]
+mod cleanup_tests;
