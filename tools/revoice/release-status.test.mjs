@@ -15,7 +15,8 @@ function reportBytes(id) {
     runtime_seed_sha256: base.prospective_runtime.seed_manifest_sha256,
     source_cue_count: 4004,
     case_scope: id === 'RC-06' ? 'diagnostic' : 'full-source',
-    case_id: `TEST-${id}`,
+    case_id: id === 'RC-06' ? 'TEST-DIAGNOSTIC' : 'TEST-FULL',
+    spec_sha256: (id === 'RC-06' ? 'c' : 'd').repeat(64),
     engine_ids: ['voxcpm2', 'espeech'],
   });
 }
@@ -28,6 +29,10 @@ function complete() {
   record.candidate_executable_sha256 = 'b'.repeat(64);
   record.source.video_duration_verification = record.prospective_runtime.status = 'passed';
   record.prospective_runtime.execution_budget_contract.implementation_status = 'passed';
+  record.frozen_cases = [
+    { case_scope: 'diagnostic', case_id: 'TEST-DIAGNOSTIC', spec_sha256: 'c'.repeat(64) },
+    { case_scope: 'full-source', case_id: 'TEST-FULL', spec_sha256: 'd'.repeat(64) },
+  ];
   for (const task of record.tasks) {
     task.status = 'passed';
     task.evidence = [
@@ -118,6 +123,12 @@ test('failed, changed or diagnostic-only reports cannot establish complete sourc
     (report) => {
       report.case_scope = 'diagnostic';
     },
+    (report) => {
+      report.case_id = 'UNPLANNED-FULL';
+    },
+    (report) => {
+      report.spec_sha256 = '0'.repeat(64);
+    },
   ]) {
     const record = complete();
     const report = JSON.parse(reportBytes('RC-07'));
@@ -129,4 +140,16 @@ test('failed, changed or diagnostic-only reports cannot establish complete sourc
     );
   }
   assert.throws(() => technicalStatus(complete(), () => '{}'));
+});
+
+test('acceptance requires distinct frozen diagnostic/full-source specifications', () => {
+  const missing = complete();
+  delete missing.frozen_cases;
+  assert.throws(() => assess(missing), /Missing frozen/);
+  const reused = complete();
+  reused.frozen_cases[1].case_id = reused.frozen_cases[0].case_id;
+  assert.throws(() => assess(reused), /distinct frozen cases/);
+  const reusedSpec = complete();
+  reusedSpec.frozen_cases[1].spec_sha256 = reusedSpec.frozen_cases[0].spec_sha256;
+  assert.throws(() => assess(reusedSpec), /distinct frozen specification digests/);
 });

@@ -3,6 +3,25 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 
 export function verifyEvidence(record, read = fs.readFileSync) {
+  assert.deepEqual(
+    record.frozen_cases?.map((item) => item.case_scope),
+    ['diagnostic', 'full-source'],
+    'Missing frozen diagnostic/full-source case identities',
+  );
+  for (const item of record.frozen_cases) {
+    assert.match(item.case_id ?? '', /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/);
+    assert.match(item.spec_sha256 ?? '', /^[a-f0-9]{64}$/);
+  }
+  assert.equal(
+    new Set(record.frozen_cases.map((item) => item.case_id)).size,
+    2,
+    'Diagnostic and full-source require distinct frozen cases',
+  );
+  assert.equal(
+    new Set(record.frozen_cases.map((item) => item.spec_sha256)).size,
+    2,
+    'Diagnostic and full-source require distinct frozen specification digests',
+  );
   for (const task of record.tasks) {
     assert.ok(task.evidence?.length, `Missing evidence for ${task.id}`);
     for (const evidence of task.evidence) {
@@ -19,7 +38,9 @@ export function verifyEvidence(record, read = fs.readFileSync) {
       assert.equal(report.source_cue_count, record.source.expected_cues);
       if (['RC-06', 'RC-07', 'RC-08'].includes(task.id)) {
         assert.equal(report.case_scope, task.id === 'RC-06' ? 'diagnostic' : 'full-source');
-        assert.match(report.case_id ?? '', /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/);
+        const frozen = record.frozen_cases.find((item) => item.case_scope === report.case_scope);
+        assert.equal(report.case_id, frozen.case_id, 'Evidence belongs to another frozen case');
+        assert.equal(report.spec_sha256, frozen.spec_sha256, 'Frozen specification digest differs');
         assert.deepEqual(report.engine_ids, ['voxcpm2', 'espeech']);
       }
     }

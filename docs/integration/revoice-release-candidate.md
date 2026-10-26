@@ -69,6 +69,9 @@ required stage cannot produce a successful case result.
 `task revoice:release:status` reports the technical result and returns nonzero
 while required stages are blocked, failed or unrun. This command does not accept
 the broader release matrix.
+Final diagnostic and complete-source evidence must match their distinct frozen
+case IDs and complete specification digests. Reports from another case cannot
+establish acceptance for the planned case.
 
 ## Verification checkpoint
 
@@ -117,7 +120,13 @@ any expensive speech case is admitted.
 The corrected wrapper subsequently resolved the installed helper but its first
 installed run failed on an omitted numerical dependency (`typing_extensions`).
 That failed case and confirmed cleanup remain separate from the earlier oracle
-pass. The dependency closure must be hash-pinned and tested through the wrapper.
+pass. The dependency closure was corrected and hash-pinned for both entrypoints.
+
+The subsequent installed-wrapper case passed all three required steps. Its PCM
+SHA-256 matched the independent oracle for 289,614 frames, two utterances and
+three chunks. All three Python process trees, the guardian and the session lock
+were confirmed released. The exact report digest and durations are in the
+register. This establishes synthetic DSP-checker compatibility only.
 
 Windows descendant confirmation also remains blocked (RC-D29). In the pinned
 process wrapper, a cancelled wait can preserve a cached root exit status before
@@ -129,8 +138,11 @@ code-review finding, not a reproduced claim that a model process leaked.
 The subsequent model-free regression reproduced false cleanup confirmation on
 the unchanged Windows wrapper in both component and synthesis paths. The
 fixtures independently confirmed their inert descendant processes were gone
-before completing the failing assertions. A query-based local correction of
-the same dependency version is pending; model execution remains prohibited.
+before completing the failing assertions. The integrated same-version correction
+now requires complete Job accounting and signaled retained native process handles.
+Independent review and owner-side regressions passed; the integrated archive
+verification confirmed all 94 files and exactly three hashed local edits.
+Integration regressions and installed 4004-cue metadata validation remain pending.
 
 Integrated UI checks on `000beac472a12a91b3d59cff81bf3fc0594bbff5` passed:
 runner controls, frontend types and components, both production-browser fixture

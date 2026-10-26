@@ -9,6 +9,7 @@
   "candidate_commit": null,
   "candidate_executable_sha256": null,
   "specification_status": "blocked",
+  "frozen_cases": [],
   "source": {
     "url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
     "track": {
@@ -32,7 +33,9 @@
         "taskfiles/rust.yml",
         "Cargo.toml",
         "Cargo.lock",
-        "vendor/process-wrap-10.0.0/**"
+        "vendor/process-wrap-10.0.0/**",
+        ".gitattributes (vendor/process-wrap-10.0.0 line only)",
+        "tools/process-wrap-backport/**"
       ],
       "agreement": "confirmed"
     },
@@ -72,7 +75,7 @@
     {
       "id": "RC-02",
       "owner": "Integration Coordinator",
-      "description": "Affected fast checks on integrated source",
+      "description": "Affected integrated fast checks and actual installed4004 metadata-only preflight",
       "depends_on": ["RC-01"],
       "status": "not_run"
     },
@@ -456,6 +459,30 @@
       "review_status": "passed",
       "integration_checks": "not_run",
       "scope": "Shared hash-pinned numerical dependency closure; installed wrapper run awaits a new window"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "29b30b6101b1678a4976db2471677a442e85d6a1",
+      "integration_commit": "53e6e05dce41ac5aa1f348dd9778846db8e1f955",
+      "review_status": "passed",
+      "integration_checks": "passed",
+      "scope": "Reported session-lock release after confirmed process cleanup;33 runner checks passed; native smoke still not_run"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "7e1af4acf184d594f416704d22358218e5b711fe",
+      "integration_commit": "f97198f2296743e34de72a7cc361cfcefa338b0c",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Same-version Windows Job native-handle confirmation, preserved observation failures, bounded cleanup and exact archive provenance"
+    },
+    {
+      "owner": "UI Developer",
+      "source_commit": "855dd0c5fc6cd92c835f08428edf1d1530890829",
+      "integration_commit": "1843922add2459410eb1fefd955dbe4fd787ce99",
+      "review_status": "passed",
+      "integration_checks": "passed",
+      "scope": "Installed-wrapper result documentation corroborated against the actual report hash; no runtime code changes"
     }
   ],
   "results": [
@@ -693,6 +720,37 @@
       "exit_code": 0,
       "checks": 33,
       "scope": "Installed helper path, numerical closure and model-free runner refusal controls"
+    },
+    {
+      "command": "Read-only preservation comparison after integrated frontend checks",
+      "status": "passed",
+      "exit_code": 0,
+      "files_checked": 109,
+      "changed": 0,
+      "scope": "Normal profile and existing voices retain their baseline bytes"
+    },
+    {
+      "command": "task ui:check:pcm",
+      "case_id": "2026-10-26T16-53-46-917Z-pcm-model-free-cf353c1f",
+      "status": "passed",
+      "exit_code": 0,
+      "report_sha256": "69dd42f2ecf1374fa97ffa0ccf42708bb0252b0866a5b031e55a9726fd58cd04",
+      "scope": "Actual installed verifyPcmReadOnly matched independent multi-rate PCM oracle; all6 controls passed;3 Python trees, guardian and session lock release confirmed",
+      "step_durations_ms": {
+        "pcm_regression": 45631,
+        "installed_wrapper": 6297,
+        "cleanup": 1002
+      },
+      "pcm_sha256": "f0312144f129be7da1dbc8846695e7dd9bdd16256ad56e6d54b6eefdc1594fb3",
+      "frames": 289614
+    },
+    {
+      "command": "task rs:process-wrap:verify",
+      "commit": "f97198f2296743e34de72a7cc361cfcefa338b0c",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 0.542,
+      "archive_sha256": "0e3f4237d0e4741eb50bc5584db701f1299c85fa31ff0274dd6445e79dc42d12"
     }
   ],
   "engine_results": [
@@ -752,7 +810,19 @@
         "voice_id": "marina_elevenlabs_ru",
         "voice_manifest_sha256": "6c69208f30421111e827ec3a1e6f8cd8a5793bcae8c42127cc7ed84fe3b02c28",
         "reference_id": "ref-voxcpm2-neutral",
-        "reference_sha256": "069515a44e0be0eb47aef4a23a303b58d5e7fbfa297eddc68b19dbbc1624291d"
+        "reference_sha256": "069515a44e0be0eb47aef4a23a303b58d5e7fbfa297eddc68b19dbbc1624291d",
+        "mode": "clone",
+        "settings": {
+          "cfg_value": 2.0,
+          "inference_timesteps": 6,
+          "load_denoiser": false,
+          "voxcpm_low_memory": true,
+          "voxcpm_optimize": false,
+          "output_sample_rate": 48000,
+          "speech_preferred_chars": 180,
+          "speech_hard_chars": 240,
+          "speech_hard_words": 40
+        }
       },
       {
         "engine_id": "espeech",
@@ -762,7 +832,22 @@
         "voice_id": "alex_analyst_elevenlabs_ru",
         "voice_manifest_sha256": "7e2433bc4f7d531bd8a860a7427565190ac27888da0ad3aa0963b2474338788d",
         "reference_id": "ref-espeech-neutral",
-        "reference_sha256": "cd4b0ca355c08eb517f7d5dc5bd84e4af694395ba326b0377adc391aad7b6406"
+        "reference_sha256": "cd4b0ca355c08eb517f7d5dc5bd84e4af694395ba326b0377adc391aad7b6406",
+        "mode": "clone",
+        "settings": {
+          "espeech_speed": 0.95,
+          "espeech_nfe_step": 64,
+          "espeech_cross_fade": 0.15,
+          "espeech_remove_silence": false,
+          "espeech_seed": 67,
+          "espeech_max_chars": 120,
+          "espeech_max_words": 18,
+          "espeech_chunk_cross_fade_ms": 50,
+          "output_sample_rate": 48000,
+          "speech_preferred_chars": 80,
+          "speech_hard_chars": 120,
+          "speech_hard_words": 18
+        }
       }
     ],
     "python": "3.12.14",
@@ -792,6 +877,43 @@
       "rustc": "1.95.0",
       "task": "3.50.0",
       "cargo": "1.95.0"
+    },
+    "resource_budget": {
+      "max_rss_bytes": 25769803776,
+      "baseline_vram_bytes": 2147483648,
+      "max_vram_bytes": 8053063680,
+      "min_free_disk_bytes": 68719476736,
+      "max_profile_bytes": 68719476736,
+      "sample_interval_ms": 1000,
+      "disk_audit_interval_ms": 30000
+    },
+    "case_budgets": {
+      "diagnostic": {
+        "max_wall_seconds": 18000,
+        "tts_execution_budget_seconds": 2700
+      },
+      "full_source": {
+        "max_wall_seconds": 360000,
+        "tts_execution_budget_seconds": 172800
+      }
+    },
+    "component_timeouts_seconds": {
+      "contract_metadata": 45,
+      "tts_preflight": 45,
+      "tts_cancellation": 20,
+      "component_exit_confirmation": 5,
+      "translation_startup_default": 180,
+      "translation_startup_maximum": 600,
+      "translation_http_request": 120,
+      "wav_child": 600,
+      "wav_assembly": 1800,
+      "video_inspect": 180,
+      "media_probe": 30,
+      "video_export": 1800,
+      "video_encode": 1200,
+      "video_decode": 300,
+      "profile_audit": 120,
+      "ui_owned_cleanup": 60
     }
   },
   "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd"
