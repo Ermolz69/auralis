@@ -3,10 +3,8 @@ use super::lease::ManagedLlamaLease;
 use super::owned_process;
 use super::preparation::RuntimePreparation;
 use async_trait::async_trait;
-use auralis_translation::SourceHash;
 use auralis_translation_llamacpp::{
-    LlamaCppProvider, ModelProfile, PreparationControl, hash_file_with_control,
-    verify_server_with_control,
+    LlamaCppProvider, ModelProfile, PreparationControl, verify_server_with_control,
 };
 use ports::cancellation::CancellationToken;
 use ports::error::PortError;
@@ -23,6 +21,8 @@ use tokio::sync::Semaphore;
 const LOOPBACK_HOST: &str = "127.0.0.1";
 const SERVER_TOOL: &str = "managed llama.cpp server";
 
+mod model;
+
 pub struct ManagedLlamaRuntime {
     config: ManagedRuntimeConfig,
     slot: Arc<Semaphore>,
@@ -35,58 +35,6 @@ impl ManagedLlamaRuntime {
             config,
             slot: Arc::new(Semaphore::new(1)),
         })
-    }
-
-    async fn verify_model(
-        &self,
-        intent: &TranslationRunIntent,
-        control: &RuntimePreparation,
-    ) -> Result<(ModelProfile, PathBuf), PortError> {
-        control.check().map_err(|cause| control.error(cause))?;
-        let bytes = intent.profile_manifest_json.as_bytes();
-        if SourceHash::digest(bytes).to_string() != intent.profile_sha256 {
-            return Err(conflict(
-                "frozen model profile digest differs from its bytes",
-            ));
-        }
-        let profile =
-            ModelProfile::from_json(bytes).map_err(|error| invalid(&error.to_string()))?;
-        let expected_bytes = profile
-            .model_file_bytes
-            .ok_or_else(|| PortError::Unsupported {
-                message: "managed execution requires a checked model profile".into(),
-            })?;
-        let minimum_context = profile
-            .min_context_tokens
-            .ok_or_else(|| invalid("checked model profile has no minimum context"))?;
-        if self.config.context_tokens < minimum_context {
-            return Err(invalid(
-                "configured context is smaller than checked profile",
-            ));
-        }
-        self.config.validate_files()?;
-        let path = std::fs::canonicalize(&self.config.model_file).map_err(io_error)?;
-        if std::fs::metadata(&path).map_err(io_error)?.len() != expected_bytes {
-            return Err(conflict(
-                "installed model size differs from checked profile",
-            ));
-        }
-        let expected_hash = SourceHash::parse_hex(&profile.model_file_sha256)
-            .ok_or_else(|| invalid("checked model digest is invalid"))?;
-        let path_for_hash = path.clone();
-        let hash_control = control.clone();
-        let (actual_hash, actual_bytes) = tokio::task::spawn_blocking(move || {
-            hash_file_with_control(&path_for_hash, &hash_control)
-        })
-        .await
-        .map_err(|error| unexpected(&error.to_string()))?
-        .map_err(|error| control.error(error))?;
-        if actual_bytes != expected_bytes || actual_hash != expected_hash {
-            return Err(conflict(
-                "installed model digest differs from checked profile",
-            ));
-        }
-        Ok((profile, path))
     }
 
     async fn wait_until_ready(
@@ -157,6 +105,8 @@ impl TranslationModelRuntimePort for ManagedLlamaRuntime {
         cancellation: CancellationToken,
     ) -> Result<Box<dyn TranslationModelLease>, PortError> {
         let cancel_on_drop = cancellation.clone().drop_guard();
+        let control = RuntimePreparation::new(cancellation.clone(), None);
+        control.check().map_err(|cause| control.error(cause))?;
         let permit = self
             .slot
             .clone()
@@ -164,7 +114,7 @@ impl TranslationModelRuntimePort for ManagedLlamaRuntime {
             .map_err(|_| PortError::Busy {
                 message: "a managed translation model is already active".into(),
             })?;
-        let control = RuntimePreparation::new(cancellation.clone(), None);
+        self.validate_model_input(intent, &control)?;
         let admission =
             tokio::task::spawn_blocking(common::model_admission::ModelAdmissionLease::acquire)
                 .await

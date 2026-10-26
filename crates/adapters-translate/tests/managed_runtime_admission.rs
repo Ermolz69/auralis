@@ -10,6 +10,9 @@ use uuid::Uuid;
 // These fixtures exercise the same native machine lease from separate runtimes.
 static NATIVE_ADMISSION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+#[path = "support/native_admission_busy.rs"]
+mod native_busy;
+
 const UNCHECKED_PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.experimental.json"
 );
@@ -33,16 +36,19 @@ async fn cancelled_admission_does_not_open_files_and_releases_its_slot()
     })?;
     let cancellation = ports::cancellation::CancellationToken::new();
     cancellation.cancel();
-    assert!(matches!(
-        runtime
-            .acquire_with_control(&intent(CHECKED_PROFILE), cancellation)
-            .await,
-        Err(PortError::Cancelled)
-    ));
-    assert!(matches!(
-        runtime.acquire(&intent(CHECKED_PROFILE)).await,
-        Err(PortError::NotFound { .. })
-    ));
+    let cancelled = runtime
+        .acquire_with_control(&intent(CHECKED_PROFILE), cancellation)
+        .await
+        .err();
+    assert!(
+        matches!(cancelled, Some(PortError::Cancelled)),
+        "{cancelled:?}"
+    );
+    let missing = runtime.acquire(&intent(CHECKED_PROFILE)).await.err();
+    assert!(
+        matches!(missing, Some(PortError::NotFound { .. })),
+        "{missing:?}"
+    );
     Ok(())
 }
 
@@ -88,21 +94,24 @@ async fn rejects_unchecked_or_mismatched_model_before_process_start() -> Result<
         matches!(unchecked, PortError::Unsupported { .. }),
         "Unexpected unchecked profile refusal: {unchecked}"
     );
-    assert!(matches!(
-        runtime.acquire(&intent(CHECKED_PROFILE)).await,
-        Err(PortError::Conflict { .. })
-    ));
+    let mismatched = runtime.acquire(&intent(CHECKED_PROFILE)).await.err();
+    assert!(
+        matches!(mismatched, Some(PortError::Conflict { .. })),
+        "{mismatched:?}"
+    );
     let mut invalid_digest = intent(CHECKED_PROFILE);
     invalid_digest.profile_sha256 = "0".repeat(64);
-    assert!(matches!(
-        runtime.acquire(&invalid_digest).await,
-        Err(PortError::Conflict { .. })
-    ));
+    let changed = runtime.acquire(&invalid_digest).await.err();
+    assert!(
+        matches!(changed, Some(PortError::Conflict { .. })),
+        "{changed:?}"
+    );
     std::fs::remove_file(directory.path().join("model.gguf"))?;
-    assert!(matches!(
-        runtime.acquire(&intent(CHECKED_PROFILE)).await,
-        Err(PortError::NotFound { .. })
-    ));
+    let missing = runtime.acquire(&intent(CHECKED_PROFILE)).await.err();
+    assert!(
+        matches!(missing, Some(PortError::NotFound { .. })),
+        "{missing:?}"
+    );
     Ok(())
 }
 
