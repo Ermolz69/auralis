@@ -1,6 +1,6 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { root, storage, owned, hash, Blocked } from './core.mjs';
+import { root, storage, owned, hash } from './core.mjs';
 import { relocateTts } from './relocate.mjs';
 import { installComponents } from './components.mjs';
 import fs from 'node:fs';
@@ -76,7 +76,7 @@ export async function seedProfile(spec, run, remaining = () => 300000, signal, o
       (await fsp.stat(source)).size !== item.size_bytes ||
       (await hash(source, remaining, signal)) !== item.sha256
     )
-      throw new Blocked(`Seed changed: ${item.path}`);
+      throw new Error(`Seed integrity changed: ${item.path}`);
     const target = owned(destination, path.join(destination, item.path));
     await fsp.mkdir(path.dirname(target), { recursive: true });
     await pipeline(fs.createReadStream(source), fs.createWriteStream(target, { flags: 'wx' }), {

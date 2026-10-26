@@ -58,6 +58,8 @@ def run(config: dict, directory: Path) -> dict:
                   channels=1, raw_wav=str(aggregate), max_wall_seconds=120,
                   utterances=[{"first_frame": 0, "frame_count": len(converted[0]), "text": "Первая фраза."},
                               {"first_frame": len(converted[0]), "frame_count": len(merged)-len(converted[0]), "text": "Вторая фраза."}])
+    with (directory / "wrapper-inputs.json").open("x", encoding="utf-8") as stream:
+        json.dump({key: config[key] for key in ("policy", "chunks", "channels", "raw_wav", "utterances")}, stream, ensure_ascii=False)
     accepted = verifier.verify(config)
     outcomes = {"correct_multi_chunk_pcm": "passed"}
 
