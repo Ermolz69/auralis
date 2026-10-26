@@ -9,7 +9,7 @@ import { requireQuiescent } from './processes.mjs';
 import { runInstaller } from './installer.mjs';
 import { Report } from './report.mjs';
 import { installComponents } from './components.mjs';
-import { verifyPcmReadOnly } from './pcm.mjs';
+import { verifyPcmReadOnly, numericalLibraryFiles } from './pcm.mjs';
 
 const [seedId, componentId, inputRoot = root] = process.argv.slice(2);
 assert.ok([seedId, componentId].every((id) => idPattern.test(id ?? '')));
@@ -58,13 +58,10 @@ if (
       source,
       path.join(path.dirname(path.dirname(python)), 'venv/Lib/site-packages'),
     );
-    const library_files = seed.files
-      .filter((f) =>
-        /\/venv\/Lib\/site-packages\/(numpy|scipy|soundfile|_soundfile|_cffi_backend|cffi)/i.test(
-          f.path.replaceAll('\\', '/'),
-        ),
-      )
-      .map((f) => ({ path: owned(source, path.join(source, f.path)), sha256: f.sha256 }));
+    const library_files = numericalLibraryFiles(seed.files).map((f) => ({
+      path: owned(source, path.join(source, f.path)),
+      sha256: f.sha256,
+    }));
     for (const name of ['numpy', 'scipy', 'soundfile'])
       assert.ok(library_files.some((f) => path.relative(site_packages, f.path).startsWith(name)));
     const components = await json(path.join(storage, 'wheels', componentId, 'components.json'));
