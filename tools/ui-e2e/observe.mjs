@@ -1,5 +1,6 @@
 import { Blocked } from './core.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
+import { uiFailure } from './failures.mjs';
 let observationSignal;
 export function setObservationSignal(signal) {
   observationSignal = signal;
@@ -10,9 +11,7 @@ export async function readyOrError(ready, scope, timeout) {
     const error = scope.getByRole('alert').first();
     if (await error.isVisible()) {
       const message = await error.innerText();
-      if (message.includes('no verified utterance layout; install the streaming TTS package'))
-        throw new Blocked(message);
-      throw new Error(`Application reported: ${message}`);
+      throw uiFailure(message, 'Application reported');
     }
     return (await ready.isVisible()) ? { visible: true } : null;
   }, timeout);
@@ -75,7 +74,7 @@ export async function jobState(scope, label, expected, timeout, previous) {
     const alert = scope.getByRole('alert').first();
     const hasAlert = await alert.isVisible();
     if (state === 'ошибка' || hasAlert)
-      throw new Error(
+      throw uiFailure(
         `Job did not reach ${expected.join('/')}: ${text}; ${hasAlert ? await alert.innerText() : ''}`,
       );
     if (expected.includes(state)) return { state, text, job_id };
