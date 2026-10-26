@@ -30,6 +30,19 @@ pub(super) fn duration(frames: u64, video_ms: u64) -> Result<(), PortError> {
     Ok(())
 }
 
+pub(super) fn decoded_duration(
+    frames: u64,
+    speech_frames: u64,
+    video_ms: u64,
+) -> Result<(), PortError> {
+    if frames < speech_frames || frames.abs_diff(video_ms.saturating_mul(48)) > 2048 {
+        return Err(error::invalid(
+            "Decoded MP4 audio truncates approved speech or differs from the source video duration",
+        ));
+    }
+    Ok(())
+}
+
 pub(super) fn output(
     media: &MediaMetadata,
     duration_ms: u64,
@@ -68,17 +81,25 @@ mod tests {
         assert!(super::duration(1, 28800001).is_err());
     }
     #[test]
-    fn container_duration_cannot_hide_a_missing_video_tail() {
+    fn codec_duration_tolerance_cannot_discard_the_end_of_speech() {
+        assert!(super::decoded_duration(48000, 48000, 1000).is_ok());
+        assert!(super::decoded_duration(47999, 48000, 1000).is_err());
+        assert!(super::decoded_duration(47999, 47000, 1000).is_ok());
+        assert!(super::decoded_duration(48000 + 2049, 48000, 1000).is_err());
+    }
+    #[test]
+    fn container_duration_cannot_hide_a_missing_video_tail()
+    -> Result<(), Box<dyn std::error::Error>> {
         let bytes = serde_json::json!({"format":{"duration":"1.000"},"streams":[
             {"index":0,"codec_type":"video","codec_name":"h264","width":320,"height":180,"duration":"1.000"},
             {"index":1,"codec_type":"audio","codec_name":"aac","channels":1,"sample_rate":"48000","duration":"1.000","tags":{"language":"rus"}}
         ]});
-        let output = serde_json::from_value(bytes).expect("fixture probe DTO");
-        let mut media =
-            crate::ffprobe::parser::parse_ffprobe_output(&output).expect("fixture metadata");
+        let output = serde_json::from_value(bytes)?;
+        let mut media = crate::ffprobe::parser::parse_ffprobe_output(&output)?;
         assert!(super::output(&media, 1000, 1).is_ok());
         media.streams[0].duration_ms = Some(500);
         assert!(super::output(&media, 1000, 1).is_err());
         assert!(super::source_duration(&media).is_err());
+        Ok(())
     }
 }
