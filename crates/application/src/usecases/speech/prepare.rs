@@ -187,8 +187,8 @@ impl SpeechUseCases {
         if let Some(permission) = permission {
             draft["review"]["technical_reference_permission"] = json!(permission);
         }
-        let draft = draft.to_string();
-        if draft.len() > MAX_SPEECH_PLAN_BYTES {
+        let draft_json = draft.to_string();
+        if draft_json.len() > MAX_SPEECH_PLAN_BYTES {
             return Err(invalid(format!("Speech draft exceeds {MAX_SPEECH_PLAN_BYTES} bytes; reduce the admitted source or assignments")).into());
         }
         if let Some(contract) = &self.contract {
@@ -201,9 +201,11 @@ impl SpeechUseCases {
             .as_ref()
             .ok_or_else(|| invalid("TTS runtime unavailable"))?;
         let intent = engine
-            .compose(project, run_id, request.profile_id, draft)
+            .compose(project, run_id, request.profile_id, draft_json)
             .await?;
         self.limits()?.plan(&intent)?;
+        super::plan_review::composed_plan(&intent, &draft)?;
+        self.check_source(&review).await?;
         self.store
             .register_reviewed_run(&intent, request.decision_id)
             .await?;
@@ -215,8 +217,7 @@ impl SpeechUseCases {
         intent: &SpeechRunIntent,
     ) -> Result<(), ApplicationError> {
         self.limits()?.plan(intent)?;
-        let plan: serde_json::Value =
-            serde_json::from_str(&intent.plan_json).map_err(|e| invalid(e.to_string()))?;
+        let plan = super::plan_review::stored_plan(intent)?;
         let decision = plan["review"]["decision_id"]
             .as_str()
             .and_then(|s| Uuid::parse_str(s).ok())
@@ -226,11 +227,7 @@ impl SpeechUseCases {
             .get_review(decision)
             .await?
             .ok_or_else(|| invalid("Speech review is missing"))?;
-        if review.project_id != intent.project_id
-            || plan["source"]["source_sha256"].as_str() != Some(&review.source.sha256)
-        {
-            return Err(conflict("Speech review and plan identity differ").into());
-        }
+        super::plan_review::reviewed_plan(intent, &plan, &review)?;
         self.check_source(&review).await?;
         self.engine
             .as_ref()

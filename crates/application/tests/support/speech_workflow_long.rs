@@ -15,8 +15,18 @@ fn timestamp(second: usize) -> String {
 #[tokio::test]
 async fn six_hundred_cues_keep_exact_order_assignments_and_review_identity()
 -> Result<(), Box<dyn std::error::Error>> {
+    long_source(600).await
+}
+
+#[tokio::test]
+async fn full_story_sized_source_preserves_all_four_thousand_and_four_cues()
+-> Result<(), Box<dyn std::error::Error>> {
+    long_source(4004).await
+}
+
+async fn long_source(count: usize) -> Result<(), Box<dyn std::error::Error>> {
     let (fixture, mut cases, _, _) = fixture().await?;
-    let text: String = (1..=600)
+    let text: String = (1..=count)
         .map(|index| {
             format!(
                 "{index}\n{} --> {}\nРусская реплика {index}.\n\n",
@@ -50,7 +60,7 @@ async fn six_hundred_cues_keep_exact_order_assignments_and_review_identity()
     let review = cases
         .review(fixture.project_id.clone(), source.clone(), true)
         .await?;
-    assert_eq!(review.source.cues.len(), 600);
+    assert_eq!(review.source.cues.len(), count);
     let mut prepare = request(&review);
     prepare.assignments = review
         .source
@@ -70,7 +80,7 @@ async fn six_hundred_cues_keep_exact_order_assignments_and_review_identity()
         })
         .collect();
     let prepared = cases.prepare(fixture.project_id.clone(), prepare).await?;
-    assert_eq!(prepared.utterance_count, 600);
+    assert_eq!(prepared.utterance_count as usize, count);
     let intent = cases
         .store
         .get_run(prepared.run_id)
@@ -83,7 +93,7 @@ async fn six_hundred_cues_keep_exact_order_assignments_and_review_identity()
     );
     assert_eq!(plan["source"]["source_sha256"], review.source.sha256);
     let utterances = plan["utterances"].as_array().ok_or("missing utterances")?;
-    assert_eq!(utterances.len(), 600);
+    assert_eq!(utterances.len(), count);
     let cast: std::collections::HashMap<_, _> = plan["cast"]
         .as_array()
         .ok_or("missing cast")?

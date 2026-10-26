@@ -17,6 +17,9 @@ mod long_sources;
 #[path = "support/speech_layout_publication.rs"]
 mod layout_publication;
 
+#[path = "support/speech_plan_review.rs"]
+mod plan_review;
+
 use adapters_storage::sqlite::{
     SqliteJobRepository, SqliteProjectRepository, SqliteSpeechRunStore, SqliteStorageUnitOfWork,
     SqliteTranslationReviewStore,
