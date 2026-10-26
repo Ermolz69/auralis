@@ -170,7 +170,7 @@ export function TranslationRunControl({ projectId, onReadyResultsChanged }: Prop
               className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-border px-2 py-1.5"
             >
               <span className="font-mono">{link.translationId.slice(0, 8)}</span>
-              <span>
+              <span role="status" aria-label="Состояние перевода">
                 {snapshot
                   ? `${preparing ? 'Подготовка модели' : PHASE_LABELS[snapshot.phase]}: ${snapshot.savedBlocks}/${snapshot.totalBlocks}`
                   : 'Состояние загружается'}

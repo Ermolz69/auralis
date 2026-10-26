@@ -3,7 +3,7 @@ import { Blocked } from './core.mjs';
 import { playback } from './media.mjs';
 import { requireQuiescent } from './processes.mjs';
 import { download } from './download.mjs';
-import { readyOrError } from './observe.mjs';
+import { clickOnce, jobState, readyOrError, observeUntil } from './observe.mjs';
 import { setupTranslation } from './translation.mjs';
 import { exportVideo } from './video.mjs';
 
@@ -17,7 +17,7 @@ export const storySteps = [
   'translate-edit-approve',
   ...['voxcpm2', 'espeech'].flatMap((engine) => [
     `${engine}-selection`,
-    `${engine}-cancel-resume`,
+    `${engine}-start`,
     `${engine}-wav`,
     `${engine}-assembly`,
   ]),
@@ -25,6 +25,15 @@ export const storySteps = [
   'restart-playback',
 ];
 export const videoSteps = ['voxcpm2-video', 'espeech-video'];
+export function workflowSteps(spec) {
+  return storySteps.flatMap((id) => [
+    id,
+    ...(spec.exercise_cancellation && id.endsWith('-start')
+      ? [id.replace(/-start$/, '-cancel-resume')]
+      : []),
+    ...(spec.export_video && id.endsWith('-assembly') ? [id.replace(/-assembly$/, '-video')] : []),
+  ]);
+}
 export async function story(
   page,
   report,
@@ -54,19 +63,21 @@ export async function story(
       await page
         .getByRole('button', { name: 'Подготовить перевод с китайского', exact: true })
         .click();
-      await page.getByRole('button', { name: 'Начать перевод', exact: true }).click();
       const translation = page.getByRole('region', { name: 'Перевод субтитров', exact: true });
-      await Promise.race([
-        readyOrError(page.getByLabel('Готовый перевод', { exact: true }), translation, remaining()),
-        translation
-          .getByRole('button', { name: 'Продолжить перевод', exact: true })
-          .waitFor({ timeout: remaining() })
-          .then(async () => {
-            throw new Error(
-              `Translation stopped before publication: ${await translation.innerText()}`,
-            );
-          }),
-      ]);
+      return clickOnce(page.getByRole('button', { name: 'Начать перевод', exact: true }), () =>
+        observeUntil(async () => {
+          const status = await translation
+            .getByRole('status', { name: 'Состояние перевода', exact: true })
+            .innerText();
+          if (/Ошибка|На паузе/.test(status))
+            throw new Error(`Translation stopped before publication: ${status}`);
+          const error = translation.getByRole('alert').first();
+          if (await error.isVisible()) throw new Error(await error.innerText());
+          return (await page.getByLabel('Готовый перевод', { exact: true }).isVisible())
+            ? { status }
+            : null;
+        }, remaining()),
+      );
     }))
   )
     return false;
@@ -149,23 +160,44 @@ export async function story(
           .click();
         await panel.getByRole('button', { name: 'Подготовить озвучку', exact: true }).click();
         await panel.getByRole('button', { name: 'Озвучить', exact: true }).waitFor();
+        const runId = await panel.getByLabel('Сохранённые запуски', { exact: true }).inputValue();
+        assert.ok(runId, 'Prepared speech has no selected saved run');
+        return { ...selection, run_id: runId };
       }))
     )
       return false;
     if (
+      !(await step(`${engine}-start`, () =>
+        clickOnce(
+          panel.getByRole('button', { name: 'Озвучить', exact: true }),
+          () =>
+            jobState(
+              panel,
+              'Состояние озвучки',
+              ['в очереди', 'выполняется', 'готово'],
+              remaining(),
+            ),
+          spec.exercise_cancellation ? { clickCount: 2 } : undefined,
+        ),
+      ))
+    )
+      return false;
+    if (
+      spec.exercise_cancellation &&
       !(await step(`${engine}-cancel-resume`, async () => {
-        await panel.getByRole('button', { name: 'Озвучить', exact: true }).click({ clickCount: 2 });
-        await panel.getByRole('button', { name: 'Отменить', exact: true }).click();
-        await panel
-          .getByRole('button', { name: 'Продолжить', exact: true })
-          .waitFor({ timeout: Math.min(120000, remaining()) });
+        await clickOnce(panel.getByRole('button', { name: 'Отменить', exact: true }), () =>
+          jobState(panel, 'Состояние озвучки', ['отменено'], Math.min(120000, remaining())),
+        );
         await quiescent();
-        await panel.getByRole('button', { name: 'Продолжить', exact: true }).click();
+        return clickOnce(panel.getByRole('button', { name: 'Продолжить', exact: true }), () =>
+          jobState(panel, 'Состояние озвучки', ['в очереди', 'выполняется', 'готово'], remaining()),
+        );
       }))
     )
       return false;
     if (
       !(await step(`${engine}-wav`, async () => {
+        await jobState(panel, 'Состояние озвучки', ['готово'], remaining());
         await readyOrError(
           panel.getByRole('button', { name: 'Прослушать WAV', exact: true }),
           panel,
@@ -189,7 +221,9 @@ export async function story(
         await readyOrError(assembly.getByRole('checkbox'), assembly, Math.min(30000, remaining()));
         await assembly.getByRole('checkbox').check();
         await assembly.getByRole('button', { name: 'Подготовить сборку', exact: true }).click();
-        await assembly.getByRole('button', { name: 'Собрать WAV', exact: true }).click();
+        await clickOnce(assembly.getByRole('button', { name: 'Собрать WAV', exact: true }), () =>
+          jobState(assembly, 'Состояние сборки', ['готово'], remaining()),
+        );
         await readyOrError(
           assembly.getByRole('button', { name: 'Прослушать итоговый WAV', exact: true }),
           assembly,
@@ -199,7 +233,13 @@ export async function story(
         await assembly
           .getByRole('button', { name: 'Прослушать итоговый WAV', exact: true })
           .click();
-        return playback(page, 'Итоговое аудио');
+        return {
+          run_id: rawId,
+          assembly_id: await assembly
+            .getByLabel('Сохранённые сборки', { exact: true })
+            .inputValue(),
+          playback: await playback(page, 'Итоговое аудио'),
+        };
       }))
     )
       return false;

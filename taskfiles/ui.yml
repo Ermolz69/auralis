@@ -59,7 +59,7 @@ tasks:
   check:runner:
     cmds:
       - node tools/ui-e2e/syntax.mjs
-      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs tools/ui-e2e/seed.test.mjs tools/ui-e2e/speech-evidence.test.mjs
+      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs tools/ui-e2e/seed.test.mjs tools/ui-e2e/speech-evidence.test.mjs tools/ui-e2e/observe.test.mjs
   fmt:runner:
     cmds:
       - pnpm prettier --write "tools/ui-e2e/*.mjs" "apps/desktop/scripts/ui-*.mjs" taskfiles/ui.yml docs/integration/ui-automation.md

@@ -6,10 +6,11 @@ import { Report } from './report.mjs';
 import { candidateIdentity, DesktopSession, lockSession } from './session.mjs';
 import { requireQuiescent } from './processes.mjs';
 import { smoke } from './smoke.mjs';
-import { story, storySteps, videoSteps } from './story.mjs';
+import { story, storySteps, workflowSteps } from './story.mjs';
 import { seedProfile } from './seed.mjs';
-import { verifyAssembly, verifySources, playback } from './media.mjs';
+import { verifyAssembly, verifySources } from './media.mjs';
 import { acquireDownloadAdmission } from './admission.mjs';
+import { reopenPlayback, workflowRecords } from './reopen.mjs';
 
 const mode = process.argv[2];
 if (!['smoke', 'real'].includes(mode)) throw new Error('Expected smoke or real');
@@ -51,13 +52,11 @@ try {
       release = await lockSession();
       if (mode === 'real') {
         spec = validateSpec(await json(process.argv[3], 32 * 1024 * 1024));
-        if (spec.export_video === true)
-          for (const id of videoSteps) {
-            const index = report.data.steps.findIndex(
-              (step) => step.id === id.replace(/-video$/, '-assembly'),
-            );
-            report.data.steps.splice(index + 1, 0, { id, status: 'not_run' });
-          }
+        report.data.steps.splice(
+          3,
+          storySteps.length,
+          ...workflowSteps(spec).map((id) => ({ id, status: 'not_run' })),
+        );
         deadline = Date.now() + spec.max_wall_seconds * 1000;
         if (typeof spec.edit_text !== 'string' || !spec.edit_text.trim())
           throw new Error('Pin the edit text');
@@ -161,50 +160,7 @@ try {
               if (!old.confirmed || old.forced)
                 throw new Error('Ordinary close did not complete gracefully');
               await session.start(remaining);
-              const page = session.page;
-              await page
-                .getByRole('button', { name: /^Open / })
-                .filter({ hasText: /.*/ })
-                .first()
-                .click();
-              await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
-              const raw = page.getByLabel('Готовый исходный синтез', { exact: true });
-              const options = await raw
-                .locator('option')
-                .evaluateAll((nodes) => nodes.filter((n) => n.value).map((n) => n.value));
-              if (!options.length) throw new Error('Ready speech disappeared after restart');
-              await raw.selectOption(options[0]);
-              const assembly = page.getByLabel('Сохранённые сборки', { exact: true });
-              const saved = await assembly
-                .locator('option')
-                .evaluateAll((nodes) => nodes.filter((n) => n.value).map((n) => n.value));
-              if (spec.export_video === true) {
-                const video = await assembly
-                  .locator('option')
-                  .evaluateAll(
-                    (nodes, rawId) =>
-                      nodes.find(
-                        (node) =>
-                          node.value &&
-                          node.textContent.includes('MP4') &&
-                          node.textContent.includes(`источник ${rawId.slice(0, 8)}`),
-                      )?.value,
-                    options[0],
-                  );
-                if (!video) throw new Error('Ready video disappeared after restart');
-                await assembly.selectOption(video);
-              } else await assembly.selectOption(saved[0]);
-              await page
-                .getByRole('button', { name: 'Прослушать итоговый WAV', exact: true })
-                .click();
-              const wav = await playback(page, 'Итоговое аудио');
-              if (spec.export_video === true) {
-                await page
-                  .getByRole('button', { name: 'Воспроизвести русское видео', exact: true })
-                  .click();
-                return { wav, video: await playback(page, 'Видео с русской озвучкой') };
-              }
-              return wav;
+              return reopenPlayback(session.page, workflowRecords(report, spec), remaining);
             });
           }
         }

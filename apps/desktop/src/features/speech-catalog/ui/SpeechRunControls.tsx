@@ -1,4 +1,5 @@
 import type { SpeechRunView } from '@/shared/api/contracts/speech';
+import { JobState } from './JobState';
 type Props = {
   run: SpeechRunView | undefined;
   busy: boolean;
@@ -14,6 +15,7 @@ export function SpeechRunControls({ run, busy, active, audio, start, cancel, pla
     <>
       {run && (
         <div className="space-y-2 text-muted">
+          <JobState job={run.job} label="Состояние озвучки" />
           {run.technical_reference_permission && (
             <p role="status">
               Технический прогон с неподтверждённым образцом. Качество озвучки не принято.

@@ -3,6 +3,8 @@ export function installUiSpeechFixture() {
   const state = window.__ui;
   const digest = 'a'.repeat(64);
   const timestamp = '2026-10-24T00:00:00Z';
+  state.speeches ??= {};
+  state.assemblies ??= {};
   const source = (text) => ({
     kind: 'text',
     source_id: null,
@@ -12,7 +14,7 @@ export function installUiSpeechFixture() {
     cues: [],
   });
   const job = (kind, status) => ({
-    id: `fixture-${kind}`,
+    id: `fixture-${kind}-${kind === 'speech' ? state.speech.run_id : state.assembly.assembly_id}`,
     kind,
     revision: 1,
     projectId: '00000000-0000-4000-8000-000000000001',
@@ -30,8 +32,8 @@ export function installUiSpeechFixture() {
     createdAt: timestamp,
     updatedAt: timestamp,
   });
-  const file = (kind) => ({
-    artifact_id: `fixture-${kind}`,
+  const file = (kind, owner) => ({
+    artifact_id: `fixture-${kind}-${owner}`,
     kind,
     sha256: digest,
     size_bytes: 480044,
@@ -58,10 +60,10 @@ export function installUiSpeechFixture() {
       job: job('speech', 'completed'),
       result: {
         run_id: state.speech.run_id,
-        attempt_id: 'fixture-attempt',
+        attempt_id: `fixture-attempt-${state.speech.run_id}`,
         duration_ms: 5000,
         ready: true,
-        files: ['wav', 'manifest', 'segment', 'audio_layout'].map(file),
+        files: ['wav', 'manifest', 'segment', 'audio_layout'].map(kind => file(kind, state.speech.run_id)),
       },
     };
   };
@@ -70,8 +72,8 @@ export function installUiSpeechFixture() {
       ...state.assembly,
       job: job('audioAssembly', 'completed'),
       result: {
-        assembly_id: 'fixture-assembly',
-        attempt_id: 'fixture-assembly-attempt',
+        assembly_id: state.assembly.assembly_id,
+        attempt_id: `fixture-attempt-${state.assembly.assembly_id}`,
         sample_rate: 48000,
         channels: 1,
         frames: 240000,
@@ -82,7 +84,7 @@ export function installUiSpeechFixture() {
         files: (state.assembly.video
           ? ['wav', 'manifest', 'video', 'video_manifest']
           : ['wav', 'manifest']
-        ).map(file),
+        ).map(kind => file(kind, state.assembly.assembly_id)),
       },
     };
   };
@@ -160,7 +162,7 @@ export function installUiSpeechFixture() {
       if (state.result && !state.review)
         throw { code: 'CONFLICT', message: 'Fixture translation approval is stale' };
       value = state.speech = {
-        run_id: 'fixture-raw',
+        run_id: `fixture-raw-${args.request.profile_id.replace('native-plan-', '')}`,
         technical_reference_permission: 'fixture-technical-permission',
         profile_id: args.request.profile_id,
         utterance_count: 1,
@@ -168,15 +170,17 @@ export function installUiSpeechFixture() {
         job: null,
         result: null,
       };
-    } else if (command === 'list_speech_runs_cmd') value = state.speech ? [state.speech] : [];
-    else if (command === 'get_speech_run_cmd') value = state.speech;
-    else if (command === 'start_speech_run_cmd')
+    } else if (command === 'list_speech_runs_cmd') value = Object.values(state.speeches);
+    else if (command === 'get_speech_run_cmd') value = state.speeches[args.runId];
+    else if (command === 'start_speech_run_cmd') {
+      state.speech = state.speeches[args.runId];
       value = state.speech = { ...state.speech, job: job('speech', 'running') };
-    else if (command === 'resume_speech_run_cmd') {
+    } else if (command === 'resume_speech_run_cmd') {
+      state.speech = state.speeches[args.runId];
       finishSpeech();
       value = state.speech;
     } else if (command === 'cancel_job_cmd') {
-      if (args.jobId === 'fixture-audioAssembly') {
+      if (args.jobId.startsWith('fixture-audioAssembly-')) {
         state.assembly.job = job('audioAssembly', 'cancelled');
         value = state.assembly.job;
       } else {
@@ -184,12 +188,11 @@ export function installUiSpeechFixture() {
         value = state.speech.job;
       }
     } else if (command === 'resolve_artifact_path_cmd') value = 'fixture.wav';
-    else if (command === 'list_audio_assemblies_cmd')
-      value = state.assembly ? [state.assembly] : [];
+    else if (command === 'list_audio_assemblies_cmd') value = Object.values(state.assemblies);
     else if (command === 'inspect_audio_assembly_cmd')
       value = {
         video: videoSource(args.request.video_artifact_id),
-        source_run_id: 'fixture-raw',
+        source_run_id: args.request.source_run_id,
         source_plan_sha256: digest,
         preview_sha256: digest,
         profile_id: state.speech.profile_id,
@@ -225,8 +228,8 @@ export function installUiSpeechFixture() {
     else if (command === 'prepare_audio_assembly_cmd')
       value = state.assembly = {
         video: videoSource(args.request.source.video_artifact_id),
-        assembly_id: 'fixture-assembly',
-        source_run_id: 'fixture-raw',
+        assembly_id: `fixture-assembly-${Object.keys(state.assemblies).length + 1}`,
+        source_run_id: args.request.source.source_run_id,
         plan_sha256: digest,
         settings: args.request.source.settings,
         utterance_count: 1,
@@ -235,19 +238,23 @@ export function installUiSpeechFixture() {
         result: null,
       };
     else if (command === 'start_audio_assembly_cmd') {
+      state.assembly = state.assemblies[args.assemblyId];
       if (!state.assembly.video) state.assemblyStarts = (state.assemblyStarts ?? 0) + 1;
       state.assembly = { ...state.assembly, job: job('audioAssembly', 'running') };
       if (state.assembly.video || state.assemblyStarts <= 2) finishAssembly();
       value = state.assembly;
     } else if (command === 'resume_audio_assembly_cmd') {
+      state.assembly = state.assemblies[args.assemblyId];
       finishAssembly();
       value = state.assembly;
     } else if (command === 'get_audio_assembly_cmd' || command === 'verify_audio_assembly_cmd') {
       if (command === 'verify_audio_assembly_cmd' && state.verifyFailure)
         throw { code: 'VALIDATION', message: 'Fixture integrity verification failed' };
-      value = state.assembly;
+      value = state.assemblies[args.assemblyId];
     } else return base(command, args);
     state.calls.push({ command, args });
+    if (state.speech) state.speeches[state.speech.run_id] = state.speech;
+    if (state.assembly) state.assemblies[state.assembly.assembly_id] = state.assembly;
     sessionStorage.setItem('ui-fixture', JSON.stringify(state));
     return structuredClone(value);
   };
