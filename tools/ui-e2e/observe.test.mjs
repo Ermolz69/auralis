@@ -50,3 +50,21 @@ test('a visible error wins over an old ready control', async () => {
     /Damaged artifact/,
   );
 });
+
+test('async resume ignores the previous cancelled job until a different job is observed', async () => {
+  let reads = 0;
+  const view = {
+    getByRole: (role) => ({
+      first() {
+        return this;
+      },
+      isVisible: async () => role === 'status',
+      innerText: async () => (++reads < 3 ? 'Задание old · отменено' : 'Задание new · выполняется'),
+    }),
+  };
+  const result = await jobState(view, 'Состояние озвучки', ['выполняется', 'готово'], 1000, {
+    job_id: 'old',
+  });
+  assert.equal(result.job_id, 'new');
+  assert.equal(reads, 3);
+});

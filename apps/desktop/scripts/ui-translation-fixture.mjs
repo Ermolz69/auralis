@@ -52,6 +52,8 @@ export function installUiTranslationFixture() {
     latest: state.review,
   });
   window.__TAURI_INTERNALS__.invoke = async (command, args = {}) => {
+    if (command === 'list_projects_cmd' && state.projects?.length)
+      await new Promise((resolve) => setTimeout(resolve, 300));
     state.calls.push({ command, args });
     let value;
     if (

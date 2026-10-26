@@ -36,6 +36,7 @@ export function workflowRecords(report, spec) {
 
 export async function reopenPlayback(page, records, remaining) {
   const open = page.getByRole('button', { name: /^Open / });
+  await open.first().waitFor({ state: 'visible', timeout: Math.min(30000, remaining()) });
   assert.equal(await open.count(), 1, 'Fresh run must retain exactly its one project');
   await open.click();
   await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
