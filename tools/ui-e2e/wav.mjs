@@ -94,6 +94,7 @@ export async function wavRangeHash(file, properties, range, remaining = () => In
   const digest = crypto.createHash('sha256').update(header);
   const start = properties.data_offset + range.first_frame * align;
   let read = 0;
+  let peak = 0;
   for await (const block of fs.createReadStream(file, {
     start,
     end: start + bytes - 1,
@@ -102,7 +103,10 @@ export async function wavRangeHash(file, properties, range, remaining = () => In
     remaining();
     read += block.length;
     digest.update(block);
+    for (let index = 0; index < block.length; index += 2)
+      peak = Math.max(peak, Math.abs(block.readInt16LE(index)));
   }
   assert.equal(read, bytes, 'Raw utterance PCM range was truncated');
+  assert.ok(peak > 0, 'Approved utterance PCM range is entirely silent');
   return digest.digest('hex');
 }

@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { hash, owned, json } from './core.mjs';
 import { inspectWav, wavRangeHash } from './wav.mjs';
 import { verifyRawLayout } from './layout.mjs';
+import { verifyTranslationLineage } from './lineage-translation.mjs';
 import { createHash } from 'node:crypto';
 import { verifySpeechEvidence } from './speech-evidence.mjs';
 import { sourceCues, timingDigest, verifyCueCoverage } from './cues.mjs';
@@ -68,18 +69,32 @@ export async function verifySources(profile, spec, { candidate, remaining = () =
 export async function playback(page, label) {
   const audio = page.getByLabel(label, { exact: true });
   await audio.waitFor();
-  if (await audio.evaluate((element) => element.paused)) await audio.press('Space');
+  await page.getByRole('button', { name: `Воспроизвести: ${label}`, exact: true }).click();
   const initial = await audio.evaluate((element) => element.currentTime);
-  await page.waitForFunction(
-    ({ label, initial }) => {
-      const audio = [...document.querySelectorAll('audio,video')].find(
-        (element) => element.getAttribute('aria-label') === label,
-      );
-      return audio && audio.readyState >= 2 && !audio.error && audio.currentTime > initial + 0.15;
-    },
-    { label, initial },
-    { timeout: 15000 },
-  );
+  try {
+    await page.waitForFunction(
+      ({ label, initial }) => {
+        const audio = [...document.querySelectorAll('audio,video')].find(
+          (element) => element.getAttribute('aria-label') === label,
+        );
+        return audio && audio.readyState >= 2 && !audio.error && audio.currentTime > initial + 0.15;
+      },
+      { label, initial },
+      { timeout: 15000 },
+    );
+  } catch (error) {
+    const state = await audio
+      .evaluate((element) => ({
+        paused: element.paused,
+        current_time: element.currentTime,
+        ready_state: element.readyState,
+        error: element.error?.code,
+      }))
+      .catch(() => null);
+    throw new Error(
+      `Playback ${label} did not progress: ${JSON.stringify(state)}; ${error.message}`,
+    );
+  }
   return audio.evaluate((element) => ({
     duration_seconds: element.duration,
     current_time: element.currentTime,
@@ -95,6 +110,7 @@ export async function verifyAssembly(
   expectVideo = false,
   spec = {},
   remaining = () => Infinity,
+  verification = {},
 ) {
   const db = new DatabaseSync(path.join(profile, 'auralis.sqlite'), { readOnly: true });
   let publications;
@@ -135,6 +151,8 @@ export async function verifyAssembly(
     const facts = [];
     const videoEngines = new Set();
     const wavEngines = new Set();
+    const pcmProofs = new Map();
+    let commonApproval;
     for (const row of publications) {
       remaining();
       const publication = JSON.parse(row.publication_json);
@@ -156,12 +174,63 @@ export async function verifyAssembly(
       verifySpeechEvidence(speech, review, selections);
       if (original && spec.case_scope !== 'diagnostic')
         verifyCueCoverage(review.source.cues, original);
-      if (spec.case_scope === 'full-source')
+      if (spec.case_scope === 'full-source') {
+        assert.equal(
+          review.source.kind,
+          'translation',
+          'Full source requires an approved translation',
+        );
+        assert.ok(
+          verification.ui_approval && verification.source_artifact_id,
+          'Missing UI approval/source identity',
+        );
+        const ui = verification.ui_approval;
+        const link = db
+          .prepare('SELECT * FROM project_translations WHERE translation_id=? AND project_id=?')
+          .get(ui.translation_id, review.project_id);
+        assert.ok(link);
+        const selected = db
+          .prepare('SELECT * FROM translation_publications WHERE translation_id=? AND result_id=?')
+          .get(ui.translation_id, ui.result_id);
+        const event = db
+          .prepare(
+            'SELECT * FROM translation_review_events WHERE project_id=? AND translation_id=? AND result_id=? ORDER BY sequence DESC LIMIT 1',
+          )
+          .get(review.project_id, ui.translation_id, ui.result_id);
+        const artifact = db
+          .prepare('SELECT * FROM artifacts WHERE id=? AND state=?')
+          .get(link.output_artifact_id, 'ready');
+        assert.equal(artifact?.location_kind, 'StorageKey');
+        assert.equal(artifact.project_id, review.project_id);
+        const output = owned(
+          path.join(profile, 'projects'),
+          path.join(profile, 'projects', artifact.location_value),
+        );
+        assert.equal(await fsp.realpath(output), output);
+        const lineage = verifyTranslationLineage(
+          review,
+          link,
+          selected,
+          event,
+          spec,
+          ui,
+          verification.source_artifact_id,
+          await hash(output, remaining),
+          sourceCues(await fsp.readFile(output, 'utf8')),
+        );
+        if (commonApproval)
+          assert.deepEqual(
+            lineage,
+            commonApproval,
+            'Engines used different approved translation versions',
+          );
+        commonApproval = lineage;
         assert.equal(
           review.source.cues[0].text.split('\n')[0],
           spec.edit_text,
           'The edited version was not used for speech',
         );
+      }
       if (spec.case_scope === 'diagnostic') {
         assert.equal(review.source.kind, 'text');
         assert.equal(review.source.text, spec.diagnostic_text);
@@ -202,7 +271,8 @@ export async function verifyAssembly(
       assert.ok(publication.peak_sample_abs > 0, 'Published speech is entirely silent');
       wavEngines.add(speech.profile.engine_id);
       let rawWav, rawPath, rawManifest, rawLayout;
-      const chunks = [];
+      const chunks = [],
+        chunkFiles = [];
       for (const file of [
         ...publication.files,
         plan.raw_wav,
@@ -246,6 +316,7 @@ export async function verifyAssembly(
             chunks.push(
               await inspectWav(chunk, remaining, { sample_rate: null, allow_silence: true }),
             );
+            chunkFiles.push({ path: chunk, sha256: segment.audio_sha256 });
           }
         }
         if (file.artifact_id === plan.layout.artifact_id)
@@ -284,6 +355,30 @@ export async function verifyAssembly(
       }
       assert.ok(rawLayout && rawManifest && rawWav, 'Missing raw speech cross-artifact evidence');
       verifyRawLayout(plan, raw.plan_sha256, speech, rawLayout, rawManifest, rawWav, chunks);
+      if (spec.allow_inference && !pcmProofs.has(row.source_run_id)) {
+        assert.equal(
+          typeof verification.pcm,
+          'function',
+          'Read-only deterministic PCM verification is required',
+        );
+        const proof = await verification.pcm({
+          run_id: row.source_run_id,
+          raw_wav: rawPath,
+          channels: rawWav.channels,
+          policy: rawLayout.assembly_policy,
+          chunks: chunkFiles,
+          utterances: rawLayout.utterances.map((range, index) => ({
+            ...range,
+            text: speech.utterances[index].text,
+          })),
+        });
+        assert.equal(
+          proof.pcm_sha256,
+          rawWav.pcm_sha256,
+          'Deterministic chunk assembly differs from the actual aggregate',
+        );
+        pcmProofs.set(row.source_run_id, proof);
+      }
       for (let index = 0; index < rawLayout.utterances.length; index++)
         assert.equal(
           await wavRangeHash(rawPath, rawWav, rawLayout.utterances[index], remaining),
@@ -305,6 +400,8 @@ export async function verifyAssembly(
     return {
       ready_assemblies: publications.length,
       video_engines: [...videoEngines],
+      approval: commonApproval ?? null,
+      pcm_proofs: [...pcmProofs.values()],
       files: facts,
     };
   } finally {
