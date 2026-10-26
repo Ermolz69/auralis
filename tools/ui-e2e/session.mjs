@@ -4,13 +4,17 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import net from 'node:net';
-import { root, storage, hash, json, owned } from './core.mjs';
-import { stopOwned } from './processes.mjs';
+import { root, storage, hash, json, owned, UnconfirmedCleanup, Blocked } from './core.mjs';
+import { stopOwned, inventory } from './processes.mjs';
+import { OwnedTree } from './lineage.mjs';
 import { profileFacts } from './readiness.mjs';
 
-const { chromium } = createRequire(path.join(root, 'apps/desktop/package.json'))('playwright');
-export async function candidateIdentity(base = storage) {
-  const pointer = await json(path.join(base, 'candidate.json'));
+export async function candidateIdentity(base = storage, remaining = () => Infinity) {
+  const pointer = await json(path.join(base, 'candidate.json')).catch((error) => {
+    if (error.code === 'ENOENT')
+      throw new Blocked('Retained ordinary release candidate is unavailable; run task ui:build');
+    throw error;
+  });
   if (!/^[a-f0-9]{64}$/.test(pointer.sha256)) throw new Error('Invalid retained candidate');
   const directory = owned(
     path.join(base, 'candidates'),
@@ -30,17 +34,40 @@ export async function candidateIdentity(base = storage) {
       !receipt.resources.some((item) => item.path === `binaries/${tool}-x86_64-pc-windows-msvc.exe`)
     )
       throw new Error(`Missing packaged ${tool}`);
-  if (receipt.version !== 2)
+  if (![2, 3].includes(receipt.version))
     throw new Error('Rebuild the candidate with source identity verification');
+  if (receipt.version === 3) {
+    if (receipt.mode !== 'ordinary-release') throw new Error('Expected an ordinary release build');
+    if (
+      !Array.isArray(receipt.build_inputs?.sources) ||
+      !Array.isArray(receipt.build_inputs?.dependency_sources) ||
+      !receipt.build_inputs.dependency_sources.length
+    )
+      throw new Error('Complete build input manifest is missing');
+    for (const required of [
+      'package.json',
+      'pnpm-lock.yaml',
+      'src-tauri/build.rs',
+      'src-tauri/tauri.conf.json',
+      'apps/desktop/index.html',
+    ])
+      if (!receipt.build_inputs.sources.some((item) => item.path === required))
+        throw new Error(`Missing build input ${required}`);
+  }
   const executable = path.join(directory, 'auralis-app.exe');
-  if (receipt.sha256 !== pointer.sha256 || (await hash(executable)) !== receipt.sha256)
+  if (receipt.sha256 !== pointer.sha256 || (await hash(executable, remaining)) !== receipt.sha256)
     throw new Error('Candidate executable changed');
   for (const resource of receipt.resources) {
     const file = owned(directory, path.join(directory, resource.path));
-    if ((await hash(file)) !== resource.sha256)
+    if ((await hash(file, remaining)) !== resource.sha256)
       throw new Error(`Candidate resource changed: ${resource.path}`);
   }
-  return { directory, executable, receipt };
+  return {
+    directory,
+    executable,
+    receipt,
+    receipt_sha256: await hash(path.join(directory, 'candidate.json'), remaining),
+  };
 }
 async function port() {
   const server = net.createServer();
@@ -55,7 +82,13 @@ async function port() {
 export async function lockSession() {
   await fsp.mkdir(storage, { recursive: true });
   const file = path.join(storage, 'session.lock');
-  const handle = await fsp.open(file, 'wx');
+  const handle = await fsp.open(file, 'wx').catch((error) => {
+    if (error.code === 'EEXIST')
+      throw new Blocked(
+        'An existing UI session lock prevents another attempt; inspect its owning process and cleanup report',
+      );
+    throw error;
+  });
   await handle.writeFile(
     JSON.stringify({ pid: process.pid, started_at: new Date().toISOString() }),
   );
@@ -65,17 +98,34 @@ export async function lockSession() {
   };
 }
 export class DesktopSession {
-  constructor(run, candidate) {
+  constructor(run, candidate, policy = {}) {
     this.run = run;
     this.candidate = candidate;
+    this.policy = policy;
     this.log = '';
     this.errors = [];
   }
   async start(budget = () => 120000) {
+    const { chromium } = createRequire(path.join(root, 'apps/desktop/package.json'))('playwright');
     const deadline = Date.now() + Math.min(120000, budget());
     this.launchNumber = (this.launchNumber ?? 0) + 1;
+    this.spawnError = null;
+    this.ownershipError = null;
+    this.closed = null;
+    this.log = '';
     const profile = path.join(this.run.directory, 'profile');
     await fsp.mkdir(profile, { recursive: true });
+    if (this.policy.tts_execution_budget_seconds !== undefined) {
+      const config = await json(path.join(profile, 'tts-runtime.json'));
+      if (config.execution_budget_seconds !== this.policy.tts_execution_budget_seconds)
+        throw new Error('Frozen host TTS execution budget changed before launch');
+    }
+    if (
+      this.policy.tts_runtime_sha256 &&
+      (await hash(path.join(profile, 'tts-runtime.json'), budget)) !==
+        this.policy.tts_runtime_sha256
+    )
+      throw new Error('Applied isolated TTS configuration bytes changed before launch');
     const cdpPort = await port();
     const env = {
       ...process.env,
@@ -87,6 +137,7 @@ export class DesktopSession {
     for (const key of Object.keys(env))
       if (key.startsWith('AURALIS_NATIVE_E2E') || key.startsWith('VITE_NATIVE_E2E'))
         delete env[key];
+    const baseline = await inventory();
     this.child = spawn(this.candidate.executable, ['--profile-dir', profile], {
       cwd: this.candidate.directory,
       env,
@@ -101,6 +152,19 @@ export class DesktopSession {
     this.child.on('error', (error) => {
       this.spawnError = error;
     });
+    this.tree = new OwnedTree(this.child.pid, baseline);
+    await this.processes();
+    this.ownershipTimer = setInterval(() => {
+      if (!this.ownershipRead)
+        this.ownershipRead = this.processes()
+          .catch((error) => {
+            this.ownershipError = error;
+            void this.page?.close().catch(() => {});
+          })
+          .finally(() => {
+            this.ownershipRead = null;
+          });
+    }, 1000);
     while (Date.now() < deadline) {
       if (this.spawnError) throw this.spawnError;
       if (this.child.exitCode !== null)
@@ -140,10 +204,13 @@ export class DesktopSession {
     this.page = pages[0];
     this.page.setDefaultTimeout(Math.max(1, Math.min(30000, deadline - Date.now())));
     this.page.on('pageerror', (error) => this.errors.push(error.message));
-    await this.page
-      .context()
-      .tracing.start({ screenshots: false, snapshots: true, sources: false });
+    await this.page.context().tracing.start({ screenshots: true, snapshots: true, sources: false });
+    this.tracing = true;
     await this.page.getByRole('button', { name: 'Settings', exact: true }).waitFor();
+    await this.page.screenshot({
+      path: path.join(this.run.directory, `launch-${this.launchNumber}.png`),
+      timeout: 5000,
+    });
     await fsp.access(path.join(profile, 'auralis.sqlite'));
     await fsp.access(path.join(profile, 'webview2', 'main'));
     const facts = await profileFacts(profile);
@@ -156,18 +223,62 @@ export class DesktopSession {
       profile: facts,
     };
   }
+  async processes() {
+    const active = this.tree.observe(await inventory());
+    this.tree.assertKnown();
+    return active;
+  }
   async close() {
-    if (this.page)
-      await this.page
-        .context()
-        .tracing.stop({ path: path.join(this.run.directory, `trace-${this.launchNumber}.zip`) })
-        .catch(() => {});
-    const released = await stopOwned(this.child);
-    if (this.browser) await this.browser.close().catch(() => {});
-    await fsp.writeFile(
-      path.join(this.run.directory, `desktop-${this.launchNumber}.log`),
-      this.log,
-    );
+    if (this.closed) return this.closed;
+    clearInterval(this.ownershipTimer);
+    await this.ownershipRead;
+    let traceError;
+    if (this.page && this.tracing) {
+      let timer;
+      await Promise.race([
+        this.page
+          .context()
+          .tracing.stop({ path: path.join(this.run.directory, `trace-${this.launchNumber}.zip`) }),
+        new Promise((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('Trace finalization exceeded 10 seconds')),
+            10000,
+          );
+        }),
+      ])
+        .catch((error) => {
+          traceError = error;
+        })
+        .finally(() => clearTimeout(timer));
+    }
+    this.tracing = false;
+    let released;
+    try {
+      released = await stopOwned(this.child, this.tree);
+    } finally {
+      if (this.browser) await this.browser.close().catch(() => {});
+      await fsp.writeFile(
+        path.join(this.run.directory, `processes-${this.launchNumber}.json`),
+        JSON.stringify(
+          {
+            seen: [...(this.tree?.seen?.values() ?? [])],
+            ambiguous: [...(this.tree?.ambiguous?.values() ?? [])],
+            release: released ?? null,
+            observer_error: this.ownershipError?.message ?? null,
+          },
+          null,
+          2,
+        ),
+      );
+      await fsp.writeFile(
+        path.join(this.run.directory, `desktop-${this.launchNumber}.log`),
+        this.log,
+      );
+    }
+    this.closed = released;
+    if (this.ownershipError)
+      throw new UnconfirmedCleanup(`Process observer failed: ${this.ownershipError.message}`);
+    if (traceError) throw new Error(`Diagnostic trace was not retained: ${traceError.message}`);
     return released;
   }
 }
