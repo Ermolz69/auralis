@@ -1,0 +1,14 @@
+{
+  "package": "process-wrap",
+  "version": "10.0.0",
+  "archive": "https://static.crates.io/crates/process-wrap/process-wrap-10.0.0.crate",
+  "sha256": "0e3f4237d0e4741eb50bc5584db701f1299c85fa31ff0274dd6445e79dc42d12",
+  "upstreamRevision": "d02486b8d1e393a4ac27023d591b6f35c6417ffb",
+  "repair": "Retain native process handles and original root identity; query exact Job membership, full accounting and signaled handles in Tokio wait and try_wait. Preserve observation failures across cancellation; no detached background waiter.",
+  "availability": "Missing assignment notifications, incomplete inventories or failed identity queries cannot establish cleanup. Such cases fail closed under the existing deadline and may require explicit recovery even when no process remains.",
+  "patchedFiles": {
+    "Cargo.toml": "3c1b234ab36f6d239cf36d43f1c43af74fb622c9d96da1a128dc0cc4f4cfc679",
+    "src/tokio/job_object.rs": "cce160a8fe47924f193c72b45159447f238af750a1e6927ee6e4e37fd587f890",
+    "src/windows.rs": "b812ea40dc1143be3b9c0cb103062461d386ae9310c089a1feb332d107735163"
+  }
+}

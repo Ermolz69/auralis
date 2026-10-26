@@ -18,7 +18,7 @@ members = [
   "crates/common",
   "tools/glib-backport/regression"
 ]
-exclude = ["vendor/glib-0.18.5", "modules/auralis-translate"]
+exclude = ["vendor/glib-0.18.5", "vendor/process-wrap-10.0.0", "modules/auralis-translate"]
 
 [workspace.package]
 version = "0.1.0"
@@ -72,6 +72,7 @@ windows = { version = "0.62.2", default-features = false }
 
 [patch.crates-io]
 glib = { path = "vendor/glib-0.18.5" }
+process-wrap = { path = "vendor/process-wrap-10.0.0" }
 
 [profile.dev]
 incremental = true

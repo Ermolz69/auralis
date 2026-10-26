@@ -1,6 +1,9 @@
 use super::*;
 use std::{future::Future, pin::Pin, process::ExitStatus};
 
+#[cfg(windows)]
+mod job_wait;
+
 #[derive(Debug)]
 struct UnconfirmedChild {
     wait_fails: bool,

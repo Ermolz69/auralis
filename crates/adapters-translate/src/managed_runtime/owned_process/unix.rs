@@ -12,8 +12,9 @@ impl OwnedChild {
     }
 
     pub async fn stop(&mut self) -> io::Result<()> {
+        let deadline = tokio::time::Instant::now() + EXIT_DEADLINE;
         let _ = self.0.start_kill();
-        tokio::time::timeout(EXIT_DEADLINE, self.0.wait())
+        tokio::time::timeout_at(deadline, self.0.wait())
             .await
             .map_err(|_| {
                 io::Error::new(
