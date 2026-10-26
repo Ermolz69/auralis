@@ -144,6 +144,24 @@ Independent review and owner-side regressions passed; the integrated archive
 verification confirmed all 94 files and exactly three hashed local edits.
 Integration regressions and installed 4004-cue metadata validation remain pending.
 
+The subsequent installed metadata case validated 4,004 synthetic utterances,
+4,004 prepared chunks and 4,005 CONTRACT bindings for each engine. All six
+metadata workers had independently confirmed native exits; no frameworks,
+engine calls or model-file opens were recorded. The longest operation took
+35.398 seconds against its 45-second limit. Input bytes and the reused inventory
+were unchanged. This fixture assigns the same synthetic voice to both engines;
+it does not establish the final ESpeech voice/reference path or real translation,
+speech or playback. Its immutable report digest is recorded in the register.
+
+Independent review then identified two fixture defects: uncertain cleanup could
+release admission, and Python thread calls were outside the profiling guard.
+The reviewed corrections preserve typed cleanup failure, retain uncertain leases
+and install profiling for new threads. A separate guard-only case was refused
+before any Python child started because an unrelated ambient Python HTTP service
+held the machine prerequisite. That failed case remains retained; it does not
+invalidate the earlier synchronous positive result or establish the new threaded
+negative controls. The consumed full-plan case will not be replayed.
+
 Integrated UI checks on `000beac472a12a91b3d59cff81bf3fc0594bbff5` passed:
 runner controls, frontend types and components, both production-browser fixture
 routes, frontend regressions, 35 existing browser cases, lint, architecture and

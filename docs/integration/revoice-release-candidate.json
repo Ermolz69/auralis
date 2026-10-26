@@ -297,6 +297,18 @@
       "owner": "Backend Developer",
       "description": "Windows descendant release confirmation must survive a cancelled prior process-wrap wait with cached root exit status",
       "status": "failed"
+    },
+    {
+      "id": "RC-D30",
+      "owner": "Backend Developer",
+      "description": "Installed metadata fixture must retain admission and report unconfirmed cleanup when a worker or independent exit proof fails",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D31",
+      "owner": "Backend Developer",
+      "description": "Metadata execution audit must cover worker-created Python threads and reject inert threaded engine or render calls",
+      "status": "blocked"
     }
   ],
   "commits": [
@@ -483,6 +495,22 @@
       "review_status": "passed",
       "integration_checks": "passed",
       "scope": "Installed-wrapper result documentation corroborated against the actual report hash; no runtime code changes"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "c34136b0644999479a744bfa502da499b0f15328",
+      "integration_commit": "0e56c31f8fe9eed9da05ffac83e6a4f22f727e2d",
+      "scope": "Installed synchronous synthetic4004 metadata compatibility; same synthetic voice for both engines; no final ESpeech voice-path or model/audio/UI acceptance",
+      "review_status": "passed",
+      "integration_checks": "not_run"
+    },
+    {
+      "owner": "Backend Developer",
+      "source_commit": "df14109f9f1130e0453367ad3975ec4dfcfb632d",
+      "integration_commit": "eda2f5765892ed7be7c64512bc97cda3603366b1",
+      "scope": "Typed uncertain cleanup retains metadata admission; new-thread profiling and separate inert threaded guard controls; guard-only runtime check pending machine prerequisite",
+      "review_status": "passed",
+      "integration_checks": "not_run"
     }
   ],
   "results": [
@@ -751,6 +779,55 @@
       "exit_code": 0,
       "wall_seconds": 0.542,
       "archive_sha256": "0e3f4237d0e4741eb50bc5584db701f1299c85fa31ff0274dd6445e79dc42d12"
+    },
+    {
+      "command": "task rs:test:tts:installed-long",
+      "case_id": "RC-METADATA-4004-20261026-v1",
+      "commit": "c34136b0644999479a744bfa502da499b0f15328",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 300.33,
+      "report_sha256": "3e1fd06cb09560ba14458fe638c2b8a295fadfc6a479de3572be3f1313e622b8",
+      "scope": "Actual installed CONTRACT0.2.0/TTS0.3.0 synchronous synthetic metadata only; marina_elevenlabs_ru assigned to both engines; final ESpeech alex_analyst path and real translation/audio/UI remain not_run",
+      "models_loaded": false,
+      "input_bytes_unchanged": true,
+      "reused_inventory_unchanged": true,
+      "cleanup_confirmed": true,
+      "metadata_worker_exits_confirmed": 6,
+      "engines": [
+        {
+          "engine_id": "voxcpm2",
+          "utterances": 4004,
+          "chunks": 4004,
+          "bindings": 4005,
+          "compose_ms": 33646,
+          "validate_ms": 33729,
+          "contract_ms": 3973,
+          "plan_sha256": "b5b7faf2eee45be9952662a0c1218a00c81deeb8184ae54a971183ace55ea94d",
+          "draft_sha256": "6022295d5d75977c32d99cfa7b7084511da28908f1710752a76f2a93d7b12b50"
+        },
+        {
+          "engine_id": "espeech",
+          "utterances": 4004,
+          "chunks": 4004,
+          "bindings": 4005,
+          "compose_ms": 35398,
+          "validate_ms": 34954,
+          "contract_ms": 3781,
+          "plan_sha256": "79c67056fee2940e44c48b07e19d39ed2bd24bbb794cbf1a5011e5bd37df025f",
+          "draft_sha256": "e237c87dfa6d530f0bca86a70e278a9a048653ea9de26360dc5acedbc07d80c1"
+        }
+      ]
+    },
+    {
+      "command": "task rs:test:tts:metadata-guard",
+      "case_id": "RC-METADATA-GUARD-20261026-v1",
+      "commit": "df14109f9f1130e0453367ad3975ec4dfcfb632d",
+      "status": "failed",
+      "cargo_exit_code": 101,
+      "scope": "Ambient Python admission refusal after input snapshot; no guard control Python worker launched; frozen inputs retained; threaded negative controls remain not_run",
+      "models_loaded": false,
+      "owned_metadata_children_started": 0
     }
   ],
   "engine_results": [
@@ -813,7 +890,7 @@
         "reference_sha256": "069515a44e0be0eb47aef4a23a303b58d5e7fbfa297eddc68b19dbbc1624291d",
         "mode": "clone",
         "settings": {
-          "cfg_value": 2.0,
+          "cfg_value": 2,
           "inference_timesteps": 6,
           "load_denoiser": false,
           "voxcpm_low_memory": true,
