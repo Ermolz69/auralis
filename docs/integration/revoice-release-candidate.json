@@ -1,0 +1,238 @@
+{
+  "version": 1,
+  "scope": "One technical YouTube Chinese-subtitle to Russian WAV/MP4 candidate for sequential VoxCPM2 and ESpeech",
+  "status": "blocked",
+  "updated_date": "2026-10-26",
+  "branch": "feat/revoice-release-candidate",
+  "baseline_commit": "defc0b0b13b2352fc5c32d8c3ae8d54e942adf64",
+  "translate_commit": "44e7d4f3c6ce2443279f5d0d3acd07cbb931476e",
+  "candidate_commit": null,
+  "candidate_executable_sha256": null,
+  "specification_status": "blocked",
+  "source": {
+    "url": "https://www.youtube.com/watch?v=HRaa8kb1EhE",
+    "track": {
+      "language": "zh",
+      "format": "srt",
+      "automatic": false
+    },
+    "subtitle_sha256": "868dc24073183cfd9e5f41ded3eb0cca34b6faad53e008a8b50ddb6f79c49735",
+    "subtitle_bytes": 236229,
+    "expected_cues": 4004,
+    "strict_parse_last_end_ms": 4435266,
+    "video_duration_verification": "not_run"
+  },
+  "ownership": [
+    {
+      "owner": "Backend Developer",
+      "paths": ["crates/**", "src-tauri/**"],
+      "agreement": "confirmed"
+    },
+    {
+      "owner": "UI Developer",
+      "paths": [
+        "apps/desktop/**",
+        "tools/ui-e2e/**",
+        "taskfiles/ui.yml",
+        "docs/integration/ui-automation.md"
+      ],
+      "agreement": "assigned"
+    },
+    {
+      "owner": "Integration Coordinator",
+      "paths": [
+        "docs/integration/revoice-release-candidate.md",
+        "docs/integration/revoice-release-candidate.json",
+        "tools/revoice/release-status.mjs",
+        "tools/revoice/release-status.test.mjs",
+        "Taskfile.yml"
+      ],
+      "agreement": "confirmed"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "RC-01",
+      "owner": "Integration Coordinator",
+      "description": "Review and integrate compatible owner commits",
+      "depends_on": [],
+      "status": "blocked"
+    },
+    {
+      "id": "RC-02",
+      "owner": "Integration Coordinator",
+      "description": "Affected fast checks on integrated source",
+      "depends_on": ["RC-01"],
+      "status": "not_run"
+    },
+    {
+      "id": "RC-03",
+      "owner": "Integration Coordinator",
+      "description": "Build ordinary candidate and retain complete identity",
+      "depends_on": ["RC-02"],
+      "status": "not_run"
+    },
+    {
+      "id": "RC-04",
+      "owner": "Integration Coordinator",
+      "description": "Freeze diagnostic and complete-source specifications",
+      "depends_on": ["RC-03"],
+      "status": "blocked"
+    },
+    {
+      "id": "RC-05",
+      "owner": "Integration Coordinator",
+      "description": "Model-free fixture, connected smoke and preservation baseline",
+      "depends_on": ["RC-03"],
+      "status": "not_run"
+    },
+    {
+      "id": "RC-06",
+      "owner": "Integration Coordinator",
+      "description": "Bounded diagnostic through ordinary UI for both engines",
+      "depends_on": ["RC-04", "RC-05"],
+      "status": "not_run"
+    },
+    {
+      "id": "RC-07",
+      "owner": "Integration Coordinator",
+      "description": "Complete 4004-cue source for both engines with exact coverage",
+      "depends_on": ["RC-06"],
+      "status": "not_run"
+    },
+    {
+      "id": "RC-08",
+      "owner": "Integration Coordinator",
+      "description": "Final artifacts, both-engine restart playback and unchanged originals",
+      "depends_on": ["RC-07"],
+      "status": "not_run"
+    }
+  ],
+  "defects": [
+    {
+      "id": "RC-D01",
+      "owner": "Backend Developer",
+      "description": "Saved review must match canonical speech utterance text, order and timing",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D02",
+      "owner": "UI Developer",
+      "description": "Verify complete frozen source coverage at every accepted stage",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D03",
+      "owner": "UI Developer",
+      "description": "Reopen and play WAV and MP4 for both pinned engine runs",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D04",
+      "owner": "UI Developer",
+      "description": "Confirm owned descendant process release before next component or session unlock",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D05",
+      "owner": "UI Developer",
+      "description": "Freeze complete build inputs including dependency source identity",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D06",
+      "owner": "UI Developer",
+      "description": "Measure and enforce stage time, RAM, VRAM and disk budgets; retain observer failures",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D07",
+      "owner": "UI Developer",
+      "description": "Reject all-silent WAV and require expected native streams and media policy",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D08",
+      "owner": "UI Developer",
+      "description": "Support separate bounded diagnostic and complete-source cases without whole-case retries",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D09",
+      "owner": "Backend Developer",
+      "description": "Legacy CONTRACT worker binding cap 513 rejects the 4004-cue host plan",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D10",
+      "owner": "Backend Developer",
+      "description": "Bridge must preserve qualified emotional selection and keep unverified exception neutral-only",
+      "status": "blocked"
+    }
+  ],
+  "commits": [],
+  "results": [
+    {
+      "command": "task ui:check:runner",
+      "commit": "defc0b0b13b2352fc5c32d8c3ae8d54e942adf64",
+      "status": "blocked",
+      "exit_code": 201,
+      "scope": "Sandbox subprocess spawn EPERM; assertions did not run"
+    },
+    {
+      "command": "task ui:check:runner",
+      "commit": "defc0b0b13b2352fc5c32d8c3ae8d54e942adf64",
+      "status": "passed",
+      "exit_code": 0,
+      "checks": 13,
+      "wall_seconds": 4.87,
+      "scope": "Model-free baseline only"
+    },
+    {
+      "command": "task revoice:release:check",
+      "status": "passed",
+      "exit_code": 0,
+      "checks": 3,
+      "scope": "Coordination status controls only"
+    },
+    {
+      "command": "task docs:integration",
+      "status": "passed",
+      "exit_code": 0,
+      "scope": "69 Markdown files and integration formatting"
+    },
+    {
+      "command": "task revoice:plan:check",
+      "status": "passed",
+      "exit_code": 0,
+      "scope": "17 broader tasks and 24 mandatory cases remain unchanged"
+    },
+    {
+      "command": "task revoice:release:status",
+      "status": "blocked",
+      "exit_code": 201,
+      "child_exit_code": 2,
+      "scope": "Required technical stages remain blocked or unrun"
+    }
+  ],
+  "engine_results": [
+    {
+      "engine_id": "voxcpm2",
+      "diagnostic": "not_run",
+      "full_source": "not_run",
+      "restart_playback": "not_run",
+      "process_release": "not_run"
+    },
+    {
+      "engine_id": "espeech",
+      "diagnostic": "not_run",
+      "full_source": "not_run",
+      "restart_playback": "not_run",
+      "process_release": "not_run"
+    }
+  ],
+  "broader_release_matrix": "docs/integration/revoice-plan.json",
+  "broader_release_matrix_changed": false,
+  "translation_quality": "not_run",
+  "listening_acceptance": "not_run"
+}

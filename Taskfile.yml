@@ -23,6 +23,21 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  revoice:release:check:
+    desc: Verify technical candidate status controls without models
+    cmds:
+      - node --test --test-isolation=none tools/revoice/release-status.test.mjs
+
+  revoice:release:status:
+    desc: Report the technical candidate with nonzero status for incomplete required work
+    cmds:
+      - node tools/revoice/release-status.mjs
+
+  revoice:release:fmt:
+    desc: Format only the technical candidate coordination register and controls
+    cmds:
+      - pnpm prettier --write docs/integration/revoice-release-candidate.md docs/integration/revoice-release-candidate.json tools/revoice/release-status.mjs tools/revoice/release-status.test.mjs
+
   revoice:native:window:preflight:
     desc: Verify the frozen read-only installed-window audit without UI input or models
     vars:
