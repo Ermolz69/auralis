@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { hash, owned, UnconfirmedCleanup } from './core.mjs';
 import { Report } from './report.mjs';
 import { candidateIdentity } from './session.mjs';
-import { inspectWav } from './wav.mjs';
+import { inspectWav, wavRangeHash } from './wav.mjs';
 import { verifySources } from './media.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { validateSeedPath } from './seed.mjs';
@@ -149,6 +149,16 @@ test('WAV measurements use actual PCM, reject truncation and count full-scale sa
     assert.equal(measured.frames, 2);
     assert.equal(measured.peak_sample_abs, 32768);
     assert.equal(measured.full_scale_samples, 1);
+    const raw = await inspectWav(file, () => Infinity, { include_data: true });
+    assert.equal(
+      await wavRangeHash(file, raw, { first_frame: 0, frame_count: 2 }),
+      await hash(file),
+    );
+    await assert.rejects(wavRangeHash(file, raw, { first_frame: 1, frame_count: 2 }));
+    bytes.fill(0, 44);
+    await fsp.writeFile(file, bytes);
+    await assert.rejects(inspectWav(file), /silence/);
+    bytes.writeInt16LE(120, 46);
     await fsp.writeFile(file, bytes.subarray(0, 46));
     await assert.rejects(inspectWav(file));
   } finally {

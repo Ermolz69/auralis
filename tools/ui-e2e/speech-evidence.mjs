@@ -15,7 +15,12 @@ export function verifySpeechEvidence(speech, review, selections) {
         (item) =>
           item.engine_id === speech.profile.engine_id &&
           item.profile_id === speech.profile.profile_id &&
+          (!item.profile_sha256 || item.profile_sha256 === speech.profile.profile_sha256) &&
+          (!item.model_revision || item.model_revision === speech.profile.model_revision) &&
           item.voice_id === cast.get(utterance.role_id) &&
+          (!item.voice_manifest_sha256 ||
+            speech.cast.find((c) => c.role_id === utterance.role_id)?.manifest_sha256 ===
+              item.voice_manifest_sha256) &&
           item.reference_id === utterance.reference_id,
       ),
       'Speech selection differs from the frozen case',
