@@ -48,18 +48,25 @@ pub async fn run(runtime: &TtsRuntimeConfig, root: &Path) -> TestResult<Value> {
     if outside.exists() {
         return Err("guard allowed its inert outside-output write".into());
     }
-    let entries: Vec<_> =
-        std::fs::read_dir(guard_root.join("metadata-audit"))?.collect::<Result<_, _>>()?;
+    let entries: Vec<_> = std::fs::read_dir(guard_root.join("metadata-audit"))
+        .map_err(|error| lifecycle::unconfirmed(error.to_string()))?
+        .collect::<Result<_, _>>()
+        .map_err(|error| lifecycle::unconfirmed(error.to_string()))?;
     if entries.len() != 1 {
-        return Err("guard self-control audit missing".into());
+        return Err(lifecycle::unconfirmed("guard self-control audit missing").into());
     }
-    let report: Value = serde_json::from_slice(&std::fs::read(entries[0].path())?)?;
+    let report: Value = serde_json::from_slice(
+        &std::fs::read(entries[0].path())
+            .map_err(|error| lifecycle::unconfirmed(error.to_string()))?,
+    )
+    .map_err(|error| lifecycle::unconfirmed(error.to_string()))?;
+    proof::confirm_report(&report)?;
     if report["violations"]
         .as_array()
         .ok_or("self-control denials missing")?
         .len()
-        != 6
-        || report["engine_calls"] != 2
+        != 8
+        || report["engine_calls"] != 4
         || report["model_file_opens"] != 2
         || !report["framework_modules_loaded"]
             .as_array()
@@ -68,13 +75,10 @@ pub async fn run(runtime: &TtsRuntimeConfig, root: &Path) -> TestResult<Value> {
     {
         return Err("guard self-control did not reject every inert action".into());
     }
-    if !proof::exited(
-        u32::try_from(report["pid"].as_u64().ok_or("control PID missing")?)?,
-        report["creation_time"]
-            .as_u64()
-            .ok_or("control creation time missing")?,
-    )? {
-        return Err("guard self-control worker exit unconfirmed".into());
-    }
+    ensure(
+        report["profile_active_before_exit"] == true
+            && report["thread_profile_active_before_exit"] == true,
+        "guard profile was not active on main/new threads",
+    )?;
     Ok(report)
 }

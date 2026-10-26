@@ -11,6 +11,7 @@ use uuid::Uuid;
 mod data;
 mod guard_control;
 mod inputs;
+mod lifecycle;
 mod proof;
 
 const COUNT: usize = 4004;
@@ -163,6 +164,16 @@ async fn engine_control(client: &TtsWorkerClient, root: &Path, engine: &str) -> 
 #[tokio::test]
 #[ignore = "requires a new metadata case and pinned installed runtime; no synthesis or model access"]
 async fn installed_four_thousand_cues_compose_and_validate_without_models() -> TestResult<()> {
+    run_case(false).await
+}
+
+#[tokio::test]
+#[ignore = "requires a new guard-only case and pinned runtime; inert negative controls only"]
+async fn installed_guard_only_rejects_threaded_engine_actions() -> TestResult<()> {
+    run_case(true).await
+}
+
+async fn run_case(guard_only: bool) -> TestResult<()> {
     let case = std::env::var("AURALIS_METADATA_CASE")?;
     assert!(
         !case.is_empty()
@@ -206,11 +217,11 @@ async fn installed_four_thousand_cues_compose_and_validate_without_models() -> T
     save(
         &root,
         "frozen-spec.json",
-        &json!({"version":1,"case_id":case,"source":"synthetic4004_metadata_control",
+        &json!({"version":1,"case_id":case,"source":if guard_only {"inert_guard_controls"}else{"synthetic4004_metadata_control"},
         "test_executable_sha256":inputs::file_hash(&std::env::current_exe()?)?,
         "fresh_runtime_config_sha256":inputs::file_hash(&root.join("tts-runtime.json"))?,
         "runtime_config_sha256":inputs::hash(&config_bytes),"integrity_sha256":expected_inventory,
-        "engines":["voxcpm2","espeech"],"utterances":COUNT,"allow_unverified_neutral":true,
+        "engines":if guard_only {json!([])}else{json!(["voxcpm2","espeech"])},"utterances":if guard_only {0}else{COUNT},"allow_unverified_neutral":!guard_only,
         "per_operation_deadline_seconds":45,"allow_execute":false,"allow_model_access":false}),
     )?;
     std::fs::write(
@@ -229,31 +240,54 @@ async fn installed_four_thousand_cues_compose_and_validate_without_models() -> T
     let result: TestResult<Value> = async {
         let guard_control = guard_control::run(&runtime, &root).await?;
         let mut engines = Vec::new();
-        for engine in ["voxcpm2", "espeech"] {
-            engines.push(engine_control(&client, &managed, engine).await?);
+        if !guard_only {
+            for engine in ["voxcpm2", "espeech"] {
+                engines.push(engine_control(&client, &managed, engine).await?);
+            }
         }
-        let audits = proof::audit_reports(&managed.join("metadata-audit"))?;
+        let audits = if guard_only {
+            Vec::new()
+        } else {
+            proof::audit_reports(&managed.join("metadata-audit"))?
+        };
         Ok(json!({"engines":engines,"audits":audits,"inert_guard_control":guard_control}))
     }
     .await;
-    let release = lease.release();
+    let admission_retained = lifecycle::uncertain(&result);
+    let release = lifecycle::release_candidate(lease, &result)
+        .map(common::model_admission::ModelAdmissionLease::release);
+    let cleanup_confirmed = release.as_ref().is_some_and(|result| result.is_ok());
     let after = inputs::snapshot(&runtime, &config_file);
     let unchanged = after.as_ref().is_ok_and(|snapshot| snapshot == &before);
     if let Ok(snapshot) = &after {
-        save(&root, "inputs-after.json", &serde_json::to_value(snapshot)?)?;
+        lifecycle::preserve(
+            save(&root, "inputs-after.json", &serde_json::to_value(snapshot)?),
+            admission_retained,
+        )?;
     }
-    save(
-        &root,
-        "report.json",
-        &json!({"version":1,"case_id":case,"status":if result.is_ok()&&release.is_ok()&&unchanged {"passed"}else{"failed"},
-        "scope":"Installed metadata-only compatibility; worker-persisted plan JSON, no UI/database, inference, audio or language acceptance",
+    lifecycle::preserve(
+        save(
+            &root,
+            "report.json",
+            &json!({"version":1,"case_id":case,"status":if result.is_ok()&&cleanup_confirmed&&unchanged {"passed"}else{"failed"},
+        "guard_only":guard_only,"scope":if guard_only {"Inert guard controls only; no full plan/component acceptance"}else{"Installed metadata-only compatibility; worker-persisted plan JSON, no UI/database, inference, audio or language acceptance"},
         "model_execution_authorized":false,"models_loaded":if result.is_ok() {json!(false)} else {Value::Null},
         "reused_input_inventory_unchanged":unchanged,"hashed_input_bytes_unchanged":unchanged,
         "input_scope":"Package/runtime/reference byte hashes; unused weight-like assets metadata only; model cache left untraversed",
-        "cleanup_confirmed":release.is_ok(),"result":result.as_ref().ok(),"error":result.as_ref().err().map(ToString::to_string),
-        "release_error":release.as_ref().err().map(ToString::to_string)}),
+        "cleanup_confirmed":cleanup_confirmed,"admission_retained":admission_retained,"result":result.as_ref().ok(),"error":result.as_ref().err().map(ToString::to_string),
+        "release_error":release.as_ref().and_then(|result|result.as_ref().err()).map(ToString::to_string)}),
+        ),
+        admission_retained,
     )?;
-    release?;
+    if admission_retained {
+        result?;
+        return Err(
+            lifecycle::unconfirmed("metadata admission retained after unconfirmed exit").into(),
+        );
+    }
+    if let Some(release) = release {
+        release?;
+    }
     after?;
     assert!(
         unchanged,
