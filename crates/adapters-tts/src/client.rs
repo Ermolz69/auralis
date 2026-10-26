@@ -82,11 +82,16 @@ impl TtsWorkerClient {
     }
 
     pub(crate) fn worker_command(&self) -> Command {
+        let code = "import sys; sys.path.insert(0, sys.argv[1]); from src.tts.worker import main; raise SystemExit(main())";
+        #[cfg(test)]
+        let code =
+            crate::installed_full_plan_tests::guarded_script(&self.runtime.managed_root, code);
         let mut command = Command::new(&self.runtime.python_executable);
         command
             .arg("-I")
+            .arg("-B")
             .arg("-c")
-            .arg("import sys; sys.path.insert(0, sys.argv[1]); from src.tts.worker import main; raise SystemExit(main())")
+            .arg(code)
             .arg(&self.runtime.package_root)
             .env_remove("PYTHONPATH")
             .env_remove("PYTHONHOME")
@@ -101,6 +106,8 @@ impl TtsWorkerClient {
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
+        #[cfg(test)]
+        crate::installed_full_plan_tests::configure_guard(&mut command, &self.runtime.managed_root);
         command
     }
 
