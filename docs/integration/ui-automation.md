@@ -30,7 +30,8 @@ Linguistic quality, listening, TXT, ASR and clean installation retain separate a
   an inert Node child; reserve the native process window first.
 - `task ui:check:pcm SEED=seed-id COMPONENTS=component-id` checks the pinned DSP
   verifier against synthetic multi-rate PCM, silent utterances and same-length
-  substitutions. It imports numerical libraries only. `INPUT_ROOT` optionally
+  substitutions, then exercises the real `verifyPcmReadOnly` entrypoint with
+  offline wheels installed into a fresh profile. It imports no engines or models. `INPUT_ROOT` optionally
   locates retained inputs in another checkout; all output belongs to a fresh run.
 
 Runs are retained separately under `.cache/ui-e2e/runs`. Each includes JSON,
@@ -200,7 +201,15 @@ frames, two utterances and three chunks against the retained streaming helper,
 without engine imports, `join_audio` or models. This verifies the checker with
 synthetic media; it does not establish real synthesized speech acceptance.
 
-`task ui:check:runner` passed 31 policy tests. `task ui:check:frontend` passed
+The installed-config wrapper fixture also passed on runner commit `29b30b6`,
+using the same `verifyPcmReadOnly` entrypoint as a real case. It resolves the
+single installed `src/tts/audio/joiner.py` inventory entry, verifies its exact
+hash and pins numerical dependencies including typing extensions and the CFFI
+parser. The oracle and wrapper produced the same PCM digest. Its three supervised
+Python process trees, admission guardian and session lock were confirmed released.
+Earlier wrapper failures remain failed; they do not establish wrapper acceptance.
+
+`task ui:check:runner` passed 33 policy tests. `task ui:check:frontend` passed
 type checking, 12 unit and 29 component tests; `task docs:integration`,
 `task fe:lint` and `task q:frontend` passed. Broader checks passed 235 unit and
 32 component regressions and the existing 35 browser tests. An inert Node-child
