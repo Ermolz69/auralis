@@ -239,6 +239,48 @@
       "owner": "Backend Developer",
       "description": "Hard45min TTS whole-plan deadline needs an explicit bounded long-case configuration consistent with frozen budgets",
       "status": "blocked"
+    },
+    {
+      "id": "RC-D22",
+      "owner": "Backend Developer",
+      "description": "Whole-plan execution budget must include checkpoint observer waits and initial dispatch, with cancellation and confirmed worker release",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D23",
+      "owner": "UI Developer",
+      "description": "Every nonblank approved utterance must contain nonzero audio rather than relying on one audible cue in the aggregate",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D24",
+      "owner": "UI Developer",
+      "description": "Aggregate PCM must equal the deterministic assembly of verified chunk PCM, not merely match frame counts",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D25",
+      "owner": "UI Developer",
+      "description": "Complete source verification must require approved translation lineage explicitly",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D26",
+      "owner": "Backend Developer",
+      "description": "Forced worker termination must not await an unbounded kill before starting its cleanup deadline",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D27",
+      "owner": "Backend Developer",
+      "description": "Route preflight and Translate stop paths must not await unbounded kill before their cleanup wait deadline",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D28",
+      "owner": "UI Developer",
+      "description": "Real PCM verifier wrapper must resolve the installed src/tts/audio/joiner.py path from the pinned inventory",
+      "status": "blocked"
     }
   ],
   "commits": [
@@ -417,6 +459,20 @@
       "exit_code": 0,
       "wall_seconds": 37.946,
       "scope": "Integrated backend model-free check; no installed inference acceptance"
+    },
+    {
+      "command": "task ui:check:pcm",
+      "case_id": "2026-10-26T15-54-00-773Z-pcm-model-free-332b26e8",
+      "status": "failed",
+      "exit_code": 1,
+      "scope": "Harness wheel-member lookup failed before PCM verification; cleanup confirmed"
+    },
+    {
+      "command": "task ui:check:pcm",
+      "case_id": "2026-10-26T15-56-48-274Z-pcm-model-free-842efb0d",
+      "status": "passed",
+      "exit_code": 0,
+      "scope": "Model-free DSP oracle and substitution/silent-cue/helper/library/policy refusal controls; child/admission release confirmed. Real installed wrapper entrypoint remains blocked by RC-D28."
     }
   ],
   "engine_results": [
@@ -464,7 +520,8 @@
       "model": "Hy-MT2-1.8B-Q4_K_M.gguf",
       "sha256": "dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699",
       "runtime": "llama-b10977-bin-win-cpu-x64.zip",
-      "runtime_sha256": "bdbb1ee5368b44112fa3fa9b3ac168a15d0d492e5c2f9fbe2074dd2f4628a4b9"
+      "runtime_sha256": "bdbb1ee5368b44112fa3fa9b3ac168a15d0d492e5c2f9fbe2074dd2f4628a4b9",
+      "revision": "a0c709d9fac510f2c807aa3af52872340dc37a4a"
     },
     "engines": [
       {
@@ -505,6 +562,16 @@
       "default_seconds": 2700,
       "implementation_status": "not_run",
       "maximum_seconds": 172800
+    },
+    "yt_dlp": "2026.08.19",
+    "driver": {
+      "node": "24.14.0",
+      "tauri_cli": "2.11.4",
+      "playwright": "1.61.1",
+      "pnpm": "11.25.0",
+      "rustc": "1.95.0",
+      "task": "3.50.0",
+      "cargo": "1.95.0"
     }
   },
   "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd"

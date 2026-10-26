@@ -101,6 +101,19 @@ not replace this result. The absolute 45-minute TTS plan deadline also needs an
 explicit bounded long-case configuration before freezing the complete-source case.
 No source coverage or duration policy may be reduced to pass these gates.
 
+Owner followups correct request validation before native admission and add a
+bounded per-plan TTS budget, including dispatch and checkpoint waits. Independent
+review confirmed the worker termination correction in `98b84c7`: termination is
+requested without waiting, then one exit confirmation is bounded by five seconds.
+Adjacent component and Translate cleanup paths require the same protection.
+These changes still require integration checks on the final source.
+
+The model-free DSP oracle passed a distinct second case after an earlier harness
+lookup failure; both attempts remain in the register. That oracle did not exercise
+the real installed verifier wrapper. Its helper lookup incorrectly omitted the
+wheel's `src/` prefix (RC-D28). The wrapper must be corrected and tested before
+any expensive speech case is admitted.
+
 VoxCPM2, ESpeech, actual translation, real WAV/MP4 and native playback are
 **not_run**. The overall result remains **failed**.
 Automated exact-version approval proves a workflow boundary only. Translation
