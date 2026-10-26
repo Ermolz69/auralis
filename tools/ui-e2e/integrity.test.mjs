@@ -155,6 +155,13 @@ test('WAV measurements use actual PCM, reject truncation and count full-scale sa
       await hash(file),
     );
     await assert.rejects(wavRangeHash(file, raw, { first_frame: 1, frame_count: 2 }));
+    bytes.writeInt16LE(0, 46);
+    await fsp.writeFile(file, bytes);
+    assert.ok((await inspectWav(file)).peak_sample_abs > 0);
+    await assert.rejects(
+      wavRangeHash(file, raw, { first_frame: 1, frame_count: 1 }),
+      /entirely silent/,
+    );
     bytes.fill(0, 44);
     await fsp.writeFile(file, bytes);
     await assert.rejects(inspectWav(file), /silence/);

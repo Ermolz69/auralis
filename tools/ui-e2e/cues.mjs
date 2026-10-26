@@ -12,7 +12,7 @@ export function sourceCues(srt) {
   const cues = srt
     .replace(/^\uFEFF/, '')
     .replaceAll('\r\n', '\n')
-    .trim()
+    .replace(/^\n+|\n+$/g, '')
     .split(/\n[ \t]*\n/)
     .map((block, ordinal) => {
       const lines = block.split('\n');
@@ -22,7 +22,13 @@ export function sourceCues(srt) {
       const start_ms = stamp(time[1]),
         end_ms = stamp(time[2]);
       assert.ok(end_ms > start_ms && lines.slice(2).join('\n').trim());
-      return { id: `cue-${ordinal + 1}`, label: lines[0], start_ms, end_ms };
+      return {
+        id: `cue-${ordinal + 1}`,
+        label: lines[0],
+        start_ms,
+        end_ms,
+        text: lines.slice(2).join('\n'),
+      };
     });
   assert.ok(cues.length > 0);
   return cues;

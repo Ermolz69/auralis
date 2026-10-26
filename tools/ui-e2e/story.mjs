@@ -126,6 +126,14 @@ export async function story(
           );
         await review.getByRole('button', { name: 'Одобрить для речи', exact: true }).click();
         await review.getByText('Одобрено:', { exact: false }).waitFor();
+        return {
+          translation_id: await review
+            .getByRole('combobox', { name: 'Готовый перевод', exact: true })
+            .inputValue(),
+          result_id: await review
+            .getByRole('combobox', { name: 'Версия для сравнения', exact: true })
+            .inputValue(),
+        };
       }))
     )
       return false;
