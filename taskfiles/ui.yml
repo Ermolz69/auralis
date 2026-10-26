@@ -1,6 +1,18 @@
 version: '3'
 
 tasks:
+  check:pcm:
+    desc: Check pinned read-only DSP with synthetic PCM, without engines or models
+    requires:
+      vars: [SEED, COMPONENTS]
+    vars:
+      INPUT_ROOT: '{{default "." .INPUT_ROOT}}'
+    cmds:
+      - node tools/ui-e2e/pcm-check.mjs "{{.SEED}}" "{{.COMPONENTS}}" "{{.INPUT_ROOT}}"
+  check:processes:
+    desc: Verify owned process abort and confirmed release using an inert Node child without components or models
+    cmds:
+      - node --test tools/ui-e2e/installer.native.test.mjs
   components:probe:
     desc: Verify installed CONTRACT and exact neutral-reference permissions without importing model engines or changing voices
     requires:
@@ -38,7 +50,7 @@ tasks:
     cmds:
       - task: :fe:typecheck
       - pnpm --filter desktop exec vitest run --project unit src/shared/api/contracts/audioAssemblyValidation.test.ts
-      - pnpm --filter desktop exec vitest run --project component src/features/speech-catalog/ui/SpeechCatalog.test.tsx src/features/speech-catalog/ui/SpeechWorkflow.test.tsx src/features/speech-catalog/ui/audio-assembly/AudioAssemblyPanel.test.tsx
+      - pnpm --filter desktop exec vitest run --project component src/features/speech-catalog/ui/SpeechCatalog.test.tsx src/features/speech-catalog/ui/SpeechWorkflow.test.tsx src/features/speech-catalog/ui/audio-assembly/AudioAssemblyPanel.test.tsx src/features/translation-run-control/ui/TranslationRunControl.test.tsx src/pages/project/ui/SubtitleWorkspace.test.tsx
   assets:
     desc: Copy verified installed components and pinned translator assets into a new owned UI seed without model loading
     requires:
@@ -59,11 +71,13 @@ tasks:
   check:runner:
     cmds:
       - node tools/ui-e2e/syntax.mjs
-      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs tools/ui-e2e/seed.test.mjs tools/ui-e2e/speech-evidence.test.mjs tools/ui-e2e/observe.test.mjs
+      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs tools/ui-e2e/seed.test.mjs tools/ui-e2e/speech-evidence.test.mjs tools/ui-e2e/observe.test.mjs tools/ui-e2e/cues.test.mjs tools/ui-e2e/chunks.test.mjs tools/ui-e2e/lineage.test.mjs tools/ui-e2e/resources.test.mjs tools/ui-e2e/selections.test.mjs tools/ui-e2e/build-identity.test.mjs tools/ui-e2e/layout.test.mjs tools/ui-e2e/installer.test.mjs tools/ui-e2e/failures.test.mjs tools/ui-e2e/lineage-translation.test.mjs
   fmt:runner:
     cmds:
       - pnpm prettier --write "tools/ui-e2e/*.mjs" "apps/desktop/scripts/ui-*.mjs" taskfiles/ui.yml docs/integration/ui-automation.md
       - pnpm prettier --write apps/desktop/scripts/e2e.test.mjs apps/desktop/scripts/e2e-fixture.mjs apps/desktop/scripts/run-e2e.mjs
+      - pnpm prettier --write apps/desktop/src/pages/project/ui/subtitle-workspace/SubtitleActivityLog.tsx
+      - pnpm prettier --write apps/desktop/src/features/speech-catalog/ui/SpeechMediaPlayer.tsx apps/desktop/src/features/speech-catalog/ui/SpeechRunControls.tsx apps/desktop/src/features/speech-catalog/ui/audio-assembly/AudioAssemblyPanel.tsx
   regression:
     cmds:
       - task: :fe:test:unit
@@ -78,6 +92,7 @@ tasks:
   fixture:run:
     cmds:
       - node apps/desktop/scripts/ui-fixture.mjs
+      - node apps/desktop/scripts/ui-diagnostic-fixture.mjs
   lint:
     cmds:
       - cargo clippy --locked -p auralis-app --all-targets -- -D warnings
@@ -88,6 +103,7 @@ tasks:
     desc: Build the ordinary release application and retain a standalone candidate with verified media tools
     env:
       AURALIS_NATIVE_E2E: '0'
+      VITE_NATIVE_E2E: '0'
     cmds:
       - node tools/ui-e2e/candidate.mjs begin
       - pnpm tauri build --no-bundle
@@ -97,6 +113,7 @@ tasks:
     cmds:
       - task: :fe:build
       - node apps/desktop/scripts/ui-fixture.mjs
+      - node apps/desktop/scripts/ui-diagnostic-fixture.mjs
   smoke:
     desc: Run ordinary packaged Windows Auralis through WebView2 without models
     vars:
@@ -121,8 +138,9 @@ tasks:
       vars: [CASE, SEED, COMPONENTS]
     vars:
       MODE: '{{default "smoke" .MODE}}'
+      SCOPE: '{{default "full-source" .SCOPE}}'
     cmds:
-      - node tools/ui-e2e/freeze-connected.mjs "{{.CASE}}" "{{.SEED}}" "{{.COMPONENTS}}" "{{.MODE}}"
+      - node tools/ui-e2e/freeze-connected.mjs "{{.CASE}}" "{{.SEED}}" "{{.COMPONENTS}}" "{{.MODE}}" "{{.SCOPE}}"
   report:
     desc: Read the portable report for an existing UI run
     requires:
