@@ -1,6 +1,9 @@
 use process_wrap::tokio::{ChildWrapper, CommandWrap, KillOnDrop};
 use std::io;
+use std::time::Duration;
 use tokio::process::Command;
+
+const EXIT_DEADLINE: Duration = Duration::from_secs(5);
 
 #[cfg(windows)]
 use process_wrap::tokio::{CreationFlags, JobObject};
@@ -27,3 +30,24 @@ pub fn spawn(command: Command) -> io::Result<Box<dyn ChildWrapper>> {
             .spawn()
     }
 }
+
+pub(crate) async fn terminate(
+    child: &mut Box<dyn ChildWrapper>,
+    resource: &str,
+) -> Result<(), ports::PortError> {
+    let _ = child.start_kill();
+    tokio::time::timeout(EXIT_DEADLINE, child.wait())
+        .await
+        .map_err(|_| ports::PortError::CleanupFailed {
+            resource: resource.into(),
+            message: "Process tree termination could not be confirmed within 5 seconds".into(),
+        })?
+        .map_err(|error| ports::PortError::CleanupFailed {
+            resource: resource.into(),
+            message: format!("Process tree exit could not be confirmed: {error}"),
+        })?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests;

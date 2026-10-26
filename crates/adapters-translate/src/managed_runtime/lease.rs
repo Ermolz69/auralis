@@ -7,7 +7,7 @@ pub struct ManagedLlamaLease {
     server_url: String,
     child: OwnedChild,
     _permit: OwnedSemaphorePermit,
-    _admission: common::model_admission::ModelAdmissionLease,
+    _admission: Option<common::model_admission::ModelAdmissionLease>,
 }
 
 impl ManagedLlamaLease {
@@ -21,7 +21,7 @@ impl ManagedLlamaLease {
             server_url,
             child,
             _permit: permit,
-            _admission: admission,
+            _admission: Some(admission),
         }
     }
 
@@ -30,7 +30,13 @@ impl ManagedLlamaLease {
     }
 
     pub async fn stop(&mut self) -> io::Result<()> {
-        self.child.stop().await
+        let result = self.child.stop().await;
+        if result.is_err()
+            && let Some(admission) = self._admission.take()
+        {
+            std::mem::forget(admission);
+        }
+        result
     }
 }
 

@@ -1,5 +1,8 @@
 use std::io;
+use std::time::Duration;
 use tokio::process::{Child, Command};
+
+const EXIT_DEADLINE: Duration = Duration::from_secs(5);
 
 pub struct OwnedChild(Child);
 
@@ -9,10 +12,15 @@ impl OwnedChild {
     }
 
     pub async fn stop(&mut self) -> io::Result<()> {
-        if self.0.try_wait()?.is_none() {
-            self.0.kill().await?;
-        }
-        self.0.wait().await?;
+        let _ = self.0.start_kill();
+        tokio::time::timeout(EXIT_DEADLINE, self.0.wait())
+            .await
+            .map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "Managed translation process tree exit was not confirmed within 5 seconds",
+                )
+            })??;
         Ok(())
     }
 }
