@@ -39,6 +39,7 @@ const report = new Report(run, `desktop-${mode}`, [
   'javascript-errors',
   'resource-observations',
   'cleanup',
+  'session-release',
 ]);
 let release, session, spec, candidate, observer, watchdog, stopReason, installerProcesses;
 const abort = new AbortController();
@@ -339,7 +340,11 @@ try {
     observer.check();
     return facts;
   });
-  if (release) await release(confirmed && !report.data.cleanup_unconfirmed);
+  await report.step('session-release', async () => {
+    const safe = confirmed && !report.data.cleanup_unconfirmed;
+    if (release) await release(safe);
+    return { acquired: !!release, retained: !!release && !safe };
+  });
   await report.save();
   process.stdout.write(`UI report: ${run.id}\n`);
   process.exitCode = report.exitCode();
