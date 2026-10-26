@@ -2,12 +2,12 @@
   "version": 1,
   "scope": "One technical YouTube Chinese-subtitle to Russian WAV/MP4 candidate for sequential VoxCPM2 and ESpeech",
   "status": "blocked",
-  "updated_date": "2026-10-26",
+  "updated_date": "2026-10-27",
   "branch": "feat/revoice-release-integration",
   "baseline_commit": "defc0b0b13b2352fc5c32d8c3ae8d54e942adf64",
   "translate_commit": "44e7d4f3c6ce2443279f5d0d3acd07cbb931476e",
-  "candidate_commit": null,
-  "candidate_executable_sha256": null,
+  "candidate_commit": "719b08959928f096945bcfc5c11ec71e2a0a0b1c",
+  "candidate_executable_sha256": "cb93c612926fa899ee7debadea1dd42ca793297be16a22ca4f132ff9dc6fd426",
   "specification_status": "blocked",
   "frozen_cases": [],
   "source": {
@@ -84,7 +84,8 @@
       "owner": "Integration Coordinator",
       "description": "Build ordinary candidate and retain complete identity",
       "depends_on": ["RC-02"],
-      "status": "not_run"
+      "status": "blocked",
+      "evidence_scope": "Ordinary build passed and identity retained; required RC-02 native controls remain blocked"
     },
     {
       "id": "RC-04",
@@ -98,7 +99,8 @@
       "owner": "Integration Coordinator",
       "description": "Model-free fixture, connected smoke and preservation baseline",
       "depends_on": ["RC-03"],
-      "status": "not_run"
+      "status": "blocked",
+      "evidence_scope": "Model-free browser fixtures, ordinary connected smoke and preservation checks passed; upstream mandatory prerequisites remain blocked"
     },
     {
       "id": "RC-06",
@@ -1034,6 +1036,200 @@
       "scope": "Fixture CONTRACT API only; no installed engine or model imports; no shared native admission acceptance",
       "log_sha256": "35750d24b406143466befcfff048b67f59602161317daaaf36f28af5e54c7ae9",
       "checks": 1
+    },
+    {
+      "result_id": "ORDINARY-BUILD-V1",
+      "command": "task ui:build",
+      "commit": "719b08959928f096945bcfc5c11ec71e2a0a0b1c",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 546.182,
+      "log_sha256": "81f113b7e63bf880c069c0e2503f4ffe0e85d88a3b06f268fd66849eeb2b6961",
+      "candidate_executable_sha256": "cb93c612926fa899ee7debadea1dd42ca793297be16a22ca4f132ff9dc6fd426",
+      "candidate_receipt_sha256": "aafe60bbd49ca85d64c874c2b52531e1e8e64d92d4100acbd684b7277bd44214",
+      "scope": "Ordinary release artifact only; native test flags0; offline build; no application or model execution"
+    },
+    {
+      "result_id": "DOCS-REGISTRY-V3",
+      "command": "task docs:integration",
+      "commit": "719b08959928f096945bcfc5c11ec71e2a0a0b1c",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 5.332,
+      "prior_sandbox_attempt": "spawn EPERM before assertions; shell exit1",
+      "log_sha256": "fc418d3ce99e5d2afa8a72d7ee45f6cfbb3f26a9887e68cd99308e34ea01934e"
+    },
+    {
+      "case_id": "RC-CONNECTED-SMOKE-20261026-v1",
+      "command": "task ui:smoke SPEC=<frozen connected-smoke specification>",
+      "run_id": "2026-10-26T20-35-09-331Z-desktop-smoke-8e358cb4",
+      "commit": "719b08959928f096945bcfc5c11ec71e2a0a0b1c",
+      "status": "passed",
+      "exit_code": 0,
+      "wall_seconds": 301.145,
+      "spec_sha256": "f6d2aee54e1a135eddbfd0d111c641767ac4a7727cccf6606cbc938e15f50e43",
+      "report_sha256": "7098e3ac3d8aaf57927b41453b0ae09094da5c26ca41339a1f39e7943d2de252",
+      "artifact_manifest_sha256": "82a0074082ec42307b64a0d1d2067deb92e7f2d55c2534c04b8a78db49433563",
+      "allow_inference": false,
+      "required_steps": 12,
+      "steps": [
+        {
+          "id": "preflight",
+          "status": "passed",
+          "duration_ms": 1616
+        },
+        {
+          "id": "seed",
+          "status": "passed",
+          "duration_ms": 284890
+        },
+        {
+          "id": "launch",
+          "status": "passed",
+          "duration_ms": 5770
+        },
+        {
+          "id": "empty-projects",
+          "status": "passed",
+          "duration_ms": 42
+        },
+        {
+          "id": "input-validation",
+          "status": "passed",
+          "duration_ms": 180
+        },
+        {
+          "id": "source-rejection",
+          "status": "passed",
+          "duration_ms": 2547
+        },
+        {
+          "id": "settings-and-return",
+          "status": "passed",
+          "duration_ms": 537
+        },
+        {
+          "id": "components-connected",
+          "status": "passed",
+          "duration_ms": 1
+        },
+        {
+          "id": "javascript-errors",
+          "status": "passed",
+          "duration_ms": 0
+        },
+        {
+          "id": "resource-observations",
+          "status": "passed",
+          "duration_ms": 1
+        },
+        {
+          "id": "cleanup",
+          "status": "passed",
+          "duration_ms": 4222
+        },
+        {
+          "id": "session-release",
+          "status": "passed",
+          "duration_ms": 1
+        }
+      ],
+      "cleanup": {
+        "confirmed": true,
+        "forced": false,
+        "owned_processes": 9,
+        "remaining_processes": 0,
+        "session_released": true,
+        "independent_live_pid_creation_matches": 0
+      },
+      "artifact_files": [
+        {
+          "name": "components-connected.png",
+          "bytes": 46801,
+          "sha256": "b62b956020c33d37fb1f3b7d75d4e1b0a535e9ee99c7e2371fab16496b09884e"
+        },
+        {
+          "name": "desktop-1.log",
+          "bytes": 602,
+          "sha256": "0c644047ee41cb5b58c0caf08b1a9e101dad881f20a3955c1cce02206b2ff991"
+        },
+        {
+          "name": "empty-projects.png",
+          "bytes": 46598,
+          "sha256": "09ca454d02d13359d433e1af5cd90b9cd7981a49c691ddce95114d1b6d450d5e"
+        },
+        {
+          "name": "index.html",
+          "bytes": 4901,
+          "sha256": "b41af0d97d94398eee6ddfcd9c22b170c13081569edbad84810969848876b436"
+        },
+        {
+          "name": "input-validation.png",
+          "bytes": 46667,
+          "sha256": "ae19e49e4ed76c4e7110b410f6c6814f76e310405363409aa37131f2b36ce9bb"
+        },
+        {
+          "name": "javascript-errors.png",
+          "bytes": 46801,
+          "sha256": "b62b956020c33d37fb1f3b7d75d4e1b0a535e9ee99c7e2371fab16496b09884e"
+        },
+        {
+          "name": "junit.xml",
+          "bytes": 781,
+          "sha256": "38dd65ac131ce622b5fa53ebc6314f088f74f4b335dbf78a3936b7ae81719096"
+        },
+        {
+          "name": "launch-1.png",
+          "bytes": 46598,
+          "sha256": "09ca454d02d13359d433e1af5cd90b9cd7981a49c691ddce95114d1b6d450d5e"
+        },
+        {
+          "name": "processes-1.json",
+          "bytes": 1989,
+          "sha256": "a1fca92c78e400c74a5b78b57b688bf1786a3c67527d352ec960fbc3eba6e05a"
+        },
+        {
+          "name": "report.json",
+          "bytes": 1002792,
+          "sha256": "7098e3ac3d8aaf57927b41453b0ae09094da5c26ca41339a1f39e7943d2de252"
+        },
+        {
+          "name": "settings-and-return.png",
+          "bytes": 51710,
+          "sha256": "e6ea7e82172b1e4f60479ba5cf2f7be03b066e9d63a030efeeb0a0e583eaed1f"
+        },
+        {
+          "name": "source-rejection.png",
+          "bytes": 47933,
+          "sha256": "edf7bf5fdf839b08edb5814dec6e83efd19c2f99549b716378ae6c08b558582b"
+        },
+        {
+          "name": "spec.json",
+          "bytes": 11314199,
+          "sha256": "f6d2aee54e1a135eddbfd0d111c641767ac4a7727cccf6606cbc938e15f50e43"
+        },
+        {
+          "name": "targets.json",
+          "bytes": 35,
+          "sha256": "cd59dd9c867db541184c1e5b671eb94b2a9bbdf1f2e55fa8b342ffa2342fbdf6"
+        },
+        {
+          "name": "trace-1.zip",
+          "bytes": 2349862,
+          "sha256": "eacce1e76e4b657dc502796b34968a08515b1e9efcc898d0f22242a747363d23"
+        }
+      ],
+      "trace_entries": 128,
+      "scope": "Actual ordinary UI startup, invalid source rejection through CONTRACT0.2.0 and settings navigation; resource observer explicitly optional for model-free scope; no real YouTube import, translation, synthesis, media playback or model-resource acceptance"
+    },
+    {
+      "result_id": "PRESERVATION-AFTER-NATIVE-SMOKE",
+      "command": "Read-only baseline hash comparison",
+      "status": "passed",
+      "exit_code": 0,
+      "checked": 109,
+      "changed": 0,
+      "scope": "Original normal-profile files and retained voice-store bytes unchanged after ordinary connected smoke"
     }
   ],
   "engine_results": [
@@ -1200,5 +1396,83 @@
     }
   },
   "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd",
-  "validation_scope": "Code defects reflect model-free regressions; unresolved machine prerequisites remain blocked and no real engine route is accepted"
+  "validation_scope": "Code defects reflect model-free regressions; unresolved machine prerequisites remain blocked and no real engine route is accepted",
+  "candidate_receipt_sha256": "aafe60bbd49ca85d64c874c2b52531e1e8e64d92d4100acbd684b7277bd44214",
+  "candidate_build": {
+    "status": "passed",
+    "mode": "ordinary-release",
+    "native_test_flags": "0",
+    "source_files": 1848,
+    "translate_files": 1895,
+    "resources": [
+      {
+        "path": "binaries/FFMPEG-GPL-3.0.txt",
+        "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+      },
+      {
+        "path": "binaries/THIRD-PARTY-NOTICES.txt",
+        "sha256": "4cdcb9a1dce959045ee1d29dc563326d457c47896613cb4e889d943833249dc2"
+      },
+      {
+        "path": "binaries/YT-DLP-UNLICENSE.txt",
+        "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+      },
+      {
+        "path": "binaries/ffmpeg-x86_64-pc-windows-msvc.exe",
+        "sha256": "4044b3924c977ad31229d504c5d5b8685f9553124fbaff6e9c99048b42830341"
+      },
+      {
+        "path": "binaries/ffprobe-x86_64-pc-windows-msvc.exe",
+        "sha256": "fc37ca23d31ee08bb8f7e108edf3822f6ef3efc1a8d306bbe0b779190230710b"
+      },
+      {
+        "path": "binaries/media-tools-provenance.json",
+        "sha256": "677006e2392cc31621e706ef2a8cb40efd9be6c2c00dd7c65f49055832ab78a9"
+      },
+      {
+        "path": "binaries/yt-dlp-x86_64-pc-windows-msvc.exe",
+        "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a"
+      }
+    ],
+    "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "qualification": "Retained ordinary artifact; unresolved mandatory native prerequisites prevent technical acceptance"
+  },
+  "candidate_reviews": [
+    {
+      "owner": "Backend Developer",
+      "status": "passed",
+      "scope": "Read-only receipt, source compatibility, vendor provenance and resource metadata; no actual route acceptance"
+    },
+    {
+      "owner": "UI Developer",
+      "status": "passed",
+      "scope": "Independent actual report, candidate/resource hashes, screenshot and9-process release review;511 frontend/runner inputs compared,509 byte-identical and2 Python files differ only by line endings; real runs must use frozen integration bytes"
+    }
+  ],
+  "draft_specifications": [
+    {
+      "case_id": "RC-DIAGNOSTIC-DRAFT-20261026-v1",
+      "spec_sha256": "4aa0c5549e2edf125f806ce3a71f1a3fc80b691149c8bfa7b08208e788a27d47",
+      "case_scope": "diagnostic",
+      "status": "not_run",
+      "allow_inference": false,
+      "consumed": false,
+      "max_wall_seconds": 18000,
+      "tts_execution_budget_seconds": 2700,
+      "source_duration_verification": "not_run",
+      "scope": "Prospective inputs only; final case freeze requires independent acquired-video duration and resolved mandatory controls"
+    },
+    {
+      "case_id": "RC-FULL-SOURCE-DRAFT-20261026-v1",
+      "spec_sha256": "655747042f351b8a9796f85aaad54e40631fd74eecdedd2b21fe8af2641d6ea8",
+      "case_scope": "full-source",
+      "status": "not_run",
+      "allow_inference": false,
+      "consumed": false,
+      "max_wall_seconds": 360000,
+      "tts_execution_budget_seconds": 172800,
+      "source_duration_verification": "not_run",
+      "scope": "Prospective inputs only; final case freeze requires independent acquired-video duration and resolved mandatory controls"
+    }
+  ]
 }

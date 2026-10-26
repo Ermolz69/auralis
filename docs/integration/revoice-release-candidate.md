@@ -187,6 +187,41 @@ Do not stop unrelated applications, relax admission or consume another complete
 source case to work around this prerequisite. An ordinary build can be retained
 as preparation while admission and real-route acceptance remain blocked.
 
+## Ordinary candidate and connected UI checkpoint
+
+`task ui:build` passed in 546.182 seconds on
+`719b08959928f096945bcfc5c11ec71e2a0a0b1c`. The ordinary executable SHA-256 is
+`cb93c612926fa899ee7debadea1dd42ca793297be16a22ca4f132ff9dc6fd426`;
+its version 3 receipt SHA-256 is
+`aafe60bbd49ca85d64c874c2b52531e1e8e64d92d4100acbd684b7277bd44214`.
+Both native test flags were zero. The manifest contains 1,848 application/build
+inputs, 1,895 pinned Translate files and seven retained resource files. Independent
+executable, receipt and resource hashing matched. Backend metadata review found
+no incompatible source changes.
+
+The distinct connected smoke case `RC-CONNECTED-SMOKE-20261026-v1` passed all
+12 steps in the ordinary application in 301.145 seconds, with Task exit 0.
+Its report SHA-256 is
+`7098e3ac3d8aaf57927b41453b0ae09094da5c26ca41339a1f39e7943d2de252`.
+It exercises startup, input validation, rejected non-YouTube input through the
+installed CONTRACT 0.2.0 boundary, settings navigation and confirmed cleanup.
+It forbids inference. Resource observations are explicitly optional in this
+model-free scope; no model-resource acceptance follows from that step.
+
+All nine recorded process identities were released without forced termination;
+an independent subsequent snapshot found none still alive. The session lock was
+absent. Fifteen artifacts were hashed, including screenshots and a trace ZIP with
+128 entries. The source-rejection screenshot was inspected. All 109 retained
+normal-profile and voice-store files still matched their original byte hashes.
+This checkpoint does not prove actual YouTube import or media playback.
+
+Separate diagnostic and full-source drafts pin the candidate, runtime, voices,
+references and budgets while keeping `allow_inference` false. They are unconsumed
+prospective inputs. The acquired-video duration remains unverified, so the final
+diagnostic/full-source case set remains unfrozen and unrun. Remaining native
+controls still refuse an unrelated GPU owner; neither admission nor
+unrelated applications were changed.
+
 VoxCPM2, ESpeech, actual translation, real WAV/MP4 and native playback are
 **not_run**. The overall result remains **blocked**.
 Automated exact-version approval proves a workflow boundary only. Translation
