@@ -18,7 +18,7 @@ file ownership, defects and results.
 
 Shared contracts and files crossing those boundaries require agreement before
 editing. Integrate reviewed commits one at a time on
-`feat/revoice-release-candidate`. The baseline is
+`feat/revoice-release-integration`. The baseline is
 `defc0b0b13b2352fc5c32d8c3ae8d54e942adf64`, with Translate pinned to
 `44e7d4f3c6ce2443279f5d0d3acd07cbb931476e`.
 An executable identity is established only after final integration, affected

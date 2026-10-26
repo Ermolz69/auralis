@@ -23,6 +23,20 @@ includes:
     taskfile: ./taskfiles/release.yml
 
 tasks:
+  revoice:release:verify-seed:
+    desc: Verify all bytes of an owned runtime seed without loading components or models
+    requires:
+      vars: [ID, SEED, MANIFEST_SHA256]
+    cmds:
+      - node tools/revoice/verify-seed.mjs "{{.ID}}" "{{.SEED}}" "{{.MANIFEST_SHA256}}"
+
+  revoice:release:stage:
+    desc: Stage an existing hash-pinned component seed into a new owned directory without loading models
+    requires:
+      vars: [SOURCE, SOURCE_SEED, SEED, COMPONENTS, MANIFEST_SHA256]
+    cmds:
+      - node tools/revoice/stage-inputs.mjs "{{.SOURCE}}" "{{.SOURCE_SEED}}" "{{.SEED}}" "{{.COMPONENTS}}" "{{.MANIFEST_SHA256}}"
+
   revoice:release:check:
     desc: Verify technical candidate status controls without models
     cmds:
@@ -36,7 +50,7 @@ tasks:
   revoice:release:fmt:
     desc: Format only the technical candidate coordination register and controls
     cmds:
-      - pnpm prettier --write docs/integration/revoice-release-candidate.md docs/integration/revoice-release-candidate.json tools/revoice/release-status.mjs tools/revoice/release-status.test.mjs tools/revoice/release-evidence.mjs
+      - pnpm prettier --write docs/integration/revoice-release-candidate.md docs/integration/revoice-release-candidate.json tools/revoice/release-status.mjs tools/revoice/release-status.test.mjs tools/revoice/release-evidence.mjs tools/revoice/stage-inputs.mjs tools/revoice/verify-seed.mjs
 
   revoice:native:window:preflight:
     desc: Verify the frozen read-only installed-window audit without UI input or models

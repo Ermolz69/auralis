@@ -87,6 +87,9 @@ test('source/runtime prerequisites and the complete defect set cannot disappear'
   const removed = complete();
   removed.defects = [];
   assert.throws(() => technicalStatus(removed), /Required defect set changed/);
+  const removedLatest = complete();
+  removedLatest.defects.pop();
+  assert.throws(() => technicalStatus(removedLatest), /Required defect set changed/);
   const reduced = complete();
   reduced.source.expected_cues = 10;
   assert.throws(() => technicalStatus(reduced), /Full source coverage changed/);

@@ -3,7 +3,7 @@
   "scope": "One technical YouTube Chinese-subtitle to Russian WAV/MP4 candidate for sequential VoxCPM2 and ESpeech",
   "status": "blocked",
   "updated_date": "2026-10-26",
-  "branch": "feat/revoice-release-candidate",
+  "branch": "feat/revoice-release-integration",
   "baseline_commit": "defc0b0b13b2352fc5c32d8c3ae8d54e942adf64",
   "translate_commit": "44e7d4f3c6ce2443279f5d0d3acd07cbb931476e",
   "candidate_commit": null,
@@ -20,12 +20,13 @@
     "subtitle_bytes": 236229,
     "expected_cues": 4004,
     "strict_parse_last_end_ms": 4435266,
-    "video_duration_verification": "not_run"
+    "video_duration_verification": "not_run",
+    "timing_sha256": "f1e967b5113a1ca33499d522f09176845f3ebd142aec2bc413c9f1d471682ee5"
   },
   "ownership": [
     {
       "owner": "Backend Developer",
-      "paths": ["crates/**", "src-tauri/**"],
+      "paths": ["crates/**", "src-tauri/**", "taskfiles/rust.yml"],
       "agreement": "confirmed"
     },
     {
@@ -36,7 +37,7 @@
         "taskfiles/ui.yml",
         "docs/integration/ui-automation.md"
       ],
-      "agreement": "assigned"
+      "agreement": "confirmed"
     },
     {
       "owner": "Integration Coordinator",
@@ -46,7 +47,9 @@
         "tools/revoice/release-status.mjs",
         "tools/revoice/release-status.test.mjs",
         "Taskfile.yml",
-        "tools/revoice/release-evidence.mjs"
+        "tools/revoice/release-evidence.mjs",
+        "tools/revoice/stage-inputs.mjs",
+        "tools/revoice/verify-seed.mjs"
       ],
       "agreement": "confirmed"
     }
@@ -114,7 +117,8 @@
       "id": "RC-D01",
       "owner": "Backend Developer",
       "description": "Saved review must match canonical speech utterance text, order and timing",
-      "status": "blocked"
+      "status": "blocked",
+      "fix_commit": "997caf8a2ba6bec3cfdaf9f4c20ade6403711f69"
     },
     {
       "id": "RC-D02",
@@ -169,9 +173,36 @@
       "owner": "Backend Developer",
       "description": "Bridge must preserve qualified emotional selection and keep unverified exception neutral-only",
       "status": "blocked"
+    },
+    {
+      "id": "RC-D11",
+      "owner": "Backend Developer",
+      "description": "Decoded MP4 codec tolerance must not permit speech tail truncation",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D12",
+      "owner": "UI Developer",
+      "description": "Resume must wait for a new attempt instead of interpreting the stale cancelled job as the resumed result",
+      "status": "blocked"
+    },
+    {
+      "id": "RC-D13",
+      "owner": "UI Developer",
+      "description": "Restart must await project list loading before checking project uniqueness",
+      "status": "blocked"
     }
   ],
-  "commits": [],
+  "commits": [
+    {
+      "owner": "Backend Developer",
+      "source_commit": "ca43712a4a2d59d801722d677797ae4246845b98",
+      "integration_commit": "997caf8a2ba6bec3cfdaf9f4c20ade6403711f69",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Exact approved speech plan with host4004 fixture; production CONTRACT and native inference remain separate"
+    }
+  ],
   "results": [
     {
       "command": "task ui:check:runner",
@@ -229,6 +260,43 @@
       "exit_code": 0,
       "checks": 6,
       "scope": "Reviewed status controls: actual reports, immutable source/runtime/candidate binding and full-source scope"
+    },
+    {
+      "command": "Previous owned seed copy",
+      "status": "blocked",
+      "exit_code": null,
+      "scope": "Execution context changed; original process tree absent and completion receipt missing. Partial bytes retained and not admitted."
+    },
+    {
+      "command": "task revoice:release:stage",
+      "status": "passed",
+      "exit_code": 0,
+      "files": 46487,
+      "bytes": 17567032303,
+      "wall_seconds": 274.872,
+      "scope": "Owned snapshot creation; full byte validation remains separate"
+    },
+    {
+      "command": "task revoice:release:verify-seed",
+      "status": "passed",
+      "exit_code": 0,
+      "files": 46487,
+      "bytes": 17567032762,
+      "wall_seconds": 56.895,
+      "scope": "Full byte validation of the new owned seed; no components or models executed"
+    },
+    {
+      "command": "task ui:components:probe",
+      "status": "passed",
+      "exit_code": 0,
+      "checks": 4,
+      "scope": "Installed CONTRACT0.2.0/TTS0.3.0 metadata and unchanged unverified neutral reference plans; no engines loaded"
+    },
+    {
+      "command": "task media:verify",
+      "status": "passed",
+      "exit_code": 0,
+      "scope": "Bundled media tool hashes, licenses, provenance and executable version checks only"
     }
   ],
   "engine_results": [
@@ -252,10 +320,10 @@
   "translation_quality": "not_run",
   "listening_acceptance": "not_run",
   "prospective_runtime": {
-    "status": "not_run",
-    "seed_manifest_sha256": "fa328c73f77970d52cb0ff7881157bc83a59dac56caf03fed13bd51cfa38842f",
+    "status": "passed",
+    "seed_manifest_sha256": "b91323fa8a9b6e5a86015badbc96f69ccd8cd878e15dae55c51d4d888dba580c",
     "seed_files": 46487,
-    "seed_bytes": 17567032303,
+    "seed_bytes": 17567032762,
     "component_commits": {
       "contract": "3f3498e87b4cfb68c67d0d718497c6286330f6b8",
       "tts": "e18f64d1bad80012b085d907673451c9e5b886f7"
@@ -308,7 +376,9 @@
     "f5_tts": "1.1.21",
     "ffmpeg": "8.1.2",
     "ffprobe": "8.1.2",
-    "note": "Prospective retained inputs; reverify every byte after relocation and before final freeze. Profile hashes bind complete settings."
+    "note": "Prospective retained inputs; reverify every byte after relocation and before final freeze. Profile hashes bind complete settings.",
+    "original_seed_manifest_sha256": "fa328c73f77970d52cb0ff7881157bc83a59dac56caf03fed13bd51cfa38842f",
+    "validation_scope": "Full seed hashes and installed CONTRACT plan metadata only; model loading and inference remain not_run"
   },
   "broader_release_matrix_sha256": "3e34f614e36a13feeec681ef2ccb71fa003ca23b8be3c305b4236b431376a8bd"
 }
