@@ -1,5 +1,6 @@
 import type { SpeechRunView } from '@/shared/api/contracts/speech';
 import { JobState } from './JobState';
+import { SpeechMediaPlayer } from './SpeechMediaPlayer';
 type Props = {
   run: SpeechRunView | undefined;
   busy: boolean;
@@ -55,7 +56,7 @@ export function SpeechRunControls({ run, busy, active, audio, start, cancel, pla
           {run.result && (
             <p>Готово · {(run.result.duration_ms / 1000).toFixed(2)} с · аудио сохранено</p>
           )}
-          {audio && <audio controls autoPlay src={audio} aria-label="Готовая озвучка" />}
+          {audio && <SpeechMediaPlayer key={audio} src={audio} label="Готовая озвучка" />}
         </div>
       )}
     </>

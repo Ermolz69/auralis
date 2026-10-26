@@ -2,6 +2,7 @@ import type { SpeechRunView } from '@/shared/api/contracts/speech';
 import { useAudioAssembly } from '../../model/audio-assembly/useAudioAssembly';
 import { AssemblyPreview } from './AssemblyPreview';
 import { JobState } from '../JobState';
+import { SpeechMediaPlayer } from '../SpeechMediaPlayer';
 
 const button = 'rounded border border-border px-3 py-2 text-xs text-text disabled:opacity-40';
 const statuses = {
@@ -227,19 +228,18 @@ export function AudioAssemblyPanel({
           )}
         </div>
       )}
-      {work.audio && <audio controls autoPlay src={work.audio} aria-label="Итоговое аудио" />}
+      {work.audio && <SpeechMediaPlayer key={work.audio} src={work.audio} label="Итоговое аудио" />}
       {work.run?.result?.files.some((file) => file.kind === 'video') && (
         <button className={button} disabled={work.busy} onClick={() => void work.playVideo()}>
           Воспроизвести русское видео
         </button>
       )}
       {work.video && (
-        <video
-          controls
-          autoPlay
+        <SpeechMediaPlayer
+          key={work.video}
+          video
           src={work.video}
-          aria-label="Видео с русской озвучкой"
-          className="max-h-96 w-full"
+          label="Видео с русской озвучкой"
         />
       )}
     </section>
