@@ -4,6 +4,19 @@ import assert from 'node:assert/strict';
 import { root, hash, json, owned, idPattern, UnconfirmedCleanup } from './core.mjs';
 import { runInstaller } from './installer.mjs';
 
+export function pinnedPcmHelper(profile, packageRoot, inventory) {
+  const entries = inventory.package_files.filter((item) => {
+    const name = item.path.replaceAll('\\', '/');
+    return name === 'tts/audio/joiner.py' || name.endsWith('/tts/audio/joiner.py');
+  });
+  assert.equal(entries.length, 1, 'Expected exactly one pinned streaming helper');
+  const entry = entries[0];
+  assert.match(entry.sha256, /^[a-f0-9]{64}$/);
+  const helper = owned(packageRoot, path.resolve(packageRoot, entry.path.replaceAll('\\', '/')));
+  owned(profile, helper);
+  return { helper, sha256: entry.sha256 };
+}
+
 export async function verifyPcmReadOnly(
   profile,
   run,
@@ -19,12 +32,13 @@ export async function verifyPcmReadOnly(
   const inventoryFile = owned(profile, path.join(config.package_root, 'integrity.json'));
   assert.equal(await hash(inventoryFile, remaining), config.integrity_sha256);
   const inventory = await json(inventoryFile);
-  const helper = owned(profile, path.join(config.package_root, 'tts/audio/joiner.py'));
-  const entry = inventory.package_files.find(
-    (item) => item.path.replaceAll('\\', '/') === 'tts/audio/joiner.py',
+  const { helper, sha256: helperSha } = pinnedPcmHelper(
+    profile,
+    owned(profile, config.package_root),
+    inventory,
   );
-  assert.ok(entry, 'Pinned streaming helper is unavailable');
-  assert.equal(await hash(helper, remaining), entry.sha256);
+  assert.equal(await fsp.realpath(helper), helper);
+  assert.equal(await hash(helper, remaining), helperSha);
   const runtime = path.dirname(path.dirname(config.python_executable));
   const site_packages = owned(profile, path.join(runtime, 'venv/Lib/site-packages'));
   const library_files = spec.runtime_seed.files
@@ -49,7 +63,7 @@ export async function verifyPcmReadOnly(
       ...input,
       site_packages,
       helper_path: helper,
-      helper_sha256: entry.sha256,
+      helper_sha256: helperSha,
       library_files,
       max_wall_seconds: Math.max(1, Math.min(300, Math.floor(remaining() / 1000))),
     }),

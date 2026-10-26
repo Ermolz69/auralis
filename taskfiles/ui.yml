@@ -71,7 +71,7 @@ tasks:
   check:runner:
     cmds:
       - node tools/ui-e2e/syntax.mjs
-      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs tools/ui-e2e/seed.test.mjs tools/ui-e2e/speech-evidence.test.mjs tools/ui-e2e/observe.test.mjs tools/ui-e2e/cues.test.mjs tools/ui-e2e/chunks.test.mjs tools/ui-e2e/lineage.test.mjs tools/ui-e2e/resources.test.mjs tools/ui-e2e/selections.test.mjs tools/ui-e2e/build-identity.test.mjs tools/ui-e2e/layout.test.mjs tools/ui-e2e/installer.test.mjs tools/ui-e2e/failures.test.mjs tools/ui-e2e/lineage-translation.test.mjs
+      - node --test tools/ui-e2e/core.test.mjs tools/ui-e2e/integrity.test.mjs tools/ui-e2e/seed.test.mjs tools/ui-e2e/speech-evidence.test.mjs tools/ui-e2e/observe.test.mjs tools/ui-e2e/cues.test.mjs tools/ui-e2e/chunks.test.mjs tools/ui-e2e/lineage.test.mjs tools/ui-e2e/resources.test.mjs tools/ui-e2e/selections.test.mjs tools/ui-e2e/build-identity.test.mjs tools/ui-e2e/layout.test.mjs tools/ui-e2e/installer.test.mjs tools/ui-e2e/failures.test.mjs tools/ui-e2e/lineage-translation.test.mjs tools/ui-e2e/pcm.test.mjs
   fmt:runner:
     cmds:
       - pnpm prettier --write "tools/ui-e2e/*.mjs" "apps/desktop/scripts/ui-*.mjs" taskfiles/ui.yml docs/integration/ui-automation.md

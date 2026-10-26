@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { root, storage, hash, owned, json } from './core.mjs';
+import { root, storage, hash, owned, json, Blocked } from './core.mjs';
 import { seedProfile } from './seed.mjs';
 
 test('component relocation preserves voice bytes and pins the new profile inventory', async () => {
@@ -85,5 +85,13 @@ test('component relocation preserves voice bytes and pins the new profile invent
   assert.match(
     await fsp.readFile(path.join(profile, 'tts/runtime/fixture/venv/pyvenv.cfg'), 'utf8'),
     /runs.*relocate-test/,
+  );
+  await put(voice, 'corrupted synthetic voice fixture');
+  await assert.rejects(
+    seedProfile(
+      { runtime_seed: { directory: path.relative(root, directory), files } },
+      { directory: owned(storage, path.join(storage, 'runs', `${id}-corrupt`)) },
+    ),
+    (error) => !(error instanceof Blocked) && /Seed integrity changed/.test(error.message),
   );
 });

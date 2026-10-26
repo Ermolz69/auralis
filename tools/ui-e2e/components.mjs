@@ -1,7 +1,7 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { runInstaller, installerBudget } from './installer.mjs';
-import { root, storage, owned, json, hash } from './core.mjs';
+import { root, owned, json, hash } from './core.mjs';
 
 export async function installComponents(
   profile,
@@ -9,6 +9,7 @@ export async function installComponents(
   remaining = () => 300000,
   signal,
   onInstaller,
+  inputRoot = root,
 ) {
   if (!Array.isArray(wheels) || wheels.length !== 2) throw new Error('Pin both component wheels');
   const names = new Set([
@@ -18,7 +19,10 @@ export async function installComponents(
   const inputs = [];
   for (const item of wheels) {
     remaining();
-    const file = owned(path.join(storage, 'wheels'), path.resolve(root, item.path));
+    const file = owned(
+      path.join(inputRoot, '.cache/ui-e2e/wheels'),
+      path.resolve(inputRoot, item.path),
+    );
     if (
       !names.delete(path.basename(file)) ||
       (await fsp.realpath(file)) !== file ||
