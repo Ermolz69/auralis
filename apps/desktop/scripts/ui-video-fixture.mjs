@@ -35,7 +35,7 @@ export function installUiVideoFixture() {
   window.__TAURI_INTERNALS__.convertFileSrc = (file, ...args) =>
     file === 'fixture-video.webm' ? videoUrl : convert(file, ...args);
   window.__TAURI_INTERNALS__.invoke = async (command, args = {}) => {
-    if (command === 'resolve_artifact_path_cmd' && args.artifactId === 'fixture-video') {
+    if (command === 'resolve_artifact_path_cmd' && args.artifactId.startsWith('fixture-video-')) {
       videoUrl ??= await createSample();
       window.__ui.calls.push({ command, args });
       return 'fixture-video.webm';

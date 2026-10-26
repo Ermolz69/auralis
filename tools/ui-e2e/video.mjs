@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { playback } from './media.mjs';
-import { readyOrError } from './observe.mjs';
+import { clickOnce, jobState, readyOrError } from './observe.mjs';
 
 export async function exportVideo(page, assembly, remaining, quiescent) {
   const select = assembly.getByLabel('Видеоэкспорт', { exact: true });
@@ -19,7 +19,9 @@ export async function exportVideo(page, assembly, remaining, quiescent) {
   );
   await assembly.getByRole('checkbox').check();
   await assembly.getByRole('button', { name: 'Подготовить сборку', exact: true }).click();
-  await assembly.getByRole('button', { name: 'Собрать WAV и MP4', exact: true }).click();
+  await clickOnce(assembly.getByRole('button', { name: 'Собрать WAV и MP4', exact: true }), () =>
+    jobState(assembly, 'Состояние сборки', ['готово'], remaining()),
+  );
   const play = assembly.getByRole('button', { name: 'Воспроизвести русское видео', exact: true });
   await readyOrError(play, assembly, remaining());
   await quiescent();
@@ -27,5 +29,8 @@ export async function exportVideo(page, assembly, remaining, quiescent) {
   const observed = await playback(page, 'Видео с русской озвучкой');
   assert.ok(observed.video_width > 0 && observed.video_height > 0, 'Video frames did not decode');
   await select.selectOption('');
-  return observed;
+  return {
+    assembly_id: await assembly.getByLabel('Сохранённые сборки', { exact: true }).inputValue(),
+    playback: observed,
+  };
 }

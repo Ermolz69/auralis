@@ -1,6 +1,7 @@
 import type { SpeechRunView } from '@/shared/api/contracts/speech';
 import { useAudioAssembly } from '../../model/audio-assembly/useAudioAssembly';
 import { AssemblyPreview } from './AssemblyPreview';
+import { JobState } from '../JobState';
 
 const button = 'rounded border border-border px-3 py-2 text-xs text-text disabled:opacity-40';
 const statuses = {
@@ -162,6 +163,7 @@ export function AudioAssemblyPanel({
       )}
       {work.run && (
         <div className="space-y-2">
+          <JobState job={work.run.job} label="Состояние сборки" />
           <p>
             Сохранённая сборка:{' '}
             {work.run.settings.mode === 'continuous'

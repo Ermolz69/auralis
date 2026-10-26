@@ -9,16 +9,18 @@ import { installUiVideoFixture } from './ui-video-fixture.mjs';
 import { serveProduction } from './production-server.mjs';
 import { uniqueRun } from '../../../tools/ui-e2e/core.mjs';
 import { Report } from '../../../tools/ui-e2e/report.mjs';
-import { story, storySteps } from '../../../tools/ui-e2e/story.mjs';
+import { story, workflowSteps } from '../../../tools/ui-e2e/story.mjs';
 import { playback } from '../../../tools/ui-e2e/media.mjs';
+import { reopenPlayback, workflowRecords } from '../../../tools/ui-e2e/reopen.mjs';
 import { frontendIdentity } from '../../../tools/ui-e2e/frontend.mjs';
 
 const run = await uniqueRun('fixture-ui');
 const report = new Report(run, 'fixture-ui', [
   'launch',
-  ...storySteps
-    .filter((id) => !['verify-artifacts', 'restart-playback'].includes(id))
-    .flatMap((id) => (id.endsWith('-assembly') ? [id, id.replace(/-assembly$/, '-video')] : [id])),
+  ...workflowSteps({ export_video: true, exercise_cancellation: true }).filter(
+    (id) => !['verify-artifacts', 'restart-playback'].includes(id),
+  ),
+  'reload-both-engines',
   'timing-conflict',
   'video-verification-error',
   'stale-preview',
@@ -29,14 +31,17 @@ const report = new Report(run, 'fixture-ui', [
   'fixture-integrity',
   'cleanup',
 ]);
-let browser, server, page;
+let context, server, page;
+let savedAssembly;
 try {
   if (
     await report.step('launch', async () => {
       report.data.versions = await frontendIdentity();
       server = await serveProduction();
-      browser = await chromium.launch({ headless: true });
-      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      context = await chromium.launchPersistentContext(path.join(run.directory, 'profile'), {
+        headless: true,
+        viewport: { width: 1280, height: 900 },
+      });
       await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
       page = await context.newPage();
       await page.addInitScript({
@@ -55,6 +60,7 @@ try {
         allow_unverified_neutral: true,
         install_translation: true,
         export_video: true,
+        exercise_cancellation: true,
         edit_text: 'Здравствуйте, мир.',
         engines: ['voxcpm2', 'espeech'].map((engine) => ({
           engine_id: engine,
@@ -68,6 +74,18 @@ try {
       async () => async () => ({ simulated: true, released: true }),
     );
     if (complete) {
+      await report.step(
+        'reload-both-engines',
+        async () => {
+          const records = workflowRecords(report, {
+            engines: ['voxcpm2', 'espeech'].map((engine_id) => ({ engine_id })),
+            export_video: true,
+          });
+          await page.reload();
+          return reopenPlayback(page, records, () => 60000);
+        },
+        page,
+      );
       const assembly = page.getByRole('region', { name: 'Сборка итогового аудио', exact: true });
       await report.step(
         'video-verification-error',
@@ -149,6 +167,9 @@ try {
           await assembly
             .getByRole('button', { name: 'Прослушать итоговый WAV', exact: true })
             .waitFor();
+          savedAssembly = await assembly
+            .getByLabel('Сохранённые сборки', { exact: true })
+            .inputValue();
         },
         page,
       );
@@ -158,7 +179,9 @@ try {
           await page.reload();
           await page.getByRole('button', { name: /^Open YouTube project/ }).click();
           await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
-          await page.getByLabel('Сохранённые запуски', { exact: true }).selectOption('fixture-raw');
+          await page
+            .getByLabel('Сохранённые запуски', { exact: true })
+            .selectOption('fixture-raw-espeech');
           await page
             .getByText(
               'Технический прогон с неподтверждённым образцом. Качество озвучки не принято.',
@@ -167,10 +190,8 @@ try {
             .waitFor();
           await page
             .getByLabel('Готовый исходный синтез', { exact: true })
-            .selectOption('fixture-raw');
-          await page
-            .getByLabel('Сохранённые сборки', { exact: true })
-            .selectOption('fixture-assembly');
+            .selectOption('fixture-raw-espeech');
+          await page.getByLabel('Сохранённые сборки', { exact: true }).selectOption(savedAssembly);
           await page.getByRole('button', { name: 'Прослушать итоговый WAV', exact: true }).click();
           return playback(page, 'Итоговое аудио');
         },
@@ -184,10 +205,8 @@ try {
           await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
           await page
             .getByLabel('Готовый исходный синтез', { exact: true })
-            .selectOption('fixture-raw');
-          await page
-            .getByLabel('Сохранённые сборки', { exact: true })
-            .selectOption('fixture-assembly');
+            .selectOption('fixture-raw-espeech');
+          await page.getByLabel('Сохранённые сборки', { exact: true }).selectOption(savedAssembly);
           await page.evaluate(() => {
             window.__ui.verifyFailure = true;
           });
@@ -303,7 +322,7 @@ try {
       );
       await page.context().tracing.stop({ path: path.join(run.directory, 'trace.zip') });
     }
-    await browser?.close();
+    await context?.close();
     await server?.close();
   });
   await report.save();
