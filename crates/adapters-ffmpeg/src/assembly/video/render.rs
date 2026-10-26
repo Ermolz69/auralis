@@ -187,8 +187,9 @@ impl FfmpegVideoExporter {
         tokio::task::spawn_blocking(move || {
             let mut stats = pcm::PcmStats::default();
             let decoded_properties = pcm::append_pcm(&decoded, &mut Sha256::new(), &mut stats, &work)?;
+            policy::decoded_duration(decoded_properties.frames, request.frames, observed.duration_ms)?;
             if decoded_properties.sample_rate != 48000 || decoded_properties.channels != request.channels
-                || decoded_properties.frames.abs_diff(observed.duration_ms * 48) > 2048 || stats.full_scale != 0 {
+                || stats.full_scale != 0 {
                 return Err(error::invalid("Decoded MP4 audio duration, channels or clipping failed verification"));
             }
             let bytes = fs::metadata(&output).map_err(error::io)?.len();
