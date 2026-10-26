@@ -7,7 +7,9 @@ use serde::Deserialize;
 use serde_json::json;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
+#[cfg(test)]
 use tokio::time::timeout;
+use tokio::time::{Instant, timeout_at};
 use uuid::Uuid;
 
 use crate::client::TtsWorkerClient;
@@ -156,9 +158,10 @@ impl TtsWorkerClient {
     }
 }
 
-async fn terminate(child: &mut Box<dyn ChildWrapper>) -> Result<(), PortError> {
+pub(crate) async fn terminate(child: &mut Box<dyn ChildWrapper>) -> Result<(), PortError> {
+    let deadline = Instant::now() + EXIT_DEADLINE;
     let _ = child.start_kill();
-    timeout(EXIT_DEADLINE, child.wait())
+    timeout_at(deadline, child.wait())
         .await
         .map_err(|_| PortError::CleanupFailed {
             resource: "TTS worker".into(),

@@ -35,8 +35,9 @@ pub(crate) async fn terminate(
     child: &mut Box<dyn ChildWrapper>,
     resource: &str,
 ) -> Result<(), ports::PortError> {
+    let deadline = tokio::time::Instant::now() + EXIT_DEADLINE;
     let _ = child.start_kill();
-    tokio::time::timeout(EXIT_DEADLINE, child.wait())
+    tokio::time::timeout_at(deadline, child.wait())
         .await
         .map_err(|_| ports::PortError::CleanupFailed {
             resource: resource.into(),

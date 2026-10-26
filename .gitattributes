@@ -13,4 +13,5 @@
 tools/native-e2e/speech-cache-split.py text eol=lf
 tools/native-e2e/speech-cache-split.ps1 text eol=lf
 vendor/glib-0.18.5/** -text
+vendor/process-wrap-10.0.0/** -text
 vendor/glib-0.18.5/LICENSE whitespace=-blank-at-eof

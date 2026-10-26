@@ -1,6 +1,41 @@
 version: '3'
 
 tasks:
+  fmt:job-tree:
+    desc: Format only the maintained Windows job-wait source and its provenance gate
+    cmds:
+      - rustfmt --edition 2024 --config-path vendor/process-wrap-10.0.0/.rustfmt.toml --config skip_children=true vendor/process-wrap-10.0.0/src/windows.rs vendor/process-wrap-10.0.0/src/tokio/job_object.rs
+      - pnpm prettier --write tools/process-wrap-backport/package.mjs tools/process-wrap-backport/query-test.mjs tools/process-wrap-backport/provenance.json
+  test:job-query:
+    desc: Verify failed job queries cannot establish completion, including cached parent state
+    cmds:
+      - node --check tools/process-wrap-backport/query-test.mjs
+      - node tools/process-wrap-backport/query-test.mjs
+  process-wrap:import:
+    desc: Import the exact cached process-wrap archive without network access
+    requires:
+      vars: [ARCHIVE]
+    cmds:
+      - node tools/process-wrap-backport/package.mjs import "{{.ARCHIVE}}"
+  process-wrap:verify:
+    desc: Verify every vendored file against the pinned archive and three explicit patch hashes
+    requires:
+      vars: [ARCHIVE]
+    cmds:
+      - node --check tools/process-wrap-backport/package.mjs
+      - node tools/process-wrap-backport/package.mjs verify "{{.ARCHIVE}}"
+  process-wrap:patch-hashes:
+    desc: Print the three maintained patch hashes for source review
+    cmds:
+      - node tools/process-wrap-backport/package.mjs patch-hashes
+  resolve:job-tree:
+    desc: Resolve the same-version local Windows job-wait repair without network access
+    cmds:
+      - cargo check --offline -p adapters-tts
+  test:job-tree:
+    desc: Verify cancellation-safe Windows job-tree confirmation with owned inert descendants
+    cmds:
+      - cargo test --locked -p adapters-tts --lib owned_process::tests::job_wait -- --test-threads=1 --nocapture
   test:component-cleanup:
     desc: Verify bounded component and managed translator cleanup without native processes or models
     cmds:
@@ -51,6 +86,7 @@ tasks:
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/execute/worker.rs
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/execute/cleanup_tests.rs
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/owned_process.rs crates/adapters-tts/src/owned_process/tests.rs crates/adapters-tts/src/marker.rs crates/adapters-translate/src/managed_runtime/lease.rs crates/adapters-translate/src/managed_runtime/owned_process/windows.rs crates/adapters-translate/src/managed_runtime/owned_process/windows/tests.rs crates/adapters-translate/src/managed_runtime/owned_process/unix.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/owned_process/tests/job_wait.rs
   clippy:backend-review:
     desc: Lint speech review, CONTRACT bridge and native admission regression targets without models
     cmds:
