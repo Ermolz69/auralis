@@ -137,11 +137,10 @@ impl MarkerPort for MarkerClient {
         })
         .await;
         if !matches!(result, Ok(Ok(_))) {
-            let _ = Box::into_pin(child.kill()).await;
-            child
-                .wait()
-                .await
-                .map_err(|e| invalid(format!("Не удалось завершить маркировщик: {e}")))?;
+            if let Err(error) = crate::owned_process::terminate(&mut child, "Marker worker").await {
+                std::mem::forget(lease);
+                return Err(error);
+            }
             super::marker_lock::release_owned(&self.config.package_root, process_id).await?;
         }
         drop(lease);

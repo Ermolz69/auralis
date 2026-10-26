@@ -140,16 +140,6 @@ impl TtsWorkerClient {
         let mut stdin = child.stdin().take().ok_or_else(|| PortError::Unexpected {
             message: "TTS worker stdin unavailable".into(),
         })?;
-        stdin
-            .write_all(&request)
-            .await
-            .map_err(|error| PortError::Io {
-                message: error.to_string(),
-            })?;
-        stdin.shutdown().await.map_err(|error| PortError::Io {
-            message: error.to_string(),
-        })?;
-        drop(stdin);
         let stdout = child.stdout().take().ok_or_else(|| PortError::Unexpected {
             message: "TTS worker stdout unavailable".into(),
         })?;
@@ -157,6 +147,9 @@ impl TtsWorkerClient {
             message: "TTS worker stderr unavailable".into(),
         })?;
         let outcome = tokio::time::timeout(PREFLIGHT_DEADLINE, async {
+            stdin.write_all(&request).await?;
+            stdin.shutdown().await?;
+            drop(stdin);
             let read_stdout = async {
                 let mut frame = Vec::new();
                 stdout
@@ -179,13 +172,13 @@ impl TtsWorkerClient {
         let (frame, diagnostic, status) = match outcome {
             Ok(Ok(value)) => value,
             Ok(Err(error)) => {
+                owned_process::terminate(&mut child, "TTS preflight worker").await?;
                 return Err(PortError::Io {
                     message: error.to_string(),
                 });
             }
             Err(_) => {
-                let _ = Box::into_pin(child.kill()).await;
-                let _ = child.wait().await;
+                owned_process::terminate(&mut child, "TTS preflight worker").await?;
                 return Err(PortError::ExternalToolFailed {
                     tool: "puza-tts-worker".into(),
                     message: "Preflight deadline exceeded".into(),

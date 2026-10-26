@@ -1,6 +1,16 @@
 version: '3'
 
 tasks:
+  test:component-cleanup:
+    desc: Verify bounded component and managed translator cleanup without native processes or models
+    cmds:
+      - cargo test --locked -p adapters-tts --lib owned_process::tests -- --test-threads=1
+      - cargo test --locked -p adapters-translate --lib managed_runtime::owned_process::windows::tests -- --test-threads=1
+  clippy:component-cleanup:
+    desc: Lint translator and TTS component cleanup and synthetic exit controls
+    cmds:
+      - cargo clippy --locked -p adapters-tts --lib --tests -- -D warnings
+      - cargo clippy --locked -p adapters-translate --lib --tests -- -D warnings
   test:tts:cleanup:
     desc: Verify forced TTS cleanup bounds and unconfirmed exit errors with synthetic children
     cmds:
@@ -40,6 +50,7 @@ tasks:
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/execute/tests.rs
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/execute/worker.rs
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/execute/cleanup_tests.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/owned_process.rs crates/adapters-tts/src/owned_process/tests.rs crates/adapters-tts/src/marker.rs crates/adapters-translate/src/managed_runtime/lease.rs crates/adapters-translate/src/managed_runtime/owned_process/windows.rs crates/adapters-translate/src/managed_runtime/owned_process/windows/tests.rs crates/adapters-translate/src/managed_runtime/owned_process/unix.rs
   clippy:backend-review:
     desc: Lint speech review, CONTRACT bridge and native admission regression targets without models
     cmds:

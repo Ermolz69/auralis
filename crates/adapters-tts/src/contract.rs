@@ -116,11 +116,7 @@ impl PuzaContractPort for TtsWorkerClient {
         match result {
             Ok(Ok(snapshot)) => Ok(snapshot),
             other => {
-                let _ = Box::into_pin(child.kill()).await;
-                child
-                    .wait()
-                    .await
-                    .map_err(|error| invalid(format!("CONTRACT worker cleanup failed: {error}")))?;
+                owned_process::terminate(&mut child, "CONTRACT worker").await?;
                 match other {
                     Ok(Err(error)) => Err(error),
                     _ => Err(invalid("CONTRACT worker timed out")),
