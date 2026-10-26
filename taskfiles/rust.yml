@@ -1,6 +1,25 @@
 version: '3'
 
 tasks:
+  test:contract-bridge:
+    desc: Verify the shipped CONTRACT bridge with fixture API, long casts and qualification controls without models
+    requires:
+      vars: [PYTHON]
+    env:
+      AURALIS_CONTRACT_TEST_PYTHON: '{{.PYTHON}}'
+    cmds:
+      - cargo test --locked -p adapters-tts --test contract_bridge -- --ignored
+  fmt:backend-review:
+    desc: Format scoped backend review and media regression sources
+    cmds:
+      - rustfmt --edition 2024 --config skip_children=true crates/application/src/usecases/speech/mod.rs crates/application/src/usecases/speech/prepare.rs crates/application/src/usecases/speech/plan_review.rs crates/application/tests/speech_workflow.rs crates/application/tests/support/speech_plan_review.rs crates/application/tests/support/speech_workflow_long.rs crates/adapters-tts/src/contract.rs crates/adapters-tts/tests/contract_bridge.rs crates/adapters-translate/tests/managed_runtime_admission.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/assembly/video/policy.rs crates/adapters-ffmpeg/src/assembly/video/render.rs
+  clippy:backend-review:
+    desc: Lint speech review, CONTRACT bridge and native admission regression targets without models
+    cmds:
+      - cargo clippy --locked -p application --test speech_workflow -- -D warnings
+      - cargo clippy --locked -p adapters-tts --test contract_bridge -- -D warnings
+      - cargo clippy --locked -p adapters-translate --test managed_runtime_admission -- -D warnings
   fmt:audio:jobs:
     desc: Format the durable audio assembly intent, SQLite gateway and job kind
     cmds:

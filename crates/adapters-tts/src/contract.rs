@@ -22,7 +22,8 @@ impl PuzaContractPort for TtsWorkerClient {
         self.verify_integrity(None).await?;
         let request_id = Uuid::new_v4().to_string();
         let request = json!({"request_id":request_id,"project_id":project.to_string(),
-            "source_text":source_text,"bindings":bindings})
+            "source_text":source_text,"bindings":bindings,
+            "max_bindings":ports::speech_run::MAX_SPEECH_UTTERANCES + 1})
         .to_string();
         if request.len() > 2_097_152 {
             return Err(invalid("CONTRACT request exceeds its limit"));

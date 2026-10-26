@@ -21,9 +21,10 @@ def run(request):
     configuration = {"version": 1, "documents": []}
     cast = {"version": 2, "roles": {"narrator": {"display_name": "Рассказчик", "voice_id": None}}}
     bindings = request.get("bindings", [])
-    if len(bindings) > 513:
+    if len(bindings) > request["max_bindings"]:
         raise ValueError("Too many voice assignments")
     seen = set()
+    voices = {}
     for binding in bindings:
         role = binding["role_id"]
         if role in seen:
@@ -32,17 +33,21 @@ def run(request):
         voice_id = binding["voice_id"]
         if not voice_id or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-" for c in voice_id):
             raise ValueError("Invalid voice identity")
-        voice = load_voice_manifest(Path(sys.argv[2]) / voice_id / "voice.json")
+        if voice_id not in voices:
+            voices[voice_id] = load_voice_manifest(Path(sys.argv[2]) / voice_id / "voice.json")
+        voice = voices[voice_id]
         if voice.voice_id != voice_id:
             raise ValueError("Voice manifest identity differs")
         reference = next((item for item in voice.references
                           if item.reference_id == binding["reference_id"]
-                          and item.engine_id == binding["engine_id"]
-                          and item.emotion_id == "neutral"), None)
-        technical = (reference is not None and reference.qualification.status == "unverified"
+                          and item.engine_id == binding["engine_id"]), None)
+        if reference is None:
+            raise ValueError("Voice reference is unavailable for the selected engine")
+        technical = (reference.emotion_id == "neutral"
+                     and reference.qualification.status == "unverified"
                      and binding.get("technical_reference_permission"))
         if not technical:
-            require_qualified_reference(voice, binding["reference_id"], binding["engine_id"], "neutral")
+            require_qualified_reference(voice, binding["reference_id"], binding["engine_id"], reference.emotion_id)
         cast["roles"][role] = {"display_name": binding["display_name"], "voice_id": voice_id}
     if source is not None:
         configuration["documents"] = [{"document_id": "document-000001", "input": "source.txt"}]
