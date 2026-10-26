@@ -15,6 +15,7 @@ async fn installed_worker_lists_new_voices_for_both_engines()
             .ok_or_else(|| std::io::Error::other(format!("Missing required {name}")))
     };
     let client = TtsWorkerClient::new(TtsRuntimeConfig {
+        execution_budget: Default::default(),
         python_executable: required_path("AURALIS_TEST_TTS_PYTHON")?,
         package_root: required_path("AURALIS_TEST_TTS_PACKAGE_ROOT")?,
         voice_store: required_path("AURALIS_TEST_TTS_VOICE_STORE")?,

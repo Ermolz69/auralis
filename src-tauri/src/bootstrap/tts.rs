@@ -5,6 +5,7 @@ use application::usecases::{
     speech_catalog::SpeechCatalogUseCase,
     translation::TranslationReviewUseCase,
 };
+use ports::speech_run::SpeechExecutionBudget;
 use ports::{speech_catalog::SpeechCatalogPort, speech_workflow::SpeechExecutionPort};
 use serde::Deserialize;
 use std::{path::PathBuf, sync::Arc};
@@ -13,6 +14,8 @@ use std::{path::PathBuf, sync::Arc};
 #[serde(deny_unknown_fields)]
 struct InstalledTtsRuntime {
     version: u8,
+    #[serde(default)]
+    execution_budget_seconds: SpeechExecutionBudget,
     python_executable: PathBuf,
     package_root: PathBuf,
     voice_store: PathBuf,
@@ -45,6 +48,7 @@ pub(crate) fn load(paths: &AppPaths) -> Result<TtsWorkerClient, String> {
         }
     }
     TtsWorkerClient::new(TtsRuntimeConfig {
+        execution_budget: config.execution_budget_seconds,
         python_executable: config.python_executable,
         package_root: config.package_root,
         voice_store: config.voice_store,
@@ -147,3 +151,6 @@ fn load_speech_limits(paths: &AppPaths) -> Result<SpeechLimits, String> {
     }
     SpeechLimits::from_json(&bytes)
 }
+
+#[cfg(test)]
+mod tests;

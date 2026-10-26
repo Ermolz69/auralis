@@ -5,6 +5,9 @@ use uuid::Uuid;
 
 use crate::error::PortError;
 
+mod budget;
+pub use budget::SpeechExecutionBudget;
+
 // Host-wide storage/transport ceilings. Admission policy can be lower, while
 // immutable stored plans remain bounded independently of user configuration.
 pub const MAX_SPEECH_UTTERANCES: u32 = 8192;

@@ -14,6 +14,7 @@ fn client(root: &std::path::Path) -> Result<TtsWorkerClient, Box<dyn std::error:
         "model_files":[{"engine":"voxcpm2","path":"model","sha256":digest(b"model fixture")}]}).to_string();
     std::fs::write(root.join("integrity.json"), &receipt)?;
     Ok(TtsWorkerClient::new(TtsRuntimeConfig {
+        execution_budget: Default::default(),
         python_executable: root.join("python.exe"),
         package_root: root.into(),
         voice_store: root.into(),

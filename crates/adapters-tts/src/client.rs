@@ -18,6 +18,7 @@ const PINNED_VOXCPM_REVISION: &str = "32279effe8c19989596f05d353d1447f51d9e915";
 
 #[derive(Clone, Debug)]
 pub struct TtsRuntimeConfig {
+    pub execution_budget: ports::speech_run::SpeechExecutionBudget,
     pub python_executable: PathBuf,
     pub package_root: PathBuf,
     pub voice_store: PathBuf,

@@ -1,6 +1,22 @@
 version: '3'
 
 tasks:
+  clippy:speech-budget:
+    desc: Lint bounded speech budgets, owned fixture deadlines and native config without model execution
+    cmds:
+      - cargo clippy --locked -p ports --test speech_budget -- -D warnings
+      - cargo clippy --locked -p adapters-tts --lib --tests -- -D warnings
+      - cargo clippy --locked -p auralis-app --lib --tests -- -D warnings
+  test:speech-budget:
+    desc: Verify bounded legacy-compatible TTS budgets, native worker deadlines and bootstrap config without models
+    cmds:
+      - cargo test --locked -p ports --test speech_budget
+      - cargo test --locked -p adapters-tts --lib execute::tests -- --test-threads=1
+      - cargo test --locked -p auralis-app --lib bootstrap::tts::tests
+  test:translate:admission:
+    desc: Verify invalid input priority and valid-request exclusion under an owned native model-free lease
+    cmds:
+      - cargo test --locked -p adapters-translate --test managed_runtime_admission -- --include-ignored --test-threads=1
   test:contract-bridge:
     desc: Verify the shipped CONTRACT bridge with fixture API, long casts and qualification controls without models
     requires:
@@ -14,6 +30,11 @@ tasks:
     cmds:
       - rustfmt --edition 2024 --config skip_children=true crates/application/src/usecases/speech/mod.rs crates/application/src/usecases/speech/prepare.rs crates/application/src/usecases/speech/plan_review.rs crates/application/tests/speech_workflow.rs crates/application/tests/support/speech_plan_review.rs crates/application/tests/support/speech_workflow_long.rs crates/adapters-tts/src/contract.rs crates/adapters-tts/tests/contract_bridge.rs crates/adapters-translate/tests/managed_runtime_admission.rs
       - rustfmt --edition 2024 --config skip_children=true crates/adapters-ffmpeg/src/assembly/video/policy.rs crates/adapters-ffmpeg/src/assembly/video/render.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-translate/tests/support/native_admission_busy.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-translate/src/managed_runtime/runtime.rs crates/adapters-translate/src/managed_runtime/runtime/model.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/ports/src/speech_run.rs crates/ports/src/speech_run/budget.rs crates/ports/tests/speech_budget.rs crates/adapters-tts/src/client.rs crates/adapters-tts/src/execute.rs crates/adapters-tts/src/integrity_tests.rs crates/adapters-tts/tests/installed_contract.rs crates/adapters-tts/tests/installed_catalog.rs src-tauri/src/bootstrap/tts.rs src-tauri/src/bootstrap/tts/tests.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/execute/tests.rs
+      - rustfmt --edition 2024 --config skip_children=true crates/adapters-tts/src/execute/worker.rs
   clippy:backend-review:
     desc: Lint speech review, CONTRACT bridge and native admission regression targets without models
     cmds:
