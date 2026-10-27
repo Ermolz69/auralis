@@ -41,9 +41,7 @@ fn fixture() {
 }
 
 fn temporary() -> tempfile::TempDir {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/revoice/assembly-unit");
-    assert!(fs::create_dir_all(&root).is_ok());
-    match tempfile::tempdir_in(root) {
+    match tempfile::tempdir() {
         Ok(value) => value,
         Err(error) => panic!("{error}"),
     }
