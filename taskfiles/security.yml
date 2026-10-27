@@ -51,8 +51,10 @@ tasks:
 
   audit:rust:
     desc: Audit Cargo.lock against RustSec
+    vars:
+      LOCKFILE: '{{default "Cargo.lock" .LOCKFILE}}'
     cmds:
-      - cargo audit --file Cargo.lock --deny unsound
+      - cargo audit --file "{{.LOCKFILE}}" --deny unsound
 
   deny:rust:
     desc: Check Rust advisories and allowed dependency sources
