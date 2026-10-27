@@ -1,3 +1,4 @@
+#[cfg(windows)]
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::PathBuf;

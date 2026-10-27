@@ -26,7 +26,7 @@ pub fn spawn(command: Command) -> io::Result<Box<dyn ChildWrapper>> {
     {
         CommandWrap::from(command)
             .wrap(KillOnDrop)
-            .wrap(ProcessGroup)
+            .wrap(ProcessGroup::leader())
             .spawn()
     }
 }
