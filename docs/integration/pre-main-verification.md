@@ -83,6 +83,9 @@ qualification remains unchanged.
 
 ## Remaining release gates
 
+The [pre-main readiness tasks](pre-main-tasks.md) define implementation scope,
+dependencies, verification commands and completion criteria for these gates.
+
 - The instrumented frontend coverage gate fails at the percentages above.
 - The dependency audit on 2026-10-27 reports 38 npm vulnerabilities (4 critical,
   11 high, 17 moderate, 6 low). `task sec:audit:rust` reports 14 vulnerabilities

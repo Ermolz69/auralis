@@ -45,6 +45,8 @@ The [ordinary UI automation](ui-automation.md) commands retain separate fixture,
 native smoke and real component outcomes with isolated profiles.
 The [pre-main verification record](pre-main-verification.md) tracks the combined
 candidate, schema compatibility, model-free checks and remaining release gates.
+The [pre-main readiness backlog](pre-main-tasks.md) breaks those remaining gates
+into executable tasks with dependencies and acceptance criteria.
 The [reviewed video policy](revoice-video-export.md) extends managed assembly to
 separate MP4 output without modifying the original video or voice catalog.
 Component documentation continues to live in CONTRACT/Docs for the PUZA modules;
