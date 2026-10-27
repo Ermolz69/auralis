@@ -55,7 +55,7 @@ impl RuntimeRegistry {
     }
 
     pub fn close_and_take_all(&self) -> HashMap<JobId, JobRuntimeEntry> {
-        self.try_close().unwrap_or_default()
+        self.try_close().unwrap_or_default() // allow-fallback: an already closed registry has no legacy entries to take.
     }
 
     pub fn try_close(&self) -> Option<HashMap<JobId, JobRuntimeEntry>> {

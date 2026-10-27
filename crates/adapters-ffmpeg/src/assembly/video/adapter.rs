@@ -86,7 +86,9 @@ impl FfmpegVideoExporter {
             duration_ms,
             width: media.width.unwrap_or(0),
             height: media.height.unwrap_or(0),
-            video_codec: media.video_codec.unwrap_or_default(),
+            video_codec: media
+                .video_codec
+                .ok_or_else(|| error::invalid("Source video codec is missing"))?,
             ffprobe_sha256: self.ffprobe_pin.clone(),
         })
     }

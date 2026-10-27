@@ -9,24 +9,20 @@ export function installSpeechFixture() {
     text,
     cues: [],
   });
-  const voices = ['ciri', 'geralt'].flatMap((voice) =>
-    ['voxcpm2', 'espeech'].map((engine) => ({
-      voice_id: `${voice}_${engine}`,
-      display_name: voice === 'ciri' ? 'Ciri' : 'Geralt',
+  const voices = ['marina_elevenlabs_ru', 'alex_analyst_elevenlabs_ru'].map((voice) => ({
+      voice_id: voice,
+      display_name: voice === 'marina_elevenlabs_ru' ? 'Марина' : 'Алекс',
       description: '',
       manifest_sha256: digest,
-      references: [
-        {
+      references: ['voxcpm2', 'espeech'].map((engine) => ({
           reference_id: 'neutral-v2',
           engine_id: engine,
           emotion_id: 'neutral',
           transcript: 'Нейтральный образец.',
           audio_sha256: digest,
           qualification_status: 'qualified',
-        },
-      ],
-    })),
-  );
+        })),
+    }));
   let saved = null;
   let planned = null;
   window.__puzaCalls = [];

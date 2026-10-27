@@ -1,6 +1,12 @@
 version: '3'
 
 tasks:
+  diagnose:project:
+    desc: Inspect retained profile package hashes and pure CONTRACT imports without project actions or models
+    requires:
+      vars: [PROFILE]
+    cmds:
+      - node tools/ui-e2e/project-diagnostics.mjs "{{.PROFILE}}"
   assets:project:
     desc: Stage pinned Python and CONTRACT metadata without engine dependencies, models or voices
     requires:

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fsp from 'node:fs/promises';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { root, storage, owned, json, hash, idPattern } from './core.mjs';
 import { requireQuiescent } from './processes.mjs';
 import { runInstaller } from './installer.mjs';
@@ -22,6 +23,19 @@ const python = owned(source, config.python_executable);
 const prefix = `${path.relative(source, path.dirname(python)).replaceAll('\\', '/')}/`;
 const packagePrefix = `${path.relative(source, config.package_root).replaceAll('\\', '/')}/`;
 const inventory = await json(path.join(owned(source, config.package_root), 'integrity.json'));
+const validation = JSON.parse(
+  execFileSync(
+    buildPython,
+    ['-I', '-B', path.join(root, 'tools/ui-e2e/project-dependencies.py'), source],
+    {
+      encoding: 'utf8',
+      timeout: 30000,
+      maxBuffer: 4 * 1024 * 1024,
+      windowsHide: true,
+    },
+  ),
+);
+const validationFiles = new Set(validation.files);
 const dependencies = new Set(
   inventory.dependencies.map((item) =>
     path.relative(source, owned(source, item.path)).replaceAll('\\', '/'),
@@ -32,9 +46,15 @@ dependencies.add('tts-runtime.json');
 const files = input.files.filter((file) => {
   const relative = file.path.replaceAll('\\', '/');
   return (
-    relative.startsWith(prefix) || relative.startsWith(packagePrefix) || dependencies.has(relative)
+    relative.startsWith(prefix) ||
+    relative.startsWith(packagePrefix) ||
+    dependencies.has(relative) ||
+    validationFiles.has(relative)
   );
 });
+assert.ok(
+  files.some((file) => file.path.replaceAll('\\', '/').endsWith('/jsonschema/__init__.py')),
+);
 assert.ok(files.length > 0 && files.length <= 10000);
 assert.ok(files.reduce((bytes, file) => bytes + file.size_bytes, 0) <= 256 * 1024 ** 2);
 const directory = owned(path.join(storage, 'seeds'), path.join(storage, 'seeds', id));
@@ -94,6 +114,12 @@ try {
         PYTHONDONTWRITEBYTECODE: '1',
       },
     },
+    remaining,
+  );
+  await runInstaller(
+    path.join(directory, path.relative(source, python)),
+    ['-I', '-B', path.join(root, 'tools/ui-e2e/project-diagnostics.py'), directory],
+    { windowsHide: true, stdio: ['ignore', log.fd, log.fd] },
     remaining,
   );
 } finally {

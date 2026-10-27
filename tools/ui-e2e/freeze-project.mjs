@@ -10,7 +10,12 @@ const candidate = await candidateIdentity();
 const runtime_seed = await json(path.join(storage, 'seeds', `${seed}.json`), 32 * 1024 * 1024);
 assert.ok(runtime_seed.files.some((file) => file.path === 'project-runtime.json'));
 assert.ok(
-  runtime_seed.files.every((file) => !/\.(safetensors|gguf|pt|pth|onnx|wav)$/i.test(file.path)),
+  runtime_seed.files.every(
+    (file) =>
+      !/\.(safetensors|gguf|pt|pth|onnx|wav)$/i.test(file.path) ||
+      (file.path.endsWith('/base/Lib/site-packages/auralis-native-venv.pth') &&
+        file.size_bytes <= 256),
+  ),
 );
 const spec = {
   version: 1,

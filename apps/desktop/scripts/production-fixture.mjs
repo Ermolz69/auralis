@@ -1,4 +1,4 @@
-export function installFixture() {
+export function installFixture(seed = {}) {
   const timestamp = '2026-09-03T00:00:00Z';
   const project = {
     id: 'review-project',
@@ -49,9 +49,9 @@ export function installFixture() {
   let callbackId = 0;
   let library = JSON.parse(sessionStorage.getItem('smoke-library') || 'null') ?? {
     revision: 0,
-    assets: [],
+    assets: seed.assets ?? [],
     folders: [],
-    links: [],
+    links: (seed.assets ?? []).map((asset) => ({ assetId: asset.id, projectId: asset.ownerProjectId, folderId: null })),
     standaloneOwners: [],
     removedProjects: [],
     hiddenAssets: [],

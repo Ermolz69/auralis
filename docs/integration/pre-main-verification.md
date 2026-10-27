@@ -29,11 +29,12 @@ submodule commit `44e7d4f3c6ce2443279f5d0d3acd07cbb931476e`.
 
 | Command                | Result                                                                                                    |
 | ---------------------- | --------------------------------------------------------------------------------------------------------- |
-| `task rs:pr`           | Passed: formatting, denied-warning Clippy and 757 Rust tests; 23 ignored tests remain outside this scope. |
+| `task rs:pr`           | Passed: formatting, denied-warning Clippy and 759 Rust tests; 23 ignored tests remain outside this scope. |
 | `task fe:e2e`          | Passed: all 35 guided workflow browser regressions.                                                       |
 | `task ui:fixture`      | Passed: 32 full-workflow and 18 diagnostic fixture steps through the library.                             |
 | `task ui:check:runner` | Passed: 33 runner isolation, evidence and lifecycle checks.                                               |
-| `task q:frontend`      | Passed before the final formatting pass; final validation is pending.                                     |
+| `task q:global`        | Passed: media policy, dependency integrity, IPC, formatting and storage guards.                           |
+| `task q:frontend`      | Passed: architecture, IPC parity, bounded modules and desktop policies.                                   |
 | `task fe:test`         | All 675 tests passed. The overall command failed its unchanged coverage thresholds.                       |
 
 The coverage gate currently measures 77.45% statements, 71.64% branches,
@@ -56,6 +57,33 @@ creation and reopening through the library. Read-only checks additionally bind
 the ready database receipt to the manifest hash and both contract versions.
 Each case has one attempt and must confirm process release before another run.
 
-Native candidate validation is pending. No model inference, real YouTube-to-WAV
-or MP4 acceptance, listening decision, or clean Windows result is established by
-these checks. Existing reference qualification remains unchanged.
+The metadata seed resolves CONTRACT's complete base dependency closure from
+installed distribution metadata, verifies copied files against the pinned source
+manifest, and checks pure imports before allowing a native case. This includes
+JSON Schema, locking and process-metadata dependencies; engine dependencies are
+not installed. `task ui:diagnose:project PROFILE=<retained-profile>` performs only
+read-only import and hash diagnostics.
+
+The first two native cases failed because their metadata seeds lacked required
+validation dependencies. Both retained failure reports and confirmed process
+release. After replacing the incomplete seed, case
+`PRE-MAIN-METADATA-20261027-v3` passed all 13 steps, including project creation,
+restart, both contract versions, identical manifest hashes and graceful cleanup.
+It used the ordinary candidate built from `85eb782`, SHA-256
+`fb677065607eb1d195259b7504542a23dc78684730c0f4a7324e46aecabd70b1`.
+The final backend metadata guards require a new candidate check.
+
+No model inference, real YouTube-to-WAV or MP4 acceptance, listening decision,
+or clean Windows result is established by these checks. Existing reference
+qualification remains unchanged.
+
+## Remaining release gates
+
+- The instrumented frontend coverage gate fails at the percentages above.
+- The dependency audit on 2026-10-27 reports 38 npm vulnerabilities (4 critical,
+  11 high, 17 moderate, 6 low). `task sec:audit:rust` reports 14 vulnerabilities
+  and one denied unsoundness warning. `task sec:deny:rust` accepts dependency
+  sources but rejects advisories. Resolve these against the published advisories
+  and rerun the complete gate before considering main.
+- Real model execution, long-source playback, video acceptance and clean Windows
+  remain separate acceptance stages.

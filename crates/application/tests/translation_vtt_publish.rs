@@ -180,11 +180,12 @@ async fn webvtt_runs_through_both_databases_and_publishes_a_separate_verified_co
             },
             host_job.id(),
         )
-        .await?;
+        .await;
     server
         .join()
         .map_err(|_| "mock server panicked")?
         .map_err(|error| error.to_string())?;
+    let result_id = result_id?;
     assert!(jobs.active_for_run(run_id).await?.is_none());
     let status = run_control.status(run_request).await?;
     assert_eq!(status.phase, TranslationRunPhase::Validated);
@@ -268,6 +269,7 @@ fn respond_once(listener: TcpListener) -> Result<(), Box<dyn Error + Send + Sync
             Err(error) => return Err(error.into()),
         }
     };
+    stream.set_nonblocking(false)?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
     read_request(&mut stream)?;
     let body = r#"{"choices":[{"message":{"content":"Привет."},"finish_reason":"stop"}]}"#;
@@ -303,4 +305,25 @@ fn read_request(stream: &mut TcpStream) -> Result<(), Box<dyn Error + Send + Syn
             }
         }
     }
+}
+
+#[test]
+fn mock_server_reads_fragmented_http_bodies_before_closing() -> Result<(), Box<dyn Error>> {
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let address = listener.local_addr()?;
+    let server = std::thread::spawn(move || respond_once(listener));
+    let mut client = TcpStream::connect(address)?;
+    client.set_read_timeout(Some(Duration::from_secs(5)))?;
+    client.write_all(b"POST /v1/chat/completions HTTP/1.1\r\nContent-Length: 3\r\n\r\n")?;
+    std::thread::sleep(Duration::from_millis(25));
+    client.write_all(b"{}\n")?;
+    let mut response = String::new();
+    client.read_to_string(&mut response)?;
+    server
+        .join()
+        .map_err(|_| "mock server panicked")?
+        .map_err(|error| error.to_string())?;
+    assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+    assert!(response.contains("Привет."));
+    Ok(())
 }

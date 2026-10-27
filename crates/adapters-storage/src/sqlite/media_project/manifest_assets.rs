@@ -124,10 +124,11 @@ impl LocalMediaProjects {
         assets: &[Value],
         previous: &Value,
     ) -> Result<(Vec<Value>, Vec<Value>), PortError> {
-        let old = previous["documents"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let old = match previous.get("documents") {
+            None => Vec::new(),
+            Some(Value::Array(documents)) => documents.clone(),
+            Some(_) => return Err(invalid("Некорректная история документов")),
+        };
         let ledger_path = files::safe_path(root, "work/document-ids.json")?;
         let mut ledger: std::collections::BTreeMap<String, u64> =
             match tokio::fs::read(&ledger_path).await {
@@ -142,7 +143,10 @@ impl LocalMediaProjects {
                 .and_then(|d| d.parse::<u64>().ok())
                 .ok_or_else(|| invalid("Некорректный ID документа"))?;
             ledger.insert(
-                document["asset_id"].as_str().unwrap_or_default().into(),
+                document["asset_id"]
+                    .as_str()
+                    .ok_or_else(|| invalid("Нет ID материала документа"))?
+                    .into(),
                 number,
             );
         }

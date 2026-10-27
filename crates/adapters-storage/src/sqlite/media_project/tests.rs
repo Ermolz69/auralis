@@ -21,6 +21,38 @@ use std::{
 };
 
 struct Validator(AtomicBool);
+
+#[tokio::test]
+async fn corrupt_document_history_is_rejected_without_resetting_its_ledger()
+-> Result<(), Box<dyn Error>> {
+    let fixture = Fixture::new().await?;
+    let root = fixture.media.root.join(&fixture.projects[0]);
+    tokio::fs::create_dir_all(root.join("work")).await?;
+    let ledger = root.join("work/document-ids.json");
+    let before = b"{\"retained\":7}";
+    tokio::fs::write(&ledger, before).await?;
+    assert!(
+        fixture
+            .media
+            .manifest_documents(&root, &[], &json!({"documents":"corrupt"}))
+            .await
+            .is_err()
+    );
+    assert_eq!(tokio::fs::read(&ledger).await?, before);
+    assert!(
+        fixture
+            .media
+            .manifest_documents(
+                &root,
+                &[],
+                &json!({"documents":[{"document_id":"document-000007"}]})
+            )
+            .await
+            .is_err()
+    );
+    assert_eq!(tokio::fs::read(&ledger).await?, before);
+    Ok(())
+}
 #[async_trait]
 impl MediaContractValidator for Validator {
     async fn validate(&self, root: &Path) -> Result<(), PortError> {

@@ -15,7 +15,10 @@ test(
       const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
-      await page.addInitScript(installFixture);
+      await page.addInitScript(installFixture, { assets: [{
+        id: 'review-project', ownerProjectId: 'review-project', name: 'Source fixture',
+        kind: 'video', artifactId: null, text: null, format: null, parentId: null, tags: [], openedAt: null,
+      }] });
       await page.addInitScript(() => {
         window.__smokeJob.status = 'pending';
         window.__smokeJob.progress.percent = 0;
@@ -63,7 +66,8 @@ test(
         0,
       );
       await page.getByRole('button', { name: 'Review fixture', exact: true }).dblclick();
-      await page.getByRole('button', { name: 'Открыть инструмент', exact: true }).click();
+      await page.getByRole('complementary', { name: 'Материалы текущего проекта' }).getByRole('button', { name: /Source fixture/ }).click();
+      await page.getByRole('menubar', { name: 'Главное меню' }).getByRole('menuitem', { name: 'Инструменты', exact: true }).click();
       await page.getByRole('menuitem', { name: 'Источник и субтитры', exact: true }).click();
       await page.getByTestId('source-workspace').waitFor();
       await titlebar.getByRole('button', { name: 'Закрыть окно', exact: true }).click();
@@ -75,6 +79,7 @@ test(
       await settings.click();
       await page.getByRole('heading', { name: 'Настройки', exact: true }).waitFor();
       await queue.getByText('Background fixture job', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Закрыть настройки', exact: true }).click();
       await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
       const project = page
         .getByRole('navigation', { name: 'Библиотека и проекты' })

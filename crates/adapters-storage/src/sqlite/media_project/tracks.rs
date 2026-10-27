@@ -16,7 +16,7 @@ impl LocalMediaProjects {
             let original_id = asset["source_asset_id"]
                 .as_str()
                 .or(asset["id"].as_str())
-                .unwrap_or_default();
+                .ok_or_else(|| invalid("Нет ID исходного материала дорожки"))?;
             let original = state.assets.iter().find(|a| a.id == original_id);
             let owner = original.map(|a| a.owner_project_id.as_str()).unwrap_or(id);
             let (metadata, language): (Option<String>, Option<String>) =
