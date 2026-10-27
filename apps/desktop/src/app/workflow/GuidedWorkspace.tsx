@@ -22,7 +22,11 @@ export function GuidedWorkspace({ onOpenLibrary }: { onOpenLibrary: () => void }
   const openUpdateSettings = useCallback(() => setCurrentView('settings'), [setCurrentView]);
   useEffect(() => {
     window.addEventListener('auralis-workflow-settings', openUpdateSettings);
-    return () => window.removeEventListener('auralis-workflow-settings', openUpdateSettings);
+    window.addEventListener('auralis-open-settings', openUpdateSettings);
+    return () => {
+      window.removeEventListener('auralis-workflow-settings', openUpdateSettings);
+      window.removeEventListener('auralis-open-settings', openUpdateSettings);
+    };
   }, [openUpdateSettings]);
 
   useLayoutEffect(() => {

@@ -5,7 +5,7 @@ import type { LibraryWorkspace } from '@/shared/api/contracts/library';
 import { button, field } from '@/widgets/library-browser';
 import { StudioToolPanel } from './StudioToolPanel';
 import { panelKey, workspacePanels } from '../model/panels';
-import { parseDraft } from '../model/tabDraft';
+import { readTabDraft } from '../model/tabDraft';
 import { WorkspaceAssetBrowser } from './WorkspaceAssetBrowser';
 import { WorkspaceTabs } from './WorkspaceTabs';
 export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) {
@@ -30,12 +30,12 @@ export function StudioWorkspace({ workspace }: { workspace: LibraryWorkspace }) 
   const selectedAsset = assets.find((asset) => asset.id === assetId);
   const close = async (id: string) => {
     const tab = workspace.tabs.find((t) => t.id === id)!;
-    const draft = parseDraft(tab.draft);
+    const draft = readTabDraft(tab, mutate);
     const asset = state.assets.find((a) => a.id === tab.assetId);
     const shared = workspace.tabs.some((t) => t.id !== id && panelKey(t) === panelKey(tab));
     if (
       !shared &&
-      draft.text &&
+      draft.text !== undefined &&
       draft.text !== (asset?.text ?? '') &&
       !window.confirm(
         'Закрыть вкладку и удалить её черновик? Сохраните текст новой версией, чтобы оставить правки в библиотеке.',

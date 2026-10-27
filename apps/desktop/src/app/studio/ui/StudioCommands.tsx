@@ -49,10 +49,15 @@ export function StudioCommands({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const [operation, setOperation] = useState<MediaOperation | null>(null);
   const copying = useRef(false);
+  const working = useRef(false);
   useEffect(() => {
     const open = () => setSettings(true);
     window.addEventListener('auralis-open-settings', open);
-    return () => window.removeEventListener('auralis-open-settings', open);
+    window.addEventListener('auralis-workflow-settings', open);
+    return () => {
+      window.removeEventListener('auralis-open-settings', open);
+      window.removeEventListener('auralis-workflow-settings', open);
+    };
   }, []);
   const workspace = state.workspaces.find((w) => w.id === workspaceId);
   const fallback: ActionTarget =
@@ -69,12 +74,24 @@ export function StudioCommands({ children }: { children: ReactNode }) {
             null,
           workspaceId,
         };
-  const target =
+  const requested =
     selection &&
     (view === 'library' ? !selection.workspaceId : selection.workspaceId === workspaceId)
       ? selection
       : fallback;
+  const target: ActionTarget =
+    requested.projectId && state.removedProjects.includes(requested.projectId)
+      ? { projectId: null, assetId: null, workspaceId: requested.workspaceId }
+      : {
+          ...requested,
+          assetId:
+            requested.assetId && state.hiddenAssets.includes(requested.assetId)
+              ? null
+              : requested.assetId,
+        };
   const act = async (work: () => Promise<unknown>) => {
+    if (working.current) return;
+    working.current = true;
     setError('');
     setBusy(true);
     try {
@@ -82,6 +99,7 @@ export function StudioCommands({ children }: { children: ReactNode }) {
     } catch (e) {
       setError(describeCommandError(e));
     } finally {
+      working.current = false;
       setBusy(false);
     }
   };
@@ -108,6 +126,7 @@ export function StudioCommands({ children }: { children: ReactNode }) {
     setModal({ kind: 'select-tool', target: context, tool });
   };
   const run = (action: StudioAction, context: ActionTarget = target) => {
+    if (working.current) return;
     setError('');
     if (action.startsWith('tool:')) {
       void act(() => openTool(action.slice(5) as LibraryTool, context));
@@ -156,13 +175,16 @@ export function StudioCommands({ children }: { children: ReactNode }) {
       error: null,
     });
     let timer: ReturnType<typeof setInterval> | undefined;
+    let active = true;
     try {
       timer = setInterval(() => {
         void invoke('get_media_operation_cmd', { operationId: id })
           .then((op) => {
-            if (op) setOperation(op);
+            if (active && op?.id === id && op.projectId === projectId) setOperation(op);
           })
-          .catch(() => {});
+          .catch((reason) => {
+            if (active) setError(describeCommandError(reason));
+          });
       }, 500);
       await invoke('attach_library_asset_cmd', {
         operationId: id,
@@ -178,15 +200,30 @@ export function StudioCommands({ children }: { children: ReactNode }) {
           );
         await refresh();
         const op = await invoke('get_media_operation_cmd', { operationId: id });
-        if (!op || op.status === 'ready') break;
-        if (['failed', 'cancelled'].includes(op.status)) {
-          if (op.error) throw new Error(op.error);
-          break;
+        if (!op) {
+          const catalog = await invoke('get_library_cmd');
+          if (
+            catalog.links.some(
+              (link) => link.projectId === projectId && link.assetId === context.assetId,
+            )
+          )
+            break;
+          throw new Error(
+            'Не удалось подтвердить публикацию материала. Обновите библиотеку и повторите добавление.',
+          );
         }
+        if (op.id !== id || op.projectId !== projectId)
+          throw new Error('Получено состояние другой операции. Обновите библиотеку.');
+        if (op.status === 'ready') break;
+        if (['failed', 'cancelled'].includes(op.status))
+          throw new Error(
+            op.error ?? 'Добавление не завершено или отменено. Повторите добавление.',
+          );
         await new Promise((r) => setTimeout(r, 500));
       }
       setModal(null);
     } finally {
+      active = false;
       clearInterval(timer);
       copying.current = false;
       setOperation(null);
@@ -194,6 +231,10 @@ export function StudioCommands({ children }: { children: ReactNode }) {
   };
   const submit = async () => {
     if (!modal) return;
+    if (modal.kind.startsWith('rename') && !value.trim()) {
+      setError('Введите непустое название.');
+      return;
+    }
     const context = modal.target;
     await act(async () => {
       if (modal.kind === 'import')
@@ -315,7 +356,9 @@ export function StudioCommands({ children }: { children: ReactNode }) {
             %
             <button
               onClick={() =>
-                void invoke('cancel_media_operation_cmd', { operationId: operation.id })
+                void invoke('cancel_media_operation_cmd', { operationId: operation.id }).catch(
+                  (reason) => setError(describeCommandError(reason)),
+                )
               }
             >
               Отменить
@@ -373,6 +416,7 @@ export function StudioCommands({ children }: { children: ReactNode }) {
                   <button
                     key={a.id}
                     className={`${button} w-full text-left`}
+                    disabled={busy}
                     onClick={() =>
                       void act(async () => {
                         await openAsset(a, modal.tool, modal.target.projectId);
