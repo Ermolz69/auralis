@@ -20,8 +20,8 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.11.4",
-    "js-yaml": "5.2.2",
-    "markdownlint-cli2": "^0.23.0",
+    "js-yaml": "5.4.3",
+    "markdownlint-cli2": "^0.24.0",
     "prettier": "^3.9.4"
   }
 }
