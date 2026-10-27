@@ -71,7 +71,11 @@ release. After replacing the incomplete seed, case
 restart, both contract versions, identical manifest hashes and graceful cleanup.
 It used the ordinary candidate built from `85eb782`, SHA-256
 `fb677065607eb1d195259b7504542a23dc78684730c0f4a7324e46aecabd70b1`.
-The final backend metadata guards require a new candidate check.
+The final backend guards were then verified with case
+`PRE-MAIN-METADATA-20261027-v4`: all 13 steps passed on the ordinary candidate
+built from `bb725d8`, SHA-256
+`587cab055096af8a60313d5f83d00247e89b838e6b031438efd21cc7977ba27b`.
+Both launches released their complete process trees without forced termination.
 
 No model inference, real YouTube-to-WAV or MP4 acceptance, listening decision,
 or clean Windows result is established by these checks. Existing reference
