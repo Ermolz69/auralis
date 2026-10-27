@@ -147,4 +147,27 @@ describe('SpeechCatalog', () => {
       projectId: 'project-three',
     });
   });
+
+  it('keeps text editing and preparation accessible when voice runtime is unavailable', async () => {
+    invoke.mockImplementation((command: string) =>
+      command === 'get_speech_catalog_cmd'
+        ? Promise.reject(new Error('Voice runtime unavailable'))
+        : Promise.resolve([]),
+    );
+    render(
+      <SpeechCatalog
+        projectId="project-three"
+        stage="text"
+        initialSource={{ kind: 'text', text: 'Независимый текст', translation_id: null }}
+      />,
+    );
+    expect(
+      await screen.findByRole('textbox', { name: 'Русский текст для озвучки' }),
+    ).toHaveProperty('value', 'Независимый текст');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      expect.stringContaining('Voice runtime unavailable'),
+    );
+    expect(screen.getByRole('button', { name: /Подготовить текст/ })).toBeTruthy();
+  });
 });

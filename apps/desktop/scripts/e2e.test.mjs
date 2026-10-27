@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { after, before, test } from 'node:test';
 import { chromium } from 'playwright';
 import { installE2EFixture } from './e2e-fixture.mjs';
+import { installUiLibraryFixture } from './ui-library-fixture.mjs';
 import { serveProduction } from './production-server.mjs';
 
 const resultsDir =
@@ -132,11 +133,11 @@ e2e('05 persists the theme and installs a signed application update from setting
     async (page) => {
       await page.getByText('Auralis 0.2.0 is available', { exact: true }).waitFor();
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
-      await page.getByLabel('Color theme').selectOption('frost');
+      await page.getByRole('heading', { name: 'Настройки', exact: true }).waitFor();
+      await page.getByLabel('Цветовая тема').selectOption('light');
 
-      await page.waitForFunction(() => document.documentElement.dataset.colorTheme === 'frost');
-      await page.waitForFunction(() => window.__e2e.theme?.value === 'frost');
+      await page.waitForFunction(() => document.documentElement.dataset.colorTheme === 'light');
+      await page.waitForFunction(() => window.__e2e.theme?.value === 'light');
       assert.equal(await page.evaluate(() => localStorage.getItem('auralis:color-theme:v1')), null);
       await page.getByRole('button', { name: 'Download and install 0.2.0' }).click();
       await page.getByText('Restarting', { exact: true }).waitFor();
@@ -153,7 +154,7 @@ e2e('06 returns from settings to the previously opened project', async () => {
   await scenario(baseSeed(), async (page) => {
     await openProject(page, 'YouTube Project');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Настройки', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back', exact: true }).click();
 
     await page.getByTestId('source-workspace').waitFor();
@@ -673,6 +674,7 @@ e2e('33 restores a cancelling job after reload and rejects stale progress', asyn
       await page.getByText('Stopping', { exact: true }).waitFor();
 
       await page.reload();
+      await page.getByRole('button', { name: 'Пошаговая переозвучка', exact: true }).click();
       await page.getByRole('heading', { name: 'Projects', exact: true }).waitFor();
       await page.getByRole('button', { name: /Очередь/ }).click();
       await page.getByText('Stopping', { exact: true }).waitFor();
@@ -792,11 +794,13 @@ async function scenario(seed, run) {
   let failed = false;
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.addInitScript(installE2EFixture, seed);
+  await page.addInitScript(installUiLibraryFixture);
 
   try {
     await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     traceStarted = true;
     await page.goto(server.url);
+    await page.getByRole('button', { name: 'Пошаговая переозвучка', exact: true }).click();
     await page.getByRole('heading', { name: 'Projects', exact: true }).waitFor();
     await run(page);
     assert.deepEqual(pageErrors, []);

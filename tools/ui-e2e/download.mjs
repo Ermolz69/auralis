@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { acquireDownloadAdmission } from './admission.mjs';
 import { clickOnce, observeUntil, jobState, readyOrError } from './observe.mjs';
 import { uiFailure } from './failures.mjs';
+import { youtubeDialog, openMaterial } from './navigation.mjs';
 
 export async function download(page, report, spec, remaining, admit = acquireDownloadAdmission) {
   let release;
@@ -12,21 +13,19 @@ export async function download(page, report, spec, remaining, admit = acquireDow
         'url-import',
         async () => {
           release = await admit();
-          await page.getByLabel('YouTube URL', { exact: true }).fill(spec.source_url);
+          const dialog = await youtubeDialog(page);
+          await dialog.getByLabel('Ссылка YouTube', { exact: true }).fill(spec.source_url);
           const timeout = Math.min(900000, remaining());
-          const error = page
-            .getByRole('form', { name: 'Add YouTube source', exact: true })
-            .getByRole('alert');
-          await clickOnce(page.getByRole('button', { name: 'Add from YouTube', exact: true }), () =>
+          const error = dialog.getByRole('alert');
+          await clickOnce(dialog.getByRole('button', { name: 'Создать', exact: true }), () =>
             observeUntil(async () => {
               if (await error.isVisible())
                 throw uiFailure(await error.innerText(), 'YouTube source import');
-              return await page
-                .getByRole('region', { name: 'Connected video source', exact: true })
-                .isVisible();
+              return !(await dialog.isVisible());
             }, timeout),
           );
-          await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
+          await openMaterial(page, 'video');
+          await page.getByRole('region', { name: 'Connected video source', exact: true }).waitFor();
         },
         page,
       ))
@@ -57,10 +56,6 @@ export async function download(page, report, spec, remaining, admit = acquireDow
           history,
           Math.min(30000, remaining()),
         );
-        await page
-          .getByRole('region', { name: 'Исходные субтитры', exact: true })
-          .getByRole('button', { name: 'Обновить исходники', exact: true })
-          .click();
       },
       page,
     );

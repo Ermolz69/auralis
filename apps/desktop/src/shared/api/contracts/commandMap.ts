@@ -1,4 +1,5 @@
 import type { Project, CreateProjectResponse } from './project';
+import type { LibraryCommandMap } from './library';
 import type { VoiceCommandMap } from './voiceCommandMap';
 import type { SpeechCommandMap } from './speech';
 import type { AudioAssemblyCommandMap } from './audioAssembly';
@@ -15,7 +16,12 @@ import type { EditHistoricalTranslationResult } from './translationHistoricalEdi
 import type { TranslationCommandMap } from './translationCommandMap';
 
 export interface CommandMap
-  extends VoiceCommandMap, SpeechCommandMap, TranslationCommandMap, AudioAssemblyCommandMap {
+  extends
+    VoiceCommandMap,
+    SpeechCommandMap,
+    TranslationCommandMap,
+    AudioAssemblyCommandMap,
+    LibraryCommandMap {
   get_color_theme_cmd: { args: undefined; result: StoredTheme | null };
   set_color_theme_cmd: { args: { value: string; expectedRevision: number }; result: StoredTheme };
   import_color_theme_cmd: { args: { value: string }; result: StoredTheme };

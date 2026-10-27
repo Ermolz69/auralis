@@ -121,6 +121,7 @@ pub struct AppUseCases {
 }
 
 pub(super) struct AppUseCaseDependencies {
+    pub(super) media_projects: Arc<dyn ports::media_project::MediaProjectStore>,
     pub(super) ui_preferences: Arc<dyn ports::ui_preferences::UiPreferencesRepository>,
     pub(super) artifact_recovery: Arc<dyn ports::artifact_recovery::ArtifactRecoveryRepository>,
     pub(super) projects_root: std::path::PathBuf,
@@ -144,6 +145,7 @@ pub(super) fn setup_usecases(
     dependencies: AppUseCaseDependencies,
 ) -> Result<(), PortError> {
     let AppUseCaseDependencies {
+        media_projects,
         puza_contract,
         puza_contract_error,
         ui_preferences,
@@ -211,6 +213,7 @@ pub(super) fn setup_usecases(
             locks.clone(),
         ),
         create_project: CreateProjectUseCase::new(project_repo.clone())
+            .with_media(media_projects)
             .with_contract(puza_contract.clone(), puza_contract_error.clone()),
         create_project_from_youtube: CreateProjectFromYoutubeUseCase::new(
             project_repo.clone(),

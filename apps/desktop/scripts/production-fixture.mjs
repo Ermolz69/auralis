@@ -33,6 +33,11 @@ export function installFixture() {
   window.__smokeCommands = [];
   window.__smokeUnknownCommands = [];
   window.__smokeCallbacks = new Map();
+  window.__smokeListeners = new Map();
+  window.__smokeListenerGroups = new Map();
+  window.__smokeJob = job;
+  window.isTauri = true;
+  window.__smokeWindow = { maximized: false, minimized: false, closed: false };
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
     unregisterListener(_event, id) {
       window.__smokeCallbacks.delete(id);
@@ -42,7 +47,26 @@ export function installFixture() {
     window.__smokeViolations.push(event.effectiveDirective),
   );
   let callbackId = 0;
+  let library = JSON.parse(sessionStorage.getItem('smoke-library') || 'null') ?? {
+    revision: 0,
+    assets: [],
+    folders: [],
+    links: [],
+    standaloneOwners: [],
+    removedProjects: [],
+    hiddenAssets: [],
+    workspaces: [],
+    browser: {
+      scope: 'all',
+      projectId: null,
+      folderId: null,
+      search: '',
+      kind: '',
+      selectedId: null,
+    },
+  };
   window.__TAURI_INTERNALS__ = {
+    metadata: { currentWindow: { label: 'main' }, currentWebview: { label: 'main' } },
     transformCallback(callback) {
       window.__smokeCallbacks.set(++callbackId, callback);
       return callbackId;
@@ -50,14 +74,49 @@ export function installFixture() {
     unregisterCallback(id) {
       window.__smokeCallbacks.delete(id);
     },
-    async invoke(command) {
+    async invoke(command, args) {
       window.__smokeCommands.push(command);
-      if (command === 'plugin:event|listen') return ++callbackId;
+      if (command === 'plugin:app|version') return '0.1.0';
+      if (command === 'plugin:updater|check') return null;
+      if (command === 'plugin:window|is_maximized') return window.__smokeWindow.maximized;
+      if (command === 'plugin:window|toggle_maximize') {
+        window.__smokeWindow.maximized = !window.__smokeWindow.maximized;
+        return null;
+      }
+      if (command === 'plugin:window|minimize') {
+        if (window.__smokeWindowFailure) throw new Error('Window action rejected');
+        window.__smokeWindow.minimized = true;
+        return null;
+      }
+      if (command === 'plugin:window|close') {
+        window.__smokeWindow.closed = true;
+        return null;
+      }
+      if (command === 'plugin:event|listen') {
+        window.__smokeListeners.set(args.event, args.handler);
+        const handlers = window.__smokeListenerGroups.get(args.event) ?? [];
+        handlers.push(args.handler);
+        window.__smokeListenerGroups.set(args.event, handlers);
+        return ++callbackId;
+      }
       if (command === 'plugin:event|unlisten') return null;
+      if (command === 'validate_media_project_cmd') return null;
+      if (command === 'get_media_project_cmd') return { version: 1, project_id: args.projectId, assets: [], tracks: [], results: [], documents: [], voices: [] };
+      if (command === 'get_tool_context_cmd') {
+        const asset = library.assets.find((item) => item.id === args.assetId);
+        return { projectId: args.projectId, assetId: args.assetId, artifactId: asset?.artifactId ?? null, version: null, trackId: null };
+      }
+      if (command === 'get_library_cmd') return structuredClone(library);
+      if (command === 'save_library_cmd') {
+        library = { ...structuredClone(args.state), revision: library.revision + 1 };
+        sessionStorage.setItem('smoke-library', JSON.stringify(library));
+        return library;
+      }
+      if (command === 'list_project_artifacts_cmd') return [];
       if (command === 'list_projects_cmd') return [project];
       if (command === 'list_pending_youtube_imports_cmd') return [];
       if (command === 'list_artifact_recovery_cmd') return [];
-      if (command === 'get_color_theme_cmd') return { value: 'auralis', revision: 1 };
+      if (command === 'get_color_theme_cmd') return { value: 'dark', revision: 1 };
       if (command === 'get_project_pins_cmd') return { entries: [], migrated: true };
       if (command === 'list_jobs_cmd') return [job];
       if (command === 'list_job_history_page_cmd') return { jobs: [], nextCursor: null };

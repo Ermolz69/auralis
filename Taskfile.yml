@@ -192,6 +192,47 @@ tasks:
       - task: rs:test:storage
       - task: rs:test:desktop
       - task: rs:test:translation-events
+  project:native:verify:
+    requires:
+      vars: [PYTHON, DATA_ROOT]
+    cmds:
+      - '"{{.PYTHON}}" tools/tts/verify_media.py "{{.DATA_ROOT}}"'
+  project:test:backend:
+    cmds:
+      - cargo test --locked -p adapters-storage
+      - cargo test --locked -p application --test library_workspace --test puza_contract --test speech_workflow --test translation_review --test translation_vtt_publish
+      - cargo test --locked -p auralis-app --lib commands::video_preview
+  project:format:
+    cmds:
+      - cargo fmt --all
+      - pnpm prettier --write "apps/desktop/src/app/studio/**/*.{ts,tsx}" "apps/desktop/src/entities/library/**/*.{ts,tsx}" "apps/desktop/src/widgets/library-browser/**/*.{ts,tsx}" "apps/desktop/src/shared/ui/menu/*.{ts,tsx}" "apps/desktop/src/shared/api/contracts/library*.ts" "apps/desktop/src/features/translation-{source-import,run-control,review}/**/*.{ts,tsx}" "apps/desktop/src/features/speech-catalog/model/*.ts" "apps/desktop/src/shared/api/contracts/speech.ts" "apps/desktop/src/App.tsx"
+  project:test:contract:all:
+    requires:
+      vars: [PYTHON, CONTRACT_ROOT]
+    env:
+      PYTHONPATH: '{{.CONTRACT_ROOT}}/VOXSCRIPT_CONTRACT/src'
+    cmds:
+      - '"{{.PYTHON}}" -m pytest -q --tb=short -p no:cacheprovider --basetemp=../.integration/auralis-checks/media-contract-all "{{.CONTRACT_ROOT}}/VOXSCRIPT_CONTRACT/tests"'
+  project:test:storage:
+    cmds:
+      - cargo test --locked -p adapters-storage media_project
+  setup:project:local:
+    requires:
+      vars: [PYTHON, CONTRACT_ROOT]
+    cmds:
+      - '"{{.PYTHON}}" tools/tts/setup_project.py --contract-root "{{.CONTRACT_ROOT}}" {{.CLI_ARGS}}'
+  project:test:contract:
+    requires:
+      vars: [PYTHON, CONTRACT_ROOT]
+    env:
+      PYTHONPATH: '{{.CONTRACT_ROOT}}/VOXSCRIPT_CONTRACT/src'
+    cmds:
+      - '"{{.PYTHON}}" -m pytest -q --tb=short -p no:cacheprovider --basetemp=../.integration/auralis-checks/media-contract-pytest "{{.CONTRACT_ROOT}}/VOXSCRIPT_CONTRACT/tests/test_media_project.py"'
+  library:native:inspect:
+    requires:
+      vars: [DATA_ROOT, TITLE]
+    cmds:
+      - node tools/tts/inspect_library.mjs "{{.DATA_ROOT}}" "{{.TITLE}}"
   setup:marker:local:
     desc: Verify the frozen Normalizer package and configure its model-free local preparation
     cmds:

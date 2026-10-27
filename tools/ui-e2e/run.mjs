@@ -25,6 +25,7 @@ import { ResourceObserver } from './resources.mjs';
 import { setObservationSignal } from './observe.mjs';
 import { selectionIdentities, verifySelectionPins } from './selections.mjs';
 import { verifyPcmReadOnly } from './pcm.mjs';
+import { createProject, openProject, verifyProject } from './project-smoke.mjs';
 
 const mode = process.argv[2];
 if (!['smoke', 'real'].includes(mode)) throw new Error('Expected smoke or real');
@@ -108,12 +109,13 @@ try {
       if (mode === 'smoke' && process.argv[3]) {
         spec = await json(process.argv[3], 32 * 1024 * 1024);
         if (
-          spec.mode !== 'component-smoke' ||
+          !['component-smoke', 'media-smoke'].includes(spec.mode) ||
           spec.allow_inference !== false ||
           !idPattern.test(spec.case_id ?? '') ||
           spec.max_attempts !== 1 ||
           !spec.runtime_seed ||
-          !spec.component_wheels ||
+          (spec.mode === 'component-smoke' && !spec.component_wheels) ||
+          (spec.mode === 'media-smoke' && spec.component_wheels) ||
           spec.max_wall_seconds !== 1800
         )
           throw new Error('Expected a frozen model-free component smoke case');
@@ -129,7 +131,10 @@ try {
         report.data.steps.splice(
           report.data.steps.findIndex((step) => step.id === 'javascript-errors'),
           0,
-          { id: 'components-connected', status: 'not_run' },
+          ...(spec.mode === 'media-smoke'
+            ? ['media-project-create', 'media-project-restart']
+            : ['components-connected']
+          ).map((id) => ({ id, status: 'not_run' })),
         );
       }
       candidate = await candidateIdentity(storage, remaining);
@@ -210,6 +215,28 @@ try {
       if (await report.step('launch', () => session.start(remaining))) {
         if (mode === 'smoke') {
           await smoke(session.page, report);
+          if (spec?.mode === 'media-smoke') {
+            if (
+              await report.step(
+                'media-project-create',
+                async () => {
+                  await createProject(session.page);
+                  return verifyProject(path.join(run.directory, 'profile'));
+                },
+                session.page,
+              )
+            ) {
+              await report.step('media-project-restart', async () => {
+                const release = await session.close();
+                if (!release.confirmed)
+                  throw new Error('Native media smoke release is unconfirmed');
+                await requireQuiescent();
+                await session.start(remaining);
+                await openProject(session.page);
+                return verifyProject(path.join(run.directory, 'profile'));
+              });
+            }
+          }
           if (spec?.mode === 'component-smoke')
             await report.step(
               'components-connected',

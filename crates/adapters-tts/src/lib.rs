@@ -32,3 +32,4 @@ mod marker_lock;
 #[cfg(test)]
 mod marker_tests;
 pub use marker::{MarkerClient, MarkerRuntimeConfig};
+pub mod media_contract;

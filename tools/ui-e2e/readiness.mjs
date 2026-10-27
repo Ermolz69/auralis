@@ -8,6 +8,7 @@ export async function profileFacts(profile) {
     'tts-runtime.json',
     'translation-runtime.json',
     'translation-package-selection.json',
+    'project-runtime.json',
   ]) {
     configuration[name] = await fsp
       .lstat(path.join(profile, name))

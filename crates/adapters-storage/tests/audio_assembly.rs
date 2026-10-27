@@ -410,6 +410,10 @@ async fn schema18_upgrade_keeps_ready_raw_speech_and_foreign_keys()
         )
         .await?;
     for statement in [
+        "DROP TABLE media_run_sources",
+        "DROP TABLE media_copy_operations",
+        "DROP TABLE media_project_receipts",
+        "DROP TABLE workspace_library",
         "DROP TABLE audio_assembly_artifacts",
         "DROP TABLE audio_assembly_publications",
         "DROP TABLE audio_assembly_discarded_artifacts",
@@ -425,7 +429,7 @@ async fn schema18_upgrade_keeps_ready_raw_speech_and_foreign_keys()
         sqlx::query_scalar::<_, i64>("PRAGMA user_version")
             .fetch_one(&reopened)
             .await?,
-        20
+        22
     );
     assert!(
         sqlx::query("PRAGMA foreign_key_check")

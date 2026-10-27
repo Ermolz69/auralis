@@ -6,6 +6,7 @@ import { installE2EFixture } from './e2e-fixture.mjs';
 import { installUiTranslationFixture } from './ui-translation-fixture.mjs';
 import { installUiSpeechFixture } from './ui-speech-fixture.mjs';
 import { installUiVideoFixture } from './ui-video-fixture.mjs';
+import { installUiLibraryFixture } from './ui-library-fixture.mjs';
 import { serveProduction } from './production-server.mjs';
 import { uniqueRun } from '../../../tools/ui-e2e/core.mjs';
 import { Report } from '../../../tools/ui-e2e/report.mjs';
@@ -14,6 +15,7 @@ import { playback } from '../../../tools/ui-e2e/media.mjs';
 import { reopenPlayback, workflowRecords } from '../../../tools/ui-e2e/reopen.mjs';
 import { jobState } from '../../../tools/ui-e2e/observe.mjs';
 import { frontendIdentity } from '../../../tools/ui-e2e/frontend.mjs';
+import { openSubtitleTool } from '../../../tools/ui-e2e/navigation.mjs';
 
 const run = await uniqueRun('fixture-ui');
 const report = new Report(run, 'fixture-ui', [
@@ -49,11 +51,15 @@ try {
       await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
       page = await context.newPage();
       page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error' && message.text().startsWith('Auralis UI'))
+          errors.push(message.text());
+      });
       await page.addInitScript({
-        content: `(${installE2EFixture.toString()})();(${installUiTranslationFixture.toString()})();(${installUiSpeechFixture.toString()})();(${installUiVideoFixture.toString()})();`,
+        content: `(${installE2EFixture.toString()})();(${installUiTranslationFixture.toString()})();(${installUiSpeechFixture.toString()})();(${installUiVideoFixture.toString()})();(${installUiLibraryFixture.toString()})();`,
       });
       await page.goto(server.url);
-      await page.getByLabel('YouTube URL', { exact: true }).waitFor();
+      await page.getByRole('heading', { name: 'Все материалы', exact: true }).waitFor();
     })
   ) {
     const complete = await story(
@@ -218,8 +224,7 @@ try {
         'reload-playback',
         async () => {
           await page.reload();
-          await page.getByRole('button', { name: /^Open YouTube project/ }).click();
-          await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
+          await openSubtitleTool(page, 'Синтез речи');
           await page
             .getByLabel('Сохранённые запуски', { exact: true })
             .selectOption('fixture-raw-espeech');
@@ -242,8 +247,7 @@ try {
         'verification-error',
         async () => {
           await page.reload();
-          await page.getByRole('button', { name: /^Open YouTube project/ }).click();
-          await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
+          await openSubtitleTool(page, 'Синтез речи');
           await page
             .getByLabel('Готовый исходный синтез', { exact: true })
             .selectOption('fixture-raw-espeech');
@@ -263,6 +267,7 @@ try {
       await report.step(
         'stale-approval',
         async () => {
+          await openSubtitleTool(page, 'Перевод');
           const review = page.getByRole('region', { name: 'Переводы проекта', exact: true });
           await review
             .getByRole('button', { name: 'Исправить перевод', exact: true })
@@ -274,6 +279,7 @@ try {
           await review.getByRole('button', { name: 'Сохранить новую версию', exact: true }).click();
           await review.getByText('Решение ещё не принято', { exact: false }).waitFor();
           assert.equal(await review.getByText('Одобрено:', { exact: false }).count(), 0);
+          await openSubtitleTool(page, 'Синтез речи');
           const speech = page.getByRole('region', { name: 'Голоса синтеза речи', exact: true });
           await speech
             .getByRole('checkbox', {

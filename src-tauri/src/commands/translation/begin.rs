@@ -12,8 +12,13 @@ pub async fn begin_translation_run_cmd(
     request: tauri::ipc::Request<'_>,
     input: BeginTranslationRunDto,
     usecases: State<'_, Arc<TranslationUseCases>>,
+    media: State<'_, Arc<dyn ports::media_project::MediaProjectStore>>,
 ) -> Result<TranslationLinkDto, CommandError> {
     crate::observability::command::observe("begin_translation_run_cmd", async {
+        media
+            .ensure(&input.project_id)
+            .await
+            .map_err(application::error::ApplicationError::from)?;
         let link = usecases
             .begin
             .execute(BeginTranslationRequest {

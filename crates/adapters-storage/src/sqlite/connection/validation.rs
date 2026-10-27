@@ -1,4 +1,11 @@
+#[path = "media_project.rs"]
+mod media_project;
+#[path = "schema_error.rs"]
+mod schema_error;
+#[path = "schema_lineage.rs"]
+mod schema_lineage;
 use super::*;
+use schema_error::non_final_schema_error;
 #[path = "audio_assembly.rs"]
 mod audio_assembly;
 #[path = "columns.rs"]
@@ -10,7 +17,6 @@ mod puza_project;
 mod speech_limits;
 #[path = "speech_workflow.rs"]
 mod speech_workflow;
-/// Returns `true` only when a new database still needs its one-time initialization.
 pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool, PortError> {
     let table_names: Vec<String> = sqlx::query_scalar(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -30,7 +36,18 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         .map_err(|e| {
             crate::sqlite::helpers::map_sqlite_error("Failed to inspect sqlite schema marker", e)
         })?;
+    let lineage = schema_lineage::inspect(schema_marker, &table_names)?;
     let mut expected_tables = FINAL_TABLES.to_vec();
+    if lineage.media {
+        expected_tables.extend([
+            "media_project_receipts",
+            "media_copy_operations",
+            "media_run_sources",
+        ]);
+    }
+    if lineage.library {
+        expected_tables.push("workspace_library");
+    }
     if schema_marker >= 4 {
         expected_tables.push("youtube_imports");
     }
@@ -53,7 +70,7 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         expected_tables.push("outbox_sequence");
     }
     puza_project::extend_expected_tables(&mut expected_tables, schema_marker);
-    audio_assembly::extend_expected_tables(&mut expected_tables, schema_marker);
+    audio_assembly::extend_expected_tables(&mut expected_tables, lineage.audio_marker);
     let has_speech = table_names
         .iter()
         .any(|table| table == "speech_run_intents");
@@ -79,12 +96,18 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
         11 => (has_speech || has_reviews) && !has_queue,
         12 => has_speech && has_queue,
         13 => has_speech && has_queue && has_reviews,
-        14..=20 => has_speech && has_queue && has_reviews,
+        14..=22 => has_speech && has_queue && has_reviews,
         _ => false,
     };
     expected_tables.sort_unstable();
     if table_names != expected_tables || !valid_phase {
         return Err(non_final_schema_error("database"));
+    }
+    if lineage.library {
+        validate_columns(pool, "workspace_library", &["id", "revision", "payload"]).await?;
+    }
+    if lineage.media {
+        media_project::validate(pool).await?;
     }
 
     const FINAL_PROJECT_COLUMNS: [&str; 12] = [
@@ -221,8 +244,13 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     }
     speech_workflow::migrate_and_validate(pool, schema_marker).await?;
     puza_project::migrate_and_validate(pool, schema_marker).await?;
-    speech_limits::migrate(pool, schema_marker).await?;
-    audio_assembly::migrate_and_validate(pool, schema_marker).await?;
+    speech_limits::migrate(pool, lineage.speech_marker).await?;
+    audio_assembly::migrate_and_validate(pool, lineage.audio_marker).await?;
+    if !lineage.library {
+        crate::sqlite::library_migration::migrate(pool).await?;
+    }
+    media_project::migrate_and_validate(pool, schema_marker).await?;
+    validate_columns(pool, "workspace_library", &["id", "revision", "payload"]).await?;
     validate_columns(pool, "job_executions", &["job_id", "descriptor_json"]).await?;
     validate_columns(pool, "ui_settings", &["key", "value", "revision"]).await?;
     validate_columns(pool, "project_pins", &["project_id", "pinned", "revision"]).await?;
@@ -368,11 +396,4 @@ pub(super) async fn validate_existing_database(pool: &SqlitePool) -> Result<bool
     )
     .await?;
     Ok(false)
-}
-
-fn non_final_schema_error(component: &str) -> PortError {
-    PortError::Storage {
-        operation: "validate_sqlite_schema",
-        message: format!("The {component} does not use the current Auralis schema"),
-    }
 }

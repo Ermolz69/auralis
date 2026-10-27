@@ -6,61 +6,65 @@ import type {
   SpeechReview,
   SpeechRunView,
   SpeechSourceSnapshot,
-  SpeechSourceRequest,
 } from '@/shared/api/contracts/speech';
-import type { SpeechVoiceOption } from '@/shared/api/contracts/speechCatalog';
-import { describeCommandError } from '@/shared/api/contracts/error';
+import { describeCommandError as describe } from '@/shared/api/contracts/error';
 import { useSpeechSources } from './useSpeechSources';
 import { useMarkerPreparation } from './useMarkerPreparation';
-import { referenceAllowed } from './referenceAllowed';
-
-export type SpeechWorkflowOptions = {
-  projectId: string;
-  profileId: string;
-  voiceId: string;
-  referenceId: string;
-  voices: SpeechVoiceOption[];
-  engineId: string;
-  allowUnverifiedNeutral?: boolean;
-};
-const describe = describeCommandError;
+import { assignmentReference } from './assignmentReference';
+import type { SpeechWorkflowOptions } from './speechOptions';
+export type { SpeechWorkflowOptions } from './speechOptions';
+import { useSpeechDraftSync } from './useSpeechDraftSync';
+import { sourceRequest } from './sourceRequest';
 
 export function useSpeechWorkflow({
   projectId,
+  assetId,
   profileId,
   voiceId,
   referenceId,
   voices,
   engineId,
   allowUnverifiedNeutral = false,
+  initialSource,
+  draft,
+  onDraftChange,
 }: SpeechWorkflowOptions) {
-  const [mode, setMode] = useState<'text' | 'subtitles'>('text');
-  const [text, setText] = useState('');
-  const [translationId, setTranslationId] = useState('');
-  const [subtitleId, setSubtitleId] = useState('');
+  const [mode, setMode] = useState<'text' | 'subtitles'>(
+    draft?.mode ?? (initialSource && initialSource.kind !== 'text' ? 'subtitles' : 'text'),
+  );
+  const [text, setText] = useState(draft?.text ?? initialSource?.text ?? '');
+  const [translationId, setTranslationId] = useState(
+    draft?.translationId ?? initialSource?.translation_id ?? '',
+  );
+  const [subtitleId, setSubtitleId] = useState(
+    draft?.subtitleId ?? initialSource?.artifact_id ?? '',
+  );
   const { subtitleFiles, translations, refreshSources } = useSpeechSources(projectId);
-  const marker = useMarkerPreparation(projectId);
+  const marker = useMarkerPreparation(projectId, draft);
   const [source, setSource] = useState<SpeechSourceSnapshot | null>(null);
   const [review, setReview] = useState<SpeechReview | null>(null);
   const [assignments, setAssignments] = useState<SpeechAssignment[]>([]);
   const [runs, setRuns] = useState<SpeechRunView[]>([]);
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(draft?.selected ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [audio, setAudio] = useState<string | null>(null);
   const run = runs.find((item) => item.run_id === selected);
   const subtitle = subtitleFiles.find((f) => f.id === subtitleId);
-  const request: SpeechSourceRequest = {
-    kind: mode === 'text' ? 'text' : translationId ? 'translation' : 'subtitles',
-    text: mode === 'text' ? text : null,
-    translation_id: translationId || null,
-    artifact_id: mode === 'subtitles' && subtitleId ? subtitleId : null,
-    format: subtitle
-      ? subtitle.location.value.toLowerCase().endsWith('.vtt')
-        ? 'vtt'
-        : 'srt'
-      : null,
-  };
+  useSpeechDraftSync(
+    {
+      mode,
+      text,
+      subtitleId,
+      translationId,
+      selected,
+      preparation: marker.preparation,
+      applied: marker.applied,
+      originalRequest: marker.originalRequest,
+    },
+    onDraftChange,
+  );
+  const request = sourceRequest(mode, text, translationId, subtitleId, subtitle);
 
   useEffect(() => {
     let active = true;
@@ -135,6 +139,7 @@ export function useSpeechWorkflow({
       if (!review) return;
       const result = await invoke('prepare_speech_plan_cmd', {
         projectId,
+        assetId,
         request: {
           ...(allowUnverifiedNeutral ? { allow_unverified_neutral: true } : {}),
           decision_id: review.decision_id,
@@ -170,19 +175,11 @@ export function useSpeechWorkflow({
     assignedVoice: string,
     assignedReference?: string,
   ) => {
-    const preferredEmotion = voices
-      .find((v) => v.voice_id === voiceId)
-      ?.references.find((r) => r.reference_id === referenceId)?.emotion_id;
-    const compatible = voices
-      .find((v) => v.voice_id === assignedVoice)
-      ?.references.filter(
-        (r) => r.engine_id === engineId && referenceAllowed(r, allowUnverifiedNeutral),
-      );
-    const reference = assignedReference
-      ? compatible?.find((r) => r.reference_id === assignedReference)
-      : (compatible?.find((r) => r.emotion_id === preferredEmotion) ??
-        compatible?.find((r) => r.emotion_id === 'neutral') ??
-        compatible?.[0]);
+    const reference = assignmentReference(
+      { voices, voiceId, referenceId, engineId, allowUnverifiedNeutral },
+      assignedVoice,
+      assignedReference,
+    );
     setAssignments((items) => [
       ...items.filter((a) => a.scope !== scope || a.target !== target),
       ...(reference

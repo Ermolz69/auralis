@@ -89,25 +89,15 @@ export const ManyOptions: Story = {
 export const GroupedOptions: Story = {
   args: {
     label: 'Color theme',
-    defaultValue: 'frost',
+    defaultValue: 'light',
     optionGroups: [
       {
         label: 'Light themes',
-        options: [
-          { value: 'frost', label: 'Auralis Frost' },
-          { value: 'polar', label: 'Polar Blue' },
-        ],
+        options: [{ value: 'light', label: 'Tessera Light' }],
       },
       {
         label: 'Dark themes',
-        options: [
-          { value: 'auralis', label: 'Auralis Mint' },
-          { value: 'abyss', label: 'Abyss Cyan' },
-        ],
-      },
-      {
-        label: 'Custom themes',
-        options: [{ value: 'empty', label: 'No custom themes yet', disabled: true }],
+        options: [{ value: 'dark', label: 'Tessera Dark' }],
       },
     ],
   },

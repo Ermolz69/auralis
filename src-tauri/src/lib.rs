@@ -3,7 +3,9 @@ pub mod commands;
 pub mod dto;
 pub mod observability;
 mod profile;
+mod run_error;
 mod runtime_shutdown;
+pub use run_error::AppRunError;
 pub mod state;
 
 pub(crate) use runtime_shutdown::{RuntimeLifecycleAction, classify_run_event};
@@ -13,46 +15,6 @@ pub use runtime_shutdown::{
 };
 
 use crate::observability::config::ValidatedObservabilitySettings;
-
-#[derive(Debug, thiserror::Error)]
-pub enum AppRunError {
-    #[error("application configuration is invalid")]
-    Configuration(#[source] application::error::ApplicationError),
-
-    #[error("observability configuration is invalid")]
-    Observability(#[from] crate::observability::error::ObservabilityValidationError),
-
-    #[error("failed to build Tauri application")]
-    TauriBuild(#[source] tauri::Error),
-
-    #[error("runtime shutdown was not graceful")]
-    Shutdown(RuntimeShutdownReport),
-
-    #[error("runtime shutdown event was not observed")]
-    ShutdownNotObserved,
-}
-
-impl AppRunError {
-    pub fn diagnostic(&self) -> crate::observability::diagnostic::ProcessDiagnostic {
-        use crate::observability::diagnostic::{
-            DiagnosticKind, DiagnosticLevel, ProcessDiagnostic,
-        };
-        let kind = match self {
-            AppRunError::Configuration(_) => DiagnosticKind::ApplicationConfigurationInvalid,
-            AppRunError::Observability(_) => DiagnosticKind::ObservabilityConfigurationInvalid,
-            AppRunError::TauriBuild(_) => DiagnosticKind::TauriBuildFailed,
-            AppRunError::Shutdown(_) => DiagnosticKind::ShutdownFailed,
-            AppRunError::ShutdownNotObserved => DiagnosticKind::ShutdownNotObserved,
-        };
-        ProcessDiagnostic {
-            level: DiagnosticLevel::Error,
-            kind,
-            os_code: None,
-            count: None,
-            fallback: None,
-        }
-    }
-}
 
 pub fn prepare_runtime_config(
     settings: crate::observability::config::ObservabilitySettings,
@@ -111,6 +73,16 @@ pub fn run() -> Result<(), AppRunError> {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::library::get_library_cmd,
+            commands::library::get_tool_context_cmd,
+            commands::video_preview::get_video_preview_cmd,
+            commands::library::attach_library_asset_cmd,
+            commands::library::get_media_operation_cmd,
+            commands::library::cancel_media_operation_cmd,
+            commands::library::get_media_project_cmd,
+            commands::library::validate_media_project_cmd,
+            commands::library::read_library_text_cmd,
+            commands::library::save_library_cmd,
             commands::ui_preferences::get_color_theme_cmd,
             commands::ui_preferences::set_color_theme_cmd,
             commands::ui_preferences::import_color_theme_cmd,

@@ -6,7 +6,13 @@ src-tauri/gen/
 crates/**/target/
 apps/desktop/dist/
 vendor/glib-0.18.5/
+vendor/process-wrap-10.0.0/
 modules/auralis-translate/
+tools/native-e2e/evidence/*.json
+tools/revoice/evidence/*.json
+tools/revoice/ffmpeg-assembly-v1.json
+tools/revoice/youtube-source-v1.json
+tools/revoice/youtube-source-v2.json
 
 # generated and lock files
 *.generated.*

@@ -21,6 +21,50 @@ tasks:
     cmds:
       - pnpm --filter desktop exec vitest run --project unit src/shared/api/contracts/speechValidation.test.ts
       - pnpm --filter desktop exec vitest run --project component src/features/speech-catalog/ui/SpeechWorkflow.test.tsx
+  storybook:library:
+    cmds:
+      - pnpm --filter desktop test:storybook src/app/studio/ui/StudioShell.stories.tsx
+  test:library:
+    cmds:
+      - pnpm --filter desktop test:unit src/entities/library src/app/studio src/shared/api/contracts/libraryValidation.test.ts
+      - pnpm --filter desktop test:components src/features/speech-catalog/ui/SpeechWorkflow.test.tsx src/features/speech-catalog/ui/SpeechCatalog.test.tsx
+      - pnpm --filter desktop test:integration src/App.selection.test.tsx
+  smoke:library:
+    env:
+      AURALIS_LIBRARY_EVIDENCE: '{{.EVIDENCE}}'
+    requires:
+      vars: [EVIDENCE]
+    cmds:
+      - pnpm --filter desktop exec node --test scripts/production-library.test.mjs
+  fmt:library:
+    cmds:
+      - pnpm prettier --write "src-tauri/tauri.conf.json" "src-tauri/capabilities/default.json" "apps/desktop/src/shared/ui/icon/registry.ts"
+      - pnpm prettier --write "apps/desktop/scripts/production-smoke.test.mjs" "apps/desktop/scripts/production-puza-speech.test.mjs" "apps/desktop/scripts/production-tessera-theme.test.mjs"
+      - pnpm prettier --write "apps/desktop/scripts/production-fixture.mjs"
+      - pnpm prettier --write "tools/tts/inspect_library.mjs" "Taskfile.yml"
+      - pnpm prettier --write "apps/desktop/src/App.tsx" "apps/desktop/src/App.selection.test.tsx" "apps/desktop/src/entities/library/**/*.{ts,tsx}" "apps/desktop/src/widgets/library-browser/**/*.{ts,tsx}" "apps/desktop/src/app/studio/**/*.{ts,tsx}" "apps/desktop/src/shared/api/contracts/{library.ts,libraryValidation.ts,libraryValidation.test.ts,commandMap.ts,runtimeValidation.ts}" "apps/desktop/src/features/speech-catalog/**/*.{ts,tsx}" "apps/desktop/src/widgets/app-shell/index.ts" "apps/desktop/src/pages/project/index.ts" "apps/desktop/scripts/*library*.mjs" "taskfiles/{frontend,rust}.yml"
+  theme:generate:
+    cmds:
+      - node tools/theme/generate.mjs
+  theme:check:
+    cmds:
+      - node tools/theme/generate.mjs --check
+  theme:smoke:
+    env:
+      AURALIS_THEME_EVIDENCE: '{{.EVIDENCE}}'
+    requires:
+      vars: [EVIDENCE]
+    cmds:
+      - pnpm --filter desktop exec node --test scripts/production-tessera-theme.test.mjs
+  fmt:themes:
+    cmds:
+      - pnpm prettier --write "apps/desktop/src/app/styles/fonts.css" "taskfiles/frontend.yml" "taskfiles/rust.yml"
+      - pnpm prettier --write "apps/desktop/scripts/production-fixture.mjs" "apps/desktop/src/pages/project/ui/ProjectPage.stories.tsx"
+      - pnpm prettier --write "apps/desktop/scripts/production-tessera-theme.test.mjs" "apps/desktop/src/pages/settings/ui/settings.data.ts"
+      - pnpm prettier --write "tools/theme/*.mjs" "apps/desktop/src/shared/theme/**/*.{ts,tsx,json}" "apps/desktop/.storybook/*.{ts,tsx}" "apps/desktop/src/app/providers/{themePersistence.ts,NativeThemeProvider.test.tsx,SettingsPage.test.tsx}" "apps/desktop/src/app/styles/{index.css,theme.css}" "apps/desktop/src/shared/ui/select/Select.{stories.tsx,test.tsx}" "apps/desktop/visual-tests/storybook.visual.spec.mjs"
+  test:themes:
+    cmds:
+      - pnpm --filter desktop test:components src/app/providers/NativeThemeProvider.test.tsx src/app/providers/SettingsPage.test.tsx
   fmt:speech:
     desc: Format speech UI and its native acceptance harness
     cmds:

@@ -18,7 +18,15 @@ import { JobQueueDrawer } from './app-shell/JobQueueDrawer';
 import { locationLabel } from './app-shell/model';
 import { getPipelineStatus } from '../model/pipelineStatus';
 
-export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue?: ReactNode }) {
+export function AppShell({
+  children,
+  jobQueue,
+  onOpenLibrary,
+}: {
+  children: ReactNode;
+  jobQueue?: ReactNode;
+  onOpenLibrary?: () => void;
+}) {
   const { currentView, setCurrentView, pipelineStep, setPipelineStep } = useNavigation();
   const { projectId, project } = useProjectContext();
   const jobState = useContext(JobContext);
@@ -72,6 +80,17 @@ export function AppShell({ children, jobQueue }: { children: ReactNode; jobQueue
 
   return (
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-canvas text-text">
+      {onOpenLibrary && (
+        <div className="shrink-0 border-b border-border bg-surface px-4 py-1">
+          <button
+            type="button"
+            className="text-xs text-muted hover:text-text"
+            onClick={onOpenLibrary}
+          >
+            Медиабиблиотека
+          </button>
+        </div>
+      )}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <AppSidebar
           currentView={currentView}

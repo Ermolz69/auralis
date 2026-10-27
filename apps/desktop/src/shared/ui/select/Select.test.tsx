@@ -30,11 +30,11 @@ describe('Select', () => {
     render(
       <Select
         label="Theme"
-        defaultValue="frost"
+        defaultValue="light"
         optionGroups={[
           {
             label: 'Light themes',
-            options: [{ value: 'frost', label: 'Auralis Frost' }],
+            options: [{ value: 'light', label: 'Tessera Light' }],
           },
           {
             label: 'Custom themes',

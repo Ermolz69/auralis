@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { playback } from './media.mjs';
 import { jobState } from './observe.mjs';
+import { openSubtitleTool } from './navigation.mjs';
 
 export function workflowRecords(report, spec) {
   const evidence = (id) => {
@@ -35,11 +36,7 @@ export function workflowRecords(report, spec) {
 }
 
 export async function reopenPlayback(page, records, remaining) {
-  const open = page.getByRole('button', { name: /^Open / });
-  await open.first().waitFor({ state: 'visible', timeout: Math.min(30000, remaining()) });
-  assert.equal(await open.count(), 1, 'Fresh run must retain exactly its one project');
-  await open.click();
-  await page.getByRole('button', { name: /Текст, субтитры и озвучка/ }).click();
+  await openSubtitleTool(page, 'Синтез речи');
   const observed = [];
   for (const record of records) {
     page.setDefaultTimeout(Math.min(30000, remaining()));

@@ -1,18 +1,18 @@
-import { DEFAULT_COLOR_THEME, isColorTheme, type ColorTheme } from '../config/colorThemes';
+import { DEFAULT_COLOR_THEME, migrateColorTheme, type ColorTheme } from '../config/colorThemes';
 
 export const COLOR_THEME_STORAGE_KEY = 'auralis:color-theme:v1';
 
 export type StoredColorTheme =
-  { status: 'valid'; theme: ColorTheme } | { status: 'missing' | 'invalid' | 'unavailable' };
+  | { status: 'valid'; theme: ColorTheme; storedValue: string }
+  | { status: 'missing' | 'invalid' | 'unavailable' };
 
 export function readStoredColorTheme(): StoredColorTheme {
   try {
     if (!globalThis.localStorage) return { status: 'unavailable' };
     const storedTheme = globalThis.localStorage.getItem(COLOR_THEME_STORAGE_KEY);
     if (storedTheme === null) return { status: 'missing' };
-    return isColorTheme(storedTheme)
-      ? { status: 'valid', theme: storedTheme }
-      : { status: 'invalid' };
+    const theme = migrateColorTheme(storedTheme);
+    return theme ? { status: 'valid', theme, storedValue: storedTheme } : { status: 'invalid' };
   } catch {
     return { status: 'unavailable' };
   }

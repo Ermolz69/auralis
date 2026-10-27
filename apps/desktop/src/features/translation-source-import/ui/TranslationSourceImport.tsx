@@ -10,9 +10,13 @@ import type { Artifact } from '@/shared/api/contracts/artifact';
 import type { TranslationFormat, TranslationLink } from '@/shared/api/contracts/translation';
 import { Button } from '@/shared/ui/button';
 
-type Props = { projectId: string; onTranslationPrepared?: () => void };
+type Props = { projectId: string; sourceArtifactId?: string; onTranslationPrepared?: () => void };
 
-export function TranslationSourceImport({ projectId, onTranslationPrepared }: Props) {
+export function TranslationSourceImport({
+  projectId,
+  sourceArtifactId,
+  onTranslationPrepared,
+}: Props) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [links, setLinks] = useState<TranslationLink[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +41,9 @@ export function TranslationSourceImport({ projectId, onTranslationPrepared }: Pr
     void Promise.all([listOriginalSubtitles(projectId), listProjectTranslations(projectId)])
       .then(([found, foundLinks]) => {
         if (!active) return;
-        setArtifacts(found);
+        setArtifacts(
+          sourceArtifactId ? found.filter((item) => item.id === sourceArtifactId) : found,
+        );
         setLinks(foundLinks);
         setLoading(false);
       })
@@ -49,7 +55,7 @@ export function TranslationSourceImport({ projectId, onTranslationPrepared }: Pr
     return () => {
       active = false;
     };
-  }, [projectId, revision]);
+  }, [projectId, sourceArtifactId, revision]);
 
   const importFile = async () => {
     if (importing) return;

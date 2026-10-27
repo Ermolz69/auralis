@@ -32,6 +32,8 @@
     "windows": [
       {
         "title": "Auralis",
+        "decorations": false,
+        "dragDropEnabled": false,
         "width": 1280,
         "height": 720,
         "minWidth": 800,

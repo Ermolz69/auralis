@@ -36,7 +36,7 @@ export function loadStoredTheme(): Promise<StoredTheme | null> {
     if (legacy.status !== 'valid') throw new Error('Legacy theme is unavailable or unrecognized');
     const imported = await invoke('import_color_theme_cmd', { value: legacy.theme });
     try {
-      if (localStorage.getItem(COLOR_THEME_STORAGE_KEY) === legacy.theme)
+      if (localStorage.getItem(COLOR_THEME_STORAGE_KEY) === legacy.storedValue)
         localStorage.removeItem(COLOR_THEME_STORAGE_KEY);
     } catch {
       /* The durable value is already acknowledged; legacy cleanup can be retried. */

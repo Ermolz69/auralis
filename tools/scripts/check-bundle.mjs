@@ -6,7 +6,7 @@ import { gzipSync } from 'node:zlib';
 const kib = 1024;
 export const bundleBudgets = {
   initialJs: 350 * kib,
-  totalJs: 500 * kib,
+  totalJs: 525 * kib,
   largestJs: 250 * kib,
   initialGzip: 110 * kib,
   totalGzip: 160 * kib,

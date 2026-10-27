@@ -16,20 +16,71 @@ test(
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
       await page.addInitScript(installFixture);
+      await page.addInitScript(() => {
+        window.__smokeJob.status = 'pending';
+        window.__smokeJob.progress.percent = 0;
+      });
       await page.goto(server.url);
-      await page.getByRole('heading', { name: 'Projects', exact: true }).waitFor();
-      const queue = page.getByRole('button', { name: /Очередь/ });
-      await queue.click();
-      await page.getByText('Background fixture job', { exact: true }).last().waitFor();
-      await page.keyboard.press('Escape');
-      await page.getByRole('button', { name: /^Open Review fixture/ }).click();
+      await page.getByRole('heading', { name: 'Все материалы', exact: true }).waitFor();
+      const titlebar = page.getByRole('banner', { name: 'Панель окна' });
+      assert.equal((await titlebar.boundingBox()).height, 36);
+      assert.equal(
+        await titlebar.evaluate((element) => element.hasAttribute('data-tauri-drag-region')),
+        true,
+      );
+      assert.equal(
+        await titlebar
+          .getByRole('button')
+          .evaluateAll((elements) =>
+            elements.every((element) => !element.hasAttribute('data-tauri-drag-region')),
+          ),
+        true,
+      );
+      await titlebar.getByRole('button', { name: 'Развернуть окно', exact: true }).click();
+      await titlebar.getByRole('button', { name: 'Восстановить окно', exact: true }).waitFor();
+      await titlebar.getByRole('button', { name: 'Восстановить окно', exact: true }).click();
+      await titlebar.getByRole('button', { name: 'Развернуть окно', exact: true }).waitFor();
+      await page.evaluate(() => {
+        window.__smokeWindowFailure = true;
+      });
+      await titlebar.getByRole('button', { name: 'Свернуть окно', exact: true }).click();
+      await page.getByRole('alert').filter({ hasText: 'Не удалось управлять окном' }).waitFor();
+      await page.evaluate(() => {
+        window.__smokeWindowFailure = false;
+      });
+      await titlebar.getByRole('button', { name: 'Свернуть окно', exact: true }).click();
+      await page.waitForFunction(() => window.__smokeWindow.minimized);
+      assert.equal(
+        await page.getByRole('alert').filter({ hasText: 'Не удалось управлять окном' }).count(),
+        0,
+      );
+      const queue = page.getByRole('region', { name: 'Текущие процессы' });
+      await queue.getByText('Background fixture job', { exact: true }).waitFor();
+      await queue.getByText('В очереди', { exact: true }).waitFor();
+      assert.equal(await page.getByRole('button', { name: /^Библиотека$|Очередь/ }).count(), 0);
+      assert.equal(
+        await page.getByRole('combobox', { name: 'Открытые рабочие пространства' }).count(),
+        0,
+      );
+      await page.getByRole('button', { name: 'Review fixture', exact: true }).dblclick();
+      await page.getByRole('button', { name: 'Открыть инструмент', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Источник и субтитры', exact: true }).click();
       await page.getByTestId('source-workspace').waitFor();
-      await queue.click();
-      await page.getByText('Background fixture job', { exact: true }).last().waitFor();
-      await page.keyboard.press('Escape');
-      await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
-      await page.getByRole('button', { name: 'Back', exact: true }).click();
+      await titlebar.getByRole('button', { name: 'Закрыть окно', exact: true }).click();
+      await page.waitForFunction(() => window.__smokeWindow.closed);
+      await queue.getByText('Background fixture job', { exact: true }).waitFor();
+      const settings = page.getByRole('button', { name: 'Настройки', exact: true });
+      assert.equal(await settings.locator('svg').count(), 1);
+      assert.equal((await settings.textContent()).trim(), '');
+      await settings.click();
+      await page.getByRole('heading', { name: 'Настройки', exact: true }).waitFor();
+      await queue.getByText('Background fixture job', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Auralis — библиотека', exact: true }).click();
+      const project = page
+        .getByRole('navigation', { name: 'Библиотека и проекты' })
+        .getByRole('button', { name: 'Review fixture', exact: true });
+      await project.focus();
+      await page.keyboard.press('Enter');
       await page.getByTestId('source-workspace').waitFor();
       assert.deepEqual(errors, []);
       assert.deepEqual(await page.evaluate(() => window.__smokeUnknownCommands), []);

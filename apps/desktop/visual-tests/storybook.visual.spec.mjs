@@ -4,7 +4,7 @@ const cases = [
   {
     name: 'control-safety-dark-wide',
     story: 'design-system-foundations-control-safety-matrix--all-allowed-values',
-    theme: 'auralis',
+    theme: 'dark',
     viewport: { width: 1440, height: 900 },
     validate: async (page) => {
       await expect(page.getByTestId('safe-button')).toHaveCount(14);
@@ -14,7 +14,7 @@ const cases = [
   {
     name: 'control-safety-light-compact',
     story: 'design-system-foundations-control-safety-matrix--all-allowed-values',
-    theme: 'frost',
+    theme: 'light',
     viewport: { width: 800, height: 700 },
     validate: async (page) => {
       await expect(page.getByTestId('safe-icon').first()).toBeVisible();
@@ -24,61 +24,61 @@ const cases = [
   {
     name: 'all-themes-gallery',
     story: 'design-system-foundations-theme-gallery--all-themes',
-    theme: 'auralis',
+    theme: 'dark',
     viewport: { width: 1440, height: 900 },
   },
   {
     name: 'long-project-title-wide',
     story: 'product-widgets-app-shell--with-long-project-title',
-    theme: 'auralis',
+    theme: 'dark',
     viewport: { width: 1440, height: 900 },
   },
   {
     name: 'long-project-title-compact-light',
     story: 'product-widgets-app-shell--with-long-project-title',
-    theme: 'frost',
+    theme: 'light',
     viewport: { width: 800, height: 700 },
   },
   {
     name: 'home-empty',
     story: 'product-pages-home-states--local-first-empty',
-    theme: 'auralis',
+    theme: 'dark',
     viewport: { width: 1280, height: 800 },
   },
   {
     name: 'home-loading',
     story: 'product-pages-home-states--loading-recent-projects',
-    theme: 'frost',
+    theme: 'light',
     viewport: { width: 1024, height: 768 },
   },
   {
     name: 'project-list-error',
     story: 'product-features-project-list-states--fetch-error',
-    theme: 'auralis',
+    theme: 'dark',
     viewport: { width: 800, height: 700 },
   },
   {
     name: 'transcript-waiting',
     story: 'product-widgets-transcript-editor-states--waiting-for-pipeline',
-    theme: 'frost',
+    theme: 'light',
     viewport: { width: 1280, height: 800 },
   },
   {
     name: 'transcript-loading',
     story: 'product-widgets-transcript-editor-states--loading-transcript',
-    theme: 'auralis',
+    theme: 'dark',
     viewport: { width: 1024, height: 768 },
   },
   {
     name: 'transcript-error',
     story: 'product-widgets-transcript-editor-states--error-with-retry',
-    theme: 'frost',
+    theme: 'light',
     viewport: { width: 800, height: 700 },
   },
   {
     name: 'job-history-100-items',
     story: 'product-widgets-job-queue-panel-states--large-history',
-    theme: 'auralis',
+    theme: 'dark',
     viewport: { width: 1024, height: 768 },
     validate: async (page) => {
       await expect(page.getByRole('listitem')).toHaveCount(100);
@@ -95,7 +95,7 @@ const cases = [
   {
     name: 'job-history-100-items-oldest-visible',
     story: 'product-widgets-job-queue-panel-states--large-history',
-    theme: 'frost',
+    theme: 'light',
     viewport: { width: 800, height: 700 },
     validate: async (page) => {
       const oldestJob = page.getByRole('listitem').last();

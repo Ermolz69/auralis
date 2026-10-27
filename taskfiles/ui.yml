@@ -1,6 +1,18 @@
 version: '3'
 
 tasks:
+  assets:project:
+    desc: Stage pinned Python and CONTRACT metadata without engine dependencies, models or voices
+    requires:
+      vars: [SEED, INPUT_ROOT, INPUT_SEED, MANIFEST_SHA, PYTHON, CONTRACT_ROOT]
+    cmds:
+      - node tools/ui-e2e/project-seed.mjs "{{.SEED}}" "{{.INPUT_ROOT}}" "{{.INPUT_SEED}}" "{{.MANIFEST_SHA}}" "{{.PYTHON}}" "{{.CONTRACT_ROOT}}"
+  freeze:project:
+    desc: Freeze a native media-project smoke case that prohibits model execution
+    requires:
+      vars: [CASE, SEED]
+    cmds:
+      - node tools/ui-e2e/freeze-project.mjs "{{.CASE}}" "{{.SEED}}"
   check:pcm:
     desc: Check pinned read-only DSP with synthetic PCM, without engines or models
     requires:

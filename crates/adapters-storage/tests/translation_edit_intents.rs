@@ -205,7 +205,7 @@ async fn v9_upgrade_is_idempotent_preserves_history_and_rejects_corrupt_intent_m
         .await?;
     f.pool.close().await;
     let pool = connect_sqlite(&database).await?;
-    assert_eq!(version(&pool).await?, 20);
+    assert_eq!(version(&pool).await?, 22);
     let links = adapters_storage::sqlite::SqliteTranslationLinkStore::new(pool.clone());
     assert_eq!(links.get(intent.translation_id).await?, Some(before));
     let store = SqliteTranslationEditIntentStore::new(pool.clone());
@@ -222,7 +222,7 @@ async fn v9_upgrade_is_idempotent_preserves_history_and_rejects_corrupt_intent_m
     ));
     pool.close().await;
     let reopened = connect_sqlite(&database).await?;
-    assert_eq!(version(&reopened).await?, 20);
+    assert_eq!(version(&reopened).await?, 22);
     sqlx::query("PRAGMA user_version = 20")
         .execute(&reopened)
         .await?;

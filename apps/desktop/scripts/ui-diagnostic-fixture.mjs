@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import { installE2EFixture } from './e2e-fixture.mjs';
 import { installUiTranslationFixture } from './ui-translation-fixture.mjs';
 import { installUiSpeechFixture } from './ui-speech-fixture.mjs';
+import { installUiLibraryFixture } from './ui-library-fixture.mjs';
 import { serveProduction } from './production-server.mjs';
 import { uniqueRun } from '../../../tools/ui-e2e/core.mjs';
 import { Report } from '../../../tools/ui-e2e/report.mjs';
@@ -57,11 +58,15 @@ try {
       await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
       page = await context.newPage();
       page.on('pageerror', (error) => errors.push(error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error' && message.text().startsWith('Auralis UI'))
+          errors.push(message.text());
+      });
       await page.addInitScript({
-        content: `(${installE2EFixture.toString()})();(${installUiTranslationFixture.toString()})();(${installUiSpeechFixture.toString()})();window.__ui.completeSpeechOnStart=true;`,
+        content: `(${installE2EFixture.toString()})();(${installUiTranslationFixture.toString()})();(${installUiSpeechFixture.toString()})();(${installUiLibraryFixture.toString()})();window.__ui.completeSpeechOnStart=true;`,
       });
       await page.goto(server.url);
-      await page.getByLabel('YouTube URL', { exact: true }).waitFor();
+      await page.getByRole('heading', { name: 'Все материалы', exact: true }).waitFor();
       await page.screenshot({ path: path.join(run.directory, 'launch.png') });
     })
   ) {

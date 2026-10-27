@@ -1,6 +1,7 @@
 pub mod dubbing;
 pub mod error;
 pub mod job;
+pub mod library;
 pub mod media;
 pub mod outbox;
 pub mod project;

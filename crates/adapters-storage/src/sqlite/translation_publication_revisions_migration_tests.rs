@@ -43,7 +43,7 @@ async fn v8_publications_gain_result_revision_without_losing_pending_work()
     let marker: i64 = sqlx::query_scalar("PRAGMA user_version")
         .fetch_one(&migrated)
         .await?;
-    assert_eq!(marker, 20);
+    assert_eq!(marker, 22);
     migrated.close().await;
     let reopened = connect_sqlite(&path).await?;
     let revision: i64 = sqlx::query_scalar(

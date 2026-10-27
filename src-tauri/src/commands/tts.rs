@@ -3,6 +3,7 @@ use application::usecases::speech::{
 };
 use application::usecases::speech_catalog::SpeechCatalogUseCase;
 use ports::marker::MarkerPreparation;
+use ports::media_project::MediaProjectStore;
 use ports::puza_contract::PuzaVoiceBinding;
 #[command]
 pub async fn get_speech_voice_selection_cmd(
@@ -21,8 +22,10 @@ pub async fn save_speech_voice_selection_cmd(
     voice_id: String,
     reference_id: String,
     allow_unverified_neutral: Option<bool>,
+    media: State<'_, Arc<dyn MediaProjectStore>>,
     speech: State<'_, Arc<SpeechUseCases>>,
 ) -> Result<PuzaVoiceBinding, CommandError> {
+    media.ensure(&project_id).await?;
     speech
         .save_voice(
             parse_project_id(&project_id)?,
@@ -44,8 +47,10 @@ use uuid::Uuid;
 pub async fn prepare_speech_text_cmd(
     project_id: String,
     source: SpeechSourceRequest,
+    media: State<'_, Arc<dyn MediaProjectStore>>,
     speech: State<'_, Arc<SpeechUseCases>>,
 ) -> Result<MarkerPreparation, CommandError> {
+    media.ensure(&project_id).await?;
     speech
         .prepare_text(parse_project_id(&project_id)?, source)
         .await
@@ -121,20 +126,31 @@ pub async fn review_speech_text_cmd(
 pub async fn prepare_speech_plan_cmd(
     project_id: String,
     request: PrepareSpeechRequest,
+    asset_id: Option<String>,
+    media: State<'_, Arc<dyn MediaProjectStore>>,
     speech: State<'_, Arc<SpeechUseCases>>,
 ) -> Result<SpeechRunView, CommandError> {
-    speech
+    media.ensure(&project_id).await?;
+    let run = speech
         .prepare(parse_project_id(&project_id)?, request)
         .await
-        .map_err(CommandError::from)
+        .map_err(CommandError::from)?;
+    if let Some(asset_id) = asset_id {
+        media
+            .bind_run(&project_id, &asset_id, &run.run_id.to_string())
+            .await?;
+    }
+    Ok(run)
 }
 
 #[command]
 pub async fn start_speech_run_cmd(
     project_id: String,
     run_id: String,
+    media: State<'_, Arc<dyn MediaProjectStore>>,
     speech: State<'_, Arc<SpeechUseCases>>,
 ) -> Result<SpeechRunView, CommandError> {
+    media.ensure(&project_id).await?;
     speech
         .start(parse_project_id(&project_id)?, run_uuid(&run_id)?, false)
         .await

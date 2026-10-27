@@ -115,3 +115,38 @@ test('reports both sides of contract drift', () => {
     /Rust-only \[rust-only\], TypeScript-only \[typescript-only\]/,
   );
 });
+
+test('distinguishes JSON objects from arbitrary JSON values', () => {
+  const rust = extractRustCommandSignatures([
+    '#[command] pub async fn object_cmd() -> Result<std::collections::BTreeMap<String, serde_json::Value>, Error> {}',
+    '#[command] pub async fn value_cmd() -> Result<serde_json::Value, Error> {}',
+  ]);
+  assert.equal(rust.object_cmd.result, 'Record<string, unknown>');
+  assert.equal(rust.value_cmd.result, 'unknown');
+  assert.throws(
+    () =>
+      assertCommandSignatures(rust, {
+        object_cmd: { args: [], result: 'unknown' },
+      }),
+    /IPC signature drift/,
+  );
+});
+
+test('keeps inherited command keys and signatures after multiline formatting', () => {
+  const source = `export interface VoiceMap {
+  voice_cmd: { args: undefined; result: string };
+}
+export interface MediaMap {
+  media_cmd: { args: { id: string }; result: boolean };
+}
+export interface CommandMap
+  extends
+    VoiceMap,
+    MediaMap {
+  own_cmd: { args: undefined; result: null };
+}`;
+  assert.deepEqual(extractInterfaceKeys(source, 'CommandMap'), ['media_cmd', 'own_cmd', 'voice_cmd']);
+  assert.deepEqual(extractTypeScriptCommandSignatures(source).media_cmd, {
+    args: ['id:string'], result: 'boolean',
+  });
+});

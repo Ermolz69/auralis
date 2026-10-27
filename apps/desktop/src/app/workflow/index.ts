@@ -1,0 +1,1 @@
+export { GuidedWorkspace } from './GuidedWorkspace';

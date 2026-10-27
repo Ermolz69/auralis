@@ -186,6 +186,7 @@ export function installE2EFixture(seed) {
   };
 
   window.__TAURI_INTERNALS__ = {
+    metadata: { currentWindow: { label: 'main' }, currentWebview: { label: 'main' } },
     transformCallback(callback) {
       const id = ++callbackId;
       window.__e2eCallbacks.set(id, callback);
@@ -208,6 +209,13 @@ export function installE2EFixture(seed) {
         return registeredEventId;
       }
       if (command === 'plugin:event|unlisten') return null;
+      if (command === 'plugin:window|is_maximized') return false;
+      if (
+        ['plugin:window|minimize', 'plugin:window|toggle_maximize', 'plugin:window|close'].includes(
+          command,
+        )
+      )
+        return null;
       if (command === 'plugin:app|version') {
         return state.updater?.currentVersion ?? '0.1.0';
       }

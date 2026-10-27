@@ -19,6 +19,7 @@ export function validateSeedPath(value) {
     'caster-runtime.json',
     'marker-runtime.json',
     'speech-limits.json',
+    'project-runtime.json',
   ]);
   const assets = new Set([
     'tts',
@@ -31,6 +32,7 @@ export function validateSeedPath(value) {
     'model-cache',
     'caster',
     'marker',
+    'project-contract',
   ]);
   if (parts[0] === 'cache' && parts[1] === 'translation-downloads' && parts.length === 3) return;
   if (
@@ -99,6 +101,7 @@ export async function seedProfile(spec, run, remaining = () => 300000, signal, o
     'tts-runtime.json',
     'translation-runtime.json',
     'translation-package-selection.json',
+    'project-runtime.json',
   ]) {
     if (!seen.has(name)) continue;
     const file = path.join(destination, name);
@@ -110,6 +113,13 @@ export async function seedProfile(spec, run, remaining = () => 300000, signal, o
   const relocated = seen.has('tts-runtime.json')
     ? await relocateTts(destination, directory, remaining)
     : null;
+  if (spec.mode === 'media-smoke') {
+    const config = JSON.parse(
+      await fsp.readFile(path.join(destination, 'tts-runtime.json'), 'utf8'),
+    );
+    for (const directory of [config.voice_store, config.model_cache, config.profile_root])
+      await fsp.mkdir(owned(destination, directory), { recursive: true });
+  }
   const components = spec.component_wheels
     ? await installComponents(destination, spec.component_wheels, remaining, signal, onInstaller)
     : null;

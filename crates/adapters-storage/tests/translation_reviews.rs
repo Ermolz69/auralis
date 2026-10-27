@@ -192,7 +192,7 @@ async fn v10_migration_keeps_ready_result_without_implicit_approval() -> Result<
     let version: i64 = sqlx::query_scalar("PRAGMA user_version")
         .fetch_one(&pool)
         .await?;
-    assert_eq!(version, 20);
+    assert_eq!(version, 22);
     let store = SqliteTranslationReviewStore::new(pool.clone());
     assert!(
         store

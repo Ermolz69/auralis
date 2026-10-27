@@ -12,18 +12,20 @@ import { COLOR_THEMES, isColorTheme, useColorTheme } from '../../../shared/theme
 import { AppUpdatePanel } from '../../../features/app-update';
 import { colorThemeOptionGroups, unavailableSections } from './settings.data';
 
-export const SettingsPage = () => {
+export const SettingsPage = ({ embedded = false }: { embedded?: boolean }) => {
   const { colorTheme, setColorTheme, persistenceStatus } = useColorTheme();
   const activeTheme = COLOR_THEMES.find((theme) => theme.id === colorTheme);
 
   return (
     <Page className="flex h-full min-h-0 animate-content-in flex-col overflow-hidden">
-      <PageTopBar>
-        <PageHeaderGroup className="!gap-0">
-          <PageTitle className="!text-xl">Settings</PageTitle>
-          <PageDescription className="mt-0.5 !text-xs">Workspace preferences</PageDescription>
-        </PageHeaderGroup>
-      </PageTopBar>
+      {!embedded && (
+        <PageTopBar>
+          <PageHeaderGroup className="!gap-0">
+            <PageTitle className="!text-xl">Настройки</PageTitle>
+            <PageDescription className="mt-0.5 !text-xs">Настройки приложения</PageDescription>
+          </PageHeaderGroup>
+        </PageTopBar>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8">
         <div className="w-full max-w-2xl space-y-3">
@@ -33,8 +35,8 @@ export const SettingsPage = () => {
                 <Icon name="Palette" size={15} />
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold text-text">Appearance</h2>
-                <p className="text-xs text-muted">Theme and interface colors</p>
+                <h2 className="text-sm font-semibold text-text">Оформление</h2>
+                <p className="text-xs text-muted">Тема и цвета интерфейса</p>
               </div>
               <div className="flex gap-1" aria-hidden="true">
                 <span className="h-3 w-3 rounded-full bg-primary" />
@@ -45,7 +47,7 @@ export const SettingsPage = () => {
 
             <div className="mt-4 border-t border-border/70 pt-4">
               <Select
-                label="Color theme"
+                label="Цветовая тема"
                 value={colorTheme}
                 optionGroups={colorThemeOptionGroups}
                 helperText={activeTheme?.description}

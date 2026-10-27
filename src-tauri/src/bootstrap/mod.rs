@@ -59,6 +59,18 @@ pub fn setup(
     // 1. Setup storage Adapter (fallible)
     let (services, outbox_repo) = storage::setup_storage(&app_paths, storage_lease)?;
     record_native_e2e_checkpoint("storage-ready");
+    app.manage(services.media_projects.clone());
+    app.manage(Arc::new(
+        application::usecases::library::LibraryUseCase::new(
+            services.library.clone(),
+            services.project_repo.clone(),
+            services.artifact_index.clone(),
+        )
+        .with_media(services.media_projects.clone())
+        .with_text_reader(Arc::new(
+            adapters_storage::local::library_text::LocalLibraryTextReader,
+        )),
+    ));
 
     let prepared_bridge =
         PreparedJobEventBridge::new(adapters_tauri::JobEventBridgeConfig::default());
@@ -182,6 +194,7 @@ pub fn setup(
     usecases::setup_usecases(
         app.handle(),
         usecases::AppUseCaseDependencies {
+            media_projects: services.media_projects.clone(),
             puza_contract: tts::load(&app_paths)
                 .ok()
                 .map(|client| Arc::new(client) as Arc<dyn ports::puza_contract::PuzaContractPort>),

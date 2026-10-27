@@ -59,7 +59,9 @@ export function importTranslationSource(
 }
 
 export function listOriginalSubtitles(projectId: string): Promise<Artifact[]> {
-  return invoke('list_project_artifacts_cmd', { projectId, kind: 'originalSubtitle' });
+  return invoke('list_project_artifacts_cmd', { projectId }).then((items) =>
+    items.filter((item) => ['originalSubtitle', 'translatedTranscript'].includes(item.kind)),
+  );
 }
 
 export function listProjectTranslations(projectId: string): Promise<TranslationLink[]> {

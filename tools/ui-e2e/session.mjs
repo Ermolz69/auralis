@@ -206,7 +206,7 @@ export class DesktopSession {
     this.page.on('pageerror', (error) => this.errors.push(error.message));
     await this.page.context().tracing.start({ screenshots: true, snapshots: true, sources: false });
     this.tracing = true;
-    await this.page.getByRole('button', { name: 'Settings', exact: true }).waitFor();
+    await this.page.getByRole('button', { name: 'Настройки', exact: true }).waitFor();
     await this.page.screenshot({
       path: path.join(this.run.directory, `launch-${this.launchNumber}.png`),
       timeout: 5000,

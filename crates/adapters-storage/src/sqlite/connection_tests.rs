@@ -49,6 +49,9 @@ mod tests {
                 "audio_assembly_publications",
                 "job_executions",
                 "jobs",
+                "media_copy_operations",
+                "media_project_receipts",
+                "media_run_sources",
                 "outbox_messages",
                 "outbox_sequence",
                 "project_pins",
@@ -69,6 +72,7 @@ mod tests {
                 "translation_run_intents",
                 "ui_migrations",
                 "ui_settings",
+                "workspace_library",
                 "youtube_imports"
             ]
         );
@@ -77,7 +81,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap(),
-            20
+            22
         );
 
         let project_columns: Vec<String> =

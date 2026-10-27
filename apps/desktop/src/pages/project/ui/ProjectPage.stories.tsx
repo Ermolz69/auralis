@@ -93,7 +93,7 @@ export const SubtitlesWide: Story = {
   render: () => <ProjectWorkspaceStory initialStep="subtitles" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('heading', { name: 'Субтитры' })).toBeInTheDocument();
+    await canvas.findByRole('heading', { name: 'Текст и озвучка', level: 1 });
     await canvas.findByText(/Русский \(ru\)/, {}, { timeout: 10_000 });
   },
 };

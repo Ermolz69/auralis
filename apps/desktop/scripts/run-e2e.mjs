@@ -13,7 +13,7 @@ const forwardedArgs = process.argv.slice(2);
 mkdirSync(resultsDir, { recursive: true });
 writeFileSync(
   path.join(resultsDir, 'run.json'),
-  JSON.stringify({ run_id: runId, layer: 'fixture-ui-legacy' }),
+  JSON.stringify({ run_id: runId, layer: 'fixture-ui-guided' }),
 );
 
 const result = spawnSync(

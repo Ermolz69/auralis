@@ -6,6 +6,7 @@ import { download } from './download.mjs';
 import { clickOnce, jobState, readyOrError, observeUntil } from './observe.mjs';
 import { setupTranslation } from './translation.mjs';
 import { exportVideo } from './video.mjs';
+import { openSubtitleTool } from './navigation.mjs';
 
 export const storySteps = [
   'url-import',
@@ -73,7 +74,12 @@ export async function story(
     )
       return false;
   } else {
-    if (!(await step('translation-setup', () => setupTranslation(page, spec, remaining))))
+    if (
+      !(await step('translation-setup', async () => {
+        await openSubtitleTool(page, 'Перевод');
+        return setupTranslation(page, spec, remaining);
+      }))
+    )
       return false;
     if (
       !(await step('translation-ready', async () => {
@@ -145,6 +151,7 @@ export async function story(
     if (
       !(await step(`${engine}-selection`, async () => {
         await quiescent();
+        await openSubtitleTool(page, 'Синтез речи');
         if (spec.allow_unverified_neutral === true)
           await panel
             .getByRole('checkbox', {

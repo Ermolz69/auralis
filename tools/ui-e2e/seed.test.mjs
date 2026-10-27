@@ -46,6 +46,24 @@ test('component relocation preserves voice bytes and pins the new profile invent
     }),
   );
   const originalConfig = await fsp.readFile(path.join(directory, 'tts-runtime.json'));
+  await put('project-contract/packages/fixture/metadata.json', '{"version":"0.3.0"}');
+  await put(
+    'project-runtime.json',
+    JSON.stringify({
+      version: 1,
+      python_executable: path.join(runtime, 'base/python.exe'),
+      package_root: path.join(directory, 'project-contract/packages/fixture'),
+      package_version: '0.3.0',
+      files: [
+        {
+          path: 'metadata.json',
+          sha256: await hash(
+            path.join(directory, 'project-contract/packages/fixture/metadata.json'),
+          ),
+        },
+      ],
+    }),
+  );
   const files = [];
   const scan = async (folder) => {
     for (const item of await fsp.readdir(folder, { withFileTypes: true })) {
@@ -71,6 +89,17 @@ test('component relocation preserves voice bytes and pins the new profile invent
   const profile = path.join(output, 'profile');
   const config = await json(path.join(profile, 'tts-runtime.json'));
   assert.equal(config.execution_budget_seconds, 2700);
+  const mediaConfig = await json(path.join(profile, 'project-runtime.json'));
+  assert.equal(mediaConfig.package_root, path.join(profile, 'project-contract/packages/fixture'));
+  assert.equal(
+    mediaConfig.python_executable,
+    path.join(profile, 'tts/runtime/fixture/base/python.exe'),
+  );
+  assert.equal(mediaConfig.package_version, '0.3.0');
+  assert.equal(
+    await hash(path.join(mediaConfig.package_root, 'metadata.json')),
+    mediaConfig.files[0].sha256,
+  );
   assert.equal(result.tts_runtime_sha256, await hash(path.join(profile, 'tts-runtime.json')));
   assert.ok(config.package_root.startsWith(profile + path.sep));
   const inventoryFile = path.join(config.package_root, 'integrity.json');
