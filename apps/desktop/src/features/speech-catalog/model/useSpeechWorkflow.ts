@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { invoke } from '@/shared/api/tauri';
 import type {
@@ -66,7 +66,7 @@ export function useSpeechWorkflow({
     onDraftChange,
   );
   const request = sourceRequest(mode, text, translationId, subtitleId, subtitle);
-  useEffect(() => {
+  useLayoutEffect(() => {
     let active = true;
     sourceVersion.current++;
     setSource(null);

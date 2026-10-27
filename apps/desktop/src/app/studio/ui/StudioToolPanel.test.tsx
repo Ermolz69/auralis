@@ -1,9 +1,21 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { StudioToolPanel } from './StudioToolPanel';
-import { asset, backend, deferred, LibraryHarness, project } from '../../../../tests/studio';
+import {
+  asset,
+  backend,
+  deferred,
+  LibraryHarness,
+  ProjectHarness,
+  project,
+} from '../../../../tests/studio';
+import type { LibraryTab, LibraryTool } from '@/shared/api/contracts/library';
 const api = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock('@/shared/api/tauri', () => api);
+vi.mock('@tauri-apps/api/core', async (original) => ({
+  ...(await original<typeof import('@tauri-apps/api/core')>()),
+  convertFileSrc: (path: string) => `asset:${path}`,
+}));
 let data: ReturnType<typeof backend>;
 const tab = { id: 'tab', tool: 'text' as const, assetId: asset.id, draft: '{}' };
 const workspace = {
@@ -13,9 +25,11 @@ const workspace = {
   activeTab: tab.id,
   tabs: [tab],
 };
-const view = (selected = tab) => (
+const view = (selected: LibraryTab = tab) => (
   <LibraryHarness>
-    <StudioToolPanel tab={selected} workspace={workspace} />
+    <ProjectHarness>
+      <StudioToolPanel tab={selected} workspace={workspace} />
+    </ProjectHarness>
   </LibraryHarness>
 );
 beforeEach(() => {
@@ -25,6 +39,40 @@ beforeEach(() => {
   api.listen.mockResolvedValue(() => {});
 });
 afterEach(cleanup);
+it.each([
+  ['source', 'First text'],
+  ['translate', 'Перевод субтитров'],
+  ['speech', 'Синтез речи'],
+  ['voices', 'Голоса и образцы'],
+  ['results', 'Результаты · First text'],
+] as [LibraryTool, string][])(
+  'mounts the real %s tool only inside the verified project',
+  async (tool, title) => {
+    data.state.assets[0] = {
+      ...asset,
+      artifactId: 'material-artifact',
+      kind: tool === 'source' ? 'video' : tool === 'translate' ? 'subtitle' : 'text',
+    };
+    data.overrides.get_translation_package_status_cmd = () => ({
+      schemaVersion: 1,
+      releaseId: 'fixture',
+      backend: 'cpu',
+      supported: false,
+      installed: false,
+      selected: false,
+    });
+    data.overrides.get_project_translation_snapshot_cmd = () => ({
+      projectId: project.id,
+      entries: [],
+    });
+    render(view({ ...tab, tool }));
+    expect(await screen.findByRole('heading', { name: title }, { timeout: 4000 })).toBeTruthy();
+    expect(api.invoke).toHaveBeenCalledWith('get_tool_context_cmd', {
+      projectId: project.id,
+      assetId: asset.id,
+    });
+  },
+);
 it('waits for verified project/material context before rendering processing controls', async () => {
   const pending = deferred<unknown>();
   data.overrides.get_tool_context_cmd = () => pending.promise;

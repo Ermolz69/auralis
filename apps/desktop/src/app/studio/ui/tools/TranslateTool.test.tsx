@@ -1,7 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { TranslateTool } from './TranslateTool';
-import { artifact, asset, backend, project, ProjectHarness } from '../../../../../tests/studio';
+import {
+  artifact,
+  asset,
+  backend,
+  project,
+  ProjectHarness,
+  translationLink,
+} from '../../../../../tests/studio';
 const api = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock('@/shared/api/tauri', () => api);
 let data: ReturnType<typeof backend>;
@@ -10,11 +17,17 @@ beforeEach(() => {
   data = backend();
   api.invoke.mockImplementation((command, args) => data.handle(command, args));
   api.listen.mockResolvedValue(() => {});
-  data.overrides.get_translation_package_status_cmd = () => ({ supported: false });
+  data.overrides.get_translation_package_status_cmd = () => ({
+    schemaVersion: 1,
+    releaseId: 'fixture',
+    backend: 'cpu',
+    supported: false,
+    installed: false,
+    selected: false,
+  });
   data.overrides.get_project_translation_snapshot_cmd = () => ({
-    revision: 0,
-    links: [],
-    runs: [],
+    projectId: project.id,
+    entries: [],
   });
 });
 afterEach(cleanup);
@@ -25,13 +38,15 @@ it('keeps source import and run controls scoped to the selected subtitle artifac
       location: { kind: 'storageKey', value: `${id}.srt` },
     }),
   );
-  data.overrides.begin_translation_run_cmd = ({ input }) => ({
-    translationId: input.translationId,
-    projectId: input.projectId,
-    sourceArtifactId: input.sourceArtifactId,
-    activeRunId: input.runId,
-    selectedResultId: null,
-  });
+  data.overrides.begin_translation_run_cmd = ({ input }) =>
+    translationLink({
+      translationId: input.translationId,
+      projectId: input.projectId,
+      sourceArtifactId: input.sourceArtifactId,
+      activeRunId: input.runId,
+      selectedResultId: null,
+      outputArtifactId: null,
+    });
   render(
     <ProjectHarness>
       <TranslateTool asset={{ ...asset, kind: 'subtitle', artifactId: 'selected' }} />

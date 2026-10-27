@@ -12,6 +12,7 @@ import {
   LibraryHarness,
   project,
   snapshot,
+  translationLink,
 } from '../../../../../tests/studio';
 const api = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock('@/shared/api/tauri', () => api);
@@ -70,6 +71,10 @@ it('binds a speech plan to the reviewed digest and refuses reuse after editing',
   render(view(asset, { ...tab, tool: 'speech' }));
   const input = await screen.findByRole('textbox');
   fireEvent.click(screen.getByRole('button', { name: 'Текст проверен' }));
+  expect(api.invoke).toHaveBeenCalledWith(
+    'review_speech_text_cmd',
+    expect.objectContaining({ projectId: project.id, confirmed: true }),
+  );
   await screen.findByText('Снимок проверенного текста сохранён.');
   fireEvent.click(screen.getByRole('button', { name: 'Подготовить озвучку' }));
   await waitFor(() =>
@@ -97,7 +102,14 @@ it('rejects a review returned for another project', async () => {
   data.overrides.review_speech_text_cmd = () => ({
     decision_id: 'foreign',
     project_id: 'other',
-    source: {},
+    source: {
+      kind: 'text',
+      source_id: null,
+      revision: 'other-version',
+      sha256: 'b'.repeat(64),
+      text: asset.text,
+      cues: [],
+    },
   });
   render(view(asset, { ...tab, tool: 'speech' }));
   await screen.findByRole('textbox');
@@ -217,12 +229,12 @@ it('uses only this project selected translation output as the speech source', as
     format: 'srt',
   };
   data.translations = [
-    {
+    translationLink({
       translationId: 'translation-one',
       projectId: project.id,
       selectedResultId: 'result-one',
       outputArtifactId: selected.artifactId,
-    } as (typeof data.translations)[number],
+    }),
   ];
   render(view(selected, { ...tab, tool: 'speech' }));
   await waitFor(() =>
@@ -256,12 +268,12 @@ it.each(['foreign-project', 'unselected-result'])(
       format: 'vtt',
     };
     data.translations = [
-      {
+      translationLink({
         translationId: 'foreign',
         projectId: invalid === 'foreign-project' ? 'other' : project.id,
         selectedResultId: invalid === 'unselected-result' ? null : 'result',
         outputArtifactId: selected.artifactId,
-      } as (typeof data.translations)[number],
+      }),
     ];
     render(view(selected, { ...tab, tool: 'speech' }));
     await screen.findByRole('button', { name: 'Текст проверен' });

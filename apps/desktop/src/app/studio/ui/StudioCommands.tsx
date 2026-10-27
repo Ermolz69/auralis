@@ -50,6 +50,11 @@ export function StudioCommands({ children }: { children: ReactNode }) {
   const [operation, setOperation] = useState<MediaOperation | null>(null);
   const copying = useRef(false);
   const working = useRef(false);
+  const stopCopyPolling = useRef(() => {});
+  useEffect(() => () => stopCopyPolling.current(), []);
+  useEffect(() => {
+    if (chrome.error) setError(chrome.error);
+  }, [chrome.error]);
   useEffect(() => {
     const open = () => setSettings(true);
     window.addEventListener('auralis-open-settings', open);
@@ -176,6 +181,10 @@ export function StudioCommands({ children }: { children: ReactNode }) {
     });
     let timer: ReturnType<typeof setInterval> | undefined;
     let active = true;
+    stopCopyPolling.current = () => {
+      active = false;
+      clearInterval(timer);
+    };
     try {
       timer = setInterval(() => {
         void invoke('get_media_operation_cmd', { operationId: id })
@@ -192,6 +201,7 @@ export function StudioCommands({ children }: { children: ReactNode }) {
         assetId: context.assetId,
         duplicate: false,
       });
+      if (!active) return;
       const deadline = Date.now() + 120_000;
       for (;;) {
         if (Date.now() > deadline)
@@ -223,8 +233,7 @@ export function StudioCommands({ children }: { children: ReactNode }) {
       }
       setModal(null);
     } finally {
-      active = false;
-      clearInterval(timer);
+      stopCopyPolling.current();
       copying.current = false;
       setOperation(null);
     }

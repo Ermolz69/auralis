@@ -71,6 +71,24 @@ export function artifact(id: string, values: Partial<Artifact> = {}): Artifact {
     ...values,
   };
 }
+export function translationLink(values: Partial<TranslationLink> = {}): TranslationLink {
+  return {
+    translationId: 'translation-one',
+    projectId: project.id,
+    sourceArtifactId: 'source-subtitle',
+    sourceSha256: 'a'.repeat(64),
+    sourceFormat: 'srt',
+    sourceLanguage: 'zh',
+    targetLanguage: 'ru',
+    activeRunId: null,
+    selectedResultId: 'result-one',
+    outputArtifactId: 'translated-output',
+    revision: 1,
+    createdAt: '2026-10-28T00:00:00Z',
+    updatedAt: '2026-10-28T00:00:00Z',
+    ...values,
+  };
+}
 export function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason: unknown) => void;
