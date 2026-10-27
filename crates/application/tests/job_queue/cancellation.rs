@@ -147,6 +147,47 @@ async fn shutdown_deadline_preserves_unconfirmed_worker_and_pending_descriptor()
     let first = harness.admit(CPU).await;
     let running = started(&mut events).await;
     let pending = harness.admit(CPU).await;
+    let mut lifecycle = harness.events.subscribe();
+    let before = std::time::Instant::now();
+    tokio::time::pause();
+    let drain = harness.manager.drain_all(Duration::from_millis(100));
+    tokio::pin!(drain);
+    loop {
+        assert!(futures::poll!(drain.as_mut()).is_pending());
+        if lifecycle
+            .try_recv()
+            .is_ok_and(|event| event.job.id == first && event.job.status == JobStatus::Cancelling)
+        {
+            break;
+        }
+        assert!(before.elapsed() < Duration::from_secs(1));
+        tokio::task::yield_now().await;
+    }
+    tokio::time::advance(Duration::from_millis(100)).await;
+    let report = drain.await.unwrap();
+    tokio::time::resume();
+    assert_eq!(report.unconfirmed_count, 1);
+    assert!(before.elapsed() < Duration::from_secs(1));
+    assert_eq!(harness.status(&first).await, JobStatus::Cancelling);
+    assert_eq!(harness.status(&pending).await, JobStatus::Pending);
+    assert_eq!(harness.manager.queue_available_resources().unwrap().cpu, 0);
+    let cancel_manager = harness.manager.clone();
+    let cancel_id = first.clone();
+    let cancel = tokio::spawn(async move { cancel_manager.cancel_job(&cancel_id).await });
+    running.cleanup.send(()).unwrap();
+    cancel.await.unwrap().unwrap();
+    assert_eq!(harness.manager.queue_available_resources().unwrap().cpu, 1);
+    assert!(events.try_recv().is_err());
+}
+
+#[tokio::test]
+async fn shutdown_deadline_with_a_blocked_writer_retains_unconfirmed_ownership() {
+    let harness = Harness::new(config()).await;
+    let mut events = harness.controlled().await;
+    let first = harness.admit(CPU).await;
+    let running = started(&mut events).await;
+    let pending = harness.admit(CPU).await;
+    let writer = harness.pool.begin_with("BEGIN IMMEDIATE").await.unwrap();
     let before = std::time::Instant::now();
     let report = harness
         .manager
@@ -155,9 +196,10 @@ async fn shutdown_deadline_preserves_unconfirmed_worker_and_pending_descriptor()
         .unwrap();
     assert_eq!(report.unconfirmed_count, 1);
     assert!(before.elapsed() < Duration::from_secs(1));
-    assert_eq!(harness.status(&first).await, JobStatus::Cancelling);
+    assert_eq!(harness.status(&first).await, JobStatus::Running);
     assert_eq!(harness.status(&pending).await, JobStatus::Pending);
     assert_eq!(harness.manager.queue_available_resources().unwrap().cpu, 0);
+    writer.rollback().await.unwrap();
     let cancel_manager = harness.manager.clone();
     let cancel_id = first.clone();
     let cancel = tokio::spawn(async move { cancel_manager.cancel_job(&cancel_id).await });
