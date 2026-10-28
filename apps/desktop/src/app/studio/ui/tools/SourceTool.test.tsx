@@ -46,8 +46,8 @@ it('resolves the selected ready local source and selects/filter subtitle tracks 
   render(view());
   await screen.findByLabelText('Source video');
   const tracks = await screen.findAllByRole('radio');
-  expect(tracks[0]).toHaveProperty('checked', true);
-  fireEvent.click(tracks[1]);
+  await waitFor(() => expect(tracks[0]).toHaveProperty('checked', true));
+  fireEvent.click(tracks[1].closest('label')!);
   expect(tracks[1]).toHaveProperty('checked', true);
   fireEvent.change(screen.getByRole('searchbox', { name: 'Поиск по доступным дорожкам' }), {
     target: { value: 'English' },

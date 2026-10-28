@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useLibrary } from '@/entities/library';
 import { StudioWorkspace } from './StudioWorkspace';
@@ -24,8 +24,8 @@ beforeEach(() => {
   api.invoke.mockImplementation((command, args) => data.handle(command, args));
   api.listen.mockResolvedValue(() => {});
 });
-afterEach(() => {
-  cleanup();
+afterEach(async () => {
+  await act(async () => cleanup());
   vi.restoreAllMocks();
 });
 function Workspace() {
@@ -41,7 +41,7 @@ function Workspace() {
   ) : null;
 }
 async function setup() {
-  render(
+  const view = render(
     <LibraryHarness>
       <StudioCommands>
         <Workspace />
@@ -49,6 +49,7 @@ async function setup() {
     </LibraryHarness>,
   );
   await screen.findAllByRole('tab');
+  return view;
 }
 const saved = () => snapshot(screen.getByLabelText('Library snapshot')).workspaces[0];
 it('asks before closing a live edit that has not reached the draft debounce', async () => {
@@ -60,6 +61,20 @@ it('asks before closing a live edit that has not reached the draft debounce', as
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(input).toHaveProperty('value', 'Live edit before persistence');
   expect(saved().tabs).toHaveLength(1);
+});
+it('flushes a live draft when leaving the workspace before its debounce', async () => {
+  const view = await setup();
+  const input = await screen.findByRole('textbox', { name: 'Русский текст для озвучки' });
+  fireEvent.change(input, { target: { value: 'Draft retained when leaving the workspace' } });
+  view.unmount();
+  await waitFor(() =>
+    expect(JSON.parse(data.state.workspaces[0].tabs[0].draft).text).toBe(
+      'Draft retained when leaving the workspace',
+    ),
+  );
+  expect(api.invoke.mock.calls.filter(([command]) => command === 'save_library_cmd')).toHaveLength(
+    1,
+  );
 });
 it.each(['Unsaved edit', ''])(
   'requires explicit discard of draft %j and retains it when declined',
@@ -95,6 +110,33 @@ it('keeps shared speech/text context and uses accessible keyboard tab navigation
   await waitFor(() => expect(saved().tabs).toHaveLength(1));
   expect(saved().activeTab).toBe('one');
   expect(confirm).not.toHaveBeenCalled();
+});
+
+it('persists pointer tab selection and preserves the accepted tab when saving fails until retry', async () => {
+  const draft = JSON.stringify({ text: 'Accepted shared speech draft' });
+  data.state.workspaces[0].tabs[0].draft = draft;
+  data.state.workspaces[0].tabs.push({ id: 'two', tool: 'speech', assetId: asset.id, draft });
+  await setup();
+  const text = screen.getByRole('tab', { name: /Текст и подготовка/ });
+  const speech = screen.getByRole('tab', { name: /Синтез речи/ });
+  fireEvent.click(speech);
+  await waitFor(() => expect(saved().activeTab).toBe('two'));
+  const failedSave = vi.fn(async () => {
+    throw new Error('Tab persistence unavailable');
+  });
+  data.overrides.save_library_cmd = failedSave;
+  fireEvent.click(text);
+  await waitFor(() => expect(failedSave).toHaveBeenCalledOnce());
+  expect(saved().activeTab).toBe('two');
+  expect(speech.getAttribute('aria-selected')).toBe('true');
+  expect(text.getAttribute('aria-selected')).toBe('false');
+  expect(saved().tabs.map((tab) => tab.draft)).toEqual([draft, draft]);
+  delete data.overrides.save_library_cmd;
+  fireEvent.click(text);
+  await waitFor(() => expect(saved().activeTab).toBe('one'));
+  expect(text.getAttribute('aria-selected')).toBe('true');
+  expect(saved().tabs).toHaveLength(2);
+  expect(saved().tabs.map((tab) => tab.draft)).toEqual([draft, draft]);
 });
 it('changes command context through material selection and keeps foreign/hidden materials out of the selector', async () => {
   data.state.assets.push(

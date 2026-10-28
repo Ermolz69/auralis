@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { StudioToolPanel } from './StudioToolPanel';
 import {
   asset,
@@ -32,6 +32,14 @@ const view = (selected: LibraryTab = tab) => (
     </ProjectHarness>
   </LibraryHarness>
 );
+beforeAll(async () => {
+  await Promise.all([
+    import('./tools/SourceTool'),
+    import('./tools/TranslateTool'),
+    import('./tools/SpeechTool'),
+    import('./tools/ResultsTool'),
+  ]);
+});
 beforeEach(() => {
   vi.resetAllMocks();
   data = backend();

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { LibraryContext, StudioActionsContext, type LibraryContextValue } from '@/entities/library';
@@ -300,6 +300,18 @@ it('renders bounded version ancestry, hides removed children and opens a chosen 
 });
 
 it('renames a project with its expected revision and keeps errors recoverable', async () => {
+  context.state.links = [
+    { projectId: 'project', assetId: 'asset', folderId: null },
+    { projectId: 'other', assetId: 'other-asset', folderId: null },
+  ];
+  context.state.folders = [
+    { id: 'folder', projectId: 'project', parentId: null, name: 'Removed' },
+    { id: 'other-folder', projectId: 'other', parentId: null, name: 'Retained' },
+  ];
+  context.state.workspaces = [
+    { id: 'workspace', projectId: 'project', assetId: null, activeTab: null, tabs: [] },
+    { id: 'other-workspace', projectId: 'other', assetId: null, activeTab: null, tabs: [] },
+  ];
   const navigate = vi.fn();
   show(
     <LibraryProjectActions
@@ -327,6 +339,10 @@ it('renames a project with its expected revision and keeps errors recoverable', 
     expect(navigate).toHaveBeenCalledWith({ scope: 'all', projectId: null, folderId: null }),
   );
   expect(context.state.removedProjects).toEqual(['project']);
+  expect(context.state.links.map((link) => link.projectId)).toEqual(['other']);
+  expect(context.state.folders.map((folder) => folder.id)).toEqual(['other-folder']);
+  expect(context.state.workspaces.map((workspace) => workspace.id)).toEqual(['other-workspace']);
+  expect(context.state.assets[0].text).toBe('Accepted words');
 });
 
 it('renames and removes folders while moving children and links to their parent', async () => {
@@ -354,4 +370,102 @@ it('renames and removes folders while moving children and links to their parent'
   ]);
   expect(context.state.links[0].folderId).toBe('root');
   expect(invoke).not.toHaveBeenCalled();
+});
+
+it('discards cancelled project edits without mutating accepted state', () => {
+  show(
+    <LibraryProjectActions
+      browser={{ ...context.state.browser, projectId: 'project' }}
+      navigate={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Переименовать проект' }));
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Discarded edit' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
+  expect(screen.queryByRole('textbox')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Удалить проект…' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
+  expect(screen.queryByRole('alertdialog')).toBeNull();
+  expect(invoke).not.toHaveBeenCalled();
+  expect(context.mutate).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Переименовать проект' }));
+  expect(screen.getByRole('textbox')).toHaveProperty('value', 'Project');
+});
+
+it('keeps a failed removal available for explicit retry without navigating away', async () => {
+  const navigate = vi.fn();
+  vi.mocked(context.mutate).mockRejectedValueOnce(new Error('Persistence unavailable'));
+  show(
+    <LibraryProjectActions
+      browser={{ ...context.state.browser, projectId: 'project' }}
+      navigate={navigate}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Удалить проект…' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Подтвердить удаление раздела' }));
+  expect((await screen.findByRole('alert')).textContent).toBe('Persistence unavailable');
+  expect(context.state.removedProjects).toEqual([]);
+  expect(navigate).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Подтвердить удаление раздела' }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledOnce());
+  expect(context.state.removedProjects).toEqual(['project']);
+});
+
+it('admits only one rename while pending and prevents discarding its submitted input', async () => {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  invoke.mockImplementationOnce(() => pending);
+  show(
+    <LibraryProjectActions
+      browser={{ ...context.state.browser, projectId: 'project' }}
+      navigate={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Переименовать проект' }));
+  const input = screen.getByRole('textbox');
+  fireEvent.change(input, { target: { value: 'Pending edit' } });
+  fireEvent.submit(input.closest('form')!);
+  fireEvent.submit(input.closest('form')!);
+  try {
+    expect(invoke.mock.calls.filter(([command]) => command === 'rename_project_cmd')).toHaveLength(
+      1,
+    );
+    expect(screen.getByRole('button', { name: 'Сохранить' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Отмена' }).hasAttribute('disabled')).toBe(true);
+    expect(input).toHaveProperty('value', 'Pending edit');
+  } finally {
+    await act(async () => release());
+  }
+  await waitFor(() => expect(context.refresh).toHaveBeenCalledOnce());
+  expect(screen.queryByRole('textbox')).toBeNull();
+});
+
+it('admits one removal and keeps cancellation unavailable until persistence returns', async () => {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  vi.mocked(context.mutate).mockReturnValueOnce(pending);
+  const navigate = vi.fn();
+  show(
+    <LibraryProjectActions
+      browser={{ ...context.state.browser, projectId: 'project' }}
+      navigate={navigate}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Удалить проект…' }));
+  const confirm = screen.getByRole('button', { name: 'Подтвердить удаление раздела' });
+  fireEvent.click(confirm);
+  fireEvent.click(confirm);
+  try {
+    expect(context.mutate).toHaveBeenCalledOnce();
+    expect(confirm.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Отмена' }).hasAttribute('disabled')).toBe(true);
+    expect(navigate).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => release());
+  }
+  await waitFor(() => expect(navigate).toHaveBeenCalledOnce());
 });

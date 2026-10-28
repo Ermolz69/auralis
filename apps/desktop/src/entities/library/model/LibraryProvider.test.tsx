@@ -324,3 +324,69 @@ it('opens standalone media against its owner and uses the project context only w
     'voices',
   );
 });
+
+it('opens tools only in the active workspace and preserves an explicit project-level selection', async () => {
+  catalog.assets = [
+    {
+      id: 'source',
+      ownerProjectId: 'owner',
+      name: 'Source',
+      kind: 'text',
+      artifactId: null,
+      format: 'txt',
+      text: 'Original',
+      parentId: null,
+      tags: [],
+      openedAt: null,
+    },
+  ];
+  catalog.workspaces = [
+    { id: 'first', projectId: null, assetId: 'source', activeTab: null, tabs: [] },
+    { id: 'second', projectId: 'another', assetId: null, activeTab: null, tabs: [] },
+  ];
+  const { result } = await ready();
+  act(() => result.current.activateWorkspace('first'));
+  await act(async () => {
+    await result.current.openTool('results');
+  });
+  await act(async () => {
+    await result.current.openTool('voices', null);
+  });
+  expect(result.current.state.workspaces[0].tabs).toMatchObject([
+    { tool: 'results', assetId: 'source' },
+    { tool: 'voices', assetId: null },
+  ]);
+  expect(result.current.state.workspaces[1].tabs).toEqual([]);
+  act(() => result.current.activateWorkspace('missing'));
+  expect(result.current.workspaceId).toBe('first');
+  await act(async () => {
+    await result.current.mutate((draft) => {
+      draft.workspaces = draft.workspaces.filter((workspace) => workspace.id !== 'first');
+    });
+  });
+  expect(result.current.workspaceId).toBeNull();
+  expect(result.current.view).toBe('library');
+  await act(async () => {
+    await result.current.openTool('speech');
+  });
+  expect(result.current.state.workspaces).toHaveLength(1);
+  expect(result.current.state.workspaces[0].tabs).toEqual([]);
+});
+
+it('preserves the accepted catalog and exposes an event-driven refresh failure without leaking rejection', async () => {
+  catalog.browser.search = 'Accepted';
+  const hook = await ready();
+  const original = invoke.getMockImplementation()!;
+  invoke.mockImplementation(async (command, args) => {
+    if (command === 'get_library_cmd') throw new Error('Library refresh unavailable');
+    return original(command, args);
+  });
+  vi.useFakeTimers();
+  act(() => handlers['project-updated']({}));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(250);
+  });
+  expect(hook.result.current.error).toBe('Library refresh unavailable');
+  expect(hook.result.current.state.browser.search).toBe('Accepted');
+  hook.unmount();
+});
