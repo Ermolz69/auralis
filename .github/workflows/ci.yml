@@ -60,6 +60,8 @@ jobs:
               - '.storybook/**'
               - 'taskfiles/frontend.yml'
             rust:
+              - '.gitmodules'
+              - 'modules/auralis-translate'
               - 'vendor/glib-0.18.5/**'
               - 'tools/glib-backport/**'
               - 'crates/**'
@@ -106,6 +108,8 @@ jobs:
               - '.prettier*'
               - '.eslint*'
             dependencies:
+              - '.gitmodules'
+              - 'modules/auralis-translate'
               - 'package.json'
               - 'apps/desktop/package.json'
               - 'pnpm-lock.yaml'
@@ -199,6 +203,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          submodules: true
 
       - name: Bootstrap Rust checks
         uses: ./.github/actions/bootstrap
@@ -258,6 +264,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          submodules: true
 
       - name: Bootstrap security checks
         uses: ./.github/actions/bootstrap

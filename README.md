@@ -25,6 +25,13 @@ Run commands from the repository root. Install Node.js 24, the pnpm version pinn
 `package.json`, and Task first. Full desktop development uses Rust 1.95.0 from
 `rust-toolchain.toml` and also requires the platform's Tauri build dependencies.
 
+Clone with `git clone --recurse-submodules` so the pinned Translate source under
+`modules/auralis-translate` is available before Rust dependency resolution. In an
+existing checkout, run `git submodule update --init modules/auralis-translate` to
+restore that exact pin. Rust, security and desktop-build CI jobs fetch the same
+submodule before bootstrap; changing its gitlink also triggers Rust and dependency
+policy checks.
+
 Set up dependencies and the Playwright Chromium runtime before running checks:
 
 ```bash

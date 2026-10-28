@@ -133,6 +133,41 @@ test('all toolchain consumers use the same bootstrap after checkout', () => {
   }
 });
 
+function assertPinnedTranslateCheckout(job) {
+  const checkout = job.steps.find((step) => step.uses?.startsWith('actions/checkout@'));
+  assert.ok(
+    [true, 'true', 'recursive'].includes(checkout?.with?.submodules),
+    'Rust and source-policy consumers need the pinned Translate checkout before bootstrap',
+  );
+}
+
+test('Rust and security consumers provision the pinned Translate source before dependency resolution', () => {
+  for (const job of [
+    ci.jobs.rust,
+    ci.jobs.security,
+    full.jobs.check,
+    release.jobs.build,
+    tauri.jobs.build,
+  ]) {
+    assertPinnedTranslateCheckout(job);
+    for (const submodules of [undefined, false, 'false']) {
+      const broken = structuredClone(job);
+      const checkout = broken.steps.find((step) => step.uses?.startsWith('actions/checkout@'));
+      checkout.with = { ...checkout.with, submodules };
+      assert.throws(() => assertPinnedTranslateCheckout(broken));
+    }
+  }
+});
+
+test('Translate gitlink and source location changes cannot skip Rust or dependency policy gates', () => {
+  const filters = load(ci.jobs.changes.steps.find((step) => step.id === 'filter').with.filters);
+  for (const group of ['rust', 'dependencies']) {
+    for (const source of ['.gitmodules', 'modules/auralis-translate']) {
+      assert.ok(filters[group].includes(source), `${source} must trigger ${group}`);
+    }
+  }
+});
+
 test('dependency installation is ordered and frozen before browser installation', () => {
   assert.equal(bootstrap.runs.using, 'composite');
   for (const step of bootstrap.runs.steps) {
