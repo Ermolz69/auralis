@@ -31,6 +31,9 @@ export const ExportUnavailable: Story = {
 
     await expect(canvas.queryByRole('button', { name: 'Export unavailable' })).toBeNull();
     await expect(canvas.getByRole('status')).toHaveTextContent('Export unavailable');
+    await expect(canvas.getByRole('status')).toHaveAccessibleDescription(
+      /not available in this version/i,
+    );
     await expect(canvas.getByText(/not available in this version/i)).toBeInTheDocument();
   },
 };
