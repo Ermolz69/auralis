@@ -8,9 +8,11 @@ Historical planning baseline: `4ca12b6`, checked on 2026-10-27. PM-001 reproduce
 the implementation baseline at `b29719b`; the scoped inventories retain its
 commands, tools and failures. Earlier candidate tests remain historical evidence;
 dependency changes require fresh checks.
-All 18 tasks initially had status `pending`. The execution index below records
-verification on final implementation `5a5ca53`, dated 2026-10-28. The complete
-local PR gate and ordinary Windows build passed; native metadata acceptance
+All 18 tasks initially had status `pending`. The execution index below includes
+the [fresh full rerun](pre-main-full-rerun.md) after consolidation into
+`feat/pre-main-integration` at `4310b36`, with CI-only follow-up `2fdb0c3`.
+The complete local gate and retained ordinary Windows build at `5a5ca53` passed;
+native metadata acceptance
 failed and process cleanup remains unconfirmed. See the linked verification record for exact commands, failures,
 hashes and scope. This record does not authorize a merge to main.
 

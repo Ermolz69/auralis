@@ -1,9 +1,29 @@
 # Pre-main integration verification
 
-## Current integrated verification
+## Latest pre-main consolidation and full rerun
 
-The final implementation is `5a5ca531c37fef4eade0633e276e5d6a12688b7e` on
-`chore/pre-main-completion`, verified on 2026-10-28. The ordinary Windows
+All prepared implementation and evidence branches are now in
+`feat/pre-main-integration`. The branch was fast-forwarded from `b29719b` to
+`4310b36`, then to CI-only follow-up `2fdb0c3`, and published without changing
+main or switching the primary shared checkout.
+
+The [full rerun record](pre-main-full-rerun.md) retains exact sources and command
+outcomes. The fresh Windows `task check:all` passed on `4310b36`, with 906
+frontend and 758 top-level Rust tests, unchanged coverage thresholds and 23
+existing ignored Rust tests. Storybook, production browser fixtures, all six
+bundle budgets and the standalone 33/13/12 runner/pin/builder controls also passed.
+The [frontend record](pre-main-full-frontend.json) retains the new fixture identities.
+
+Full Linux workflow run 40738665132 passed on exact source `2fdb0c3`; completed
+logs confirm all four optimized GLib regressions passed in release mode. The
+Windows platform skip is retained separately. The earlier native failure,
+unconfirmed cleanup and retained lock remain unchanged: PM-017 is failed and
+PM-018 blocked.
+
+## Retained ordinary candidate verification
+
+The retained built implementation is `5a5ca531c37fef4eade0633e276e5d6a12688b7e`,
+verified on 2026-10-28. The ordinary Windows
 candidate below was built from that committed, clean source. Native metadata
 verification failed and cleanup remains unconfirmed; technical readiness is not
 established.
@@ -242,8 +262,9 @@ dependencies, verification commands and completion criteria for these gates.
 - Native metadata verification of the new ordinary candidate failed and
   cleanup remains unconfirmed. Admission stays blocked until ownership/release
   is established; previous successful cases cannot substitute for this executable.
-- Hosted Linux/optimized platform CI is not established by the local Windows
-  gate. Existing ignored tests are not counted as passing.
+- Hosted Linux and optimized GLib verification passed in the full rerun above.
+  Other unexecuted platform lanes remain outside that evidence; existing ignored
+  tests are not counted as passing.
 - Real model execution, listening decisions, long-source playback, video
   acceptance and clean Windows remain separate acceptance stages.
 - Main, existing projects, voice references and qualification decisions remain

@@ -1,0 +1,83 @@
+{
+  "source": "4310b3664b2b4b7ee992a328a1a7800e69c10540",
+  "targetBranch": "feat/pre-main-integration",
+  "testedBranch": "fix/pre-main-frontend",
+  "workerLimit": 2,
+  "worktreeClean": true,
+  "commands": [
+    {
+      "command": "task check:storybook",
+      "exitCode": 0,
+      "contractTests": 8,
+      "browserTests": 120,
+      "storyFiles": 30,
+      "visualComparisons": 13
+    },
+    {
+      "command": "task fe:storybook",
+      "exitCode": 0,
+      "result": "Production static catalogue built"
+    },
+    {
+      "command": "task ui:fixture",
+      "exitCode": 0,
+      "fixtures": [
+        {
+          "layer": "fixture-ui",
+          "source": "4310b3664b2b4b7ee992a328a1a7800e69c10540",
+          "frontendSha256": "000f68aec29c47205e7060c4c2424dcbc76f1f73771c3a1380f286c6830494ef",
+          "status": "passed",
+          "steps": 32,
+          "passed": 32,
+          "failed": 0,
+          "notRun": 0,
+          "cleanup": "passed"
+        },
+        {
+          "layer": "fixture-diagnostic",
+          "source": "4310b3664b2b4b7ee992a328a1a7800e69c10540",
+          "frontendSha256": "000f68aec29c47205e7060c4c2424dcbc76f1f73771c3a1380f286c6830494ef",
+          "status": "passed",
+          "steps": 18,
+          "passed": 18,
+          "failed": 0,
+          "notRun": 0,
+          "cleanup": "passed"
+        }
+      ]
+    },
+    {
+      "command": "task fe:smoke:library EVIDENCE=<owned-output-directory>",
+      "exitCode": 0,
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "task fe:smoke:puza SCREENSHOT=<owned-output-file>",
+      "exitCode": 0,
+      "tests": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "bundleKiB": {
+    "initialJs": 342.93,
+    "totalJs": 510.69,
+    "largestJs": 214.66,
+    "initialGzip": 106.51,
+    "totalGzip": 158.57,
+    "totalCss": 69.83
+  },
+  "allSixBundleBudgetsPassed": true,
+  "warnings": [
+    "Existing Vite __dirname warning for the future native config loader",
+    "Existing ineffective dynamic imports for the library-browser barrel and SourceWorkspace",
+    "Node SQLite experimental API warning in synthetic browser fixture scripts",
+    "NO_COLOR ignored because FORCE_COLOR is set"
+  ],
+  "scope": "Synthetic browser IPC only; no native Auralis, Python, model or model-doctor launches; no dependency update, snapshot refresh, guard change, old lock/recovery action or production edit. Previous native failure and unconfirmed cleanup are not retested or cleared.",
+  "evidenceArguments": "Ephemeral owned output destinations are normalized to portable placeholders; business and test arguments are literal.",
+  "sourceFrozenDuringVerification": true,
+  "productionEditsDependencyUpdatesSnapshotUpdatesOrThresholdChanges": 0
+}
