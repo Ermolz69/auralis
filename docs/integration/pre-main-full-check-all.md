@@ -52,7 +52,7 @@ The retained complete Task transcript SHA-256 is
 ## Platform skip and unresolved native boundary
 
 `check:all` composes `check:pr` and `rs:glib:regression`. The latter declares
-`platforms: [linux]` in [the Rust Taskfile](../../taskfiles/rust.yml) and was
+`platforms: [linux]` in `taskfiles/rust.yml` and was
 not executed by this Windows invocation. That is one platform-gated task,
 separate from the 23 ignored Rust tests. This run does not establish the
 optimized Linux GLib regression or other unexecuted platform lanes.
