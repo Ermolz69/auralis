@@ -28,7 +28,7 @@ export function StudioToolPanel({
   tab: LibraryTab;
   workspace: LibraryWorkspace;
 }) {
-  const { state } = useLibrary();
+  const { state, loading } = useLibrary();
   const asset = state.assets.find((a) => a.id === tab.assetId);
   const ownerId =
     workspace.projectId ??
@@ -37,27 +37,44 @@ export function StudioToolPanel({
   const [context, setContext] = useState<ToolMaterialContext | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState('');
+  const key = `${ownerId}:${asset?.id}:${asset?.artifactId}`;
+  const [loadedKey, setLoadedKey] = useState('');
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
     setError('');
     setProject(null);
     setContext(null);
+    setLoadedKey('');
+    if (loading)
+      return () => {
+        active = false;
+      };
     if (ownerId)
       void Promise.all([
         invoke('get_project_cmd', { projectId: ownerId }),
         asset
-          ? invoke('get_tool_context_cmd', { projectId: ownerId, assetId: asset.id }).catch(
-              (reason) => {
-                if (active) setError(describeCommandError(reason));
-                return null;
-              },
-            )
+          ? invoke('get_tool_context_cmd', { projectId: ownerId, assetId: asset.id })
           : Promise.resolve(null),
       ])
         .then(([value, material]) => {
+          if (
+            value.id !== ownerId ||
+            (tab.assetId && !asset) ||
+            (asset &&
+              (!material ||
+                material.projectId !== ownerId ||
+                material.assetId !== asset.id ||
+                (asset.artifactId && !material.artifactId)))
+          ) {
+            throw new Error(
+              'Контекст материала не соответствует проекту или ещё не опубликован. Обновите библиотеку.',
+            );
+          }
           if (active) {
             setProject(value);
             setContext(material);
+            setLoadedKey(key);
           }
         })
         .catch((e) => {
@@ -66,14 +83,17 @@ export function StudioToolPanel({
     return () => {
       active = false;
     };
-  }, [ownerId, asset?.id, asset?.artifactId]);
-  if (error && !project)
+  }, [ownerId, asset?.id, asset?.artifactId, tab.assetId, key, attempt, loading]);
+  if (error)
     return (
-      <p role="alert" className="p-5">
+      <div role="alert" className="p-5">
         {error}
-      </p>
+        <button className="ml-3 underline" onClick={() => setAttempt((value) => value + 1)}>
+          Повторить проверку материала
+        </button>
+      </div>
     );
-  if (!project)
+  if (!project || loadedKey !== key)
     return (
       <p role="status" className="p-5">
         Загружаем контекст материала…
@@ -81,14 +101,9 @@ export function StudioToolPanel({
     );
   const selected = asset && context ? { ...asset, artifactId: context.artifactId } : asset;
   return (
-    <ProjectProvider>
+    <ProjectProvider key={key}>
       <SelectProject project={project} />
       <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">
-        {error && (
-          <p role="alert" className="mb-4 text-danger">
-            {error} Доступны сохранённые материалы и черновики; обработка требует проверки проекта.
-          </p>
-        )}
         <Suspense fallback={<p role="status">Загружаем инструмент…</p>}>
           {tab.tool === 'source' && <SourceTool asset={selected} />}
           {tab.tool === 'translate' && <TranslateTool asset={selected} />}

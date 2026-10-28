@@ -10,6 +10,7 @@ import type { LibraryAsset } from '@/shared/api/contracts/library';
 import { invoke } from '@/shared/api/tauri';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useSourceOwnership } from '../../model/useSourceOwnership';
+import { describeCommandError } from '@/shared/api/contracts/error';
 export function SourceTool({ asset }: { asset?: LibraryAsset }) {
   const [media, setMedia] = useState('');
   const [mediaError, setMediaError] = useState('');
@@ -23,7 +24,7 @@ export function SourceTool({ asset }: { asset?: LibraryAsset }) {
           if (active) setMedia(convertFileSrc(path));
         })
         .catch((e) => {
-          if (active) setMediaError(String(e));
+          if (active) setMediaError(describeCommandError(e));
         });
     return () => {
       active = false;
