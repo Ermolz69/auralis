@@ -1,0 +1,492 @@
+{
+  "date": "2026-10-28",
+  "sourceCommit": "b29719b0dc784745b70275ec93968f5cbda69df3",
+  "command": "task fe:test -- --maxWorkers=4 --coverage.reportOnFailure --browser.api.port=63427",
+  "exitCode": 201,
+  "allTestProjectsExecuted": true,
+  "gatePassed": false,
+  "testFiles": {
+    "failed": 1,
+    "passed": 136
+  },
+  "tests": {
+    "failed": 2,
+    "passed": 673
+  },
+  "scopeTotals": {
+    "statements": {
+      "total": 781,
+      "covered": 333,
+      "missed": 448,
+      "pct": 42.63
+    },
+    "branches": {
+      "total": 384,
+      "covered": 126,
+      "missed": 258,
+      "pct": 32.81
+    },
+    "functions": {
+      "total": 228,
+      "covered": 79,
+      "missed": 149,
+      "pct": 34.64
+    },
+    "lines": {
+      "total": 636,
+      "covered": 270,
+      "missed": 366,
+      "pct": 42.45
+    }
+  },
+  "globalTotals": {
+    "lines": {
+      "total": 5214,
+      "covered": 4089,
+      "skipped": 0,
+      "pct": 78.42
+    },
+    "statements": {
+      "total": 6351,
+      "covered": 4844,
+      "skipped": 0,
+      "pct": 76.27
+    },
+    "functions": {
+      "total": 1812,
+      "covered": 1275,
+      "skipped": 0,
+      "pct": 70.36
+    },
+    "branches": {
+      "total": 5449,
+      "covered": 3877,
+      "skipped": 0,
+      "pct": 71.15
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "modules": {
+    "apps/desktop/src/entities/library/model/LibraryProvider.tsx": {
+      "statements": {
+        "total": 139,
+        "covered": 114,
+        "missed": 25,
+        "pct": 82.01
+      },
+      "branches": {
+        "total": 42,
+        "covered": 20,
+        "missed": 22,
+        "pct": 47.61
+      },
+      "functions": {
+        "total": 38,
+        "covered": 29,
+        "missed": 9,
+        "pct": 76.31
+      },
+      "lines": {
+        "total": 106,
+        "covered": 88,
+        "missed": 18,
+        "pct": 83.01
+      }
+    },
+    "apps/desktop/src/entities/library/model/actions.ts": {
+      "statements": {
+        "total": 6,
+        "covered": 6,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 0,
+        "covered": 0,
+        "missed": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 6,
+        "covered": 2,
+        "missed": 4,
+        "pct": 33.33
+      },
+      "lines": {
+        "total": 3,
+        "covered": 3,
+        "missed": 0,
+        "pct": 100
+      }
+    },
+    "apps/desktop/src/entities/library/model/catalog.ts": {
+      "statements": {
+        "total": 23,
+        "covered": 23,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 27,
+        "covered": 23,
+        "missed": 4,
+        "pct": 85.18
+      },
+      "functions": {
+        "total": 7,
+        "covered": 7,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 22,
+        "covered": 22,
+        "missed": 0,
+        "pct": 100
+      }
+    },
+    "apps/desktop/src/entities/library/model/context.ts": {
+      "statements": {
+        "total": 9,
+        "covered": 8,
+        "missed": 1,
+        "pct": 88.88
+      },
+      "branches": {
+        "total": 2,
+        "covered": 1,
+        "missed": 1,
+        "pct": 50
+      },
+      "functions": {
+        "total": 1,
+        "covered": 1,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 5,
+        "covered": 5,
+        "missed": 0,
+        "pct": 100
+      }
+    },
+    "apps/desktop/src/entities/library/model/operations.ts": {
+      "statements": {
+        "total": 91,
+        "covered": 0,
+        "missed": 91,
+        "pct": 0
+      },
+      "branches": {
+        "total": 45,
+        "covered": 0,
+        "missed": 45,
+        "pct": 0
+      },
+      "functions": {
+        "total": 20,
+        "covered": 0,
+        "missed": 20,
+        "pct": 0
+      },
+      "lines": {
+        "total": 81,
+        "covered": 0,
+        "missed": 81,
+        "pct": 0
+      }
+    },
+    "apps/desktop/src/entities/library/ui/VideoPreview.tsx": {
+      "statements": {
+        "total": 51,
+        "covered": 4,
+        "missed": 47,
+        "pct": 7.84
+      },
+      "branches": {
+        "total": 35,
+        "covered": 0,
+        "missed": 35,
+        "pct": 0
+      },
+      "functions": {
+        "total": 13,
+        "covered": 0,
+        "missed": 13,
+        "pct": 0
+      },
+      "lines": {
+        "total": 39,
+        "covered": 3,
+        "missed": 36,
+        "pct": 7.69
+      }
+    },
+    "apps/desktop/src/features/voice-catalog/ui/useVoiceCatalog.ts": {
+      "statements": {
+        "total": 107,
+        "covered": 75,
+        "missed": 32,
+        "pct": 70.09
+      },
+      "branches": {
+        "total": 39,
+        "covered": 24,
+        "missed": 15,
+        "pct": 61.53
+      },
+      "functions": {
+        "total": 17,
+        "covered": 12,
+        "missed": 5,
+        "pct": 70.58
+      },
+      "lines": {
+        "total": 97,
+        "covered": 72,
+        "missed": 25,
+        "pct": 74.22
+      }
+    },
+    "apps/desktop/src/widgets/app-shell/ui/app-shell/ProjectListPanel.tsx": {
+      "statements": {
+        "total": 58,
+        "covered": 29,
+        "missed": 29,
+        "pct": 50
+      },
+      "branches": {
+        "total": 28,
+        "covered": 12,
+        "missed": 16,
+        "pct": 42.85
+      },
+      "functions": {
+        "total": 8,
+        "covered": 4,
+        "missed": 4,
+        "pct": 50
+      },
+      "lines": {
+        "total": 44,
+        "covered": 20,
+        "missed": 24,
+        "pct": 45.45
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/AssetCards.tsx": {
+      "statements": {
+        "total": 21,
+        "covered": 8,
+        "missed": 13,
+        "pct": 38.09
+      },
+      "branches": {
+        "total": 18,
+        "covered": 7,
+        "missed": 11,
+        "pct": 38.88
+      },
+      "functions": {
+        "total": 8,
+        "covered": 3,
+        "missed": 5,
+        "pct": 37.5
+      },
+      "lines": {
+        "total": 19,
+        "covered": 7,
+        "missed": 12,
+        "pct": 36.84
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/AssetInspector.tsx": {
+      "statements": {
+        "total": 73,
+        "covered": 2,
+        "missed": 71,
+        "pct": 2.73
+      },
+      "branches": {
+        "total": 30,
+        "covered": 0,
+        "missed": 30,
+        "pct": 0
+      },
+      "functions": {
+        "total": 36,
+        "covered": 0,
+        "missed": 36,
+        "pct": 0
+      },
+      "lines": {
+        "total": 58,
+        "covered": 1,
+        "missed": 57,
+        "pct": 1.72
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/AssetVersions.tsx": {
+      "statements": {
+        "total": 21,
+        "covered": 1,
+        "missed": 20,
+        "pct": 4.76
+      },
+      "branches": {
+        "total": 10,
+        "covered": 0,
+        "missed": 10,
+        "pct": 0
+      },
+      "functions": {
+        "total": 6,
+        "covered": 0,
+        "missed": 6,
+        "pct": 0
+      },
+      "lines": {
+        "total": 17,
+        "covered": 1,
+        "missed": 16,
+        "pct": 5.88
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryBrowser.tsx": {
+      "statements": {
+        "total": 50,
+        "covered": 41,
+        "missed": 9,
+        "pct": 82
+      },
+      "branches": {
+        "total": 34,
+        "covered": 26,
+        "missed": 8,
+        "pct": 76.47
+      },
+      "functions": {
+        "total": 23,
+        "covered": 13,
+        "missed": 10,
+        "pct": 56.52
+      },
+      "lines": {
+        "total": 39,
+        "covered": 31,
+        "missed": 8,
+        "pct": 79.48
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryCreateDialog.tsx": {
+      "statements": {
+        "total": 42,
+        "covered": 2,
+        "missed": 40,
+        "pct": 4.76
+      },
+      "branches": {
+        "total": 30,
+        "covered": 0,
+        "missed": 30,
+        "pct": 0
+      },
+      "functions": {
+        "total": 8,
+        "covered": 0,
+        "missed": 8,
+        "pct": 0
+      },
+      "lines": {
+        "total": 33,
+        "covered": 1,
+        "missed": 32,
+        "pct": 3.03
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryNavigation.tsx": {
+      "statements": {
+        "total": 35,
+        "covered": 18,
+        "missed": 17,
+        "pct": 51.42
+      },
+      "branches": {
+        "total": 20,
+        "covered": 13,
+        "missed": 7,
+        "pct": 65
+      },
+      "functions": {
+        "total": 18,
+        "covered": 8,
+        "missed": 10,
+        "pct": 44.44
+      },
+      "lines": {
+        "total": 29,
+        "covered": 14,
+        "missed": 15,
+        "pct": 48.27
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryProjectActions.tsx": {
+      "statements": {
+        "total": 53,
+        "covered": 0,
+        "missed": 53,
+        "pct": 0
+      },
+      "branches": {
+        "total": 24,
+        "covered": 0,
+        "missed": 24,
+        "pct": 0
+      },
+      "functions": {
+        "total": 19,
+        "covered": 0,
+        "missed": 19,
+        "pct": 0
+      },
+      "lines": {
+        "total": 42,
+        "covered": 0,
+        "missed": 42,
+        "pct": 0
+      }
+    },
+    "apps/desktop/src/widgets/library-browser/ui/controls.ts": {
+      "statements": {
+        "total": 2,
+        "covered": 2,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 0,
+        "covered": 0,
+        "missed": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 0,
+        "covered": 0,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 2,
+        "covered": 2,
+        "missed": 0,
+        "pct": 100
+      }
+    }
+  }
+}

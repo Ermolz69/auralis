@@ -1,0 +1,636 @@
+{
+  "date": "2026-10-28",
+  "sourceCommit": "ffed99f00caa6945f642cf1594fe447e58890678",
+  "command": "task fe:test -- --maxWorkers=4 --coverage.reportOnFailure --browser.api.port=63427",
+  "exitCode": 201,
+  "allTestProjectsExecuted": true,
+  "gatePassed": false,
+  "testFiles": {
+    "failed": 1,
+    "passed": 143
+  },
+  "tests": {
+    "failed": 1,
+    "passed": 767
+  },
+  "thresholds": {
+    "branches": 80,
+    "statements": 90,
+    "lines": 92,
+    "functions": 90
+  },
+  "scopeTotals": {
+    "statements": {
+      "total": 787,
+      "covered": 761,
+      "missed": 26,
+      "pct": 96.69
+    },
+    "branches": {
+      "total": 386,
+      "covered": 354,
+      "missed": 32,
+      "pct": 91.7
+    },
+    "functions": {
+      "total": 226,
+      "covered": 205,
+      "missed": 21,
+      "pct": 90.7
+    },
+    "lines": {
+      "total": 642,
+      "covered": 627,
+      "missed": 15,
+      "pct": 97.66
+    }
+  },
+  "globalTotals": {
+    "lines": {
+      "total": 5220,
+      "covered": 4447,
+      "skipped": 0,
+      "pct": 85.19
+    },
+    "statements": {
+      "total": 6357,
+      "covered": 5275,
+      "skipped": 0,
+      "pct": 82.97
+    },
+    "functions": {
+      "total": 1810,
+      "covered": 1402,
+      "skipped": 0,
+      "pct": 77.45
+    },
+    "branches": {
+      "total": 5451,
+      "covered": 4111,
+      "skipped": 0,
+      "pct": 75.41
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "modules": {
+    "apps/desktop/src/entities/library/model/LibraryProvider.tsx": {
+      "statements": {
+        "total": 141,
+        "covered": 128,
+        "missed": 13,
+        "pct": 90.78
+      },
+      "branches": {
+        "total": 44,
+        "covered": 33,
+        "missed": 11,
+        "pct": 75
+      },
+      "functions": {
+        "total": 35,
+        "covered": 28,
+        "missed": 7,
+        "pct": 80
+      },
+      "lines": {
+        "total": 109,
+        "covered": 101,
+        "missed": 8,
+        "pct": 92.66
+      },
+      "missedLines": [151, 152, 168, 169, 170, 174, 175, 176],
+      "missedBranchLines": [71, 128, 151, 161, 170, 174],
+      "missedFunctions": [
+        {
+          "line": 73,
+          "name": "(anonymous_12)"
+        },
+        {
+          "line": 81,
+          "name": "(anonymous_14)"
+        },
+        {
+          "line": 167,
+          "name": "(anonymous_30)"
+        },
+        {
+          "line": 168,
+          "name": "(anonymous_31)"
+        },
+        {
+          "line": 169,
+          "name": "(anonymous_32)"
+        },
+        {
+          "line": 173,
+          "name": "(anonymous_33)"
+        },
+        {
+          "line": 174,
+          "name": "(anonymous_34)"
+        }
+      ]
+    },
+    "apps/desktop/src/entities/library/model/actions.ts": {
+      "statements": {
+        "total": 6,
+        "covered": 6,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 0,
+        "covered": 0,
+        "missed": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 6,
+        "covered": 6,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 3,
+        "covered": 3,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/entities/library/model/catalog.ts": {
+      "statements": {
+        "total": 23,
+        "covered": 23,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 27,
+        "covered": 26,
+        "missed": 1,
+        "pct": 96.29
+      },
+      "functions": {
+        "total": 7,
+        "covered": 7,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 22,
+        "covered": 22,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [65],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/entities/library/model/context.ts": {
+      "statements": {
+        "total": 9,
+        "covered": 9,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 2,
+        "covered": 2,
+        "missed": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 1,
+        "covered": 1,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 5,
+        "covered": 5,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/entities/library/model/operations.ts": {
+      "statements": {
+        "total": 95,
+        "covered": 95,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 45,
+        "covered": 41,
+        "missed": 4,
+        "pct": 91.11
+      },
+      "functions": {
+        "total": 21,
+        "covered": 21,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 84,
+        "covered": 84,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [77, 111, 157, 197],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/entities/library/ui/VideoPreview.tsx": {
+      "statements": {
+        "total": 51,
+        "covered": 50,
+        "missed": 1,
+        "pct": 98.03
+      },
+      "branches": {
+        "total": 35,
+        "covered": 32,
+        "missed": 3,
+        "pct": 91.42
+      },
+      "functions": {
+        "total": 13,
+        "covered": 13,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 39,
+        "covered": 39,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [22, 47, 63],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/features/voice-catalog/ui/useVoiceCatalog.ts": {
+      "statements": {
+        "total": 107,
+        "covered": 107,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 39,
+        "covered": 38,
+        "missed": 1,
+        "pct": 97.43
+      },
+      "functions": {
+        "total": 17,
+        "covered": 17,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 97,
+        "covered": 97,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [57],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/widgets/app-shell/ui/app-shell/ProjectListPanel.tsx": {
+      "statements": {
+        "total": 58,
+        "covered": 58,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 28,
+        "covered": 26,
+        "missed": 2,
+        "pct": 92.85
+      },
+      "functions": {
+        "total": 8,
+        "covered": 8,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 44,
+        "covered": 44,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [81, 133],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/widgets/library-browser/ui/AssetCards.tsx": {
+      "statements": {
+        "total": 21,
+        "covered": 21,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 18,
+        "covered": 15,
+        "missed": 3,
+        "pct": 83.33
+      },
+      "functions": {
+        "total": 8,
+        "covered": 8,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 19,
+        "covered": 19,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [50, 57, 67],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/widgets/library-browser/ui/AssetInspector.tsx": {
+      "statements": {
+        "total": 73,
+        "covered": 72,
+        "missed": 1,
+        "pct": 98.63
+      },
+      "branches": {
+        "total": 30,
+        "covered": 28,
+        "missed": 2,
+        "pct": 93.33
+      },
+      "functions": {
+        "total": 36,
+        "covered": 35,
+        "missed": 1,
+        "pct": 97.22
+      },
+      "lines": {
+        "total": 58,
+        "covered": 57,
+        "missed": 1,
+        "pct": 98.27
+      },
+      "missedLines": [130],
+      "missedBranchLines": [56, 82],
+      "missedFunctions": [
+        {
+          "line": 129,
+          "name": "(anonymous_23)"
+        }
+      ]
+    },
+    "apps/desktop/src/widgets/library-browser/ui/AssetVersions.tsx": {
+      "statements": {
+        "total": 21,
+        "covered": 20,
+        "missed": 1,
+        "pct": 95.23
+      },
+      "branches": {
+        "total": 10,
+        "covered": 9,
+        "missed": 1,
+        "pct": 90
+      },
+      "functions": {
+        "total": 6,
+        "covered": 5,
+        "missed": 1,
+        "pct": 83.33
+      },
+      "lines": {
+        "total": 17,
+        "covered": 17,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [12],
+      "missedFunctions": [
+        {
+          "line": 28,
+          "name": "(anonymous_5)"
+        }
+      ]
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryBrowser.tsx": {
+      "statements": {
+        "total": 50,
+        "covered": 47,
+        "missed": 3,
+        "pct": 94
+      },
+      "branches": {
+        "total": 34,
+        "covered": 33,
+        "missed": 1,
+        "pct": 97.05
+      },
+      "functions": {
+        "total": 23,
+        "covered": 18,
+        "missed": 5,
+        "pct": 78.26
+      },
+      "lines": {
+        "total": 39,
+        "covered": 36,
+        "missed": 3,
+        "pct": 92.3
+      },
+      "missedLines": [139, 153, 165],
+      "missedBranchLines": [161],
+      "missedFunctions": [
+        {
+          "line": 44,
+          "name": "(anonymous_8)"
+        },
+        {
+          "line": 122,
+          "name": "(anonymous_19)"
+        },
+        {
+          "line": 139,
+          "name": "(anonymous_20)"
+        },
+        {
+          "line": 153,
+          "name": "(anonymous_21)"
+        },
+        {
+          "line": 165,
+          "name": "(anonymous_22)"
+        }
+      ]
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryCreateDialog.tsx": {
+      "statements": {
+        "total": 42,
+        "covered": 42,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 30,
+        "covered": 29,
+        "missed": 1,
+        "pct": 96.66
+      },
+      "functions": {
+        "total": 8,
+        "covered": 8,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 33,
+        "covered": 33,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [39],
+      "missedFunctions": []
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryNavigation.tsx": {
+      "statements": {
+        "total": 35,
+        "covered": 35,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 20,
+        "covered": 20,
+        "missed": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 18,
+        "covered": 16,
+        "missed": 2,
+        "pct": 88.88
+      },
+      "lines": {
+        "total": 29,
+        "covered": 29,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [],
+      "missedFunctions": [
+        {
+          "line": 63,
+          "name": "(anonymous_8)"
+        },
+        {
+          "line": 77,
+          "name": "(anonymous_11)"
+        }
+      ]
+    },
+    "apps/desktop/src/widgets/library-browser/ui/LibraryProjectActions.tsx": {
+      "statements": {
+        "total": 53,
+        "covered": 46,
+        "missed": 7,
+        "pct": 86.79
+      },
+      "branches": {
+        "total": 24,
+        "covered": 22,
+        "missed": 2,
+        "pct": 91.66
+      },
+      "functions": {
+        "total": 19,
+        "covered": 14,
+        "missed": 5,
+        "pct": 73.68
+      },
+      "lines": {
+        "total": 42,
+        "covered": 39,
+        "missed": 3,
+        "pct": 92.85
+      },
+      "missedLines": [57, 91, 106],
+      "missedBranchLines": [21, 43],
+      "missedFunctions": [
+        {
+          "line": 47,
+          "name": "(anonymous_9)"
+        },
+        {
+          "line": 48,
+          "name": "(anonymous_10)"
+        },
+        {
+          "line": 49,
+          "name": "(anonymous_11)"
+        },
+        {
+          "line": 91,
+          "name": "(anonymous_16)"
+        },
+        {
+          "line": 106,
+          "name": "(anonymous_18)"
+        }
+      ]
+    },
+    "apps/desktop/src/widgets/library-browser/ui/controls.ts": {
+      "statements": {
+        "total": 2,
+        "covered": 2,
+        "missed": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 0,
+        "covered": 0,
+        "missed": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 0,
+        "covered": 0,
+        "missed": 0,
+        "pct": 100
+      },
+      "lines": {
+        "total": 2,
+        "covered": 2,
+        "missed": 0,
+        "pct": 100
+      },
+      "missedLines": [],
+      "missedBranchLines": [],
+      "missedFunctions": []
+    }
+  }
+}

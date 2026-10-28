@@ -1,5 +1,5 @@
 import { describeCommandError } from '@/shared/api/contracts/error';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { invoke } from '@/shared/api/tauri';
 import type { Artifact } from '@/shared/api/contracts/artifact';
@@ -13,6 +13,10 @@ export function ResultsTool({ projectId, asset }: { projectId: string; asset?: L
   const [audio, setAudio] = useState('');
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
+  const generation = useRef(0);
+  const playing = useRef(false);
+  const refreshing = useRef(false);
+  const [resolving, setResolving] = useState(false);
   const materialIds = new Set(asset ? [asset.id] : []);
   for (let q = 0; q < state.assets.length; q++)
     for (const candidate of state.assets)
@@ -22,11 +26,25 @@ export function ResultsTool({ projectId, asset }: { projectId: string; asset?: L
     .map((a) => `${a.id}:${a.parentId}:${a.artifactId}`)
     .join('|');
   const load = async () => {
-    await refresh();
-    setRevision((v) => v + 1);
+    if (refreshing.current || busy) return;
+    refreshing.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await refresh();
+      setRevision((v) => v + 1);
+    } catch (reason) {
+      setError(describeCommandError(reason));
+    } finally {
+      refreshing.current = false;
+      setBusy(false);
+    }
   };
   useEffect(() => {
     let active = true;
+    generation.current++;
+    playing.current = false;
+    setResolving(false);
     setBusy(true);
     setFiles([]);
     setAudio('');
@@ -43,7 +61,12 @@ export function ResultsTool({ projectId, asset }: { projectId: string; asset?: L
           if (materialIds.has(result.asset_id)) related.add(result.id);
         if (active)
           setFiles(
-            items.filter((item) => item.state === 'ready' && (!asset || related.has(item.id))),
+            items.filter(
+              (item) =>
+                item.state === 'ready' &&
+                item.location.kind === 'storageKey' &&
+                (!asset || related.has(item.id)),
+            ),
           );
       })
       .catch((e) => {
@@ -54,13 +77,27 @@ export function ResultsTool({ projectId, asset }: { projectId: string; asset?: L
       });
     return () => {
       active = false;
+      generation.current++;
     };
   }, [projectId, asset?.id, signature, revision]);
   const play = async (id: string) => {
+    if (playing.current || busy || !files.some((file) => file.id === id && file.state === 'ready'))
+      return;
+    const current = generation.current;
+    playing.current = true;
+    setResolving(true);
+    setError('');
+    setAudio('');
     try {
-      setAudio(convertFileSrc(await invoke('resolve_artifact_path_cmd', { artifactId: id })));
+      const path = await invoke('resolve_artifact_path_cmd', { artifactId: id });
+      if (generation.current === current) setAudio(convertFileSrc(path));
     } catch (e) {
-      setError(describeCommandError(e));
+      if (generation.current === current) setError(describeCommandError(e));
+    } finally {
+      if (generation.current === current) {
+        playing.current = false;
+        setResolving(false);
+      }
     }
   };
   return (
@@ -94,7 +131,11 @@ export function ResultsTool({ projectId, asset }: { projectId: string; asset?: L
                 file.kind === 'generatedSpeechSegment' ||
                 file.kind === 'extractedAudio' ||
                 (file.kind === 'sourceVideo' && asset?.kind === 'audio')) && (
-                <button className={button} onClick={() => void play(file.id)}>
+                <button
+                  className={button}
+                  disabled={resolving || busy}
+                  onClick={() => void play(file.id)}
+                >
                   Прослушать
                 </button>
               )}

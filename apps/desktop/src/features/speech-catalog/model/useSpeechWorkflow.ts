@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { invoke } from '@/shared/api/tauri';
 import type {
@@ -15,7 +15,6 @@ import type { SpeechWorkflowOptions } from './speechOptions';
 export type { SpeechWorkflowOptions } from './speechOptions';
 import { useSpeechDraftSync } from './useSpeechDraftSync';
 import { sourceRequest } from './sourceRequest';
-
 export function useSpeechWorkflow({
   projectId,
   assetId,
@@ -49,6 +48,8 @@ export function useSpeechWorkflow({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [audio, setAudio] = useState<string | null>(null);
+  const sourceVersion = useRef(0);
+  const operating = useRef(false);
   const run = runs.find((item) => item.run_id === selected);
   const subtitle = subtitleFiles.find((f) => f.id === subtitleId);
   useSpeechDraftSync(
@@ -65,9 +66,9 @@ export function useSpeechWorkflow({
     onDraftChange,
   );
   const request = sourceRequest(mode, text, translationId, subtitleId, subtitle);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     let active = true;
+    sourceVersion.current++;
     setSource(null);
     setReview(null);
     setAssignments([]);
@@ -90,7 +91,6 @@ export function useSpeechWorkflow({
       clearInterval(timer);
     };
   }, [projectId]);
-
   useEffect(() => {
     setAudio(null);
   }, [selected]);
@@ -98,8 +98,9 @@ export function useSpeechWorkflow({
     setAssignments([]);
     setSelected('');
   }, [profileId, allowUnverifiedNeutral]);
-
   const action = async (work: () => Promise<void>) => {
+    if (operating.current) return;
+    operating.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -107,10 +108,12 @@ export function useSpeechWorkflow({
     } catch (reason) {
       setError(describe(reason));
     } finally {
+      operating.current = false;
       setBusy(false);
     }
   };
   const changed = () => {
+    sourceVersion.current++;
     marker.clear();
     setSource(null);
     setReview(null);
@@ -124,6 +127,7 @@ export function useSpeechWorkflow({
     });
   const confirm = () =>
     action(async () => {
+      const version = sourceVersion.current;
       const result = marker.applied
         ? await marker.confirm()
         : await invoke('review_speech_text_cmd', {
@@ -131,6 +135,7 @@ export function useSpeechWorkflow({
             source: request,
             confirmed: true,
           });
+      if (version !== sourceVersion.current || result.project_id !== projectId) return;
       setReview(result);
       setSource(result.source);
     });
@@ -188,7 +193,6 @@ export function useSpeechWorkflow({
     ]);
   };
   const active = run?.job && ['pending', 'running', 'cancelling'].includes(run.job.status);
-
   return {
     markerPreparation: marker.preparation,
     markerApplied: marker.applied,

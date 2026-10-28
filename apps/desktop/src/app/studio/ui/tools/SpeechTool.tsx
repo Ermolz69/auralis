@@ -1,5 +1,5 @@
 import { describeCommandError } from '@/shared/api/contracts/error';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SpeechCatalog } from '@/features/speech-catalog';
 import { useLibrary } from '@/entities/library';
 import { invoke } from '@/shared/api/tauri';
@@ -19,13 +19,16 @@ export function SpeechTool({
   tab: LibraryTab;
   workspace?: LibraryWorkspace;
 }) {
-  const { initial, draft, change } = useTabDraft(tab);
+  const { initial, draft, change, error: draftError, retry } = useTabDraft(tab);
   const { mutate, openTool, refresh } = useLibrary();
   const [input, setInput] = useState<SpeechSourceRequest | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   useEffect(() => {
     let active = true;
+    setInput(null);
+    setError('');
     const source: SpeechSourceRequest =
       asset?.kind === 'subtitle'
         ? {
@@ -42,7 +45,12 @@ export function SpeechTool({
         : Promise.resolve([])
     )
       .then(async (links) => {
-        const link = links.find((l) => l.outputArtifactId === asset?.artifactId);
+        const link = links.find(
+          (l) =>
+            l.projectId === projectId &&
+            l.selectedResultId &&
+            l.outputArtifactId === asset?.artifactId,
+        );
         if (asset?.kind === 'text' && asset.text === null && asset.artifactId) {
           const path = await invoke('resolve_artifact_path_cmd', { artifactId: asset.artifactId });
           source.text = await invoke('read_library_text_cmd', { path });
@@ -60,8 +68,11 @@ export function SpeechTool({
     };
   }, [projectId, asset?.id, asset?.kind, asset?.format, asset?.artifactId, asset?.text]);
   const saveVersion = async () => {
+    if (savingRef.current) return;
     const text = draft?.text ?? asset?.text ?? '';
     if (!text.trim()) return;
+    savingRef.current = true;
+    setError('');
     setSaving(true);
     try {
       const version = await createText(
@@ -76,12 +87,21 @@ export function SpeechTool({
     } catch (e) {
       setError(describeCommandError(e));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
   return (
     <div className="space-y-3">
       {error && <p role="alert">{error}</p>}
+      {draftError && (
+        <p role="alert">
+          {draftError}{' '}
+          <button className={button} onClick={() => void retry()}>
+            Повторить сохранение черновика
+          </button>
+        </p>
+      )}
       {tab.tool === 'text' && (
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -98,6 +118,7 @@ export function SpeechTool({
       )}
       {input ? (
         <SpeechCatalog
+          key={`${projectId}:${asset?.id}:${JSON.stringify(input)}`}
           assetId={asset?.id}
           projectId={projectId}
           initialSource={input}
