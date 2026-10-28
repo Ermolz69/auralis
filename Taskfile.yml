@@ -92,6 +92,17 @@ tasks:
     cmds:
       - node tools/native-e2e/run.mjs
 
+  desktop:e2e:native:harness:check:
+    desc: Check native scenario selection and owned cleanup contracts without launching Tauri
+    cmds:
+      - node --check tools/native-e2e/run.mjs
+      - node --check tools/native-e2e/scenario-config.mjs
+      - node --check tools/native-e2e/fixture.mjs
+      - node --check tools/native-e2e/app-lifecycle.mjs
+      - node --check tools/native-e2e/verify-result.mjs
+      - node --input-type=module -e "await import('./tools/native-e2e/run.mjs')"
+      - node --test tools/native-e2e/scenario-config.test.mjs tools/native-e2e/fixture.test.mjs tools/native-e2e/app-lifecycle.test.mjs
+
   desktop:e2e:native:caster:
     desc: Exercise installed Caster through native catalog controls, typed IPC, audio and managed cast restart
     requires:

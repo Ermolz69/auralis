@@ -59,7 +59,17 @@ async function runTests() {
         assert.strictEqual(hasError, true, 'Expected stderr() to trigger an error in non-diagnostic file');
     }
 
-    // Test 7: File with std::io::stderr() in diagnostic.rs should pass
+    // Test 7: Child process stderr streams should pass
+    {
+        const content = `let stderr = child.stderr().take();
+            command.stderr();
+            process
+                .stderr();`;
+        const hasError = await checkFileContent('child-output.rs', content);
+        assert.strictEqual(hasError, false, 'Child process stderr streams are not direct diagnostic output');
+    }
+
+    // Test 8: File with std::io::stderr() in diagnostic.rs should pass
     {
         const content = `fn main() {
             let mut s = std::io::stderr();
@@ -68,7 +78,7 @@ async function runTests() {
         assert.strictEqual(hasError, false, 'Expected std::io::stderr to pass in diagnostic.rs');
     }
 
-    // Test 8: File with stderr() in diagnostic.rs should pass
+    // Test 9: File with stderr() in diagnostic.rs should pass
     {
         const content = `fn main() {
             let mut s = stderr();

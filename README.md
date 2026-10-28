@@ -3,9 +3,12 @@
 Auralis is a Tauri desktop application for preparing AI dubbing projects from
 YouTube links or local media. The current product supports persistent projects,
 local and YouTube source import, media inspection, YouTube subtitle selection,
-job tracking, crash-safe storage, and signed application updates. The complete
-speech-generation and final media pipeline remains the target workflow described
-in the architecture documentation.
+durable job tracking, crash-safe storage, and signed application updates. It also
+has an experimental subtitle translation workflow, a Caster voice catalog with
+manual role assignment, and a TTS voice/profile catalog. The TTS selector does
+not start synthesis. The complete speech-generation and final media pipeline
+remains a target workflow; see the [architecture overview](docs/architecture/001-overview.md)
+and [integration status](docs/integration/README.md).
 
 ## Stack
 
@@ -25,7 +28,11 @@ Run commands from the repository root. Install Node.js 24, the pnpm version pinn
 `package.json`, and Task first. Full desktop development uses Rust 1.95.0 from
 `rust-toolchain.toml` and also requires the platform's Tauri build dependencies.
 
-Set up dependencies and the Playwright Chromium runtime before running checks:
+Setup commands change the local dependency and tool environment; run only the
+ones needed for the selected check.
+
+For full desktop and browser development, install the required dependencies and
+Playwright Chromium runtime explicitly:
 
 ```bash
 task install:all
@@ -65,9 +72,17 @@ GLib regression.
 - `task install:rust`: locked Rust dependencies only; no Node/pnpm required.
 - `task install:all`: both sets of dependencies. `task install` remains a compatible alias.
 
-For docs-only work, run `task install:frontend` followed by `task check:docs` and
-`task check:quality:docs`; neither Rust nor Playwright is needed. For frontend-only
-checks, add `task fe:setup:playwright` before `task check:frontend`.
+For a first, model-free documentation check, install only the frontend tools:
+
+```bash
+task install:frontend
+task check:docs
+task check:quality:docs
+```
+
+For frontend-only checks, add `task fe:setup:playwright` before
+`task check:frontend`. Choose narrower checks from the
+[Taskfile guide](docs/taskfile/001-commands.md) while iterating.
 
 Run the production E2E suite independently with `task fe:e2e`. It builds the desktop
 frontend and executes the main user journeys in Chromium against a stateful mocked
@@ -96,11 +111,16 @@ policy and is included in the global quality gate.
 
 ## Documentation
 
-See [docs/README.md](docs/README.md).
+Start with [docs/README.md](docs/README.md). Agents have a short repository
+entrypoint in `AGENTS.md`; the [desktop contributor guide](apps/desktop/README.md)
+locates frontend ownership and checks.
 
 ## Architecture
 
-The React UI calls thin Tauri commands. Rust application use cases coordinate the
-domain, ports, job runtime, SQLite storage, and concrete adapters. FFmpeg, ffprobe,
-and yt-dlp run as managed external processes; model-backed ASR and TTS adapters are
-not part of the production composition yet.
+The React UI calls typed, thin Tauri commands. Rust application use cases coordinate
+the domain, ports, durable job runtime, SQLite storage, and concrete adapters.
+FFmpeg, ffprobe, and yt-dlp run as managed external processes. When separately
+installed, the Caster worker supplies catalog and manual assignment operations;
+the TTS worker supplies a catalog. Experimental translation uses a separately
+installed checked model runtime. Model-backed ASR, desktop TTS synthesis/publication, and
+final media assembly remain outside accepted production composition.

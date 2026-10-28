@@ -47,3 +47,13 @@ The local and CI entrypoints are:
 - **full suite**: Adds the optimized Linux GLib regression to the PR suite (`task check:all`, also `task check`).
 
 Script-backed quality gates must run their own fixture suites before scanning production code.
+
+For a scoped change, choose the corresponding command from the
+[Taskfile guide](../taskfile/001-commands.md): `task q:ipc-contract` for new
+command/event maps, `task rs:test:storage` for SQLite adapters, and
+`task rs:test:queue` for durable dispatch. Use the relevant full gate before
+review. Fixture, browser and model-free Rust checks establish their named
+contracts only. Native desktop, real-model/listening, installed-package and
+release evidence must be recorded separately against the tested candidate;
+see the [integration index](../integration/README.md) and
+[release workflow](../release/001-release-workflow.md).

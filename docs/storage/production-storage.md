@@ -2,7 +2,7 @@
 
 Desktop production composition always uses SQLite as the durable source of truth.
 
-Schema version 13 combines durable `job_executions`, speech run tables, and
+Schema version 13 combined durable `job_executions`, speech run tables, and
 immutable translation review events. Version-11 review-only databases and
 version-12 speech/queue databases upgrade without losing their existing rows.
 `job_executions` is keyed to a job with cascading deletion.
@@ -10,8 +10,9 @@ The queue commits the project link, Pending row and frozen execution descriptor
 in one `BEGIN IMMEDIATE` transaction. Its capacity check participates in that
 transaction. Dispatch checks the job revision and owning project's active link;
 terminal writes still commit the lifecycle outbox atomically. See
-[durable dispatch](../architecture/008-job-dispatch.md). Older builds cannot open
-version-13 databases.
+[durable dispatch](../architecture/008-job-dispatch.md) and
+[outbox concurrency](../architecture/009-outbox-concurrency.md). The current
+schema is version 14, described below; older builds cannot open these databases.
 
 - `AURALIS_STORAGE` unset: use SQLite.
 - `AURALIS_STORAGE=sqlite`: use SQLite.

@@ -26,6 +26,9 @@ use uuid::Uuid;
 const PROFILE: &str = include_str!(
     "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.experimental.json"
 );
+const CHECKED_PROFILE: &str = include_str!(
+    "../../../modules/auralis-translate/models/manifests/hy_mt2_1_8b_q4_k_m.checked.experimental.json"
+);
 
 fn records(format: &str, source: &[u8]) -> (TranslationLink, TranslationRunIntent) {
     let translation_id = Uuid::new_v4();
@@ -425,6 +428,189 @@ async fn executor_acknowledges_pause_without_waiting_for_a_model_response()
     assert!(attempt.1.is_some());
     assert_eq!(attempt.2.as_deref(), Some("pause requested"));
     assert_eq!(link.active_run_id, Some(intent.run_id));
+    assert_eq!(std::fs::read(source_path)?, source);
+    Ok(())
+}
+
+#[tokio::test]
+async fn executor_preserves_frozen_validation_order_without_starting_attempt()
+-> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let source = b"1\n00:00:01,000 --> 00:00:02,000\nhello\n";
+    let changed_source = b"1\n00:00:01,000 --> 00:00:02,000\nchanged\n";
+    let source_path = directory.path().join("source.srt");
+    let database_path = directory.path().join("translate.sqlite");
+    std::fs::write(&source_path, source)?;
+    let (link, intent) = records("srt", source);
+    TranslateRunRegistrar::new(database_path.clone())
+        .ensure_run(&source_path, &link, &intent)
+        .await?;
+    let executor = TranslateRunExecutor::experimental_unchecked(database_path.clone());
+    let endpoint = "http://127.0.0.1:1/";
+
+    let mut wrong_link = link.clone();
+    wrong_link.active_run_id = None;
+    assert!(matches!(
+        executor.execute(&source_path, &wrong_link, &intent, endpoint).await,
+        Err(PortError::Conflict { message, .. }) if message == "active link and frozen run intent differ"
+    ));
+    let mut wrong_profile = intent.clone();
+    wrong_profile.profile_sha256 = "0".repeat(64);
+    assert!(matches!(
+        executor.execute(&source_path, &link, &wrong_profile, endpoint).await,
+        Err(PortError::Conflict { message, .. }) if message == "frozen model profile hash differs from its bytes"
+    ));
+    let mut wrong_policy = intent.clone();
+    wrong_policy.max_target_segments = 0;
+    assert!(matches!(
+        executor.execute(&source_path, &link, &wrong_policy, endpoint).await,
+        Err(PortError::InvalidSource { message }) if message == "invalid block policy"
+    ));
+    std::fs::write(&source_path, changed_source)?;
+    assert!(matches!(
+        executor.execute(&source_path, &link, &intent, endpoint).await,
+        Err(PortError::Conflict { message, .. }) if message == "original or parser policy differs from frozen run"
+    ));
+    let database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    let run_id = RunId::new(intent.run_id).ok_or("nil run ID")?;
+    assert_eq!(
+        database.run_state(run_id)?,
+        auralis_translation::RunState::Requested
+    );
+    assert!(database.checkpoints(run_id)?.is_empty());
+    let attempts: i64 = rusqlite::Connection::open(&database_path)?.query_row(
+        "SELECT COUNT(*) FROM run_attempts WHERE run_id = ?1",
+        [intent.run_id.to_string()],
+        |row| row.get(0),
+    )?;
+    assert_eq!(attempts, 0);
+    assert_eq!(std::fs::read(source_path)?, changed_source);
+    Ok(())
+}
+
+#[tokio::test]
+async fn executor_preserves_preflight_failure_before_attempt() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let source = b"1\n00:00:01,000 --> 00:00:02,000\nhello\n";
+    let source_path = directory.path().join("source.srt");
+    let database_path = directory.path().join("translate.sqlite");
+    std::fs::write(&source_path, source)?;
+    let (link, mut intent) = records("srt", source);
+    intent.profile_manifest_json = CHECKED_PROFILE.into();
+    intent.profile_sha256 = SourceHash::digest(CHECKED_PROFILE.as_bytes()).to_string();
+    TranslateRunRegistrar::new(database_path.clone())
+        .ensure_run(&source_path, &link, &intent)
+        .await?;
+    assert!(matches!(
+        TranslateRunExecutor::new(database_path.clone())
+            .execute(&source_path, &link, &intent, "http://127.0.0.1:1/")
+            .await,
+        Err(PortError::ExternalToolFailed { tool, .. }) if tool == "llama.cpp preflight"
+    ));
+    let database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    let run_id = RunId::new(intent.run_id).ok_or("nil run ID")?;
+    assert_eq!(
+        database.run_state(run_id)?,
+        auralis_translation::RunState::Requested
+    );
+    let attempts: i64 = rusqlite::Connection::open(&database_path)?.query_row(
+        "SELECT COUNT(*) FROM run_attempts WHERE run_id = ?1",
+        [intent.run_id.to_string()],
+        |row| row.get(0),
+    )?;
+    assert_eq!(attempts, 0);
+    assert_eq!(std::fs::read(source_path)?, source);
+    Ok(())
+}
+
+#[tokio::test]
+async fn executor_keeps_stale_guard_cancelled_and_running_busy() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let source = b"1\n00:00:01,000 --> 00:00:02,000\nhello\n";
+    let source_path = directory.path().join("source.srt");
+    let database_path = directory.path().join("translate.sqlite");
+    std::fs::write(&source_path, source)?;
+    let (link, intent) = records("srt", source);
+    TranslateRunRegistrar::new(database_path.clone())
+        .ensure_run(&source_path, &link, &intent)
+        .await?;
+    let control = TranslateRunControl::new(database_path.clone());
+    let guard = control.capture_start(&link).await?;
+    control.request_pause(&link).await?;
+    let (progress, mut received) = tokio::sync::mpsc::unbounded_channel();
+    let executor = TranslateRunExecutor::experimental_unchecked(database_path.clone());
+    assert!(matches!(
+        executor
+            .execute_for_host(
+                &source_path,
+                &link,
+                &intent,
+                "http://127.0.0.1:1/",
+                ports::host_translation_execution::HostTranslationExecution {
+                    job_id: JobId::new(),
+                    start_guard: Some(guard),
+                    progress,
+                },
+            )
+            .await,
+        Err(PortError::Cancelled)
+    ));
+    assert!(received.try_recv().is_err());
+    let run_id = RunId::new(intent.run_id).ok_or("nil run ID")?;
+    let mut database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    let run = database.run(run_id)?;
+    let current_guard = database.capture_attempt_start(run_id)?;
+    let attempt = database.begin_guarded_attempt(&run, None, current_guard)?;
+    assert!(matches!(
+        executor.execute(&source_path, &link, &intent, "http://127.0.0.1:1/").await,
+        Err(PortError::Busy { message }) if message == "Translate run already has an active attempt"
+    ));
+    database.stop_attempt(run_id, attempt, RunStop::Paused, "fixture cleanup")?;
+    assert_eq!(std::fs::read(source_path)?, source);
+    Ok(())
+}
+
+#[tokio::test]
+async fn executor_result_commit_failure_keeps_checkpoint_without_result()
+-> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let source = b"1\n00:00:01,000 --> 00:00:02,000\nhello\n";
+    let source_path = directory.path().join("source.srt");
+    let database_path = directory.path().join("translate.sqlite");
+    std::fs::write(&source_path, source)?;
+    let (link, intent) = records("srt", source);
+    TranslateRunRegistrar::new(database_path.clone())
+        .ensure_run(&source_path, &link, &intent)
+        .await?;
+    rusqlite::Connection::open(&database_path)?.execute_batch(
+        "CREATE TRIGGER fixture_reject_result BEFORE INSERT ON results \
+         BEGIN SELECT RAISE(ABORT, 'fixture result failure'); END;",
+    )?;
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let endpoint = format!("http://{}/", listener.local_addr()?);
+    let server = std::thread::spawn(move || respond_once(listener));
+    let result = TranslateRunExecutor::experimental_unchecked(database_path.clone())
+        .execute(&source_path, &link, &intent, &endpoint)
+        .await;
+    assert!(matches!(
+        result,
+        Err(PortError::Storage {
+            operation: "commit_translate_result",
+            ..
+        })
+    ));
+    server
+        .join()
+        .map_err(|_| "mock server panicked")?
+        .map_err(|error| error.to_string())?;
+    let database = TranslateDb::open(&database_path, SqliteConfig::default())?;
+    let run_id = RunId::new(intent.run_id).ok_or("nil run ID")?;
+    assert_eq!(
+        database.run_state(run_id)?,
+        auralis_translation::RunState::Failed
+    );
+    assert_eq!(database.checkpoints(run_id)?.len(), 1);
+    assert!(database.result_for_run(run_id).is_err());
     assert_eq!(std::fs::read(source_path)?, source);
     Ok(())
 }

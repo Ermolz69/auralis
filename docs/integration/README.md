@@ -8,6 +8,22 @@ WPF application stays unchanged.
 These are architecture and execution prompts. Creating them does not activate
 a Goal, start model processes, change module code or qualify a release.
 
+## Current host boundary
+
+| Component | Composed in this Auralis checkout                                                                                                                           | Remaining gate                                                                                                                                                                       |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Translate | Experimental subtitle import, checked-model jobs, saved progress, review and separate result publication; see [Translate status](../translation/README.md). | Source-grounded language quality, clean installation, and remaining concurrency evidence.                                                                                            |
+| Caster    | Installed-worker voice/reference catalog, compatibility inspection and explicit manual cast revisions; see the [Caster record](caster-execution.md).        | The dated record reports synthetic native and package checks; genuine reference qualification and frozen CONTRACT acceptance remain open. No automatic casting or speech generation. |
+| TTS       | Installed-worker voice/profile catalog and selector; model-free execution transport and persistence pieces exist; see the [TTS record](tts-execution.md).   | Desktop synthesis, complete publication, speech-plan model/listening checks, and clean installation.                                                                                 |
+| Assembly  | [Design and goal](goals/04-assembly.md) only.                                                                                                               | Accepted component candidates, real playable speech, timing, media export and clean-install verification.                                                                            |
+
+The [Rust adapter map](../architecture/003-rust-workspace.md) identifies the
+current composition boundary. The [durable queue](../architecture/008-job-dispatch.md)
+currently supports subtitle import; [outbox concurrency](../architecture/009-outbox-concurrency.md)
+governs managed publication. Current code and the named execution records are
+the evidence for capability claims. Design arrows and goal prompts do not
+demonstrate native, model or release acceptance.
+
 ## Architecture and execution order
 
 Read the [integration architecture](architecture.md) and
@@ -34,8 +50,9 @@ request and refers to the [shared execution rules](goals/common.md). Submit one
 selected objective; do not launch all goals merely by opening this directory.
 
 Documentation and prompts are in English to follow repository conventions.
-The active [TTS execution record](tts-execution.md) tracks implementation
-evidence and open acceptance gates.
+The [Caster execution record](caster-execution.md) and
+[TTS execution record](tts-execution.md) track implementation evidence and open
+acceptance gates.
 Component documentation continues to live in CONTRACT/Docs for the PUZA modules;
 these files specify their integration with Auralis rather than replacing those
 component manuals.

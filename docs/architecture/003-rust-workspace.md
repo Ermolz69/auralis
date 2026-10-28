@@ -20,8 +20,22 @@ The backend is organized as a Rust workspace enforcing clean architecture bounda
   Auralis application jobs and the outbox retain project/artifact ownership; core
   translation rules and model validation stay in the nested library workspace.
   This integration is experimental; see [its evidence](../translation/README.md).
+- **adapters-caster**: Calls a separately installed Caster worker for project-scoped
+  voice catalog, reference inspection, compatibility checks, and explicit manual
+  cast revisions. Desktop bootstrap manages its use cases and enables the
+  worker when the pinned runtime configuration and wheel manifest are valid. It
+  does not synthesize speech or infer roles; see the
+  [Caster record](../integration/caster-execution.md).
+- **adapters-tts**: Provides a separately installed TTS worker client and
+  voice/profile catalog. Desktop bootstrap currently composes the catalog use
+  case and selector. The adapter also has model-free execution and result
+  verification code, while desktop synthesis, managed publication, real-audio
+  listening, and clean-install gates remain open; see the
+  [TTS record](../integration/tts-execution.md).
 - **adapters-tauri**: Maps job events and DTOs to Tauri and opens project workspaces through the native shell boundary.
 - **src-tauri**: Composition root that resolves runtime paths, initializes observability and SQLite services, starts workers, registers Tauri plugins and commands, and performs graceful shutdown.
+- **tools/glib-backport/regression**: Workspace regression harness for the
+  pinned Linux GLib backport; it is not a product adapter.
 
 Shared dependency versions used by multiple crates live in the root
 `[workspace.dependencies]` table. `task q:workspace-dependencies` enforces that
@@ -37,4 +51,12 @@ The current packaged external executables are FFmpeg, ffprobe, and yt-dlp.
 - Experimental translation uses an owned, separately installed llama.cpp child;
   the application release does not embed its runtime or weights. Future production
   ASR/TTS runners must follow the same adapter boundary; `adapters-model` still
-  contains test doubles.
+  contains test doubles. Caster and TTS worker integrations use separate runtime
+  configuration and are not part of the three bundled media executables.
+
+The [durable dispatch contract](008-job-dispatch.md) covers the current queued
+subtitle importer and its bounded CPU/network/disk/process reservations. The
+[job runtime](007-job-runtime.md) covers cancellation and active ownership;
+[outbox concurrency](009-outbox-concurrency.md) governs artifact finalization
+and terminal project state. These contracts do not make the planned full
+speech-generation pipeline available.

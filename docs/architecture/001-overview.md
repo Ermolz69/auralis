@@ -18,7 +18,9 @@ state, and adapter-owned external processes.
 - **Domain layer**: Core entities (`domain` crate). Agnostic of UI or infrastructure.
 - **Ports**: Interfaces and contracts (`ports` crate) isolating domain from external IO.
 - **Job runtime**: The `jobs` crate schedules work, exposes snapshots, publishes lifecycle events, and coordinates cancellation.
-- **Adapters**: Storage, Tauri, yt-dlp, FFmpeg/ffprobe, experimental Translate integration, and ASR/TTS test doubles in `adapters-*` crates.
+- **Adapters**: Storage, Tauri, yt-dlp, FFmpeg/ffprobe, experimental Translate
+  integration, Caster worker operations, TTS catalog/worker transport, and ASR/TTS
+  test doubles in `adapters-*` crates. See the [crate map](003-rust-workspace.md).
 - **Storage**: Auralis SQLite stores projects, jobs, artifacts, translation links, the YouTube import journal, and outbox messages. Translate SQLite owns detailed runs, checkpoints, edits and results. Project files use managed storage keys.
 - **External tools**: Bundled FFmpeg, ffprobe, and yt-dlp processes are invoked through adapters. Experimental subtitle translation owns a separately installed checked llama.cpp runtime through `adapters-translate`; model weights are acquired explicitly and excluded from application packages. Production ASR/TTS runners remain work.
 
@@ -39,6 +41,9 @@ payload.
 - Probe media streams and metadata with ffprobe.
 - List YouTube subtitle tracks and import the selected track as a managed artifact.
 - List and cancel jobs, synchronize job events in the UI, and recover interrupted work.
+- Admit the subtitle-import pipeline through [durable dispatch](008-job-dispatch.md)
+  with SQLite execution descriptors and bounded resource ownership. Other legacy
+  job attachments, including translation, have separate lifecycle contracts.
 - Finalize and clean managed files through the SQLite transaction/outbox flow.
 - Check for and install signed application updates in packaged builds.
 - Run a mock dubbing pipeline for UI and orchestration validation.
@@ -48,6 +53,18 @@ payload.
   installation/selection, saved progress, pause/resume and paged comparison/edit
   controls; [integration status](../translation/README.md) records evidence and
   the open language, clean-machine and concurrency gates.
+- When an installed Caster runtime is configured, browse voices and inspect
+  references, check compatibility, and save explicit manual role assignments.
+  See the [Caster execution record](../integration/caster-execution.md).
+- Read the separately installed TTS worker's voice/profile catalog through the
+  desktop selector. The selector does not start synthesis or publish audio;
+  see the [TTS execution record](../integration/tts-execution.md).
+
+For persistent work, the [job runtime](007-job-runtime.md) describes lifecycle
+and cancellation, [durable dispatch](008-job-dispatch.md) describes queue
+admission and resource ownership, and [outbox concurrency](009-outbox-concurrency.md)
+describes terminal project state and artifact publication. The
+[storage contract](../storage/production-storage.md) defines the database boundary.
 
 ## Target dubbing pipeline
 

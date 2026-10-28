@@ -428,6 +428,30 @@ describe('ProjectList', () => {
     expect(screen.getByText('Test Project')).not.toBeNull();
   });
 
+  it.each(['BUSY', 'CONFLICT'])(
+    '%s refreshes the authoritative list once and returns focus after failed deletion',
+    async (code) => {
+      vi.mocked(deleteProject).mockRejectedValueOnce({ code, message: 'Delete blocked' });
+      render(
+        <StatefulProjectProvider>
+          <ProjectList />
+        </StatefulProjectProvider>,
+      );
+      await screen.findByText('Test Project');
+      vi.mocked(listProjects).mockClear();
+
+      const deleteButton = screen.getByRole('button', { name: 'Delete Test Project' });
+      deleteButton.focus();
+      fireEvent.click(deleteButton);
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+
+      await waitFor(() => expect(listProjects).toHaveBeenCalledOnce());
+      expect(toast.warning).toHaveBeenCalledExactlyOnceWith('Delete blocked');
+      expect(document.activeElement).toBe(deleteButton);
+      expect(screen.getByText('Test Project')).not.toBeNull();
+    },
+  );
+
   it('REPOSITORY, VALIDATION, INTERNAL leave row and show error', async () => {
     (deleteProject as any).mockRejectedValue({ code: 'REPOSITORY', message: 'Repo error' });
     render(
@@ -533,6 +557,63 @@ describe('ProjectList', () => {
       expect(toast.success).toHaveBeenCalledWith('Project was already removed');
       expect(screen.queryByText('Test Project')).toBeNull();
     });
+  });
+
+  it('NOT_FOUND returns focus to the next project without repeating deletion', async () => {
+    vi.mocked(deleteProject).mockImplementationOnce(async (id) => {
+      testProjects = testProjects.filter((project) => project.id !== id);
+      throw { code: 'NOT_FOUND', message: 'Already gone' };
+    });
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+
+    await waitFor(() => expect(screen.queryByText('Test Project')).toBeNull());
+    expect(deleteProject).toHaveBeenCalledExactlyOnceWith('p-1');
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /^Open Untitled Project/ }),
+    );
+    expect(toast.success).toHaveBeenCalledExactlyOnceWith('Project was already removed');
+  });
+
+  it('keeps deletion ownership while the backend request is pending', async () => {
+    let resolveDelete: () => void = () => undefined;
+    vi.mocked(deleteProject).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDelete = () => {
+          testProjects = testProjects.filter((project) => project.id !== 'p-1');
+          resolve();
+        };
+      }),
+    );
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Test Project');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Test Project' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+    expect(deleteProject).toHaveBeenCalledExactlyOnceWith('p-1');
+    expect(
+      (screen.getByRole('button', { name: 'Delete Untitled Project' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole('button', { name: /^Open Untitled Project/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    await act(async () => resolveDelete());
+    await waitFor(() => expect(screen.queryByText('Test Project')).toBeNull());
+    expect(deleteProject).toHaveBeenCalledOnce();
   });
 
   it('ignores project-updated event for deleting project but allows for others', async () => {
@@ -754,6 +835,33 @@ describe('ProjectList', () => {
     // Verify that the ghost project did not reappear
     expect(screen.queryByText('Test Project')).toBeNull();
     expect(screen.getByText('Untitled Project')).not.toBeNull();
+  });
+
+  it('retains a newer local revision when a refresh returns an older snapshot', async () => {
+    const current = { ...mockProject, title: 'Current revision', revision: 3 };
+    const older = { ...mockProject, title: 'Old revision', revision: 2 };
+    const { listen } = await import('@/shared/api/tauri');
+    let projectUpdatedCallback: (event: { payload: { projectId: string } }) => void = () => {};
+    vi.mocked(listen).mockImplementation((event, callback) => {
+      if (event === 'project-updated')
+        projectUpdatedCallback = callback as typeof projectUpdatedCallback;
+      return Promise.resolve(() => {});
+    });
+    vi.mocked(listProjects)
+      .mockResolvedValueOnce([current, mockProject2])
+      .mockResolvedValueOnce([older, mockProject2]);
+
+    render(
+      <StatefulProjectProvider>
+        <ProjectList />
+      </StatefulProjectProvider>,
+    );
+    await screen.findByText('Current revision');
+
+    await act(async () => projectUpdatedCallback({ payload: { projectId: current.id } }));
+    await waitFor(() => expect(listProjects).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('Current revision')).not.toBeNull();
+    expect(screen.queryByText('Old revision')).toBeNull();
   });
 
   it('protects against raw leakage in delete errors', async () => {

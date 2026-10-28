@@ -11,6 +11,7 @@ task media:doctor
 task dev
 task desktop:dev
 task desktop:e2e:native
+task desktop:e2e:native:harness:check
 task check:jobs
 task rs:soak:jobs
 task rs:test:queue
@@ -36,6 +37,10 @@ observes `cancelling`, cancels it, and validates the resulting SQLite, outbox,
 workspace, and managed-file state. Its data lives under a unique temporary
 directory and is removed after the run. Set `AURALIS_NATIVE_E2E_KEEP_TEMP=1` only
 when the isolated state must be retained for diagnosis.
+
+`task desktop:e2e:native:harness:check` checks scenario selection, local fixture
+responses, and owned cleanup with model-free contracts. It does not launch the
+desktop; run the native task separately to verify the real IPC and storage path.
 
 ## Installation scope
 
@@ -103,7 +108,7 @@ JSON-summary plus LCOV output to `apps/desktop/coverage`. The `fe:test:unit`,
 `fe:test:components`, `fe:test:integration`, and `fe:storybook:test` tasks provide
 faster isolated feedback without changing the full gate.
 
-`task fe:e2e` builds the production frontend and runs 34 browser journeys. Each
+`task fe:e2e` builds the production frontend and runs 35 browser journeys. Each
 journey prints a stable ID and area. To isolate a failure, pass its ID, for
 example `task fe:e2e -- --test-name-pattern=E2E-027`. The run writes JUnit and
 failure diagnostics to `apps/desktop/e2e-results`; CI uploads this directory even
@@ -198,11 +203,15 @@ formatting, runtime output policy, storage fallbacks, and CI bootstrap validatio
 ```bash
 task check:docs
 task check:quality:docs
+task docs:integration
 ```
 
 `task check:docs` runs fixture tests, verifies that mandatory project and design
 documents exist, validates relative Markdown links, and applies Markdown linting.
 `task check:quality:docs` verifies Markdown formatting without rewriting files.
+`task docs:integration` additionally checks links, lint and formatting for the
+integration guides and index. These tasks require frontend/documentation tooling
+from `task install:frontend`, not models or a native desktop build.
 
 ## Dependency security
 
