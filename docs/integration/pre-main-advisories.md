@@ -16,16 +16,16 @@ Preparing this inventory ran no dependency installation, audit, build or test.
 - Rust `1.95.0` (`59807616e`), Cargo `1.95.0` (`f2d3ce0bd`), cargo-audit `0.22.2`, cargo-deny `0.20.2`.
 - Baseline RustSec database: `99670cfc0bc574433034b75876a4b791ccaa2efb`.
 
-| Baseline lock | Recorded SHA-256 | Git blob |
-| --- | --- | --- |
+| Baseline lock    | Recorded SHA-256                                                   | Git blob                                   |
+| ---------------- | ------------------------------------------------------------------ | ------------------------------------------ |
 | `pnpm-lock.yaml` | `c3d41a10318ee685c0e9c89435367e1d2db8b7851423ff6f4047b8e2490bfa2e` | `53be14cf30ee0323e315c14999ac2efcd16966d7` |
-| `Cargo.lock` | `9aaddb2ac0cc78d036342e1649632239005445c96a5fd3cca2ce5a6eebd96738` | `4981e9c8c8a3c6cc9b40c10971303ec981fe2f8c` |
+| `Cargo.lock`     | `9aaddb2ac0cc78d036342e1649632239005445c96a5fd3cca2ce5a6eebd96738` | `4981e9c8c8a3c6cc9b40c10971303ec981fe2f8c` |
 
-| Retained command | Baseline result | Task / scanner exit |
-| --- | --- | --- |
-| `task sec:audit:npm` | 38 package/advisory records: 4 critical, 11 high, 17 moderate, 6 low | 201 / 1 |
-| `task sec:audit:rust` | 14 vulnerabilities, one denied unsoundness finding, six allowed maintenance notices | 201 / 1 |
-| `task sec:deny:rust` | Advisories failed; dependency sources passed | 201 / 1 |
+| Retained command      | Baseline result                                                                     | Task / scanner exit |
+| --------------------- | ----------------------------------------------------------------------------------- | ------------------- |
+| `task sec:audit:npm`  | 38 package/advisory records: 4 critical, 11 high, 17 moderate, 6 low                | 201 / 1             |
+| `task sec:audit:rust` | 14 vulnerabilities, one denied unsoundness finding, six allowed maintenance notices | 201 / 1             |
+| `task sec:deny:rust`  | Advisories failed; dependency sources passed                                        | 201 / 1             |
 
 ## npm findings and repair
 
@@ -36,20 +36,20 @@ and `@storybook/addon-vitest`. Finding counts are not unique advisory or path
 counts. The full audit includes production and development dependencies; all
 affected packages below belong to development/build/documentation tooling.
 
-| Package | Baseline resolved | Fixed resolved | Records | Owning direct dependency or tool |
-| --- | --- | --- | ---: | --- |
-| `undici` | 7.29.0 | 7.30.1 | 13 | Desktop jsdom/Vitest/Storybook |
-| `js-yaml` | 5.2.2 | 5.4.3 | 1 | Root js-yaml and markdownlint-cli2 |
-| `brace-expansion` | 5.0.9 | 5.0.12 | 3 | Desktop ESLint/parser/resolver and Storybook |
-| `smol-toml` | 1.7.1 | 1.9.1 | 1 | Root markdownlint-cli2 |
-| `katex` | 0.16.47 | 0.18.2 | 1 | Root markdownlint-cli2 math extension |
-| `source-map-js` | 1.2.1 | 1.2.2 | 1 | Desktop CSS/Vite/Storybook/Vitest tooling |
-| `handlebars` | 4.7.9 | 4.7.10 | 3 | Desktop eslint-plugin-boundaries |
-| `markdown-it` | 14.2.0 | 15.0.3 | 4 | Root markdownlint-cli2 |
-| `vite` | 8.1.3 | 8.2.4 | 5 | Desktop Vite and dependent plugins/test tools |
-| `@storybook/addon-vitest` | 10.4.6 | 10.6.2 | 2 | Desktop Storybook and addon-mcp |
-| `storybook` | 10.4.6 | 10.6.2 | 2 | Desktop Storybook addons and integration tools |
-| `@vitest/mocker` | 4.1.11 | 4.1.12 | 2 | Desktop Vitest and its browser/coverage integrations |
+| Package                   | Baseline resolved | Fixed resolved | Records | Owning direct dependency or tool                     |
+| ------------------------- | ----------------- | -------------- | ------: | ---------------------------------------------------- |
+| `undici`                  | 7.29.0            | 7.30.1         |      13 | Desktop jsdom/Vitest/Storybook                       |
+| `js-yaml`                 | 5.2.2             | 5.4.3          |       1 | Root js-yaml and markdownlint-cli2                   |
+| `brace-expansion`         | 5.0.9             | 5.0.12         |       3 | Desktop ESLint/parser/resolver and Storybook         |
+| `smol-toml`               | 1.7.1             | 1.9.1          |       1 | Root markdownlint-cli2                               |
+| `katex`                   | 0.16.47           | 0.18.2         |       1 | Root markdownlint-cli2 math extension                |
+| `source-map-js`           | 1.2.1             | 1.2.2          |       1 | Desktop CSS/Vite/Storybook/Vitest tooling            |
+| `handlebars`              | 4.7.9             | 4.7.10         |       3 | Desktop eslint-plugin-boundaries                     |
+| `markdown-it`             | 14.2.0            | 15.0.3         |       4 | Root markdownlint-cli2                               |
+| `vite`                    | 8.1.3             | 8.2.4          |       5 | Desktop Vite and dependent plugins/test tools        |
+| `@storybook/addon-vitest` | 10.4.6            | 10.6.2         |       2 | Desktop Storybook and addon-mcp                      |
+| `storybook`               | 10.4.6            | 10.6.2         |       2 | Desktop Storybook addons and integration tools       |
+| `@vitest/mocker`          | 4.1.11            | 4.1.12         |       2 | Desktop Vitest and its browser/coverage integrations |
 
 The JSON preserves each advisory's exact audit patched range and upstream
 patched branches. This includes the differing Undici, brace-expansion and
@@ -70,23 +70,23 @@ in the JSON. Quinn's baseline reverse-tree task exited 0 with no active path;
 its lock-only entries remain within full-lock audit scope. Other reverse trees
 include shared-subtree markers, so a complete distinct-path count is not inferred.
 
-| Advisory | Crate baseline → fixed | Patched constraints |
-| --- | --- | --- |
-| RUSTSEC-2026-0185 | quinn-proto 0.11.14 → 0.11.19 | `>=0.11.15` |
-| RUSTSEC-2026-0338 | quinn-proto 0.11.14 → 0.11.19 | `>=0.11.18` |
-| RUSTSEC-2026-0339 | quinn-proto 0.11.14 → 0.11.19 | `>=0.11.17` |
-| RUSTSEC-2026-0340 | quinn-proto 0.11.14 → 0.11.19 | `>=0.11.18` |
-| RUSTSEC-2026-0342 | quinn-proto 0.11.14 → 0.11.19 | `>=0.11.17` |
-| RUSTSEC-2026-0285 | rustls 0.23.43 → 0.23.46 | `>=0.23.45` |
-| RUSTSEC-2026-0346 | rustls 0.23.43 → 0.23.46 | `>=0.23.46` |
-| RUSTSEC-2026-0348 | rustls 0.23.43 → 0.23.46 | `>=0.23.46` |
-| RUSTSEC-2026-0349 | rustls 0.23.43 → 0.23.46 | `>=0.23.46` |
-| RUSTSEC-2026-0382 | rustls-webpki 0.103.13 → 0.103.16 | `>=0.103.16,<0.104.0-alpha.1` or `>=0.104.0-alpha.8` |
-| RUSTSEC-2026-0383 | webpki-root-certs 1.0.9 → 1.0.10 | `>=1.0.10` |
-| RUSTSEC-2026-0367 | zip 4.6.1 → 9.1.2 | `>=9.0.0` |
-| RUSTSEC-2026-0368 | zip 4.6.1 → 9.1.2 | `>=9.0.0` |
-| RUSTSEC-2026-0369 | zip 4.6.1 → 9.1.2 | `>=9.0.0` |
-| RUSTSEC-2026-0386 (denied unsoundness) | tokio 1.53.1 → 1.53.3 | `>=1.51.6,<1.52.0` or `>=1.53.3` |
+| Advisory                               | Crate baseline → fixed            | Patched constraints                                  |
+| -------------------------------------- | --------------------------------- | ---------------------------------------------------- |
+| RUSTSEC-2026-0185                      | quinn-proto 0.11.14 → 0.11.19     | `>=0.11.15`                                          |
+| RUSTSEC-2026-0338                      | quinn-proto 0.11.14 → 0.11.19     | `>=0.11.18`                                          |
+| RUSTSEC-2026-0339                      | quinn-proto 0.11.14 → 0.11.19     | `>=0.11.17`                                          |
+| RUSTSEC-2026-0340                      | quinn-proto 0.11.14 → 0.11.19     | `>=0.11.18`                                          |
+| RUSTSEC-2026-0342                      | quinn-proto 0.11.14 → 0.11.19     | `>=0.11.17`                                          |
+| RUSTSEC-2026-0285                      | rustls 0.23.43 → 0.23.46          | `>=0.23.45`                                          |
+| RUSTSEC-2026-0346                      | rustls 0.23.43 → 0.23.46          | `>=0.23.46`                                          |
+| RUSTSEC-2026-0348                      | rustls 0.23.43 → 0.23.46          | `>=0.23.46`                                          |
+| RUSTSEC-2026-0349                      | rustls 0.23.43 → 0.23.46          | `>=0.23.46`                                          |
+| RUSTSEC-2026-0382                      | rustls-webpki 0.103.13 → 0.103.16 | `>=0.103.16,<0.104.0-alpha.1` or `>=0.104.0-alpha.8` |
+| RUSTSEC-2026-0383                      | webpki-root-certs 1.0.9 → 1.0.10  | `>=1.0.10`                                           |
+| RUSTSEC-2026-0367                      | zip 4.6.1 → 9.1.2                 | `>=9.0.0`                                            |
+| RUSTSEC-2026-0368                      | zip 4.6.1 → 9.1.2                 | `>=9.0.0`                                            |
+| RUSTSEC-2026-0369                      | zip 4.6.1 → 9.1.2                 | `>=9.0.0`                                            |
+| RUSTSEC-2026-0386 (denied unsoundness) | tokio 1.53.1 → 1.53.3             | `>=1.51.6,<1.52.0` or `>=1.53.3`                     |
 
 The retained repaired Rust scan at `c0a8bdc5077a0cc09efcac1d89e923fe885a053a`
 ran `task sec:audit:rust`: exit 0, 570 dependencies, no vulnerabilities or denied
@@ -105,14 +105,14 @@ canonical hash. This is a representation difference, with no dependency graph dr
 The existing `unmaintained = "workspace"` policy retains these six transitive
 maintenance notices without a new ignore or suppression:
 
-| Advisory | Unchanged crate | Owning chain |
-| --- | --- | --- |
-| RUSTSEC-2024-0370 | proc-macro-error 1.0.4 | glib-macros → patched GLib/GTK/Tauri |
-| RUSTSEC-2025-0081 | unic-char-property 0.9.0 | unic-ucd-ident → urlpattern → tauri-utils |
-| RUSTSEC-2025-0075 | unic-char-range 0.9.0 | unic-char-property → unic-ucd-ident → urlpattern |
-| RUSTSEC-2025-0080 | unic-common 0.9.0 | unic-ucd-version → unic-ucd-ident → urlpattern |
-| RUSTSEC-2025-0100 | unic-ucd-ident 0.9.0 | urlpattern → tauri-utils → Tauri |
-| RUSTSEC-2025-0098 | unic-ucd-version 0.9.0 | unic-ucd-ident → urlpattern → tauri-utils |
+| Advisory          | Unchanged crate          | Owning chain                                     |
+| ----------------- | ------------------------ | ------------------------------------------------ |
+| RUSTSEC-2024-0370 | proc-macro-error 1.0.4   | glib-macros → patched GLib/GTK/Tauri             |
+| RUSTSEC-2025-0081 | unic-char-property 0.9.0 | unic-ucd-ident → urlpattern → tauri-utils        |
+| RUSTSEC-2025-0075 | unic-char-range 0.9.0    | unic-char-property → unic-ucd-ident → urlpattern |
+| RUSTSEC-2025-0080 | unic-common 0.9.0        | unic-ucd-version → unic-ucd-ident → urlpattern   |
+| RUSTSEC-2025-0100 | unic-ucd-ident 0.9.0     | urlpattern → tauri-utils → Tauri                 |
+| RUSTSEC-2025-0098 | unic-ucd-version 0.9.0   | unic-ucd-ident → urlpattern → tauri-utils        |
 
 Fresh integrated security scans remain a separate acceptance step. This inventory
 does not establish a final PR gate, clean-machine runtime acceptance or voice

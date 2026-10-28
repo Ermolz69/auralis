@@ -79,9 +79,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-3wwx-pv8p-q78v",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-3wwx-pv8p-q78v"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-3wwx-pv8p-q78v"],
         "updatedAt": "2026-09-28T21:42:38Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -106,21 +104,13 @@
             "first_patched_version": "5.4.1"
           }
         ],
-        "dependencyPaths": [
-          ".>js-yaml",
-          ".>markdownlint-cli2>js-yaml"
-        ],
+        "dependencyPaths": [".>js-yaml", ".>markdownlint-cli2>js-yaml"],
         "source": "https://github.com/advisories/GHSA-r3ph-w7gj-g6xm",
-        "upstream": [
-          "https://github.com/nodeca/js-yaml/security/advisories/GHSA-r3ph-w7gj-g6xm"
-        ],
+        "upstream": ["https://github.com/nodeca/js-yaml/security/advisories/GHSA-r3ph-w7gj-g6xm"],
         "updatedAt": "2026-09-29T17:57:40Z",
         "selectedResolvedVersion": "5.4.3",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          ".>js-yaml",
-          ".>markdownlint-cli2"
-        ]
+        "owningDirectDependencies": [".>js-yaml", ".>markdownlint-cli2"]
       },
       {
         "id": "GHSA-pmjh-fq2x-6v4x",
@@ -155,9 +145,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-pmjh-fq2x-6v4x",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-pmjh-fq2x-6v4x"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-pmjh-fq2x-6v4x"],
         "updatedAt": "2026-09-29T18:22:35Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -207,9 +195,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-r53p-7pc4-xj5r",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-r53p-7pc4-xj5r"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-r53p-7pc4-xj5r"],
         "updatedAt": "2026-09-29T18:22:08Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -259,9 +245,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-rfgv-xxqx-mfg5",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-rfgv-xxqx-mfg5"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-rfgv-xxqx-mfg5"],
         "updatedAt": "2026-09-29T18:21:41Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -307,9 +291,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-3xpg-4rpp-hhhm",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-3xpg-4rpp-hhhm"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-3xpg-4rpp-hhhm"],
         "updatedAt": "2026-09-29T18:20:38Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -355,9 +337,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-2jfj-6hjv-fm6j",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-2jfj-6hjv-fm6j"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-2jfj-6hjv-fm6j"],
         "updatedAt": "2026-09-29T18:19:59Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -403,9 +383,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-2gqq-gqf2-x968",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-2gqq-gqf2-x968"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-2gqq-gqf2-x968"],
         "updatedAt": "2026-09-29T18:18:52Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -451,9 +429,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-w293-vg96-wgc3",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-w293-vg96-wgc3"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-w293-vg96-wgc3"],
         "updatedAt": "2026-09-29T18:17:16Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -499,9 +475,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-8436-99hf-9mmv",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-8436-99hf-9mmv"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-8436-99hf-9mmv"],
         "updatedAt": "2026-09-29T18:16:29Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -547,9 +521,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-rx4f-c7p8-82vq",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-rx4f-c7p8-82vq"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-rx4f-c7p8-82vq"],
         "updatedAt": "2026-09-29T18:10:33Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -793,9 +765,7 @@
             "first_patched_version": "1.9.0"
           }
         ],
-        "dependencyPaths": [
-          ".>markdownlint-cli2>smol-toml"
-        ],
+        "dependencyPaths": [".>markdownlint-cli2>smol-toml"],
         "source": "https://github.com/advisories/GHSA-r4xh-jqrq-34v2",
         "upstream": [
           "https://github.com/squirrelchat/smol-toml/security/advisories/GHSA-r4xh-jqrq-34v2"
@@ -803,9 +773,7 @@
         "updatedAt": "2026-10-05T23:41:15Z",
         "selectedResolvedVersion": "1.9.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          ".>markdownlint-cli2"
-        ]
+        "owningDirectDependencies": [".>markdownlint-cli2"]
       },
       {
         "id": "GHSA-238p-pmpm-9mq7",
@@ -819,19 +787,13 @@
             "first_patched_version": "0.18.2"
           }
         ],
-        "dependencyPaths": [
-          ".>markdownlint-cli2>markdownlint>micromark-extension-math>katex"
-        ],
+        "dependencyPaths": [".>markdownlint-cli2>markdownlint>micromark-extension-math>katex"],
         "source": "https://github.com/advisories/GHSA-238p-pmpm-9mq7",
-        "upstream": [
-          "https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7"
-        ],
+        "upstream": ["https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7"],
         "updatedAt": "2026-10-05T23:41:06Z",
         "selectedResolvedVersion": "0.18.2",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          ".>markdownlint-cli2"
-        ]
+        "owningDirectDependencies": [".>markdownlint-cli2"]
       },
       {
         "id": "GHSA-68fv-2mgg-jv7q",
@@ -986,9 +948,7 @@
         "updatedAt": "2026-10-08T17:52:39Z",
         "selectedResolvedVersion": "4.7.10",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          "apps__desktop>eslint-plugin-boundaries"
-        ]
+        "owningDirectDependencies": ["apps__desktop>eslint-plugin-boundaries"]
       },
       {
         "id": "GHSA-8r5x-fm3f-whwj",
@@ -1013,9 +973,7 @@
         "updatedAt": "2026-10-08T17:52:34Z",
         "selectedResolvedVersion": "4.7.10",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          "apps__desktop>eslint-plugin-boundaries"
-        ]
+        "owningDirectDependencies": ["apps__desktop>eslint-plugin-boundaries"]
       },
       {
         "id": "GHSA-p8wg-vrv2-v86f",
@@ -1040,9 +998,7 @@
         "updatedAt": "2026-10-12T14:33:17Z",
         "selectedResolvedVersion": "4.7.10",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          "apps__desktop>eslint-plugin-boundaries"
-        ]
+        "owningDirectDependencies": ["apps__desktop>eslint-plugin-boundaries"]
       },
       {
         "id": "GHSA-r7fv-28h4-cvq7",
@@ -1060,9 +1016,7 @@
             "first_patched_version": "14.3.2"
           }
         ],
-        "dependencyPaths": [
-          ".>markdownlint-cli2>markdown-it"
-        ],
+        "dependencyPaths": [".>markdownlint-cli2>markdown-it"],
         "source": "https://github.com/advisories/GHSA-r7fv-28h4-cvq7",
         "upstream": [
           "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-r7fv-28h4-cvq7"
@@ -1070,9 +1024,7 @@
         "updatedAt": "2026-10-20T14:34:52Z",
         "selectedResolvedVersion": "15.0.3",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          ".>markdownlint-cli2"
-        ]
+        "owningDirectDependencies": [".>markdownlint-cli2"]
       },
       {
         "id": "GHSA-698v-4r3x-3vcv",
@@ -1200,9 +1152,7 @@
             "first_patched_version": "15.0.3"
           }
         ],
-        "dependencyPaths": [
-          ".>markdownlint-cli2>markdown-it"
-        ],
+        "dependencyPaths": [".>markdownlint-cli2>markdown-it"],
         "source": "https://github.com/advisories/GHSA-vfgh-jcmw-g37q",
         "upstream": [
           "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-vfgh-jcmw-g37q"
@@ -1210,9 +1160,7 @@
         "updatedAt": "2026-10-20T20:08:20Z",
         "selectedResolvedVersion": "15.0.3",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          ".>markdownlint-cli2"
-        ]
+        "owningDirectDependencies": [".>markdownlint-cli2"]
       },
       {
         "id": "GHSA-r825-w8mm-5pxw",
@@ -1450,9 +1398,7 @@
             "first_patched_version": "15.0.3"
           }
         ],
-        "dependencyPaths": [
-          ".>markdownlint-cli2>markdown-it"
-        ],
+        "dependencyPaths": [".>markdownlint-cli2>markdown-it"],
         "source": "https://github.com/advisories/GHSA-gfr2-rv44-r23c",
         "upstream": [
           "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-gfr2-rv44-r23c"
@@ -1460,9 +1406,7 @@
         "updatedAt": "2026-10-20T20:28:46Z",
         "selectedResolvedVersion": "15.0.3",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          ".>markdownlint-cli2"
-        ]
+        "owningDirectDependencies": [".>markdownlint-cli2"]
       },
       {
         "id": "GHSA-9jrq-w75r-8gcw",
@@ -1555,9 +1499,7 @@
           "apps__desktop>vitest>vite"
         ],
         "source": "https://github.com/advisories/GHSA-9jrq-w75r-8gcw",
-        "upstream": [
-          "https://github.com/vitejs/vite/security/advisories/GHSA-9jrq-w75r-8gcw"
-        ],
+        "upstream": ["https://github.com/vitejs/vite/security/advisories/GHSA-9jrq-w75r-8gcw"],
         "updatedAt": "2026-10-21T16:48:15Z",
         "selectedResolvedVersion": "8.2.4",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -1665,9 +1607,7 @@
           "apps__desktop>vitest>vite"
         ],
         "source": "https://github.com/advisories/GHSA-rq7h-c2jc-7f22",
-        "upstream": [
-          "https://github.com/vitejs/vite/security/advisories/GHSA-rq7h-c2jc-7f22"
-        ],
+        "upstream": ["https://github.com/vitejs/vite/security/advisories/GHSA-rq7h-c2jc-7f22"],
         "updatedAt": "2026-10-21T16:47:43Z",
         "selectedResolvedVersion": "8.2.4",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -2034,9 +1974,7 @@
             "first_patched_version": "14.3.1"
           }
         ],
-        "dependencyPaths": [
-          ".>markdownlint-cli2>markdown-it"
-        ],
+        "dependencyPaths": [".>markdownlint-cli2>markdown-it"],
         "source": "https://github.com/advisories/GHSA-253c-mchw-3w2r",
         "upstream": [
           "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-253c-mchw-3w2r"
@@ -2044,9 +1982,7 @@
         "updatedAt": "2026-10-22T20:35:11Z",
         "selectedResolvedVersion": "15.0.3",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
-        "owningDirectDependencies": [
-          ".>markdownlint-cli2"
-        ]
+        "owningDirectDependencies": [".>markdownlint-cli2"]
       },
       {
         "id": "GHSA-4qv8-2p9j-2685",
@@ -2085,9 +2021,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-4qv8-2p9j-2685",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-4qv8-2p9j-2685"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-4qv8-2p9j-2685"],
         "updatedAt": "2026-10-23T22:13:31Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -2133,9 +2067,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-f72v-6w45-q472",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-f72v-6w45-q472"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-f72v-6w45-q472"],
         "updatedAt": "2026-10-23T22:13:18Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -2185,9 +2117,7 @@
           "apps__desktop>vitest>jsdom>undici"
         ],
         "source": "https://github.com/advisories/GHSA-xjj6-f33q-929c",
-        "upstream": [
-          "https://github.com/nodejs/undici/security/advisories/GHSA-xjj6-f33q-929c"
-        ],
+        "upstream": ["https://github.com/nodejs/undici/security/advisories/GHSA-xjj6-f33q-929c"],
         "updatedAt": "2026-10-23T22:14:32Z",
         "selectedResolvedVersion": "7.30.1",
         "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
@@ -2849,42 +2779,18 @@
       "sha256": "1ca704a29279ccaa17e7d999af01fc6b74def76bf08eaaf2b1ec8934e13de094",
       "git_blob": "f5220d5cfe0e7ff60b47f14e659ab6c450e7370c",
       "resolved_versions": {
-        "@storybook/addon-vitest": [
-          "10.6.2"
-        ],
-        "@vitest/mocker": [
-          "4.1.12"
-        ],
-        "brace-expansion": [
-          "5.0.12"
-        ],
-        "handlebars": [
-          "4.7.10"
-        ],
-        "js-yaml": [
-          "5.4.3"
-        ],
-        "katex": [
-          "0.18.2"
-        ],
-        "markdown-it": [
-          "15.0.3"
-        ],
-        "smol-toml": [
-          "1.9.1"
-        ],
-        "source-map-js": [
-          "1.2.2"
-        ],
-        "storybook": [
-          "10.6.2"
-        ],
-        "undici": [
-          "7.30.1"
-        ],
-        "vite": [
-          "8.2.4"
-        ]
+        "@storybook/addon-vitest": ["10.6.2"],
+        "@vitest/mocker": ["4.1.12"],
+        "brace-expansion": ["5.0.12"],
+        "handlebars": ["4.7.10"],
+        "js-yaml": ["5.4.3"],
+        "katex": ["0.18.2"],
+        "markdown-it": ["15.0.3"],
+        "smol-toml": ["1.9.1"],
+        "source-map-js": ["1.2.2"],
+        "storybook": ["10.6.2"],
+        "undici": ["7.30.1"],
+        "vite": ["8.2.4"]
       }
     },
     "cargo": {
@@ -2894,42 +2800,18 @@
       "git_blob": "16cc5d8fdfa1f1e06c9e245b675f845a0c2ab4e0",
       "same_git_blob_as_retained_repaired_scan": true,
       "resolved_versions": {
-        "proc-macro-error": [
-          "1.0.4"
-        ],
-        "quinn-proto": [
-          "0.11.19"
-        ],
-        "rustls": [
-          "0.23.46"
-        ],
-        "rustls-webpki": [
-          "0.103.16"
-        ],
-        "tokio": [
-          "1.53.3"
-        ],
-        "unic-char-property": [
-          "0.9.0"
-        ],
-        "unic-char-range": [
-          "0.9.0"
-        ],
-        "unic-common": [
-          "0.9.0"
-        ],
-        "unic-ucd-ident": [
-          "0.9.0"
-        ],
-        "unic-ucd-version": [
-          "0.9.0"
-        ],
-        "webpki-root-certs": [
-          "1.0.10"
-        ],
-        "zip": [
-          "9.1.2"
-        ]
+        "proc-macro-error": ["1.0.4"],
+        "quinn-proto": ["0.11.19"],
+        "rustls": ["0.23.46"],
+        "rustls-webpki": ["0.103.16"],
+        "tokio": ["1.53.3"],
+        "unic-char-property": ["0.9.0"],
+        "unic-char-range": ["0.9.0"],
+        "unic-common": ["0.9.0"],
+        "unic-ucd-ident": ["0.9.0"],
+        "unic-ucd-version": ["0.9.0"],
+        "webpki-root-certs": ["1.0.10"],
+        "zip": ["9.1.2"]
       }
     }
   }
