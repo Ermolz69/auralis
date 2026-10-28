@@ -98,7 +98,9 @@ it('keeps shared speech/text context and uses accessible keyboard tab navigation
 });
 
 it('persists pointer tab selection and preserves the accepted tab when saving fails until retry', async () => {
-  data.state.workspaces[0].tabs.push({ id: 'two', tool: 'speech', assetId: asset.id, draft: '{}' });
+  const draft = JSON.stringify({ text: 'Accepted shared speech draft' });
+  data.state.workspaces[0].tabs[0].draft = draft;
+  data.state.workspaces[0].tabs.push({ id: 'two', tool: 'speech', assetId: asset.id, draft });
   await setup();
   const text = screen.getByRole('tab', { name: /Текст и подготовка/ });
   const speech = screen.getByRole('tab', { name: /Синтез речи/ });
@@ -113,11 +115,13 @@ it('persists pointer tab selection and preserves the accepted tab when saving fa
   expect(saved().activeTab).toBe('two');
   expect(speech.getAttribute('aria-selected')).toBe('true');
   expect(text.getAttribute('aria-selected')).toBe('false');
+  expect(saved().tabs.map((tab) => tab.draft)).toEqual([draft, draft]);
   delete data.overrides.save_library_cmd;
   fireEvent.click(text);
   await waitFor(() => expect(saved().activeTab).toBe('one'));
   expect(text.getAttribute('aria-selected')).toBe('true');
   expect(saved().tabs).toHaveLength(2);
+  expect(saved().tabs.map((tab) => tab.draft)).toEqual([draft, draft]);
 });
 it('changes command context through material selection and keeps foreign/hidden materials out of the selector', async () => {
   data.state.assets.push(
