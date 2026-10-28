@@ -26,11 +26,31 @@ def configuration(source, product):
     if canonicalize_name(project["name"]) != product or project.get("dynamic"):
         raise ValueError("Component source metadata identity differs")
     if (backend["build-backend"] != "setuptools.build_meta"
+            or "backend-path" in backend
             or any(canonicalize_name(Requirement(entry).name) not in {"setuptools", "wheel"}
                    for entry in backend["requires"])
-            or (source / "setup.py").exists()):
+            or any((source / name).exists() for name in ("setup.py", "setup.cfg"))
+            or "cmdclass" in value.get("tool", {}).get("setuptools", {})):
         raise ValueError("Only the static setuptools component backend is supported")
     return value
+
+
+def entry_points(project, content):
+    expected = dict(project.get("entry-points", {}))
+    if any(group in expected for group in ("console_scripts", "gui_scripts")):
+        raise ValueError("Declare console and GUI scripts in their project tables")
+    for field, group in (("scripts", "console_scripts"), ("gui-scripts", "gui_scripts")):
+        if project.get(field):
+            expected[group] = project[field]
+    entries = configparser.ConfigParser(interpolation=None)
+    entries.optionxform = str
+    try:
+        entries.read_string(content.decode("utf-8"))
+    except configparser.Error as error:
+        raise ValueError("Wheel entry points differ from pinned source") from error
+    actual = {group: dict(entries[group]) for group in entries.sections()}
+    if entries.defaults() or actual != expected:
+        raise ValueError("Wheel entry points differ from pinned source")
 
 
 def source_payload(source, configuration):
@@ -103,11 +123,7 @@ def validate_wheel(source, wheel, product):
     expected = source_payload(source, settings)
     if expected != {name: data for name, data in files.items() if not name.startswith(prefix)}:
         raise ValueError("Wheel package payload differs from pinned source")
-    if project.get("scripts"):
-        entries = configparser.ConfigParser()
-        entries.read_string(files[prefix + "entry_points.txt"].decode("utf-8"))
-        if dict(entries["console_scripts"]) != project["scripts"]:
-            raise ValueError("Wheel entry points differ from pinned source")
+    entry_points(project, files.get(prefix + "entry_points.txt", b""))
     rows = list(csv.reader(io.StringIO(files[prefix + "RECORD"].decode("utf-8"))))
     if len(rows) != len(files) or {row[0] for row in rows} != set(files):
         raise ValueError("Wheel RECORD does not cover every file")

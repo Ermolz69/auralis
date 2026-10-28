@@ -54,6 +54,12 @@ tasks:
         ]
     cmds:
       - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/ui-e2e/build-components.ps1 -Id "{{.ID}}" -Python "{{.PYTHON}}" -Uv "{{.UV_BIN}}" -ContractRoot "{{.CONTRACT_ROOT}}" -ContractCommit "{{.CONTRACT_COMMIT}}" -TtsRoot "{{.TTS_ROOT}}" -TtsCommit "{{.TTS_COMMIT}}" -TtsWheel "{{.TTS_WHEEL}}" -TtsWheelSha256 "{{.TTS_WHEEL_SHA256}}"
+  components:prepare:
+    desc: Create a new private Windows CPython 3.12 builder with pinned packaging tools and no engine dependencies
+    requires:
+      vars: [ID, PYTHON]
+    cmds:
+      - '"{{.PYTHON}}" -I -B tools/ui-e2e/prepare-component-python.py "{{.ID}}"'
   components:check:
     desc: Exercise the Windows component builder with owned Git and offline wheel fixtures
     requires:
