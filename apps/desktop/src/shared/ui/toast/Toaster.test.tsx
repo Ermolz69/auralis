@@ -56,4 +56,33 @@ describe('Toaster', () => {
     act(() => vi.advanceTimersByTime(TOAST_EXIT_DURATION));
     expect(screen.queryByText('Перетащите меня')).toBeNull();
   });
+
+  it('keeps a focused action alive after pointer leave and resumes only its remaining time', () => {
+    render(
+      <>
+        <button type="button">Return to page</button>
+        <Toaster />
+      </>,
+    );
+    act(() => {
+      toast.warning('Retry available', {
+        duration: 1000,
+        action: { label: 'Retry', onClick: () => {} },
+      });
+    });
+    const item = screen.getByRole('alert');
+    act(() => vi.advanceTimersByTime(400));
+    fireEvent.mouseEnter(item);
+    act(() => screen.getByRole('button', { name: 'Retry' }).focus());
+    fireEvent.mouseLeave(item);
+    act(() => vi.advanceTimersByTime(2000));
+    expect(item.getAttribute('data-toast-phase')).toBe('visible');
+    act(() => screen.getByRole('button', { name: 'Return to page' }).focus());
+    act(() => vi.advanceTimersByTime(599));
+    expect(item.getAttribute('data-toast-phase')).toBe('visible');
+    act(() => vi.advanceTimersByTime(1));
+    expect(item.getAttribute('data-toast-phase')).toBe('exiting');
+    act(() => vi.advanceTimersByTime(TOAST_EXIT_DURATION));
+    expect(screen.queryByText('Retry available')).toBeNull();
+  });
 });

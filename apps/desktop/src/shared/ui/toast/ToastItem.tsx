@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icon';
 import { DEFAULT_TOAST_DURATION, toast, type ToastProps } from './toast';
+import { toastAppearance } from './toastAppearance';
 
 export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
   const duration = currentToast.duration ?? DEFAULT_TOAST_DURATION;
   const remainingRef = useRef(duration);
   const startedAtRef = useRef(Date.now());
   const timerRef = useRef<number | null>(null);
+  const hoveredRef = useRef(false);
+  const focusedRef = useRef(false);
+  const actionUsed = useRef(false);
   const dragXRef = useRef(0);
   const dragRef = useRef<{
     pointerId: number;
@@ -57,27 +61,10 @@ export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
     setSnappingBack(true);
     dragXRef.current = 0;
     setDragX(0);
-    setPaused(false);
+    setPaused(hoveredRef.current || focusedRef.current);
   };
 
-  const typeStyles = {
-    default: 'border-muted/35 from-surface-raised to-surface text-muted',
-    success: 'border-success/35 from-success-soft/75 to-surface text-success',
-    warning: 'border-warning/35 from-warning-soft/75 to-surface text-warning',
-    danger: 'border-danger/35 from-danger-soft/75 to-surface text-danger',
-  };
-  const typeLabels = {
-    default: 'Информация',
-    success: 'Готово',
-    warning: 'Обратите внимание',
-    danger: 'Ошибка',
-  };
-  const typeIcon = {
-    default: <Icon name="Info" size="md" color="muted" />,
-    success: <Icon name="CircleCheck" size="md" color="success" />,
-    warning: <Icon name="TriangleAlert" size="md" color="warning" />,
-    danger: <Icon name="OctagonX" size="md" color="danger" />,
-  };
+  const appearance = toastAppearance[currentToast.type];
 
   return (
     <div
@@ -91,11 +78,28 @@ export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
               : snappingBack
                 ? 'cursor-grab transition-[transform,opacity] duration-150 ease-out'
                 : 'cursor-grab animate-toast-enter'
-      } ${typeStyles[currentToast.type]}`}
+      } ${appearance.className}`}
       role={currentToast.type === 'danger' || currentToast.type === 'warning' ? 'alert' : 'status'}
-      onMouseEnter={pauseTimer}
+      onMouseEnter={() => {
+        hoveredRef.current = true;
+        pauseTimer();
+      }}
       onMouseLeave={() => {
-        if (!dragRef.current) setPaused(false);
+        hoveredRef.current = false;
+        if (!dragRef.current && !focusedRef.current) setPaused(false);
+      }}
+      onFocusCapture={() => {
+        focusedRef.current = true;
+        pauseTimer();
+      }}
+      onBlurCapture={(event) => {
+        if (
+          event.relatedTarget instanceof Node &&
+          event.currentTarget.contains(event.relatedTarget)
+        )
+          return;
+        focusedRef.current = false;
+        if (!dragRef.current && !hoveredRef.current) setPaused(false);
       }}
       onPointerDown={(event) => {
         if (currentToast.phase !== 'visible' || (event.target as HTMLElement).closest('button')) {
@@ -138,11 +142,11 @@ export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
       <div className="absolute inset-y-0 left-0 w-0.5 bg-current opacity-85" aria-hidden="true" />
       <div className="flex items-start gap-3 p-3.5 pb-4 text-text">
         <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-current/20 bg-canvas/35 shadow-inner">
-          {typeIcon[currentToast.type]}
+          {appearance.icon}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-current">
-            {typeLabels[currentToast.type]}
+            {appearance.label}
           </span>
           <h4 className="text-sm font-semibold leading-tight text-text">{currentToast.title}</h4>
           {currentToast.description && (
@@ -153,8 +157,11 @@ export const ToastItem = ({ toast: currentToast }: { toast: ToastProps }) => {
           {currentToast.action && (
             <button
               type="button"
+              disabled={currentToast.phase !== 'visible'}
               className="motion-control mt-1 w-fit rounded-sm border border-current/30 bg-current/10 px-2 py-1 text-[11px] font-semibold text-current hover:bg-current/15 focus:outline-none focus:ring-2 focus:ring-current/40"
               onClick={() => {
+                if (actionUsed.current || currentToast.phase !== 'visible') return;
+                actionUsed.current = true;
                 toast.dismiss(currentToast.id);
                 currentToast.action?.onClick();
               }}
