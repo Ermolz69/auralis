@@ -2,7 +2,7 @@
   "title": "Combined frontend pre-main verification",
   "date": "2026-10-28",
   "scope": "PM-001 frontend inventory; combined PM-002 through PM-008 frontend completion and scoped PM-014/PM-015 browser verification. Integrated Rust, native Windows candidate and release acceptance remain separate gates.",
-  "branch": "integration/pre-main-frontend",
+  "branch": "fix/pre-main-frontend",
   "source": {
     "base": "b29719b0dc784745b70275ec93968f5cbda69df3",
     "combinedBaseline": "c18b7f4d3465926acafcdd3f25509abb4640f4a5",
