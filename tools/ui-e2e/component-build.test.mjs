@@ -267,6 +267,40 @@ test('offline component builds bind exact clean sources and wheel bytes', async 
         await assert.rejects(fsp.access(path.join(result.destination, 'components.json')));
       },
     );
+    await t.test('ignored checkout payload cannot claim the pinned Git revision', async () => {
+      const ignored = path.join(tts.project, 'src', tts.module, 'ignored_extra.py');
+      const exclusion = path.join(base, 'fixture-excludes.txt');
+      await fsp.writeFile(exclusion, 'ignored_extra.py\n');
+      git(tts.repository, 'config', 'core.excludesfile', exclusion);
+      try {
+        await fsp.writeFile(ignored, 'EXTRA = True\n');
+        assert.equal(git(tts.repository, 'status', '--porcelain'), '');
+        const folder = path.join(base, 'ignored-payload');
+        execFileSync(
+          uv,
+          [
+            'build',
+            '--offline',
+            '--wheel',
+            '--no-build-isolation',
+            '--python',
+            python,
+            '--out-dir',
+            folder,
+            tts.project,
+          ],
+          { env, windowsHide: true, stdio: 'pipe' },
+        );
+        const forged = path.join(folder, path.basename(wheel));
+        const result = invoke({ TtsWheel: forged, TtsWheelSha256: await hash(forged) });
+        assert.notEqual(result.status, 0, 'Ignored source was accepted as the pinned commit');
+        assert.match(result.text, /package payload differs/);
+        await assert.rejects(fsp.access(path.join(result.destination, 'components.json')));
+      } finally {
+        await fsp.unlink(ignored);
+        git(tts.repository, 'config', '--unset', 'core.excludesfile');
+      }
+    });
     assert.equal(git(contract.repository, 'status', '--porcelain'), '');
     assert.equal(git(tts.repository, 'status', '--porcelain'), '');
   } finally {

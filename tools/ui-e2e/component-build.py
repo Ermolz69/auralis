@@ -77,10 +77,11 @@ def build(args):
         raise ValueError("Expected a bounded regular TTS wheel")
     if sha256(wheel) != args.tts_wheel_sha256:
         raise ValueError("TTS wheel SHA-256 differs")
-    tts_project = validate_wheel(tts / "PUZA_TTS", wheel, "puza-tts")
     destination.mkdir(parents=True, exist_ok=False)
     staging = destination / ".build"
     staging.mkdir()
+    tts_source = snapshot(tts, args.tts_commit, "PUZA_TTS", staging)
+    tts_project = validate_wheel(tts_source, wheel, "puza-tts")
     source = snapshot(contract, args.contract_commit, "VOXSCRIPT_CONTRACT", staging)
     configuration(source, "voxscript-contract")
     environment = {
