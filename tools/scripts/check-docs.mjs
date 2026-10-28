@@ -16,10 +16,15 @@ const REQUIRED_DOCS = [
   'docs/taskfile/001-commands.md',
 ];
 
-export function collectDocumentationErrors({ markdownFiles, requiredDocs = REQUIRED_DOCS }) {
+export function collectDocumentationErrors({
+  markdownFiles,
+  linkedFiles = [],
+  requiredDocs = REQUIRED_DOCS,
+}) {
   const normalizedFiles = new Map(
     [...markdownFiles].map(([file, source]) => [normalizePath(file), source]),
   );
+  const normalizedLinks = new Set([...linkedFiles].map(normalizePath));
   const errors = [];
 
   for (const requiredDoc of requiredDocs) {
@@ -45,7 +50,7 @@ export function collectDocumentationErrors({ markdownFiles, requiredDocs = REQUI
       if (!targetPath) continue;
 
       const resolved = normalizePath(path.posix.join(path.posix.dirname(file), targetPath));
-      if (!normalizedFiles.has(resolved)) {
+      if (!normalizedFiles.has(resolved) && !normalizedLinks.has(resolved)) {
         errors.push(`${file}: broken relative Markdown link: ${targetWithoutTitle}`);
       }
     }
@@ -55,11 +60,12 @@ export function collectDocumentationErrors({ markdownFiles, requiredDocs = REQUI
 }
 
 export function verifyDocumentation(rootDir) {
-  const markdownFiles = findMarkdownFiles(rootDir).map((file) => [
-    normalizePath(path.relative(rootDir, file)),
-    fs.readFileSync(file, 'utf8'),
-  ]);
-  const errors = collectDocumentationErrors({ markdownFiles });
+  const documentationFiles = findDocumentationFiles(rootDir);
+  const markdownFiles = documentationFiles
+    .filter((file) => file.endsWith('.md'))
+    .map((file) => [normalizePath(path.relative(rootDir, file)), fs.readFileSync(file, 'utf8')]);
+  const linkedFiles = documentationFiles.map((file) => normalizePath(path.relative(rootDir, file)));
+  const errors = collectDocumentationErrors({ markdownFiles, linkedFiles });
 
   if (errors.length > 0) {
     throw new Error(`Invalid project documentation:\n- ${errors.join('\n- ')}`);
@@ -68,7 +74,7 @@ export function verifyDocumentation(rootDir) {
   return { files: markdownFiles.length, required: REQUIRED_DOCS.length };
 }
 
-function findMarkdownFiles(rootDir) {
+function findDocumentationFiles(rootDir) {
   const roots = [path.join(rootDir, 'README.md'), path.join(rootDir, 'apps/desktop/README.md')];
   const docsDir = path.join(rootDir, 'docs');
   const pending = [docsDir];
@@ -78,7 +84,7 @@ function findMarkdownFiles(rootDir) {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
       const absolutePath = path.join(directory, entry.name);
       if (entry.isDirectory()) pending.push(absolutePath);
-      else if (entry.name.endsWith('.md')) roots.push(absolutePath);
+      else if (entry.isFile()) roots.push(absolutePath);
     }
   }
 

@@ -51,3 +51,40 @@ test('reports invalid percent encoding without aborting the scan', () => {
     'docs/README.md: invalid encoded Markdown link: ./bad%name.md',
   ]);
 });
+
+test('accepts existing JSON evidence and image links without treating them as Markdown', () => {
+  const markdownFiles = files([
+    ['docs/results.md', '[Results](evidence/run.json) and ![Chart](images/chart.png)'],
+  ]);
+  assert.deepEqual(
+    collectDocumentationErrors({
+      markdownFiles,
+      linkedFiles: ['docs/evidence/run.json', 'docs/images/chart.png'],
+      requiredDocs: [],
+    }),
+    [],
+  );
+});
+
+test('rejects absent or misplaced evidence files instead of accepting their extension', () => {
+  const markdownFiles = files([['docs/results.md', '[Results](evidence/missing.json)']]);
+  assert.deepEqual(
+    collectDocumentationErrors({
+      markdownFiles,
+      linkedFiles: ['docs/other/missing.json'],
+      requiredDocs: [],
+    }),
+    ['docs/results.md: broken relative Markdown link: evidence/missing.json'],
+  );
+});
+
+test('a linked asset cannot replace mandatory Markdown documentation', () => {
+  assert.deepEqual(
+    collectDocumentationErrors({
+      markdownFiles: files(),
+      linkedFiles: ['docs/required.md'],
+      requiredDocs: ['docs/required.md'],
+    }),
+    ['missing mandatory documentation file: docs/required.md'],
+  );
+});

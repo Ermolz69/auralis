@@ -15,11 +15,10 @@
     "src-tauri/target",
     "crates/**/target",
     "apps/desktop/dist",
-    ".cache/worktrees",
+    ".cache/**",
     ".pnpm-store",
     "vendor/glib-0.18.5",
     "vendor/process-wrap-10.0.0",
-    ".cache/ui-e2e",
     "modules/auralis-translate",
   ],
 }
