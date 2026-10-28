@@ -322,6 +322,20 @@ tasks:
       vars: [CLI_ARGS]
     cmds:
       - task -d ../TTS voices:new:apply -- {{.CLI_ARGS}}
+  components:pins:check:
+    desc: Check fail-closed component pin updates with bounded Git and wheel fixtures
+    requires:
+      vars: [PYTHON]
+    cmds:
+      - '"{{.PYTHON}}" -m unittest discover -s tools/tts -p test_component_pins.py -v'
+
+  components:pins:update:
+    desc: Validate the complete reviewed source and wheel closure before updating active pins
+    requires:
+      vars: [PYTHON, TTS_ROOT, TTS_REVISION, TTS_WHEEL, SPEECH_ROOT, SPEECH_REVISION, SPEECH_WHEEL, MEDIA_ROOT, MEDIA_REVISION, MEDIA_WHEEL, CASTER_ROOT, CASTER_REVISION]
+    cmds:
+      - '"{{.PYTHON}}" tools/tts/component_pins.py --tts-root "{{.TTS_ROOT}}" --tts-revision "{{.TTS_REVISION}}" --tts-wheel "{{.TTS_WHEEL}}" --speech-root "{{.SPEECH_ROOT}}" --speech-revision "{{.SPEECH_REVISION}}" --speech-wheel "{{.SPEECH_WHEEL}}" --media-root "{{.MEDIA_ROOT}}" --media-revision "{{.MEDIA_REVISION}}" --media-wheel "{{.MEDIA_WHEEL}}" --caster-root "{{.CASTER_ROOT}}" --caster-revision "{{.CASTER_REVISION}}"'
+
   setup:tts:local:
     desc: Install pinned local PUZA wheels, voice copies and runtime configuration without model loading
     vars:
