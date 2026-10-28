@@ -6,12 +6,12 @@ allowBuilds:
   unrs-resolver@1.12.2: true
 
 overrides:
-  '@vitest/browser': 4.1.11
-  brace-expansion: 5.0.9
+  '@vitest/browser': 4.1.12
+  brace-expansion: 5.0.12
   browserslist: 4.28.7
-  js-yaml: 5.2.2
+  # The math adapter uses the retained public renderToString API; 0.16 has no security fix.
+  'micromark-extension-math>katex': 0.18.2
   nanoid: 3.3.18
-  postcss: 8.5.23
-  smol-toml: 1.7.1
-  undici: 7.29.0
+  'source-map-js@<1.2.2': 1.2.2
+  undici: 7.30.1
   valibot: 1.4.2

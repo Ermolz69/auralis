@@ -115,7 +115,13 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         codeSplitting: {
-          groups: [{ name: 'vendor', test: /node_modules/ }],
+          groups: [
+            { name: 'vendor', test: /node_modules/ },
+            {
+              name: 'ui-primitives',
+              test: /[/\\]src[/\\]shared[/\\]ui[/\\](?:button|icon|notice|state-view)[/\\]/,
+            },
+          ],
         },
       },
     },
