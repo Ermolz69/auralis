@@ -7,21 +7,21 @@ sources. The media lock selects the portable media source while preserving its
 verified wheel bytes. CASTER already selected the reviewed source and remains
 unchanged. Historical evidence and runtime/profile data are unchanged.
 
-| Role | Source revision | Verified package tree | Package version |
-| --- | --- | --- | --- |
-| TTS | `49662267df9ee467e61a0d4e6a4caf7955f54a7d` | `0eb71b3933d08c38161177ffafd19644e248a0ed` | `puza-tts` 0.3.0 |
+| Role   | Source revision                            | Verified package tree                      | Package version            |
+| ------ | ------------------------------------------ | ------------------------------------------ | -------------------------- |
+| TTS    | `49662267df9ee467e61a0d4e6a4caf7955f54a7d` | `0eb71b3933d08c38161177ffafd19644e248a0ed` | `puza-tts` 0.3.0           |
 | Speech | `13f4383c7ca8b8b7b575eb64fdf9c54856a9204a` | `deab23554bc79faae0f5e402e1ab0f57adec8096` | `voxscript-contract` 0.2.0 |
-| Media | `6ee129cfcf534a7ca865c17ca5fa8195e8a028be` | `74a9d249a6546473e57f0d045ce32a4fc46eeacd` | `voxscript-contract` 0.3.0 |
-| CASTER | `2dbab64abeb4d3e7eee7bc819a5578a7008b3c5d` | `c9cb634c4671f363dbc069560ea243c6e079b8fc` | `puza-voice-editor` 0.2.0 |
+| Media  | `6ee129cfcf534a7ca865c17ca5fa8195e8a028be` | `74a9d249a6546473e57f0d045ce32a4fc46eeacd` | `voxscript-contract` 0.3.0 |
+| CASTER | `2dbab64abeb4d3e7eee7bc819a5578a7008b3c5d` | `c9cb634c4671f363dbc069560ea243c6e079b8fc` | `puza-voice-editor` 0.2.0  |
 
 Trees cover `PUZA_TTS`, `VOXSCRIPT_CONTRACT`, `VOXSCRIPT_CONTRACT`, and `src`,
 respectively. The updater also validates each repository's exact HEAD, documented
 GitHub origin, clean tracked/untracked status, and package name/version before
 writing either target.
 
-| Wheel | Bytes | SHA-256 |
-| --- | ---: | --- |
-| `puza_tts-0.3.0-py3-none-any.whl` | 57290 | `1b0fa4ea0e7b8f3e055194edf202bb24ff826e1a54bcf354f5036ebbd9a3cca6` |
+| Wheel                                       | Bytes | SHA-256                                                            |
+| ------------------------------------------- | ----: | ------------------------------------------------------------------ |
+| `puza_tts-0.3.0-py3-none-any.whl`           | 57290 | `1b0fa4ea0e7b8f3e055194edf202bb24ff826e1a54bcf354f5036ebbd9a3cca6` |
 | `voxscript_contract-0.2.0-py3-none-any.whl` | 75499 | `c8dcb3ecfbd64f821c56347ee8df039c8bff1d486c8d29f5967ac26a270e5381` |
 | `voxscript_contract-0.3.0-py3-none-any.whl` | 78567 | `1d7760d6784fc89a143c7d9fd0c7bf230f6315691a082bfa44823c920d32a20e` |
 
