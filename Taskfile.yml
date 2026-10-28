@@ -327,7 +327,7 @@ tasks:
     requires:
       vars: [PYTHON]
     cmds:
-      - '"{{.PYTHON}}" -m unittest discover -s tools/tts -p test_component_pins.py -v'
+      - '"{{.PYTHON}}" -B -m unittest discover -s tools/tts -p test_component_pins.py -v'
 
   components:pins:update:
     desc: Validate the complete reviewed source and wheel closure before updating active pins
