@@ -11,9 +11,10 @@ type TranscriptStoryState = {
   isLoading: boolean;
   error: string | null;
   activeJobStatus: string | null;
+  refetch: () => void;
 };
 
-let storyTranscriptState: TranscriptStoryState = createTranscriptState({
+const readyTranscript: Transcript = {
   language: 'en',
   segments: [
     {
@@ -32,7 +33,7 @@ let storyTranscriptState: TranscriptStoryState = createTranscriptState({
         'This read-only transcript wraps long subtitle text without creating horizontal overflow.',
     },
   ],
-});
+};
 
 const meta = {
   title: 'Product/Widgets/Transcript Editor/States',
@@ -54,7 +55,7 @@ type Story = StoryObj<typeof meta>;
 
 export const ReadyReadOnlyTranscript: Story = {
   render: () => (
-    <TranscriptStory transcriptState={createTranscriptState(storyTranscriptState.transcript)} />
+    <TranscriptStory transcriptState={createTranscriptState(structuredClone(readyTranscript))} />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -146,8 +147,6 @@ export const NoProjectSelected: Story = {
 };
 
 function TranscriptStory({ transcriptState }: { transcriptState: TranscriptStoryState }) {
-  storyTranscriptState = transcriptState;
-
   return (
     <div className="h-[600px] flex">
       <TranscriptPanelView
