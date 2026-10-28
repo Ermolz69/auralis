@@ -118,8 +118,12 @@ export default defineConfig({
           groups: [
             { name: 'vendor', test: /node_modules/ },
             {
-              name: 'ui-primitives',
-              test: /[/\\]src[/\\]shared[/\\]ui[/\\](?:button|icon|notice|state-view)[/\\]/,
+              name: 'app-runtime',
+              test: /(?:[/\\]src[/\\](?:shared[/\\]|entities[/\\](?:project|job)[/\\])|vite[/\\]preload-helper\.js$)/,
+            },
+            {
+              name: 'source-workspace',
+              test: /[/\\]src[/\\](?:pages[/\\]project[/\\](?!ui[/\\]SubtitleWorkspace\.tsx$)|entities[/\\]transcript[/\\]|features[/\\]run-dubbing[/\\]|widgets[/\\]project-header[/\\]|app[/\\]studio[/\\]ui[/\\]tools[/\\]SourceTool\.tsx$)/,
             },
           ],
         },
