@@ -68,12 +68,12 @@ test('full-check configuration requires both native and browser dependencies', (
   assert.equal(full.env.TAURI_CONFIG, '{"bundle":{"resources":[]}}');
 });
 
-test('release keeps the full reusable gate while PR checks avoid duplicate release work', () => {
+test('release and manual dispatch retain full checks while PRs avoid duplicate release work', () => {
   assert.equal(release.jobs.check.uses, fullPath);
   assert.equal(ci.jobs['release-checks'], undefined);
   assert.equal(ci.jobs['native-bundle'], undefined);
   assert.equal(ci.jobs['crash-recovery'], undefined);
-  assert.deepEqual(Object.keys(full.on), ['workflow_call']);
+  assert.deepEqual(Object.keys(full.on), ['workflow_call', 'workflow_dispatch']);
   assert.deepEqual(full.permissions, { contents: 'read' });
   assert.equal(full.jobs.check['runs-on'], 'ubuntu-latest');
   assert.equal(full.env.RUSTFLAGS, '-D warnings');
