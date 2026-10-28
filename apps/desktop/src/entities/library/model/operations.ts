@@ -140,13 +140,15 @@ export async function importFiles(
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
     await refresh();
+    let publishedIds: string[] = [];
     await mutate((state) => {
-      for (const asset of state.assets.filter((a) => a.ownerProjectId === owner)) {
+      const assets = state.assets.filter((a) => a.ownerProjectId === owner);
+      for (const asset of assets) {
         asset.name = name;
-
-        imported.push(asset.id);
       }
+      publishedIds = assets.map((asset) => asset.id);
     });
+    imported.push(...publishedIds);
     if (destination.projectId) {
       const catalog = await invoke('get_library_cmd');
       for (const original of catalog.assets.filter((a) => a.ownerProjectId === owner)) {

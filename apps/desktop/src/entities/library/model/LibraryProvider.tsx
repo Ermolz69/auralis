@@ -66,25 +66,28 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     let active = true;
+    const stops: Array<() => void> = [];
     const schedule = () => {
+      if (!active) return;
       clearTimeout(timer);
       timer = setTimeout(() => void refresh().catch(() => {}), 250);
     };
-    const subscription = Promise.all([
-      listen('project-updated', schedule),
-      listen('job-event', ({ payload }) => {
-        if (['completed', 'failed', 'cancelled'].includes(payload.kind)) schedule();
-      }),
-    ]).then((stops) => () => stops.forEach((stop) => stop()));
-    void subscription
-      .then((stop) => {
-        if (!active) stop();
-      })
+    const register = (stop: () => void) => {
+      if (active) stops.push(stop);
+      else stop();
+    };
+    void listen('project-updated', schedule)
+      .then(register)
+      .catch(() => {});
+    void listen('job-event', ({ payload }) => {
+      if (['completed', 'failed', 'cancelled'].includes(payload.kind)) schedule();
+    })
+      .then(register)
       .catch(() => {});
     return () => {
       active = false;
       clearTimeout(timer);
-      void subscription.then((stop) => stop()).catch(() => {});
+      stops.forEach((stop) => stop());
     };
   }, [refresh]);
   useEffect(() => {
