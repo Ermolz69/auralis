@@ -62,3 +62,20 @@ PM-017 failed and PM-018 is blocked. This full non-native run did not retry
 native admission, remove its retained session lock, attribute the unseen parent,
 or change any ownership guard. It does not establish native cleanup or technical
 readiness. Main and production/harness sources were not changed by this run.
+
+## Standalone model-free follow-up
+
+These existing root Tasks ran on
+`f0080b730cdcf09de1f3cb3f533ca68e23f433ac`, which adds only this report to the
+tested `4310b36` implementation. All used private temporary/results directories
+and the prepared private CPython 3.12/uv tooling where required.
+
+| Command                                                                    | Exit | Reported passed | Failed / skipped |
+| -------------------------------------------------------------------------- | ---: | --------------: | ---------------: |
+| `task ui:check:runner`                                                     |    0 |              33 |            0 / 0 |
+| `task components:pins:check PYTHON=<private-python312>`                    |    0 |              13 |            0 / 0 |
+| `task ui:components:check PYTHON=<private-python312> UV_BIN=<existing-uv>` |    0 |              12 |            0 / 0 |
+
+These synthetic Git/wheel/inert controls did not launch Auralis, models or
+doctors, or change the retained native lock, guard or failed case. The source
+remained clean, and the Linux platform skip and native blocker above still apply.
