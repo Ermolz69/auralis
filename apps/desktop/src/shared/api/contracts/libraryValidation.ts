@@ -4,7 +4,10 @@ import {
   isNullable,
   isArrayOf,
   isNonNegativeSafeInteger,
+  isEnumValue,
 } from './validationPrimitives';
+const assetKinds = new Set(['text', 'subtitle', 'audio', 'video']);
+const toolKinds = new Set(['source', 'text', 'translate', 'speech', 'voices', 'results']);
 export const libraryCommandResultValidators = {
   get_tool_context_cmd: (v: unknown) =>
     isRecord(v) &&
@@ -42,7 +45,7 @@ export function validateLibrary(value: unknown): boolean {
         isString(a.id) &&
         isString(a.ownerProjectId) &&
         isString(a.name) &&
-        ['text', 'subtitle', 'audio', 'video'].includes(String(a.kind)) &&
+        isEnumValue(a.kind, assetKinds) &&
         ['artifactId', 'format', 'text', 'parentId', 'openedAt'].every((k) => stringOrNull(a[k])) &&
         strings(a.tags),
     ) &&
@@ -76,9 +79,7 @@ export function validateLibrary(value: unknown): boolean {
           (t) =>
             isRecord(t) &&
             isString(t.id) &&
-            ['source', 'text', 'translate', 'speech', 'voices', 'results'].includes(
-              String(t.tool),
-            ) &&
+            isEnumValue(t.tool, toolKinds) &&
             stringOrNull(t.assetId) &&
             isString(t.draft),
         ),
