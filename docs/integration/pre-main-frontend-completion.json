@@ -1,0 +1,414 @@
+{
+  "title": "Combined frontend pre-main verification",
+  "date": "2026-10-28",
+  "scope": "PM-001 frontend inventory; combined PM-002 through PM-008 frontend completion and scoped PM-014/PM-015 browser verification. Integrated Rust, native Windows candidate and release acceptance remain separate gates.",
+  "branch": "integration/pre-main-frontend",
+  "source": {
+    "base": "b29719b0dc784745b70275ec93968f5cbda69df3",
+    "combinedBaseline": "c18b7f4d3465926acafcdd3f25509abb4640f4a5",
+    "testedImplementation": "17a786dab4760ee82c4dec8e887c8506d22f659e",
+    "preservedBranchHeads": {
+      "test/studio-workflow-coverage": "2015ec048bbe64d34b24ce3ca4e91b7d639d0d03",
+      "test/library-coverage": "fec3896a7603ac89b8cd9b7936aecc8b6a1da846",
+      "fix/npm-security": "23a997527cc40eedcad693a24879939721a8f12e"
+    },
+    "mergeCommits": ["007fd67", "f6205ea", "c18b7f4"],
+    "implementationCommits": [
+      "b5b70ce",
+      "9eab60c",
+      "c1f8efd",
+      "c6c7c36",
+      "1d2e4e8",
+      "77ed07d",
+      "b375ac9",
+      "c0559c0",
+      "8079a70",
+      "17a786d"
+    ],
+    "fullFrontendMeasuredSource": "8079a70b49ef95a38e8ed11b27b56f5e0486f83a",
+    "differenceAfterFullFrontendGate": "Only the compact light Windows visual baseline was refreshed for three existing registered icons; application source, dependencies, test logic and configuration are identical."
+  },
+  "environment": {
+    "platform": "Windows x64",
+    "node": "24.14.0",
+    "pnpm": "11.25.0",
+    "task": "3.50.0",
+    "react": "19.2.7",
+    "vite": "8.2.4",
+    "vitestAndCoverageV8": "4.1.12",
+    "storybook": "10.6.2",
+    "typescript": "6.0.3",
+    "playwright": "1.61.1",
+    "sha256": {
+      "pnpm-lock.yaml": "1ca704a29279ccaa17e7d999af01fc6b74def76bf08eaaf2b1ec8934e13de094",
+      "apps/desktop/package.json": "a4ad84008ea6271c9329b7b505498992ad7eb2df580f9eac3c1a7a119d4ed567",
+      "package.json": "2d00fc26a2eadecd40320b752606a70900a16853d89e90c61d319e16680f4b58"
+    },
+    "isolation": "Separate Git worktree and branch; ordinary worktree-local node_modules, pnpm store, virtual store, caches, temporary directories and test/build outputs. No writable shared dependency or result directory. pnpm_config_store_dir and pnpm_config_cache_dir select the private store/cache. Existing browser executable cache is read-only.",
+    "resourceControl": "VITEST_MAX_WORKERS=2; focused and baseline Vitest invocations also use --maxWorkers=2. Complete frontend, browser and build gates run serially within this worktree. Telemetry is disabled.",
+    "commandNormalization": "Command names, test arguments, sources and exit codes are literal. Ephemeral owned evidence-directory and screenshot arguments are represented by portable placeholders; they affect only artifact destinations."
+  },
+  "changes": [
+    "Preserve all three completed branch histories and validate their combined dependency graph before further implementation.",
+    "Reject arrays and non-string objects masquerading as library material/tool enum values. Malformed boundary data consistently raises IpcContractError rather than leaking TypeError or admitting coerced values.",
+    "Fence project rename and removal synchronously before starting an asynchronous operation. Pending operations disable real controls, repeated presses admit one mutation, failures remain visible and retry is available. Preserve unrelated project/material state.",
+    "Exercise the real material browser, library provider, command context, keyboard menus and focus restoration. Verify filtering and foreign/hidden material exclusion, default versus explicit-null tool context, removed workspaces, event-refresh errors and accepted state preservation.",
+    "Verify pointer tab persistence failure and retry without changing accepted selection or nonempty shared drafts. Verify a live draft persists exactly once when leaving before its debounce. Await real unmount persistence before fixture IPC teardown.",
+    "Prepare real lazy tool modules before project-context assertions and await accepted asynchronous subtitle-track selection through its visible label. Keep production lazy loading, checked-state assertions and all test deadlines intact.",
+    "Group already-co-loaded runtime and source dependencies for compression. Keep the Vite preload helper in the initial runtime so Source remains lazy; keep subtitle, translation, speech and Studio feature loading boundaries. Preserve every bundle budget and production implementation."
+  ],
+  "policy": {
+    "thresholds": {
+      "statements": 90,
+      "branches": 80,
+      "functions": 90,
+      "lines": 92
+    },
+    "testProjects": ["unit", "component", "integration", "storybook"],
+    "productionModuleCount": 263,
+    "testDiscoveryAndCoverageInclusionUnchanged": true,
+    "securityPolicyAndAdvisoryScopeUnchanged": true,
+    "modelsDownloadsDoctorsAndRealProfilesExecuted": false,
+    "mainMergedOrPublished": false
+  },
+  "baselineCommands": [
+    {
+      "command": "task fe:install",
+      "exitCode": 0,
+      "result": "Frozen isolated install; 646 supply-chain entries accepted; lockfile unchanged."
+    },
+    {
+      "command": "task fe:typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "task q:frontend",
+      "exitCode": 0
+    },
+    {
+      "command": "task sec:audit:npm",
+      "exitCode": 0,
+      "result": "No known vulnerabilities found in the complete dependency audit."
+    },
+    {
+      "command": "task fe:test -- --maxWorkers=2 --coverage.reportOnFailure --browser.api.port=63437",
+      "exitCode": 201,
+      "result": "886/886 tests in 158 files passed. Only the unchanged functions threshold failed at 88.88%."
+    }
+  ],
+  "focusedVerification": [
+    {
+      "command": "task fe:test:unit -- src/shared/api/contracts/libraryValidation.test.ts --maxWorkers=2",
+      "exitCode": 0,
+      "testsPassed": 8
+    },
+    {
+      "command": "task fe:test:components -- src/widgets/library-browser/ui/LibraryControls.test.tsx --maxWorkers=2",
+      "exitCode": 0,
+      "testsPassed": 20
+    },
+    {
+      "command": "task fe:test:components -- src/entities/library/model/LibraryProvider.test.tsx --maxWorkers=2",
+      "exitCode": 0,
+      "testsPassed": 13
+    },
+    {
+      "command": "task fe:test:integration -- src/app/studio/ui/WorkspaceAssetBrowser.integration.test.tsx --maxWorkers=2",
+      "exitCode": 0,
+      "testsPassed": 5
+    },
+    {
+      "command": "task fe:test:integration -- src/app/studio/ui/StudioWorkspace.integration.test.tsx --maxWorkers=2",
+      "exitCode": 0,
+      "testsPassed": 8
+    },
+    {
+      "command": "task fe:test:components -- src/app/studio/ui/StudioToolPanel.test.tsx --maxWorkers=2",
+      "exitCode": 0,
+      "testsPassed": 14
+    },
+    {
+      "command": "task fe:test:components -- src/app/studio/ui/tools/SourceTool.test.tsx --maxWorkers=2",
+      "exitCode": 0,
+      "testsPassed": 5
+    },
+    {
+      "command": "task fe:typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "task fe:lint",
+      "exitCode": 0
+    },
+    {
+      "command": "task sec:audit:npm",
+      "exitCode": 0,
+      "result": "Fresh complete audit on the final implementation: no known vulnerabilities found."
+    },
+    {
+      "command": "task q:format-write -- docs/integration/pre-main-frontend-completion.json docs/integration/pre-main-frontend-coverage.json",
+      "exitCode": 0
+    }
+  ],
+  "retainedFailures": [
+    {
+      "command": "task fe:install",
+      "exitCode": 1,
+      "cause": "Initial registry access failed with ECONNREFUSED; installation stopped. A network-enabled attempt using obsolete npm_config settings was also stopped after its store path proved unsuitable. Recreated only the new worktree's dependency directories and completed a frozen install with verified pnpm 11 private-store settings."
+    },
+    {
+      "command": "task fe:test:unit -- src/shared/api/contracts/libraryValidation.test.ts --maxWorkers=2",
+      "exitCode": 201,
+      "result": "Before the strict enum fix: 3 failed, 5 passed; array enum values were admitted and malformed object conversion leaked TypeError."
+    },
+    {
+      "command": "task fe:test:components -- src/widgets/library-browser/ui/LibraryControls.test.tsx --maxWorkers=2",
+      "exitCode": 201,
+      "result": "Before the busy guard: 2 failed, 18 passed; repeated rename/removal admitted duplicate operations."
+    },
+    {
+      "command": "task fe:test:integration -- src/app/studio/ui/WorkspaceAssetBrowser.integration.test.tsx --maxWorkers=2",
+      "exitCode": 201,
+      "result": "Initial fixture: 4 failed, 1 passed and 4 uncaught errors because jsdom lacks IntersectionObserver. Added a mock of that browser boundary; real browser/provider/commands logic remains under test."
+    },
+    {
+      "command": "task fe:test -- --maxWorkers=2 --coverage.reportOnFailure --browser.api.port=63437",
+      "exitCode": 201,
+      "result": "After the initial behavior additions: 904/904 passed; functions 89.91% remained below 90%."
+    },
+    {
+      "command": "task check:frontend",
+      "exitCode": 201,
+      "source": "1d2e4e8",
+      "result": "904 passed, 1 failed: the real lazy TranslateTool was still transforming at the context assertion. Prepare actual modules before those behavioral assertions; no mock of the tool, timeout increase or retry was introduced."
+    },
+    {
+      "command": "task check:frontend",
+      "exitCode": 201,
+      "source": "77ed07d",
+      "result": "904 passed, 1 failed: SourceTool radio existed before the asynchronous default track-selection effect. Await its checked state and click the visible label."
+    },
+    {
+      "command": "task check:frontend",
+      "exitCode": 201,
+      "source": "b375ac9",
+      "result": "905/905 tests and all coverage thresholds passed; build failed totalGzip at 161.04 KiB against 160 KiB. E2E and smoke were not reached."
+    },
+    {
+      "command": "task fe:build",
+      "exitCode": 201,
+      "result": "An all-shared-UI grouping still measured 160.95 KiB total gzip; runtime-only grouping still measured 160.68 KiB. A source grouping that hoisted Vite's preload helper measured 158.62 KiB total gzip but failed initialJs 375.00/350 and initialGzip 116.57/110. Explicitly keep that helper in the initial runtime, preserving lazy feature loading and passing all six original budgets."
+    },
+    {
+      "command": "task fe:build",
+      "exitCode": 201,
+      "result": "Vite's Windows resolver could not start a subprocess (EPERM). A subsequent normal Taskfile build completed."
+    },
+    {
+      "command": "task check:frontend",
+      "exitCode": 201,
+      "source": "c0559c0",
+      "result": "904 passed, 1 failed: workspace material-context fixture reset its IPC backend before pending unmount draft persistence had settled. Await asynchronous cleanup and assert the real unmount persistence behavior before the final complete rerun."
+    },
+    {
+      "command": "task check:storybook",
+      "exitCode": 201,
+      "source": "8079a70b49ef95a38e8ed11b27b56f5e0486f83a",
+      "result": "8 contract tests and 120 Chromium interaction/accessibility cases passed. 12/13 visual comparisons passed; compact light Control Safety Matrix expected 800x2138 but rendered 800x2162. Baseline last generated in 8f86bbc; 2ae68eb subsequently registered Copy, Minus and Square. The visible registry grew from 52 to 55 icons, adding a 24px row. Expected/actual/diff inspection found no clipping or unrelated layout change. Refresh only that historical Windows baseline; keep every visual assertion and threshold."
+    }
+  ],
+  "bundle": {
+    "units": "KiB, rounded to two decimals by the unchanged root bundle task",
+    "budgets": {
+      "initialJs": 350,
+      "totalJs": 525,
+      "largestJs": 250,
+      "initialGzip": 110,
+      "totalGzip": 160,
+      "totalCss": 100
+    },
+    "before": {
+      "initialJs": 336.12,
+      "totalJs": 512.14,
+      "largestJs": 214.66,
+      "initialGzip": 104.23,
+      "totalGzip": 161.04,
+      "totalCss": 69.83
+    },
+    "after": {
+      "initialJs": 342.93,
+      "totalJs": 510.69,
+      "largestJs": 214.66,
+      "initialGzip": 106.51,
+      "totalGzip": 158.57,
+      "totalCss": 69.83
+    },
+    "tradeoff": "Initial imports additionally contain five small shared helpers/primitives: projectAvatar, PagedPreview, Input, Card and formatSubtitleRange. Source-workspace, Studio, translation, speech and subtitle feature implementations remain outside the initial import graph. SourceTool and its pre-existing source-workspace/transcript dependencies share one lazy chunk.",
+    "beforeSource": "b375ac97917d51eba1a4d4c80674c6118a5631cb",
+    "afterMeasuredSource": "8079a70b49ef95a38e8ed11b27b56f5e0486f83a"
+  },
+  "remaining": [
+    "Coverage has visible uncovered paths even when global thresholds pass. The paired complete inventory assigns all remaining paths to the Frontend Developer; thresholds do not imply exhaustive behavioral verification.",
+    "The existing Vite native-loader __dirname warning, ineffective dynamic imports and React export/hook warnings remain reported and unsuppressed.",
+    "The integrated cross-language gate, ordinary Windows candidate, native fixture UI and final release acceptance require the combined integration source and their own evidence.",
+    "Real synthesis, listening decisions, long-source/video acceptance, model readiness and a clean Windows installation are not established by mocked browser or instrumented tests."
+  ],
+  "previousScopedEvidence": [
+    "pre-main-studio-coverage.md",
+    "pre-main-studio-coverage.json",
+    "library-coverage.md",
+    "library-coverage-final.json"
+  ],
+  "coverage": {
+    "inventory": "pre-main-frontend-coverage.json",
+    "baseline": {
+      "lines": {
+        "total": 5379,
+        "covered": 5033,
+        "skipped": 0,
+        "pct": 93.56
+      },
+      "statements": {
+        "total": 6267,
+        "covered": 5698,
+        "skipped": 0,
+        "pct": 90.92
+      },
+      "functions": {
+        "total": 1772,
+        "covered": 1575,
+        "skipped": 0,
+        "pct": 88.88
+      },
+      "branches": {
+        "total": 5148,
+        "covered": 4295,
+        "skipped": 0,
+        "pct": 83.43
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "final": {
+      "lines": {
+        "total": 5391,
+        "covered": 5063,
+        "skipped": 0,
+        "pct": 93.91
+      },
+      "statements": {
+        "total": 6280,
+        "covered": 5733,
+        "skipped": 0,
+        "pct": 91.28
+      },
+      "functions": {
+        "total": 1775,
+        "covered": 1598,
+        "skipped": 0,
+        "pct": 90.02
+      },
+      "branches": {
+        "total": 5150,
+        "covered": 4322,
+        "skipped": 0,
+        "pct": 83.92
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "baselineTests": 886,
+    "finalTests": 906,
+    "baselineFiles": 158,
+    "finalFiles": 159,
+    "skippedOrTodoTests": 0,
+    "sameProductionModuleSet": true
+  },
+  "finalVerification": [
+    {
+      "command": "task check:frontend",
+      "exitCode": 0,
+      "source": "8079a70b49ef95a38e8ed11b27b56f5e0486f83a",
+      "result": "906/906 tests in 159 files; all four coverage thresholds; build and six bundle budgets; 35/35 production E2E; 1/1 CSP browser smoke; complete q:frontend architecture, IPC, bounded-file and release checks passed."
+    },
+    {
+      "command": "task fe:storybook",
+      "exitCode": 0,
+      "source": "8079a70",
+      "result": "Production static catalogue built successfully."
+    },
+    {
+      "command": "task fe:smoke:library EVIDENCE=<owned-output-directory>",
+      "exitCode": 0,
+      "source": "8079a70",
+      "testsPassed": 1,
+      "result": "Menus, contextual tools, copies, settings and persistent workspaces passed against synthetic IPC."
+    },
+    {
+      "command": "task fe:smoke:puza SCREENSHOT=<owned-output-file>",
+      "exitCode": 0,
+      "source": "8079a70",
+      "testsPassed": 1,
+      "result": "CSP speech panel fixture smoke passed; screenshot inspected; no models or real qualification changes."
+    },
+    {
+      "command": "task fe:storybook:visual:update -- --grep control-safety-light-compact",
+      "exitCode": 0,
+      "result": "Exactly one compact light Windows baseline refreshed for the three historical registry additions. The other twelve images and all pixel thresholds remain unchanged."
+    },
+    {
+      "command": "task check:storybook",
+      "exitCode": 0,
+      "source": "17a786dab4760ee82c4dec8e887c8506d22f659e",
+      "result": "8/8 contract tests; 120/120 Chromium interaction/accessibility cases in 30 files; static visual build; 13/13 ordinary snapshot comparisons passed with unchanged assertions and thresholds."
+    },
+    {
+      "command": "task ui:fixture",
+      "exitCode": 0,
+      "source": "17a786dab4760ee82c4dec8e887c8506d22f659e",
+      "result": "Production rebuild and all six budgets passed. Full model-free browser workflow passed 32/32 steps; diagnostic workflow passed 18/18. Both cleanup steps passed.",
+      "identities": [
+        {
+          "layer": "fixture-ui",
+          "source": "17a786dab4760ee82c4dec8e887c8506d22f659e",
+          "frontendSha256": "000f68aec29c47205e7060c4c2424dcbc76f1f73771c3a1380f286c6830494ef",
+          "status": "passed",
+          "steps": 32,
+          "passed": 32,
+          "cleanup": "passed"
+        },
+        {
+          "layer": "fixture-diagnostic",
+          "source": "17a786dab4760ee82c4dec8e887c8506d22f659e",
+          "frontendSha256": "000f68aec29c47205e7060c4c2424dcbc76f1f73771c3a1380f286c6830494ef",
+          "status": "passed",
+          "steps": 18,
+          "passed": 18,
+          "cleanup": "passed"
+        }
+      ],
+      "processRelease": {
+        "capturedOwnedBrowserProcesses": 10,
+        "remainingCapturedIdentities": 0,
+        "matchingOwnedBrowserRoots": 0,
+        "confirmedReleased": true
+      }
+    }
+  ],
+  "result": "All final frontend verification gates listed here pass. Retained failed attempts remain recorded. This record does not establish the integrated Rust/native candidate or release acceptance.",
+  "npmSecurity": {
+    "findings": 0,
+    "advisoryExceptionsAdded": 0,
+    "lockfileChangedAfterCombinedBaseline": false,
+    "command": "task sec:audit:npm",
+    "exitCode": 0
+  }
+}
