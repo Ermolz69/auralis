@@ -114,7 +114,8 @@
       "id": "RC-D01",
       "owner": "Backend Developer",
       "description": "Saved review must match canonical speech utterance text, order and timing",
-      "status": "blocked"
+      "status": "blocked",
+      "fix_commit": "997caf8a2ba6bec3cfdaf9f4c20ade6403711f69"
     },
     {
       "id": "RC-D02",
@@ -171,7 +172,16 @@
       "status": "blocked"
     }
   ],
-  "commits": [],
+  "commits": [
+    {
+      "owner": "Backend Developer",
+      "source_commit": "ca43712a4a2d59d801722d677797ae4246845b98",
+      "integration_commit": "997caf8a2ba6bec3cfdaf9f4c20ade6403711f69",
+      "review_status": "passed",
+      "integration_checks": "not_run",
+      "scope": "Exact approved speech plan with host4004 fixture; production CONTRACT and native inference remain separate"
+    }
+  ],
   "results": [
     {
       "command": "task ui:check:runner",
