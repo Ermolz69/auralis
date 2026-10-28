@@ -38,11 +38,31 @@ tasks:
     cmds:
       - node tools/ui-e2e/component-probe.mjs "{{.ID}}" "{{.SEED}}" "{{.COMPONENTS}}"
   components:build:
-    desc: Build CONTRACT and retain the pinned streamed TTS wheel without model loading or voice changes
+    desc: Build clean pinned CONTRACT sources and retain a verified portable TTS wheel offline
     requires:
-      vars: [ID]
+      vars:
+        [
+          ID,
+          PYTHON,
+          UV_BIN,
+          CONTRACT_ROOT,
+          CONTRACT_COMMIT,
+          TTS_ROOT,
+          TTS_COMMIT,
+          TTS_WHEEL,
+          TTS_WHEEL_SHA256,
+        ]
     cmds:
-      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/ui-e2e/build-components.ps1 -Id "{{.ID}}"
+      - powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tools/ui-e2e/build-components.ps1 -Id "{{.ID}}" -Python "{{.PYTHON}}" -Uv "{{.UV_BIN}}" -ContractRoot "{{.CONTRACT_ROOT}}" -ContractCommit "{{.CONTRACT_COMMIT}}" -TtsRoot "{{.TTS_ROOT}}" -TtsCommit "{{.TTS_COMMIT}}" -TtsWheel "{{.TTS_WHEEL}}" -TtsWheelSha256 "{{.TTS_WHEEL_SHA256}}"
+  components:check:
+    desc: Exercise the Windows component builder with owned Git and offline wheel fixtures
+    requires:
+      vars: [PYTHON, UV_BIN]
+    env:
+      AURALIS_COMPONENT_BUILD_PYTHON: '{{.PYTHON}}'
+      AURALIS_COMPONENT_BUILD_UV: '{{.UV_BIN}}'
+    cmds:
+      - node --test tools/ui-e2e/component-build.test.mjs
   check:video:
     desc: Verify video policy, durable assembly publication and profile schema without models
     cmds:
