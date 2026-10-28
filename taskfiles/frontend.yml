@@ -186,7 +186,7 @@ tasks:
   storybook:test:
     desc: Run Storybook interactions and accessibility checks in Chromium
     cmds:
-      - pnpm --filter desktop test:storybook
+      - pnpm --filter desktop test:storybook {{.CLI_ARGS}}
 
   storybook:visual:
     desc: Compare Storybook states with the committed Windows visual baselines
