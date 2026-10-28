@@ -14,8 +14,8 @@ import importlib.metadata
 import shutil
 
 
-TTS_COMMIT = "22dcbb12a37bc1e54d0d8cf7f52adb9668de36a7"
-CONTRACT_COMMIT = "4ab50d5dffbe611dc7d60d0fe292614f6c47cd8a"
+TTS_COMMIT = "49662267df9ee467e61a0d4e6a4caf7955f54a7d"
+CONTRACT_COMMIT = "13f4383c7ca8b8b7b575eb64fdf9c54856a9204a"
 CASTER_COMMIT = "2dbab64abeb4d3e7eee7bc819a5578a7008b3c5d"
 VOICE_IDS = (
     "marina_elevenlabs_ru",
@@ -30,7 +30,7 @@ VOICE_IDS = (
 NATIVE_PACKAGES = (
     "torch", "torchaudio", "transformers", "voxcpm", "f5-tts",
     "huggingface-hub", "accelerate", "safetensors", "numpy",
-    "soundfile", "vocos", "setuptools",
+    "soundfile", "scipy", "vocos", "setuptools",
 )
 VOX_REVISION = "32279effe8c19989596f05d353d1447f51d9e915"
 
