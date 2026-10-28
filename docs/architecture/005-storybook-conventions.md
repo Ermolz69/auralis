@@ -172,6 +172,24 @@ personal paths, access tokens, or private resources.
 Do not use timers to fake a product result when a stable state fixture is enough.
 Stories should be deterministic and independent of execution order.
 
+For interactive surfaces, use `play` to exercise the rendered production control
+and assert the resulting user-visible state. Cover keyboard selection, focus,
+disabled or pending actions, failure recovery and repeated activation where they
+apply. A `play` property by itself is not evidence that those behaviors are tested.
+Keep render-only examples for passive layout and state comparisons.
+
+Mock IPC, filesystem and runtime boundaries. Keep production providers, hooks,
+state transitions and controls real when they are the subject of the scenario.
+Deferred boundary responses make pending and stale-result checks observable;
+fixture callbacks must not implement the production behavior being tested.
+Restore boundary adapters, subscriptions and notification state after each story.
+
+Accessibility runs with `a11y.test: 'error'`. Do not disable rules or remove test
+tags to make a scenario pass. Include a dialog scenario that ends open so axe
+examines the modal contents, alongside scenarios that close it and verify focus
+returns to its trigger. Controls must remain accessible while an operation is
+pending, and a focused notification must not expire under the keyboard user.
+
 ## State coverage
 
 For each public surface, document the applicable rows of this matrix:
@@ -275,7 +293,10 @@ task fe:storybook:dev
 task q:storybook-contract
 
 # Browser stories and accessibility only
-pnpm --filter desktop test:storybook
+task fe:storybook:test
+
+# Focus one story file through the same root entrypoint
+task fe:storybook:test -- src/shared/ui/dialog/Dialog.stories.tsx
 
 # Compare the committed visual baselines on Windows
 task fe:storybook:visual
@@ -294,8 +315,12 @@ task check:storybook
 in Chromium, accessibility checks, committed screenshot comparisons, and the
 static build. The visual matrix covers representative dark and light themes,
 1440/1280/1024/800 widths, long content, empty/loading/error states, the complete
-allowed-control matrix, and a 100-job history. Every visual case also fails on
-runtime errors or page-level horizontal overflow.
+allowed-control matrix, and a 100-job history. Every visual case must verify a
+specific semantic landmark before capture, the requested theme attribute and
+computed palette, runtime errors and page-level horizontal overflow. Interactive
+visual cases also check that relevant controls receive pointer input after
+scrolling. Adversarial browser checks exercise incorrect themes, fallback error
+content, inner clipping and overlays so these guards cannot silently pass.
 
 Visual baselines include the operating-system name and are reviewed on Windows;
 pull-request CI uses the pinned `windows-2025` image to keep fonts and rendering

@@ -27,7 +27,7 @@ export default defineConfig({
     colorScheme: 'dark',
     locale: 'en-US',
     timezoneId: 'UTC',
-    reducedMotion: 'reduce',
+    contextOptions: { reducedMotion: 'no-preference' },
     deviceScaleFactor: 1,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',

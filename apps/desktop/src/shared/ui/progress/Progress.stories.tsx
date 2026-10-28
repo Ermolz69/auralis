@@ -1,6 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import React from 'react';
+import { expect, within } from 'storybook/test';
 import { Progress } from './Progress';
+
+async function assertProgress(element: HTMLElement, value?: number) {
+  await expect(element).toHaveAttribute('aria-valuemin', '0');
+  await expect(element).toHaveAttribute('aria-valuemax', '100');
+  await expect(element).toHaveAccessibleName();
+  if (value === undefined) {
+    await expect(element).not.toHaveAttribute('aria-valuenow');
+    await expect(element).toHaveAttribute('aria-valuetext', 'Loading');
+    await expect(element).toHaveAttribute('aria-busy', 'true');
+  } else {
+    await expect(element).toHaveAttribute('aria-valuenow', String(value));
+    await expect(element).toHaveAttribute('aria-valuetext', `${value}%`);
+    await expect(element).not.toHaveAttribute('aria-busy');
+  }
+}
 
 const meta = {
   title: 'Design System/Components/Progress',
@@ -19,6 +35,12 @@ const meta = {
     },
   },
   tags: ['autodocs'],
+  play: async ({ canvasElement, args }) => {
+    await assertProgress(
+      within(canvasElement).getByRole('progressbar'),
+      args.indeterminate ? undefined : (args.value ?? 0),
+    );
+  },
   argTypes: {
     value: { control: { type: 'range', min: 0, max: 100, step: 1 } },
     variant: { control: 'select', options: ['default', 'success', 'warning', 'danger'] },
@@ -58,6 +80,13 @@ export const StatusVariants: Story = {
       </div>
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const indicators = within(canvasElement).getAllByRole('progressbar');
+    await expect(indicators).toHaveLength(4);
+    for (const [index, value] of [20, 45, 65, 90].entries()) {
+      await assertProgress(indicators[index], value);
+    }
+  },
 };
 
 // Indeterminate
@@ -71,6 +100,7 @@ export const Indeterminate: Story = {
 };
 
 export const ReducedMotionFallback: Story = {
+  args: { indeterminate: true },
   render: () => (
     <div className="w-96 space-y-3">
       <Progress indeterminate label="Reduced motion fallback progress" />

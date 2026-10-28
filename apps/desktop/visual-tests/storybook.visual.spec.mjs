@@ -1,110 +1,6 @@
 import { expect, test } from 'playwright/test';
-
-const cases = [
-  {
-    name: 'control-safety-dark-wide',
-    story: 'design-system-foundations-control-safety-matrix--all-allowed-values',
-    theme: 'dark',
-    viewport: { width: 1440, height: 900 },
-    validate: async (page) => {
-      await expect(page.getByTestId('safe-button')).toHaveCount(14);
-      await expect(page.getByTestId('safe-select')).toHaveCount(2);
-    },
-  },
-  {
-    name: 'control-safety-light-compact',
-    story: 'design-system-foundations-control-safety-matrix--all-allowed-values',
-    theme: 'light',
-    viewport: { width: 800, height: 700 },
-    validate: async (page) => {
-      await expect(page.getByTestId('safe-icon').first()).toBeVisible();
-      await expect(page.getByLabel('Large finite option list')).toHaveValue('0');
-    },
-  },
-  {
-    name: 'all-themes-gallery',
-    story: 'design-system-foundations-theme-gallery--all-themes',
-    theme: 'dark',
-    viewport: { width: 1440, height: 900 },
-  },
-  {
-    name: 'long-project-title-wide',
-    story: 'product-widgets-app-shell--with-long-project-title',
-    theme: 'dark',
-    viewport: { width: 1440, height: 900 },
-  },
-  {
-    name: 'long-project-title-compact-light',
-    story: 'product-widgets-app-shell--with-long-project-title',
-    theme: 'light',
-    viewport: { width: 800, height: 700 },
-  },
-  {
-    name: 'home-empty',
-    story: 'product-pages-home-states--local-first-empty',
-    theme: 'dark',
-    viewport: { width: 1280, height: 800 },
-  },
-  {
-    name: 'home-loading',
-    story: 'product-pages-home-states--loading-recent-projects',
-    theme: 'light',
-    viewport: { width: 1024, height: 768 },
-  },
-  {
-    name: 'project-list-error',
-    story: 'product-features-project-list-states--fetch-error',
-    theme: 'dark',
-    viewport: { width: 800, height: 700 },
-  },
-  {
-    name: 'transcript-waiting',
-    story: 'product-widgets-transcript-editor-states--waiting-for-pipeline',
-    theme: 'light',
-    viewport: { width: 1280, height: 800 },
-  },
-  {
-    name: 'transcript-loading',
-    story: 'product-widgets-transcript-editor-states--loading-transcript',
-    theme: 'dark',
-    viewport: { width: 1024, height: 768 },
-  },
-  {
-    name: 'transcript-error',
-    story: 'product-widgets-transcript-editor-states--error-with-retry',
-    theme: 'light',
-    viewport: { width: 800, height: 700 },
-  },
-  {
-    name: 'job-history-100-items',
-    story: 'product-widgets-job-queue-panel-states--large-history',
-    theme: 'dark',
-    viewport: { width: 1024, height: 768 },
-    validate: async (page) => {
-      await expect(page.getByRole('listitem')).toHaveCount(100);
-      const history = page.getByRole('list', { name: 'Operation history' });
-      await expect(history).toBeVisible();
-      expect(
-        await history.evaluate((element) => {
-          const scrollParent = element.parentElement?.parentElement;
-          return Boolean(scrollParent && scrollParent.scrollHeight > scrollParent.clientHeight);
-        }),
-      ).toBe(true);
-    },
-  },
-  {
-    name: 'job-history-100-items-oldest-visible',
-    story: 'product-widgets-job-queue-panel-states--large-history',
-    theme: 'light',
-    viewport: { width: 800, height: 700 },
-    validate: async (page) => {
-      const oldestJob = page.getByRole('listitem').last();
-      await oldestJob.scrollIntoViewIfNeeded();
-      await expect(oldestJob).toContainText('Transcript generation 001');
-      await expect(oldestJob).toBeVisible();
-    },
-  },
-];
+import { cases } from './storybook.visual.cases.mjs';
+import { assertPreviewQuality } from './preview-quality.mjs';
 
 for (const visualCase of cases) {
   test(`${visualCase.name} renders without clipping or runtime errors`, async ({ page }) => {
@@ -115,6 +11,9 @@ for (const visualCase of cases) {
     });
 
     await page.setViewportSize(visualCase.viewport);
+    if (visualCase.reducedMotion) {
+      await page.emulateMedia({ reducedMotion: visualCase.reducedMotion });
+    }
     const query = new URLSearchParams({
       id: visualCase.story,
       viewMode: 'story',
@@ -122,18 +21,9 @@ for (const visualCase of cases) {
     });
     await page.goto(`/iframe.html?${query}`);
 
-    const storyRoot = page.locator('#storybook-root');
-    await expect(storyRoot).not.toBeEmpty();
     await page.evaluate(() => document.fonts.ready);
-    await expect(page.locator('.sb-errordisplay:visible')).toHaveCount(0);
-    await visualCase.validate?.(page);
-
-    const pageOverflow = await page.evaluate(() => ({
-      viewportWidth: window.innerWidth,
-      contentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-    }));
-    expect(pageOverflow.contentWidth).toBeLessThanOrEqual(pageOverflow.viewportWidth + 1);
-    expect(runtimeErrors).toEqual([]);
+    await visualCase.validate(page);
+    await assertPreviewQuality(page, visualCase.theme, runtimeErrors);
 
     await expect(page).toHaveScreenshot(`${visualCase.name}.png`, { fullPage: true });
   });
