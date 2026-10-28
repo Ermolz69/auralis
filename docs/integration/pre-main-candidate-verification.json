@@ -1,0 +1,492 @@
+{
+  "date": "2026-10-28",
+  "source": "5a5ca531c37fef4eade0633e276e5d6a12688b7e",
+  "branch": "fix/pre-main-candidate",
+  "technicallyReady": false,
+  "readiness": {
+    "PM014": "passed",
+    "PM016": "passed",
+    "PM017": "failed",
+    "PM018": "blocked"
+  },
+  "commands": [
+    {
+      "command": "task check:pr",
+      "source": "5a5ca531c37fef4eade0633e276e5d6a12688b7e",
+      "exit": 0
+    },
+    {
+      "command": "task ui:build",
+      "source": "5a5ca531c37fef4eade0633e276e5d6a12688b7e",
+      "exit": 0,
+      "releaseBuildSeconds": 861
+    },
+    {
+      "command": "task ui:assets:project SEED=<new-seed> INPUT_ROOT=<frozen-input-root> INPUT_SEED=real-components-20261024-v2 MANIFEST_SHA=<input-sha> PYTHON=<private-builder> CONTRACT_ROOT=<clean-media-source>",
+      "source": "5a5ca531c37fef4eade0633e276e5d6a12688b7e",
+      "exit": 0
+    },
+    {
+      "command": "task ui:freeze:project CASE=<new-case> SEED=<new-seed>",
+      "source": "5a5ca531c37fef4eade0633e276e5d6a12688b7e",
+      "exit": 0
+    },
+    {
+      "command": "task ui:smoke SPEC=<frozen-case>",
+      "source": "5a5ca531c37fef4eade0633e276e5d6a12688b7e",
+      "exit": 201
+    },
+    {
+      "command": "task components:pins:check PYTHON=<private-builder>",
+      "sourceContent": "5a5ca53 Taskfile before commit",
+      "exit": 0,
+      "passed": 13,
+      "externalBytecodeOverride": false,
+      "untrackedOutput": false
+    }
+  ],
+  "tools": {
+    "node": "24.14.0",
+    "pnpm": "11.25.0",
+    "task": "3.50.0",
+    "rustc": "1.95.0 (59807616e 2026-04-14)",
+    "cargo": "1.95.0 (f2d3ce0bd 2026-03-21)",
+    "cargoAudit": "0.22.2",
+    "cargoDeny": "0.20.2",
+    "pythonBuilder": {
+      "python": "3.12.14",
+      "packages": {
+        "packaging": "26.3",
+        "pip": "25.0.1",
+        "setuptools": "84.0.0",
+        "wheel": "0.45.1"
+      }
+    }
+  },
+  "settings": {
+    "VITEST_MAX_WORKERS": 2,
+    "CARGO_BUILD_JOBS": 2,
+    "RUST_TEST_THREADS": 2,
+    "privateMutableOutputs": true,
+    "tauriConfigOverrideAbsent": true,
+    "nativeRunnerBuildFlags": 0
+  },
+  "locks": [
+    {
+      "path": "Cargo.lock",
+      "gitBlob": "16cc5d8fdfa1f1e06c9e245b675f845a0c2ab4e0",
+      "sha256": "d7d9d8f413b8b9a6b19a9d4cac76f60ee7cfdf49d7aa86252679a237e6ce1a62"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "gitBlob": "f5220d5cfe0e7ff60b47f14e659ab6c450e7370c",
+      "sha256": "1ca704a29279ccaa17e7d999af01fc6b74def76bf08eaaf2b1ec8934e13de094"
+    },
+    {
+      "path": "modules/auralis-translate/Cargo.lock",
+      "gitBlob": "421edf1a643cd853875e9706681bc0c529541756",
+      "sha256": "cfbd1fdb032db88a66612d8d3c4a8dd4773d88e3567d905ab269baacca852f67"
+    }
+  ],
+  "tests": {
+    "frontendFiles": 159,
+    "frontendPassed": 906,
+    "frontendFailed": 0,
+    "frontendSkipped": 0,
+    "productionE2EPassed": 35,
+    "productionSmokePassed": 1,
+    "coverage": {
+      "lines": {
+        "total": 5391,
+        "covered": 5063,
+        "skipped": 0,
+        "pct": 93.91
+      },
+      "statements": {
+        "total": 6280,
+        "covered": 5733,
+        "skipped": 0,
+        "pct": 91.28
+      },
+      "functions": {
+        "total": 1775,
+        "covered": 1598,
+        "skipped": 0,
+        "pct": 90.02
+      },
+      "branches": {
+        "total": 5150,
+        "covered": 4322,
+        "skipped": 0,
+        "pct": 83.92
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "rustTopLevelPassed": 758,
+    "rustRawHarnessPassed": 760,
+    "rustNestedChildSuccesses": 2,
+    "rustFailed": 0,
+    "rustExistingIgnored": 23,
+    "ignoredTests": [
+      {
+        "test": "installed_worker_matches_cli_on_plan_voice_and_result",
+        "reason": "requires the explicitly installed model-free CONTRACT wheel"
+      },
+      {
+        "test": "owned_worker_tree_exits_before_timeout_error_is_returned",
+        "reason": "requires the explicitly installed model-free Python runtime"
+      },
+      {
+        "test": "synthetic_process_rejects_stale_eof_malformed_and_unknown_completion",
+        "reason": "requires the explicitly installed model-free Python runtime"
+      },
+      {
+        "test": "ffmpeg_matrix",
+        "reason": "Explicit frozen, admitted managed-FFmpeg fixture matrix; never a native or speech quality gate"
+      },
+      {
+        "test": "frozen_real_source_is_inspected_without_modifying_its_bytes",
+        "reason": "explicit real-source specification and new evidence output required; no model loading"
+      },
+      {
+        "test": "installs_and_selects_a_real_cached_package",
+        "reason": "requires a complete pinned upstream asset cache"
+      },
+      {
+        "test": "native_busy::invalid_inputs_precede_admission_but_valid_input_keeps_the_busy_guard",
+        "reason": "requires one available native model-free machine lease; no model or server is loaded"
+      },
+      {
+        "test": "starts_and_releases_the_checked_local_server",
+        "reason": "requires an explicitly installed checked llama.cpp binary and GGUF"
+      },
+      {
+        "test": "installed_full_plan_tests::installed_four_thousand_cues_compose_and_validate_without_models",
+        "reason": "requires a new metadata case and pinned installed runtime; no synthesis or model access"
+      },
+      {
+        "test": "installed_full_plan_tests::installed_guard_only_rejects_threaded_engine_actions",
+        "reason": "requires a new guard-only case and pinned runtime; inert negative controls only"
+      },
+      {
+        "test": "long_cast_and_reference_qualification_preserve_the_existing_permission_boundary",
+        "reason": "requires an explicitly selected Python interpreter; fixture API only, no models"
+      },
+      {
+        "test": "installed_worker_lists_new_voices_for_both_engines",
+        "reason": "requires an installed TTS worker and the eight new voice manifests"
+      },
+      {
+        "test": "installed_contract_checks_empty_projects_sources_and_all_four_voice_assignments",
+        "reason": "requires the pinned local CONTRACT and human-qualified voice copies; no model loading"
+      },
+      {
+        "test": "installed_normalizer_prepares_text_and_subtitles_sequentially",
+        "reason": "requires the verified local Normalizer and idle shared PUZA admission; no model loading"
+      },
+      {
+        "test": "ytdlp::adapter::tests::test_downloads_public_test_video",
+        "reason": null
+      },
+      {
+        "test": "installed_worker_publishes_a_managed_cast_and_survives_restart",
+        "reason": "requires an explicitly installed Caster runtime and isolated qualified fixture"
+      },
+      {
+        "test": "compare_sequential_and_parallel_fixtures",
+        "reason": "explicit, bounded fixture comparison"
+      },
+      {
+        "test": "compare_real_local_publication_under_the_same_disk_budget",
+        "reason": "local disk comparison is reported separately from deterministic correctness tests"
+      },
+      {
+        "test": "killed_managed_worker_releases_model_and_resumes_remaining_block",
+        "reason": "requires the pinned checked llama.cpp binary and GGUF"
+      },
+      {
+        "test": "managed_crash_child",
+        "reason": "requires the pinned checked llama.cpp binary and GGUF"
+      },
+      {
+        "test": "managed_model_translates_and_publishes_separate_project_copy",
+        "reason": "requires an explicitly installed checked llama.cpp binary and GGUF"
+      },
+      {
+        "test": "portalocker_interoperability_rejects_then_recovers",
+        "reason": "requires an explicitly installed model-free Python with portalocker"
+      },
+      {
+        "test": "job_lifecycle_heap_remains_bounded",
+        "reason": "long-running heap profiler; run with task rs:soak:jobs"
+      }
+    ],
+    "existingFrontendLintWarnings": 18
+  },
+  "security": {
+    "databaseCommit": "40f5be6fb12ed93fc591bf4ab23b7d793b3f2239",
+    "advisories": 1381,
+    "rootLockedDependencies": 570,
+    "vulnerabilities": 0,
+    "unsound": 0,
+    "npmVulnerabilities": 0,
+    "denyAdvisories": "passed",
+    "denySources": "passed",
+    "existingMaintenanceNotices": [
+      "RUSTSEC-2024-0370",
+      "RUSTSEC-2025-0081",
+      "RUSTSEC-2025-0075",
+      "RUSTSEC-2025-0080",
+      "RUSTSEC-2025-0100",
+      "RUSTSEC-2025-0098"
+    ],
+    "newExceptions": 0
+  },
+  "candidate": {
+    "mode": "ordinary-release",
+    "receiptVersion": 3,
+    "source": "5a5ca531c37fef4eade0633e276e5d6a12688b7e",
+    "translateSource": "5d98cb3ca341c25bd446f7fc9d98d4b62ef551f5",
+    "executableSha256": "1880d2ca6e7d8ee70aa249881ce05a0eef68752f092ac4a1e329e75d932dda41",
+    "executableBytes": 23408640,
+    "receiptSha256": "21d0552f8be6ca0273c72714f94714ac684eb9c1e7e942f4be8b89a035f0d110",
+    "sourceFiles": 1982,
+    "dependencySourceFiles": 1897,
+    "workingDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "buildInputSha256": "23269ecdc2391dccc7c83b39f066c349ad43f4688edfb91a5faf48211994d517",
+    "resourceInventoryAlgorithm": "SHA-256 of compact JSON resource array in receipt order",
+    "resourceInventorySha256": "6ce98d3adbe0e0a25de9e74c0f937a78e7f66cbc8d3887dddb03730ade1f46e9",
+    "resources": [
+      {
+        "path": "binaries/FFMPEG-GPL-3.0.txt",
+        "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+      },
+      {
+        "path": "binaries/THIRD-PARTY-NOTICES.txt",
+        "sha256": "4cdcb9a1dce959045ee1d29dc563326d457c47896613cb4e889d943833249dc2"
+      },
+      {
+        "path": "binaries/YT-DLP-UNLICENSE.txt",
+        "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+      },
+      {
+        "path": "binaries/ffmpeg-x86_64-pc-windows-msvc.exe",
+        "sha256": "4044b3924c977ad31229d504c5d5b8685f9553124fbaff6e9c99048b42830341"
+      },
+      {
+        "path": "binaries/ffprobe-x86_64-pc-windows-msvc.exe",
+        "sha256": "fc37ca23d31ee08bb8f7e108edf3822f6ef3efc1a8d306bbe0b779190230710b"
+      },
+      {
+        "path": "binaries/media-tools-provenance.json",
+        "sha256": "677006e2392cc31621e706ef2a8cb40efd9be6c2c00dd7c65f49055832ab78a9"
+      },
+      {
+        "path": "binaries/yt-dlp-x86_64-pc-windows-msvc.exe",
+        "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a"
+      }
+    ]
+  },
+  "seed": {
+    "id": "pre-main-metadata-20261028-final-v1",
+    "inputManifestSha256": "fa328c73f77970d52cb0ff7881157bc83a59dac56caf03fed13bd51cfa38842f",
+    "manifestSha256": "1da7c8d53cb1d6fc56dedc4ba12b7080f6e8d950660d84c3a01cd818c0525916",
+    "files": 3261,
+    "bytes": 59324512.0,
+    "mediaSource": "6ee129cfcf534a7ca865c17ca5fa8195e8a028be",
+    "mediaPackageTree": "74a9d249a6546473e57f0d045ce32a4fc46eeacd",
+    "mediaWheelSha256": "1d7760d6784fc89a143c7d9fd0c7bf230f6315691a082bfa44823c920d32a20e",
+    "ttsRuntimeSha256": "8544a5087286e4ad3cb548ab37e95b1d3df005839962137160cd05336d18f543",
+    "mediaRuntimeSha256": "4467d547d313ad6ca8e3677c12eb938d185d97b262edbe6ebb389240ec967ddc",
+    "configuredSpeechContract": "0.2.0",
+    "configuredMediaContract": "0.3.0",
+    "modelsAndVoiceWavsAbsent": true,
+    "qualificationModified": false
+  },
+  "native": {
+    "caseId": "pre-main-metadata-20261028-final-v1",
+    "specSha256": "9f2066e34033529d708a6bba9019475177cbc5511eb601993b03200f868396a2",
+    "maxAttempts": 1,
+    "allowInference": false,
+    "status": "failed",
+    "passed": 10,
+    "failed": 2,
+    "notRun": 1,
+    "cleanupUnconfirmed": true,
+    "sessionLockRetained": true,
+    "steps": [
+      {
+        "id": "preflight",
+        "status": "passed",
+        "durationMs": 1200,
+        "error": null,
+        "evidence": {
+          "competing_processes": 0,
+          "observed_at": "2026-10-28T17:06:45.59Z"
+        }
+      },
+      {
+        "id": "seed",
+        "status": "passed",
+        "durationMs": 10259,
+        "error": null,
+        "evidence": {
+          "files": 3261,
+          "bytes": 59324512,
+          "qualificationModified": false,
+          "ttsRuntimeSha256": "73cd0b9f5542e7dbeb31a845249f631d2177f118c58bfd63c22ed5b7dacd00ba",
+          "integritySha256": "04132832d3a4760f814eed66a235a87ed2b9cff7b29d25f967d4e8fb42010739"
+        }
+      },
+      {
+        "id": "launch",
+        "status": "passed",
+        "durationMs": 9764,
+        "error": null,
+        "evidence": {
+          "profileIsolated": true,
+          "schema": 22,
+          "projects": 0,
+          "jobs": 0
+        }
+      },
+      {
+        "id": "empty-projects",
+        "status": "passed",
+        "durationMs": 16,
+        "error": null,
+        "evidence": null
+      },
+      {
+        "id": "input-validation",
+        "status": "passed",
+        "durationMs": 258,
+        "error": null,
+        "evidence": null
+      },
+      {
+        "id": "source-rejection",
+        "status": "passed",
+        "durationMs": 4012,
+        "error": null,
+        "evidence": null
+      },
+      {
+        "id": "settings-and-return",
+        "status": "passed",
+        "durationMs": 343,
+        "error": null,
+        "evidence": null
+      },
+      {
+        "id": "media-project-create",
+        "status": "failed",
+        "durationMs": 930,
+        "error": "locator.isVisible: Target page, context or browser has been closed",
+        "evidence": null
+      },
+      {
+        "id": "media-project-restart",
+        "status": "not_run",
+        "durationMs": null,
+        "error": null,
+        "evidence": null
+      },
+      {
+        "id": "javascript-errors",
+        "status": "passed",
+        "durationMs": 0,
+        "error": null,
+        "evidence": {
+          "errors": 0
+        }
+      },
+      {
+        "id": "resource-observations",
+        "status": "passed",
+        "durationMs": 0,
+        "error": null,
+        "evidence": {
+          "required": false,
+          "model_inference": false
+        }
+      },
+      {
+        "id": "cleanup",
+        "status": "failed",
+        "durationMs": 2583,
+        "error": "Process ownership crossed an observation gap; cleanup cannot be confirmed",
+        "evidence": null
+      },
+      {
+        "id": "session-release",
+        "status": "passed",
+        "durationMs": 0,
+        "error": null,
+        "evidence": {
+          "acquired": true,
+          "retained": true
+        }
+      }
+    ],
+    "knownIdentities": 11,
+    "ambiguousIdentities": [
+      {
+        "pid": 15892,
+        "parent": 16600,
+        "name": "conhost.exe",
+        "rss_bytes": 5566464,
+        "created": "2026-10-28T17:07:11.144908Z"
+      }
+    ],
+    "reportSha256": "dfb4b1aa00178c44c5098f44b931ccd05e0063cfd0ea95363ab3424ca8846a0b",
+    "processEvidenceSha256": "745b1dc400f4ce84adef05082d95a10553e52a140ff4658852d19aa250714c4d",
+    "desktopLogSha256": "c120501cab567bfa656726cd3bd97b258bfe673f326f3abb2f963e5ca7a4867b",
+    "retainedSessionLockSha256": "7fa9553ddb38f03f0318ade2626012ea2a10744507a6bd40d5d1488984377f3c",
+    "trace": {
+      "bytes": 17939,
+      "sha256": "ce64920590e34a990075dd885fe32d8c074f261785f7066f47a30157a4f4b4e1",
+      "completeZip": false,
+      "reason": "ZIP end-of-central-directory record absent"
+    },
+    "laterReadOnlyAbsence": {
+      "capturedIdentities": 12,
+      "remainingIdentityMatched": 0,
+      "competingComponents": 0,
+      "limit": "Later absence does not establish historical ownership of the unseen parent or confirm the original cleanup."
+    },
+    "recoveryPerformed": false,
+    "unownedSignals": false,
+    "guardsRelaxed": false,
+    "subsequentNativeAdmission": false,
+    "mediaCreateRestartRoundTrip": "not established"
+  },
+  "historicalAttempts": [
+    {
+      "source": "f1a5049d90ad8a536cfae7e772b45d4fe553ee58",
+      "command": "task check:pr",
+      "exit": 0,
+      "coverage": [91.32, 84.01, 90.02, 93.91]
+    },
+    {
+      "source": "f1a5049d90ad8a536cfae7e772b45d4fe553ee58",
+      "command": "task ui:build",
+      "exit": 201,
+      "interrupted": true,
+      "candidateProduced": false,
+      "buildInputSha256": "10a4de68f8839ac45cfce4b8113aa5db5814ff2fc322d9bbaabc785fa1089cf3"
+    }
+  ],
+  "limits": [
+    "PM-017 failed; PM-018 blocked.",
+    "The unseen parent process was not attributed; the failed case and lock remain retained.",
+    "No valid native create/restart round trip or confirmed original cleanup.",
+    "No hosted Linux/macOS, clean-machine installer, real-media, inference or listening acceptance.",
+    "Main was not merged or updated by these verification tasks."
+  ]
+}
