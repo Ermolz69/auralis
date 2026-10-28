@@ -1,6 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Textarea } from './Textarea';
 
+import { NotesAvailability, NotesForm } from './Textarea.storyFixtures';
+import {
+  playWithLabel,
+  playErrorState,
+  playDisabled,
+  playNativeEditingAndValidation,
+  playDisabledAndReadOnly,
+} from './Textarea.interactions.storyFixtures';
+
 const meta = {
   title: 'Design System/Components/Textarea',
   component: Textarea,
@@ -38,6 +47,7 @@ export const Default: Story = {
 // With Label
 export const WithLabel: Story = {
   args: { label: 'Description', placeholder: 'Describe your project' },
+  play: playWithLabel,
 };
 
 // Error
@@ -49,6 +59,7 @@ export const ErrorState: Story = {
     helperText: 'Write a short public summary.',
     errorText: 'Bio must be at least 100 characters.',
   },
+  play: playErrorState,
 };
 
 // Disabled
@@ -58,6 +69,7 @@ export const Disabled: Story = {
     disabled: true,
     defaultValue: 'These notes cannot be edited anymore.',
   },
+  play: playDisabled,
 };
 
 // Long Text
@@ -79,4 +91,14 @@ export const LongLabelAndError: Story = {
     defaultValue: '   ',
     rows: 4,
   },
+};
+
+export const NativeEditingAndValidation: Story = {
+  render: () => <NotesForm />,
+  play: playNativeEditingAndValidation,
+};
+
+export const DisabledAndReadOnly: Story = {
+  render: () => <NotesAvailability />,
+  play: playDisabledAndReadOnly,
 };
