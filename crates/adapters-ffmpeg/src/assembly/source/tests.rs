@@ -14,9 +14,7 @@ struct Fixture {
 
 impl Fixture {
     fn new(count: usize) -> Result<Self, Box<dyn std::error::Error>> {
-        let parent = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/revoice/bridge-unit");
-        fs::create_dir_all(&parent)?;
-        let directory = tempfile::tempdir_in(parent)?;
+        let directory = tempfile::tempdir()?;
         fs::create_dir(directory.path().join("staging"))?;
         let path = directory.path().join("原始's.wav");
         let frames = 120 * count as u64;

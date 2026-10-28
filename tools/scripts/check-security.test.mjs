@@ -39,7 +39,12 @@ test('the full security gate audits both ecosystems and enforces Rust sources', 
     { task: 'deny:rust' },
   ]);
   assert.deepEqual(security['audit:npm'].cmds, ['pnpm audit']);
-  assert.deepEqual(security['audit:rust'].cmds, ['cargo audit --file Cargo.lock --deny unsound']);
+  assert.deepEqual(security['audit:rust'].vars, {
+    LOCKFILE: '{{default "Cargo.lock" .LOCKFILE}}',
+  });
+  assert.deepEqual(security['audit:rust'].cmds, [
+    'cargo audit --file "{{.LOCKFILE}}" --deny unsound',
+  ]);
   assert.deepEqual(security['rust:audit'].cmds, [{ task: 'audit:rust' }]);
   assert.deepEqual(security['glib:audit'].cmds, [{ task: 'rust:audit' }]);
   assert.deepEqual(security['deny:rust'].cmds, ['cargo deny --locked check advisories sources']);

@@ -24,11 +24,7 @@ use ports::{
 };
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{fs, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -53,10 +49,7 @@ pub struct AssemblySource {
 
 impl AssemblySource {
     pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let parent =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/revoice/audio-jobs-unit");
-        fs::create_dir_all(&parent)?;
-        let directory = tempfile::tempdir_in(parent)?;
+        let directory = tempfile::tempdir()?;
         let db_path = directory.path().join("app.sqlite");
         let pool = connect_sqlite(&db_path).await?;
         let project = SqliteProjectRepository::new(pool.clone())
