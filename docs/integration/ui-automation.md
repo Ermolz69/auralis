@@ -12,16 +12,25 @@ Linguistic quality, listening, TXT, ASR and clean installation retain separate a
 - `task ui:build` builds and retains an ordinary release executable and resources.
 - `task ui:assets SEED=new-id` copies installed components and pinned translator
   acquisition files into a new owned seed without executing components or models.
+- `task ui:components:prepare ID=new-id PYTHON=<existing-cpython312>` creates a
+  new private Windows build interpreter under `.cache/ui-e2e/build-python/<ID>`.
+  It retains pip and installs exactly setuptools 84.0.0, wheel 0.45.1 and
+  packaging 26.3, using private cache/temp directories. The interpreter must
+  already exist; Python, engines and models are not downloaded. Existing IDs
+  cannot be overwritten. Select its `Scripts/python.exe` for the commands below.
 - `task ui:components:build` builds pinned CONTRACT sources and retains an
   explicitly selected TTS wheel without loading models or changing voice files.
   Supply `ID`, `PYTHON`, `UV_BIN`, `CONTRACT_ROOT`, `CONTRACT_COMMIT`, `TTS_ROOT`,
   `TTS_COMMIT`, `TTS_WHEEL` and `TTS_WHEEL_SHA256`. Both source roots must be clean
   repository checkouts at the full supplied revisions. Use a model-free Python
   3.12 build environment with setuptools and packaging; uv runs offline without
-  build isolation or Python downloads. The builder exports CONTRACT from Git,
+  build isolation or Python downloads. The builder exports both packages from Git,
   validates wheel payload, metadata and RECORD against the selected source,
   verifies version compatibility and retains source/wheel identities with the
-  fixed `1791639837` source epoch. Reusing an output ID is rejected.
+  fixed `1791639837` source epoch. Static pyproject-only builds reject backend
+  paths, custom command classes and setup.py/setup.cfg before invoking uv.
+  Wheel console, GUI and plugin entry points must exactly match the complete
+  source mapping, including case-sensitive names. Reusing an output ID is rejected.
 - `task ui:components:check PYTHON=<build-python> UV_BIN=<uv>` exercises the
   Windows PowerShell builder with owned Git and wheel fixtures, including dirty
   or foreign sources, tampered wheels, no-overwrite and deterministic rebuilds.

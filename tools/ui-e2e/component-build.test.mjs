@@ -6,6 +6,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { owned, root, storage } from './core.mjs';
+import { staticBuildControls } from './component-build-controls.mjs';
 
 test('offline component builds bind exact clean sources and wheel bytes', async (t) => {
   assert.equal(process.platform, 'win32', 'This task verifies the Windows PowerShell builder');
@@ -29,7 +30,7 @@ test('offline component builds bind exact clean sources and wheel bytes', async 
       .createHash('sha256')
       .update(await fsp.readFile(file))
       .digest('hex');
-  const fixture = async (name, folder, distribution, version, dependencies = '') => {
+  const fixture = async (name, folder, distribution, version, dependencies = '', metadata = '') => {
     const repository = path.join(base, name);
     const project = path.join(repository, folder);
     const module = distribution.replaceAll('-', '_');
@@ -40,7 +41,7 @@ test('offline component builds bind exact clean sources and wheel bytes', async 
       path.join(project, 'pyproject.toml'),
       `[build-system]\nrequires = ["setuptools>=78"]\nbuild-backend = "setuptools.build_meta"\n` +
         `[project]\nname = "${distribution}"\nversion = "${version}"\nrequires-python = ">=3.12,<3.13"\n` +
-        `dependencies = [${dependencies}]\n[tool.setuptools.packages.find]\nwhere = ["src"]\n`,
+        `dependencies = [${dependencies}]\n[tool.setuptools.packages.find]\nwhere = ["src"]\n${metadata}`,
     );
     git(repository, 'init');
     git(repository, 'config', 'core.autocrlf', 'false');
@@ -301,6 +302,7 @@ test('offline component builds bind exact clean sources and wheel bytes', async 
         git(tts.repository, 'config', '--unset', 'core.excludesfile');
       }
     });
+    await staticBuildControls({ t, base, python, uv, env, fixture, invoke, hash, git, wheel });
     assert.equal(git(contract.repository, 'status', '--porcelain'), '');
     assert.equal(git(tts.repository, 'status', '--porcelain'), '');
   } finally {

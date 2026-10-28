@@ -100,3 +100,47 @@ Full integrated PR checks, the ordinary Windows candidate build and native
 metadata verification require the final combined source and component pins.
 They are not established by these package-build checks. No models, engine
 doctors, project data, reference voices or qualification statuses were changed.
+
+## Static build and complete entry-point follow-up
+
+The follow-up starts from integrated source
+`aefa5c00c683696b71d46d2805020c27a54f048c`. The original reviewed component
+pyprojects contain no alternate backend paths, custom command classes or
+setup.cfg; this work tightens admission without alleging corruption of those
+sources.
+
+New real PowerShell/Git/wheel controls reproduced the gaps before the repair:
+`task ui:components:check PYTHON=<private-builder> UV_BIN=<uv>` returned 201,
+with seven tests passing and five failing, including the parent. An inert
+backend-path fixture wrote its execution sentinel before rejection. Honestly
+recomputed RECORD files allowed undeclared entry points through both no-script
+and declared-script sources. A valid complete case-sensitive console/GUI/plugin
+mapping was incorrectly rejected.
+
+The repaired admission rejects backend-path, cmdclass and setup.py/setup.cfg
+before uv, and compares every declared entry-point group, name and value with
+case preserved and interpolation disabled. The same Task then returned 0:
+12 tests passed, zero failed or skipped. All three alternate-build controls
+reject without executing their fixture sentinel. A fresh canonical build via
+`task ui:components:build` returned 0 and preserved both wheel hashes and lengths
+in the table above.
+
+`task ui:components:prepare ID=<new-id> PYTHON=<existing-cpython312>` returned 0.
+It creates a private Windows CPython 3.12 venv with pip available and exactly
+setuptools 84.0.0, wheel 0.45.1 and packaging 26.3; cache/temp directories belong
+to that new identity. CPython 3.12.14 with pip 25.0.1 was observed. Repeating an
+existing identity and supplying a traversal identity each returned 201; the
+existing successful receipt remained unchanged. No interpreter was downloaded.
+
+An earlier `setup:build` environment lacked public packaging despite having
+setuptools and wheel. Its control run returned 201 before meaningful assertions
+(one passed, 11 failed); that is a preparation failure, not the defect
+reproduction above. A restricted Node child-process attempt also returned 201
+before assertions. An initial malformed canonical-build Task invocation returned
+200 without building; corrected argument grouping produced the successful build.
+
+The literal PM-010 entry points also ran on the unchanged Rust implementation
+in `aefa5c0`: `task rs:test:component-cleanup` returned 0 with six TTS and two
+translator tests passing; `task rs:test:job-tree` returned 0 with four tests
+passing and owned inert descendant exit identities confirmed. Neither command
+ignored tests or launched a server/model.
