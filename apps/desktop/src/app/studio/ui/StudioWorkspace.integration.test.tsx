@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useLibrary } from '@/entities/library';
 import { StudioWorkspace } from './StudioWorkspace';
@@ -24,8 +24,8 @@ beforeEach(() => {
   api.invoke.mockImplementation((command, args) => data.handle(command, args));
   api.listen.mockResolvedValue(() => {});
 });
-afterEach(() => {
-  cleanup();
+afterEach(async () => {
+  await act(async () => cleanup());
   vi.restoreAllMocks();
 });
 function Workspace() {
@@ -41,7 +41,7 @@ function Workspace() {
   ) : null;
 }
 async function setup() {
-  render(
+  const view = render(
     <LibraryHarness>
       <StudioCommands>
         <Workspace />
@@ -49,6 +49,7 @@ async function setup() {
     </LibraryHarness>,
   );
   await screen.findAllByRole('tab');
+  return view;
 }
 const saved = () => snapshot(screen.getByLabelText('Library snapshot')).workspaces[0];
 it('asks before closing a live edit that has not reached the draft debounce', async () => {
@@ -60,6 +61,20 @@ it('asks before closing a live edit that has not reached the draft debounce', as
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(input).toHaveProperty('value', 'Live edit before persistence');
   expect(saved().tabs).toHaveLength(1);
+});
+it('flushes a live draft when leaving the workspace before its debounce', async () => {
+  const view = await setup();
+  const input = await screen.findByRole('textbox', { name: 'Русский текст для озвучки' });
+  fireEvent.change(input, { target: { value: 'Draft retained when leaving the workspace' } });
+  view.unmount();
+  await waitFor(() =>
+    expect(JSON.parse(data.state.workspaces[0].tabs[0].draft).text).toBe(
+      'Draft retained when leaving the workspace',
+    ),
+  );
+  expect(api.invoke.mock.calls.filter(([command]) => command === 'save_library_cmd')).toHaveLength(
+    1,
+  );
 });
 it.each(['Unsaved edit', ''])(
   'requires explicit discard of draft %j and retains it when declined',
