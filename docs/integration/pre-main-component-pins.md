@@ -69,5 +69,13 @@ Media advances from source `0cc6898abb149eeb983c767655e5c88c3f3f854a` and packag
 tree `b632d82674717533a65f44536307b4bf0313cabc` to the table above. Its package
 version and wheel hash are unchanged.
 
+At `02fb339d76c7c71bc2e5e3762080d2b0be58d23d`, the literal
+`task components:pins:check PYTHON=<python>` ran with an existing CPython 3.12.14
+and both `PYTHONDONTWRITEBYTECODE` and `PYTHONPYCACHEPREFIX` absent. The Task's own
+`-B` routing appeared in the expanded command. All 13 controls passed in 50.462
+seconds, exit 0. The subsequent `git status --porcelain=v1` was empty and
+`git diff --check d6c353d..HEAD` exited 0. This follow-up retains the reviewed
+formatting and bytecode control on the scoped component pin branch.
+
 These checks establish source/wheel pin consistency only. They do not establish
 the full Auralis gate, runtime installation, model execution, or voice qualification.
