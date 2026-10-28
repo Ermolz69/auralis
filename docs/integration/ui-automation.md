@@ -12,8 +12,19 @@ Linguistic quality, listening, TXT, ASR and clean installation retain separate a
 - `task ui:build` builds and retains an ordinary release executable and resources.
 - `task ui:assets SEED=new-id` copies installed components and pinned translator
   acquisition files into a new owned seed without executing components or models.
-- `task ui:components:build ID=new-id` builds CONTRACT and retains the pinned
-  streamed TTS wheel without loading models or changing voice files.
+- `task ui:components:build` builds pinned CONTRACT sources and retains an
+  explicitly selected TTS wheel without loading models or changing voice files.
+  Supply `ID`, `PYTHON`, `UV_BIN`, `CONTRACT_ROOT`, `CONTRACT_COMMIT`, `TTS_ROOT`,
+  `TTS_COMMIT`, `TTS_WHEEL` and `TTS_WHEEL_SHA256`. Both source roots must be clean
+  repository checkouts at the full supplied revisions. Use a model-free Python
+  3.12 build environment with setuptools and packaging; uv runs offline without
+  build isolation or Python downloads. The builder exports CONTRACT from Git,
+  validates wheel payload, metadata and RECORD against the selected source,
+  verifies version compatibility and retains source/wheel identities with the
+  fixed `1791639837` source epoch. Reusing an output ID is rejected.
+- `task ui:components:check PYTHON=<build-python> UV_BIN=<uv>` exercises the
+  Windows PowerShell builder with owned Git and wheel fixtures, including dirty
+  or foreign sources, tampered wheels, no-overwrite and deterministic rebuilds.
 - `task ui:components:probe ID=new-id SEED=seed-id COMPONENTS=component-id`
   validates installed neutral-reference plans without importing model engines.
 - `task ui:fixture` drives production browser UI with explicit simulated IPC.
