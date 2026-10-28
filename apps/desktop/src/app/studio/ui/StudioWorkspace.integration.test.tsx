@@ -96,6 +96,29 @@ it('keeps shared speech/text context and uses accessible keyboard tab navigation
   expect(saved().activeTab).toBe('one');
   expect(confirm).not.toHaveBeenCalled();
 });
+
+it('persists pointer tab selection and preserves the accepted tab when saving fails until retry', async () => {
+  data.state.workspaces[0].tabs.push({ id: 'two', tool: 'speech', assetId: asset.id, draft: '{}' });
+  await setup();
+  const text = screen.getByRole('tab', { name: /Текст и подготовка/ });
+  const speech = screen.getByRole('tab', { name: /Синтез речи/ });
+  fireEvent.click(speech);
+  await waitFor(() => expect(saved().activeTab).toBe('two'));
+  const failedSave = vi.fn(async () => {
+    throw new Error('Tab persistence unavailable');
+  });
+  data.overrides.save_library_cmd = failedSave;
+  fireEvent.click(text);
+  await waitFor(() => expect(failedSave).toHaveBeenCalledOnce());
+  expect(saved().activeTab).toBe('two');
+  expect(speech.getAttribute('aria-selected')).toBe('true');
+  expect(text.getAttribute('aria-selected')).toBe('false');
+  delete data.overrides.save_library_cmd;
+  fireEvent.click(text);
+  await waitFor(() => expect(saved().activeTab).toBe('one'));
+  expect(text.getAttribute('aria-selected')).toBe('true');
+  expect(saved().tabs).toHaveLength(2);
+});
 it('changes command context through material selection and keeps foreign/hidden materials out of the selector', async () => {
   data.state.assets.push(
     { ...asset, id: 'second', name: 'Second text' },
