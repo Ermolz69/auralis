@@ -1,0 +1,2936 @@
+{
+  "version": 1,
+  "date": "2026-10-28",
+  "scope": "Historical PM-001 inventories and exact repaired lock graph; retained audits do not replace final integrated scans.",
+  "baseline_commit": "b29719b0dc784745b70275ec93968f5cbda69df3",
+  "baseline_date": "2026-10-27",
+  "baseline_tools": {
+    "node": "24.14.0",
+    "pnpm": "11.25.0",
+    "task": "3.50.0",
+    "rustc": "1.95.0 (59807616e)",
+    "cargo": "1.95.0 (f2d3ce0bd)",
+    "host": "x86_64-pc-windows-msvc",
+    "cargo_audit": "0.22.2",
+    "cargo_deny": "0.20.2"
+  },
+  "baseline_locks": {
+    "pnpm": {
+      "file": "pnpm-lock.yaml",
+      "sha256": "c3d41a10318ee685c0e9c89435367e1d2db8b7851423ff6f4047b8e2490bfa2e",
+      "git_blob": "53be14cf30ee0323e315c14999ac2efcd16966d7"
+    },
+    "cargo": {
+      "file": "Cargo.lock",
+      "sha256": "9aaddb2ac0cc78d036342e1649632239005445c96a5fd3cca2ce5a6eebd96738",
+      "git_blob": "4981e9c8c8a3c6cc9b40c10971303ec981fe2f8c"
+    }
+  },
+  "npm": {
+    "baseline_command": "task sec:audit:npm",
+    "baseline_task_exit": 201,
+    "baseline_scanner_exit": 1,
+    "baseline_severity": {
+      "info": 0,
+      "low": 6,
+      "moderate": 17,
+      "high": 11,
+      "critical": 4
+    },
+    "package_advisory_records": 38,
+    "distinct_advisories": 36,
+    "recorded_path_occurrences": 801.0,
+    "distinct_dependency_paths": 268,
+    "findings": [
+      {
+        "id": "GHSA-3wwx-pv8p-q78v",
+        "package": "undici",
+        "severity": "moderate",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 6.25.0, < 6.28.1",
+            "first_patched_version": "6.28.1"
+          },
+          {
+            "vulnerable_version_range": ">= 7.28.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.1.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-3wwx-pv8p-q78v",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-3wwx-pv8p-q78v"
+        ],
+        "updatedAt": "2026-09-28T21:42:38Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-r3ph-w7gj-g6xm",
+        "package": "js-yaml",
+        "severity": "moderate",
+        "resolvedVersion": "5.2.2",
+        "auditPatchedRange": ">=5.4.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 5.0.0, <= 5.4.0",
+            "first_patched_version": "5.4.1"
+          }
+        ],
+        "dependencyPaths": [
+          ".>js-yaml",
+          ".>markdownlint-cli2>js-yaml"
+        ],
+        "source": "https://github.com/advisories/GHSA-r3ph-w7gj-g6xm",
+        "upstream": [
+          "https://github.com/nodeca/js-yaml/security/advisories/GHSA-r3ph-w7gj-g6xm"
+        ],
+        "updatedAt": "2026-09-29T17:57:40Z",
+        "selectedResolvedVersion": "5.4.3",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          ".>js-yaml",
+          ".>markdownlint-cli2"
+        ]
+      },
+      {
+        "id": "GHSA-pmjh-fq2x-6v4x",
+        "package": "undici",
+        "severity": "moderate",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.11.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-pmjh-fq2x-6v4x",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-pmjh-fq2x-6v4x"
+        ],
+        "updatedAt": "2026-09-29T18:22:35Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-r53p-7pc4-xj5r",
+        "package": "undici",
+        "severity": "low",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": "< 6.28.1",
+            "first_patched_version": "6.28.1"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-r53p-7pc4-xj5r",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-r53p-7pc4-xj5r"
+        ],
+        "updatedAt": "2026-09-29T18:22:08Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-rfgv-xxqx-mfg5",
+        "package": "undici",
+        "severity": "high",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 6.7.0, < 6.28.1",
+            "first_patched_version": "6.28.1"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-rfgv-xxqx-mfg5",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-rfgv-xxqx-mfg5"
+        ],
+        "updatedAt": "2026-09-29T18:21:41Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-3xpg-4rpp-hhhm",
+        "package": "undici",
+        "severity": "moderate",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.15.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-3xpg-4rpp-hhhm",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-3xpg-4rpp-hhhm"
+        ],
+        "updatedAt": "2026-09-29T18:20:38Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-2jfj-6hjv-fm6j",
+        "package": "undici",
+        "severity": "moderate",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.0.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-2jfj-6hjv-fm6j",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-2jfj-6hjv-fm6j"
+        ],
+        "updatedAt": "2026-09-29T18:19:59Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-2gqq-gqf2-x968",
+        "package": "undici",
+        "severity": "low",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.1.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-2gqq-gqf2-x968",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-2gqq-gqf2-x968"
+        ],
+        "updatedAt": "2026-09-29T18:18:52Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-w293-vg96-wgc3",
+        "package": "undici",
+        "severity": "high",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.24.1, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-w293-vg96-wgc3",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-w293-vg96-wgc3"
+        ],
+        "updatedAt": "2026-09-29T18:17:16Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-8436-99hf-9mmv",
+        "package": "undici",
+        "severity": "low",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.0.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-8436-99hf-9mmv",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-8436-99hf-9mmv"
+        ],
+        "updatedAt": "2026-09-29T18:16:29Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-rx4f-c7p8-82vq",
+        "package": "undici",
+        "severity": "moderate",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.29.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.0.0, < 7.29.1",
+            "first_patched_version": "7.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.10.2",
+            "first_patched_version": "8.10.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-rx4f-c7p8-82vq",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-rx4f-c7p8-82vq"
+        ],
+        "updatedAt": "2026-09-29T18:10:33Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-q2hr-2g5m-vwhr",
+        "package": "brace-expansion",
+        "severity": "moderate",
+        "resolvedVersion": "5.0.9",
+        "auditPatchedRange": ">=5.0.12",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 4.0.0, < 5.0.12",
+            "first_patched_version": "5.0.12"
+          },
+          {
+            "vulnerable_version_range": ">= 3.0.0, < 3.0.9",
+            "first_patched_version": "3.0.9"
+          },
+          {
+            "vulnerable_version_range": ">= 2.0.0, < 2.1.7",
+            "first_patched_version": "2.1.7"
+          },
+          {
+            "vulnerable_version_range": "< 1.1.21",
+            "first_patched_version": "1.1.21"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>glob>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint>minimatch>brace-expansion"
+        ],
+        "source": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+        "upstream": [
+          "https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-q2hr-2g5m-vwhr"
+        ],
+        "updatedAt": "2026-09-29T23:45:39Z",
+        "selectedResolvedVersion": "5.0.12",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@typescript-eslint/parser",
+          "apps__desktop>eslint",
+          "apps__desktop>eslint-import-resolver-typescript",
+          "apps__desktop>eslint-plugin-boundaries",
+          "apps__desktop>eslint-plugin-storybook"
+        ]
+      },
+      {
+        "id": "GHSA-qhr7-859c-m2p7",
+        "package": "brace-expansion",
+        "severity": "high",
+        "resolvedVersion": "5.0.9",
+        "auditPatchedRange": ">=5.0.11",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 4.0.0, < 5.0.11",
+            "first_patched_version": "5.0.11"
+          },
+          {
+            "vulnerable_version_range": ">= 3.0.0, < 3.0.8",
+            "first_patched_version": "3.0.8"
+          },
+          {
+            "vulnerable_version_range": ">= 2.0.0, < 2.1.6",
+            "first_patched_version": "2.1.6"
+          },
+          {
+            "vulnerable_version_range": "< 1.1.20",
+            "first_patched_version": "1.1.20"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>glob>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint>minimatch>brace-expansion"
+        ],
+        "source": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+        "upstream": [
+          "https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-qhr7-859c-m2p7"
+        ],
+        "updatedAt": "2026-09-29T23:45:19Z",
+        "selectedResolvedVersion": "5.0.12",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@typescript-eslint/parser",
+          "apps__desktop>eslint",
+          "apps__desktop>eslint-import-resolver-typescript",
+          "apps__desktop>eslint-plugin-boundaries",
+          "apps__desktop>eslint-plugin-storybook"
+        ]
+      },
+      {
+        "id": "GHSA-6j4f-fj2g-mc7p",
+        "package": "brace-expansion",
+        "severity": "high",
+        "resolvedVersion": "5.0.9",
+        "auditPatchedRange": ">=5.0.10",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 4.0.0, < 5.0.10",
+            "first_patched_version": "5.0.10"
+          },
+          {
+            "vulnerable_version_range": ">= 3.0.0, < 3.0.7",
+            "first_patched_version": "3.0.7"
+          },
+          {
+            "vulnerable_version_range": ">= 2.0.0, < 2.1.5",
+            "first_patched_version": "2.1.5"
+          },
+          {
+            "vulnerable_version_range": "< 1.1.19",
+            "first_patched_version": "1.1.19"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>glob>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>eslint-module-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>@typescript-eslint/parser>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint-import-resolver-typescript>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint-import-resolver-typescript>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint-module-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-boundaries>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@eslint-community/eslint-utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>@typescript-eslint/typescript-estree>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>@typescript-eslint/utils>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint-plugin-storybook>eslint>minimatch>brace-expansion",
+          "apps__desktop>eslint>@eslint/config-array>minimatch>brace-expansion",
+          "apps__desktop>eslint>minimatch>brace-expansion"
+        ],
+        "source": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+        "upstream": [
+          "https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-6j4f-fj2g-mc7p"
+        ],
+        "updatedAt": "2026-09-29T23:44:59Z",
+        "selectedResolvedVersion": "5.0.12",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@typescript-eslint/parser",
+          "apps__desktop>eslint",
+          "apps__desktop>eslint-import-resolver-typescript",
+          "apps__desktop>eslint-plugin-boundaries",
+          "apps__desktop>eslint-plugin-storybook"
+        ]
+      },
+      {
+        "id": "GHSA-r4xh-jqrq-34v2",
+        "package": "smol-toml",
+        "severity": "moderate",
+        "resolvedVersion": "1.7.1",
+        "auditPatchedRange": ">=1.9.0",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": "<= 1.8.0",
+            "first_patched_version": "1.9.0"
+          }
+        ],
+        "dependencyPaths": [
+          ".>markdownlint-cli2>smol-toml"
+        ],
+        "source": "https://github.com/advisories/GHSA-r4xh-jqrq-34v2",
+        "upstream": [
+          "https://github.com/squirrelchat/smol-toml/security/advisories/GHSA-r4xh-jqrq-34v2"
+        ],
+        "updatedAt": "2026-10-05T23:41:15Z",
+        "selectedResolvedVersion": "1.9.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          ".>markdownlint-cli2"
+        ]
+      },
+      {
+        "id": "GHSA-238p-pmpm-9mq7",
+        "package": "katex",
+        "severity": "low",
+        "resolvedVersion": "0.16.47",
+        "auditPatchedRange": ">=0.18.2",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 0.11.0, < 0.18.2",
+            "first_patched_version": "0.18.2"
+          }
+        ],
+        "dependencyPaths": [
+          ".>markdownlint-cli2>markdownlint>micromark-extension-math>katex"
+        ],
+        "source": "https://github.com/advisories/GHSA-238p-pmpm-9mq7",
+        "upstream": [
+          "https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7"
+        ],
+        "updatedAt": "2026-10-05T23:41:06Z",
+        "selectedResolvedVersion": "0.18.2",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          ".>markdownlint-cli2"
+        ]
+      },
+      {
+        "id": "GHSA-68fv-2mgg-jv7q",
+        "package": "source-map-js",
+        "severity": "high",
+        "resolvedVersion": "1.2.1",
+        "auditPatchedRange": ">=1.2.2",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 1.0.0, < 1.2.2",
+            "first_patched_version": "1.2.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@storybook/addon-vitest>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>vite>postcss>source-map-js",
+          "apps__desktop>@storybook/react-vite>vite>postcss>source-map-js",
+          "apps__desktop>@tailwindcss/vite>@tailwindcss/node>source-map-js",
+          "apps__desktop>@tailwindcss/vite>vite>postcss>source-map-js",
+          "apps__desktop>@vitejs/plugin-react>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>@asamuzakjp/dom-selector>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>@bramus/specificity>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>@csstools/css-syntax-patches-for-csstree>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>css-tree>source-map-js",
+          "apps__desktop>@vitest/browser-playwright>vitest>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/coverage-v8>magicast>source-map-js",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker>vite>postcss>source-map-js",
+          "apps__desktop>@vitest/coverage-v8>vitest>vite>postcss>source-map-js"
+        ],
+        "source": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+        "upstream": [],
+        "updatedAt": "2026-10-05T23:31:22Z",
+        "selectedResolvedVersion": "1.2.2",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@tailwindcss/vite",
+          "apps__desktop>@vitejs/plugin-react",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8"
+        ]
+      },
+      {
+        "id": "GHSA-xw65-4hp5-5hc7",
+        "package": "handlebars",
+        "severity": "moderate",
+        "resolvedVersion": "4.7.9",
+        "auditPatchedRange": ">=4.7.10",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 4.0.0, <= 4.7.9",
+            "first_patched_version": "4.7.10"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>handlebars",
+          "apps__desktop>eslint-plugin-boundaries>handlebars"
+        ],
+        "source": "https://github.com/advisories/GHSA-xw65-4hp5-5hc7",
+        "upstream": [
+          "https://github.com/handlebars-lang/handlebars.js/security/advisories/GHSA-xw65-4hp5-5hc7"
+        ],
+        "updatedAt": "2026-10-08T17:52:39Z",
+        "selectedResolvedVersion": "4.7.10",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>eslint-plugin-boundaries"
+        ]
+      },
+      {
+        "id": "GHSA-8r5x-fm3f-whwj",
+        "package": "handlebars",
+        "severity": "critical",
+        "resolvedVersion": "4.7.9",
+        "auditPatchedRange": ">=4.7.10",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 4.0.0, <= 4.7.9",
+            "first_patched_version": "4.7.10"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>handlebars",
+          "apps__desktop>eslint-plugin-boundaries>handlebars"
+        ],
+        "source": "https://github.com/advisories/GHSA-8r5x-fm3f-whwj",
+        "upstream": [
+          "https://github.com/handlebars-lang/handlebars.js/security/advisories/GHSA-8r5x-fm3f-whwj"
+        ],
+        "updatedAt": "2026-10-08T17:52:34Z",
+        "selectedResolvedVersion": "4.7.10",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>eslint-plugin-boundaries"
+        ]
+      },
+      {
+        "id": "GHSA-p8wg-vrv2-v86f",
+        "package": "handlebars",
+        "severity": "critical",
+        "resolvedVersion": "4.7.9",
+        "auditPatchedRange": ">=4.7.10",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 3.0.0, <= 4.7.9",
+            "first_patched_version": "4.7.10"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>eslint-plugin-boundaries>@boundaries/elements>handlebars",
+          "apps__desktop>eslint-plugin-boundaries>handlebars"
+        ],
+        "source": "https://github.com/advisories/GHSA-p8wg-vrv2-v86f",
+        "upstream": [
+          "https://github.com/handlebars-lang/handlebars.js/security/advisories/GHSA-p8wg-vrv2-v86f"
+        ],
+        "updatedAt": "2026-10-12T14:33:17Z",
+        "selectedResolvedVersion": "4.7.10",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>eslint-plugin-boundaries"
+        ]
+      },
+      {
+        "id": "GHSA-r7fv-28h4-cvq7",
+        "package": "markdown-it",
+        "severity": "high",
+        "resolvedVersion": "14.2.0",
+        "auditPatchedRange": ">=14.3.2",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 15.0.0, < 15.0.2",
+            "first_patched_version": "15.0.2"
+          },
+          {
+            "vulnerable_version_range": "< 14.3.2",
+            "first_patched_version": "14.3.2"
+          }
+        ],
+        "dependencyPaths": [
+          ".>markdownlint-cli2>markdown-it"
+        ],
+        "source": "https://github.com/advisories/GHSA-r7fv-28h4-cvq7",
+        "upstream": [
+          "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-r7fv-28h4-cvq7"
+        ],
+        "updatedAt": "2026-10-20T14:34:52Z",
+        "selectedResolvedVersion": "15.0.3",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          ".>markdownlint-cli2"
+        ]
+      },
+      {
+        "id": "GHSA-698v-4r3x-3vcv",
+        "package": "vite",
+        "severity": "moderate",
+        "resolvedVersion": "8.1.3",
+        "auditPatchedRange": ">=8.1.6",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 8.3.0, <= 8.3.2",
+            "first_patched_version": "8.3.3"
+          },
+          {
+            "vulnerable_version_range": ">= 8.2.0, <= 8.2.3",
+            "first_patched_version": "8.2.4"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, <= 8.1.5",
+            "first_patched_version": "8.1.6"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, <= 7.3.6",
+            "first_patched_version": "7.3.7"
+          },
+          {
+            "vulnerable_version_range": "<= 6.4.3",
+            "first_patched_version": "6.4.4"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>vite",
+          "apps__desktop>@storybook/react-vite>vite",
+          "apps__desktop>@tailwindcss/vite>vite",
+          "apps__desktop>@vitejs/plugin-react>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>vite",
+          "apps__desktop>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/mocker>vite",
+          "apps__desktop>vitest>vite"
+        ],
+        "source": "https://github.com/advisories/GHSA-698v-4r3x-3vcv",
+        "upstream": [
+          "https://github.com/vitejs/launch-editor/security/advisories/GHSA-698v-4r3x-3vcv"
+        ],
+        "updatedAt": "2026-10-20T18:30:25Z",
+        "selectedResolvedVersion": "8.2.4",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@tailwindcss/vite",
+          "apps__desktop>@vitejs/plugin-react",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>vite",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-vfgh-jcmw-g37q",
+        "package": "markdown-it",
+        "severity": "low",
+        "resolvedVersion": "14.2.0",
+        "auditPatchedRange": ">=14.3.3",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": "< 14.3.3",
+            "first_patched_version": "14.3.3"
+          },
+          {
+            "vulnerable_version_range": ">= 15.0.0, < 15.0.3",
+            "first_patched_version": "15.0.3"
+          }
+        ],
+        "dependencyPaths": [
+          ".>markdownlint-cli2>markdown-it"
+        ],
+        "source": "https://github.com/advisories/GHSA-vfgh-jcmw-g37q",
+        "upstream": [
+          "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-vfgh-jcmw-g37q"
+        ],
+        "updatedAt": "2026-10-20T20:08:20Z",
+        "selectedResolvedVersion": "15.0.3",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          ".>markdownlint-cli2"
+        ]
+      },
+      {
+        "id": "GHSA-r825-w8mm-5pxw",
+        "package": "vite",
+        "severity": "moderate",
+        "resolvedVersion": "8.1.3",
+        "auditPatchedRange": ">=8.1.6",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 8.3.0, <= 8.3.2",
+            "first_patched_version": "8.3.3"
+          },
+          {
+            "vulnerable_version_range": ">= 8.2.0, <= 8.2.3",
+            "first_patched_version": "8.2.4"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, <= 8.1.5",
+            "first_patched_version": "8.1.6"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, <= 7.3.6",
+            "first_patched_version": "7.3.7"
+          },
+          {
+            "vulnerable_version_range": "<= 6.4.3",
+            "first_patched_version": "6.4.4"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>vite",
+          "apps__desktop>@storybook/react-vite>vite",
+          "apps__desktop>@tailwindcss/vite>vite",
+          "apps__desktop>@vitejs/plugin-react>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>vite",
+          "apps__desktop>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/mocker>vite",
+          "apps__desktop>vitest>vite"
+        ],
+        "source": "https://github.com/advisories/GHSA-r825-w8mm-5pxw",
+        "upstream": [
+          "https://github.com/vitejs/launch-editor/security/advisories/GHSA-r825-w8mm-5pxw"
+        ],
+        "updatedAt": "2026-10-20T19:51:54Z",
+        "selectedResolvedVersion": "8.2.4",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@tailwindcss/vite",
+          "apps__desktop>@vitejs/plugin-react",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>vite",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-587h-7wmj-h5pm",
+        "package": "vite",
+        "severity": "high",
+        "resolvedVersion": "8.1.3",
+        "auditPatchedRange": ">=8.1.6",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 8.3.0, <= 8.3.2",
+            "first_patched_version": "8.3.3"
+          },
+          {
+            "vulnerable_version_range": ">= 8.2.0, <= 8.2.3",
+            "first_patched_version": "8.2.4"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, <= 8.1.5",
+            "first_patched_version": "8.1.6"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, <= 7.3.6",
+            "first_patched_version": "7.3.7"
+          },
+          {
+            "vulnerable_version_range": "<= 6.4.3",
+            "first_patched_version": "6.4.4"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>vite",
+          "apps__desktop>@storybook/react-vite>vite",
+          "apps__desktop>@tailwindcss/vite>vite",
+          "apps__desktop>@vitejs/plugin-react>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>vite",
+          "apps__desktop>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/mocker>vite",
+          "apps__desktop>vitest>vite"
+        ],
+        "source": "https://github.com/advisories/GHSA-587h-7wmj-h5pm",
+        "upstream": [
+          "https://github.com/vitejs/launch-editor/security/advisories/GHSA-587h-7wmj-h5pm"
+        ],
+        "updatedAt": "2026-10-20T19:48:26Z",
+        "selectedResolvedVersion": "8.2.4",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@tailwindcss/vite",
+          "apps__desktop>@vitejs/plugin-react",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>vite",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-gfr2-rv44-r23c",
+        "package": "markdown-it",
+        "severity": "high",
+        "resolvedVersion": "14.2.0",
+        "auditPatchedRange": ">=14.3.3",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 14.1.0, < 14.3.3",
+            "first_patched_version": "14.3.3"
+          },
+          {
+            "vulnerable_version_range": ">= 15.0.0, < 15.0.3",
+            "first_patched_version": "15.0.3"
+          }
+        ],
+        "dependencyPaths": [
+          ".>markdownlint-cli2>markdown-it"
+        ],
+        "source": "https://github.com/advisories/GHSA-gfr2-rv44-r23c",
+        "upstream": [
+          "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-gfr2-rv44-r23c"
+        ],
+        "updatedAt": "2026-10-20T20:28:46Z",
+        "selectedResolvedVersion": "15.0.3",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          ".>markdownlint-cli2"
+        ]
+      },
+      {
+        "id": "GHSA-9jrq-w75r-8gcw",
+        "package": "vite",
+        "severity": "low",
+        "resolvedVersion": "8.1.3",
+        "auditPatchedRange": ">=8.1.6",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 8.3.0, <= 8.3.2",
+            "first_patched_version": "8.3.3"
+          },
+          {
+            "vulnerable_version_range": ">= 8.2.0, <= 8.2.3",
+            "first_patched_version": "8.2.4"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, <= 8.1.5",
+            "first_patched_version": "8.1.6"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, <= 7.3.6",
+            "first_patched_version": "7.3.7"
+          },
+          {
+            "vulnerable_version_range": "<= 6.4.3",
+            "first_patched_version": "6.4.4"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>vite",
+          "apps__desktop>@storybook/react-vite>vite",
+          "apps__desktop>@tailwindcss/vite>vite",
+          "apps__desktop>@vitejs/plugin-react>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>vite",
+          "apps__desktop>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/mocker>vite",
+          "apps__desktop>vitest>vite"
+        ],
+        "source": "https://github.com/advisories/GHSA-9jrq-w75r-8gcw",
+        "upstream": [
+          "https://github.com/vitejs/vite/security/advisories/GHSA-9jrq-w75r-8gcw"
+        ],
+        "updatedAt": "2026-10-21T16:48:15Z",
+        "selectedResolvedVersion": "8.2.4",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@tailwindcss/vite",
+          "apps__desktop>@vitejs/plugin-react",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>vite",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-rq7h-c2jc-7f22",
+        "package": "vite",
+        "severity": "moderate",
+        "resolvedVersion": "8.1.3",
+        "auditPatchedRange": ">=8.1.6",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 8.3.0, <= 8.3.2",
+            "first_patched_version": "8.3.3"
+          },
+          {
+            "vulnerable_version_range": ">= 8.2.0, <= 8.2.3",
+            "first_patched_version": "8.2.4"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, <= 8.1.5",
+            "first_patched_version": "8.1.6"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, <= 7.3.6",
+            "first_patched_version": "7.3.7"
+          },
+          {
+            "vulnerable_version_range": "<= 6.4.3",
+            "first_patched_version": "6.4.4"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker>vite",
+          "apps__desktop>@storybook/addon-vitest>vitest>vite",
+          "apps__desktop>@storybook/react-vite>@joshwooding/vite-plugin-react-docgen-typescript>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>vite",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>vite",
+          "apps__desktop>@storybook/react-vite>vite",
+          "apps__desktop>@tailwindcss/vite>vite",
+          "apps__desktop>@vitejs/plugin-react>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/browser-playwright>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker>vite",
+          "apps__desktop>@vitest/coverage-v8>vitest>vite",
+          "apps__desktop>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker>vite",
+          "apps__desktop>vitest>@vitest/mocker>vite",
+          "apps__desktop>vitest>vite"
+        ],
+        "source": "https://github.com/advisories/GHSA-rq7h-c2jc-7f22",
+        "upstream": [
+          "https://github.com/vitejs/vite/security/advisories/GHSA-rq7h-c2jc-7f22"
+        ],
+        "updatedAt": "2026-10-21T16:47:43Z",
+        "selectedResolvedVersion": "8.2.4",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>@tailwindcss/vite",
+          "apps__desktop>@vitejs/plugin-react",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>vite",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-f2ph-cmg5-wxc8",
+        "package": "@storybook/addon-vitest",
+        "severity": "critical",
+        "resolvedVersion": "10.4.6",
+        "auditPatchedRange": ">=10.6.2",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 9.0.0, < 9.1.21",
+            "first_patched_version": "9.1.21"
+          },
+          {
+            "vulnerable_version_range": ">= 10.0.0, < 10.6.2",
+            "first_patched_version": "10.6.2"
+          },
+          {
+            "vulnerable_version_range": ">= 11.0.0-alpha.0, < 11.0.0-alpha.6",
+            "first_patched_version": "11.0.0-alpha.6"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest",
+          "apps__desktop>@storybook/addon-vitest"
+        ],
+        "source": "https://github.com/advisories/GHSA-f2ph-cmg5-wxc8",
+        "upstream": [
+          "https://github.com/storybookjs/storybook/security/advisories/GHSA-f2ph-cmg5-wxc8"
+        ],
+        "updatedAt": "2026-10-21T17:23:30Z",
+        "selectedResolvedVersion": "10.6.2",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest"
+        ]
+      },
+      {
+        "id": "GHSA-f2ph-cmg5-wxc8",
+        "package": "storybook",
+        "severity": "critical",
+        "resolvedVersion": "10.4.6",
+        "auditPatchedRange": ">=10.6.2",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.6.19",
+            "first_patched_version": "8.6.19"
+          },
+          {
+            "vulnerable_version_range": ">= 9.0.0, < 9.1.21",
+            "first_patched_version": "9.1.21"
+          },
+          {
+            "vulnerable_version_range": ">= 10.0.0, < 10.6.2",
+            "first_patched_version": "10.6.2"
+          },
+          {
+            "vulnerable_version_range": ">= 11.0.0-alpha.0, < 11.0.0-alpha.6",
+            "first_patched_version": "11.0.0-alpha.6"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@chromatic-com/storybook>storybook",
+          "apps__desktop>@storybook/addon-a11y>storybook",
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>storybook",
+          "apps__desktop>@storybook/addon-docs>@storybook/react-dom-shim>storybook",
+          "apps__desktop>@storybook/addon-docs>storybook",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>storybook",
+          "apps__desktop>@storybook/addon-mcp>storybook",
+          "apps__desktop>@storybook/addon-vitest>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/react>@storybook/react-dom-shim>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/react>storybook",
+          "apps__desktop>@storybook/react-vite>storybook",
+          "apps__desktop>eslint-plugin-storybook>storybook",
+          "apps__desktop>storybook"
+        ],
+        "source": "https://github.com/advisories/GHSA-f2ph-cmg5-wxc8",
+        "upstream": [
+          "https://github.com/storybookjs/storybook/security/advisories/GHSA-f2ph-cmg5-wxc8"
+        ],
+        "updatedAt": "2026-10-21T17:23:30Z",
+        "selectedResolvedVersion": "10.6.2",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@chromatic-com/storybook",
+          "apps__desktop>@storybook/addon-a11y",
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>eslint-plugin-storybook",
+          "apps__desktop>storybook"
+        ]
+      },
+      {
+        "id": "GHSA-qxg6-89mg-rqv8",
+        "package": "@vitest/mocker",
+        "severity": "moderate",
+        "resolvedVersion": "4.1.11",
+        "auditPatchedRange": ">=4.1.12",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 2.1.0-beta.7, < 4.1.12",
+            "first_patched_version": "4.1.12"
+          },
+          {
+            "vulnerable_version_range": ">= 5.0.0-beta.1, < 5.0.3",
+            "first_patched_version": "5.0.3"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/mocker"
+        ],
+        "source": "https://github.com/advisories/GHSA-qxg6-89mg-rqv8",
+        "upstream": [
+          "https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8"
+        ],
+        "updatedAt": "2026-10-21T19:54:27Z",
+        "selectedResolvedVersion": "4.1.12",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-xp26-3454-mjgp",
+        "package": "@vitest/mocker",
+        "severity": "moderate",
+        "resolvedVersion": "4.1.11",
+        "auditPatchedRange": ">=4.1.12",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 4.1.11, < 4.1.12",
+            "first_patched_version": "4.1.12"
+          },
+          {
+            "vulnerable_version_range": ">= 5.0.0-rc.2, < 5.0.3",
+            "first_patched_version": "5.0.3"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@storybook/addon-vitest>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/browser-playwright>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>@vitest/coverage-v8>vitest>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/browser>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/browser-playwright>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/coverage-v8>@vitest/browser>@vitest/mocker",
+          "apps__desktop>vitest>@vitest/mocker"
+        ],
+        "source": "https://github.com/advisories/GHSA-xp26-3454-mjgp",
+        "upstream": [
+          "https://github.com/vitest-dev/vitest/security/advisories/GHSA-xp26-3454-mjgp"
+        ],
+        "updatedAt": "2026-10-21T19:48:39Z",
+        "selectedResolvedVersion": "4.1.12",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-px85-f4q5-jh77",
+        "package": "@storybook/addon-vitest",
+        "severity": "high",
+        "resolvedVersion": "10.4.6",
+        "auditPatchedRange": ">=10.6.2",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 9.0.0, < 9.1.21",
+            "first_patched_version": "9.1.21"
+          },
+          {
+            "vulnerable_version_range": ">= 10.0.0, < 10.6.2",
+            "first_patched_version": "10.6.2"
+          },
+          {
+            "vulnerable_version_range": ">= 11.0.0-alpha.0, < 11.0.0-alpha.6",
+            "first_patched_version": "11.0.0-alpha.6"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest",
+          "apps__desktop>@storybook/addon-vitest"
+        ],
+        "source": "https://github.com/advisories/GHSA-px85-f4q5-jh77",
+        "upstream": [
+          "https://github.com/storybookjs/storybook/security/advisories/GHSA-px85-f4q5-jh77"
+        ],
+        "updatedAt": "2026-10-22T16:31:42Z",
+        "selectedResolvedVersion": "10.6.2",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest"
+        ]
+      },
+      {
+        "id": "GHSA-px85-f4q5-jh77",
+        "package": "storybook",
+        "severity": "high",
+        "resolvedVersion": "10.4.6",
+        "auditPatchedRange": ">=10.6.2",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.6.19",
+            "first_patched_version": "8.6.19"
+          },
+          {
+            "vulnerable_version_range": ">= 9.0.0, < 9.1.21",
+            "first_patched_version": "9.1.21"
+          },
+          {
+            "vulnerable_version_range": ">= 10.0.0, < 10.6.2",
+            "first_patched_version": "10.6.2"
+          },
+          {
+            "vulnerable_version_range": ">= 11.0.0-alpha.0, < 11.0.0-alpha.6",
+            "first_patched_version": "11.0.0-alpha.6"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@chromatic-com/storybook>storybook",
+          "apps__desktop>@storybook/addon-a11y>storybook",
+          "apps__desktop>@storybook/addon-docs>@storybook/csf-plugin>storybook",
+          "apps__desktop>@storybook/addon-docs>@storybook/react-dom-shim>storybook",
+          "apps__desktop>@storybook/addon-docs>storybook",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>storybook",
+          "apps__desktop>@storybook/addon-mcp>storybook",
+          "apps__desktop>@storybook/addon-vitest>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>@storybook/csf-plugin>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/builder-vite>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/react>@storybook/react-dom-shim>storybook",
+          "apps__desktop>@storybook/react-vite>@storybook/react>storybook",
+          "apps__desktop>@storybook/react-vite>storybook",
+          "apps__desktop>eslint-plugin-storybook>storybook",
+          "apps__desktop>storybook"
+        ],
+        "source": "https://github.com/advisories/GHSA-px85-f4q5-jh77",
+        "upstream": [
+          "https://github.com/storybookjs/storybook/security/advisories/GHSA-px85-f4q5-jh77"
+        ],
+        "updatedAt": "2026-10-22T16:31:42Z",
+        "selectedResolvedVersion": "10.6.2",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@chromatic-com/storybook",
+          "apps__desktop>@storybook/addon-a11y",
+          "apps__desktop>@storybook/addon-docs",
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@storybook/react-vite",
+          "apps__desktop>eslint-plugin-storybook",
+          "apps__desktop>storybook"
+        ]
+      },
+      {
+        "id": "GHSA-253c-mchw-3w2r",
+        "package": "markdown-it",
+        "severity": "moderate",
+        "resolvedVersion": "14.2.0",
+        "auditPatchedRange": ">=14.3.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": "= 15.0.0",
+            "first_patched_version": "15.0.1"
+          },
+          {
+            "vulnerable_version_range": "< 14.3.1",
+            "first_patched_version": "14.3.1"
+          }
+        ],
+        "dependencyPaths": [
+          ".>markdownlint-cli2>markdown-it"
+        ],
+        "source": "https://github.com/advisories/GHSA-253c-mchw-3w2r",
+        "upstream": [
+          "https://github.com/markdown-it/markdown-it/security/advisories/GHSA-253c-mchw-3w2r"
+        ],
+        "updatedAt": "2026-10-22T20:35:11Z",
+        "selectedResolvedVersion": "15.0.3",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          ".>markdownlint-cli2"
+        ]
+      },
+      {
+        "id": "GHSA-4qv8-2p9j-2685",
+        "package": "undici",
+        "severity": "moderate",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.30.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 6.5.0, < 6.29.1",
+            "first_patched_version": "6.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 7.0.0, < 7.30.1",
+            "first_patched_version": "7.30.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.12.2",
+            "first_patched_version": "8.12.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-4qv8-2p9j-2685",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-4qv8-2p9j-2685"
+        ],
+        "updatedAt": "2026-10-23T22:13:31Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-f72v-6w45-q472",
+        "package": "undici",
+        "severity": "moderate",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.30.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 7.15.0, < 7.30.1",
+            "first_patched_version": "7.30.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.12.2",
+            "first_patched_version": "8.12.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-f72v-6w45-q472",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-f72v-6w45-q472"
+        ],
+        "updatedAt": "2026-10-23T22:13:18Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      },
+      {
+        "id": "GHSA-xjj6-f33q-929c",
+        "package": "undici",
+        "severity": "high",
+        "resolvedVersion": "7.29.0",
+        "auditPatchedRange": ">=7.30.1",
+        "availablePatchedBranches": [
+          {
+            "vulnerable_version_range": ">= 6.23.0, < 6.29.1",
+            "first_patched_version": "6.29.1"
+          },
+          {
+            "vulnerable_version_range": ">= 7.18.0, < 7.30.1",
+            "first_patched_version": "7.30.1"
+          },
+          {
+            "vulnerable_version_range": ">= 8.0.0, < 8.12.2",
+            "first_patched_version": "8.12.2"
+          }
+        ],
+        "dependencyPaths": [
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-mcp>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@storybook/addon-vitest>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/browser-playwright>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>@vitest/browser>vitest>jsdom>undici",
+          "apps__desktop>@vitest/coverage-v8>vitest>jsdom>undici",
+          "apps__desktop>jsdom>undici",
+          "apps__desktop>vitest>jsdom>undici"
+        ],
+        "source": "https://github.com/advisories/GHSA-xjj6-f33q-929c",
+        "upstream": [
+          "https://github.com/nodejs/undici/security/advisories/GHSA-xjj6-f33q-929c"
+        ],
+        "updatedAt": "2026-10-23T22:14:32Z",
+        "selectedResolvedVersion": "7.30.1",
+        "dependencyUse": "Development tooling; full audit includes production and development dependencies.",
+        "owningDirectDependencies": [
+          "apps__desktop>@storybook/addon-mcp",
+          "apps__desktop>@storybook/addon-vitest",
+          "apps__desktop>@vitest/browser-playwright",
+          "apps__desktop>@vitest/coverage-v8",
+          "apps__desktop>jsdom",
+          "apps__desktop>vitest"
+        ]
+      }
+    ],
+    "retained_repaired_scan": {
+      "source_commit": "23a997527cc40eedcad693a24879939721a8f12e",
+      "command": "task sec:audit:npm",
+      "task_exit": 0,
+      "scanner_exit": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0
+        },
+        "dependencies": 8,
+        "devDependencies": 638,
+        "optionalDependencies": 179,
+        "totalDependencies": 646
+      },
+      "scope": "Retained repaired frontend graph, not a fresh final integrated scan."
+    }
+  },
+  "rust": {
+    "baseline_command": "task sec:audit:rust",
+    "baseline_task_exit": 201,
+    "baseline_scanner_exit": 1,
+    "baseline_rustsec_database": "99670cfc0bc574433034b75876a4b791ccaa2efb",
+    "vulnerabilities": [
+      {
+        "crate": "quinn-proto",
+        "version": "0.11.14",
+        "title": "Remote memory exhaustion in quinn-proto from unbounded out-of-order stream reassembly",
+        "date": "2026-06-22",
+        "id": "RUSTSEC-2026-0185",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0185",
+        "severity": "7.5 (high)",
+        "solution": "Upgrade to >=0.11.15",
+        "candidate_version": "0.11.19",
+        "owner_and_use": "Optional reqwest HTTP/3 graph through Tauri/updater and Translate; lock-only paths remain audited.",
+        "patched_constraints_toml": "[\">= 0.11.15\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "quinn-proto",
+        "version": "0.11.14",
+        "title": "Remote peer can panic quinn-proto with zero-length STREAM frames during unordered reads",
+        "date": "2026-09-14",
+        "id": "RUSTSEC-2026-0338",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0338",
+        "solution": "Upgrade to >=0.11.18",
+        "candidate_version": "0.11.19",
+        "owner_and_use": "Optional reqwest HTTP/3 graph through Tauri/updater and Translate; lock-only paths remain audited.",
+        "patched_constraints_toml": "[\">= 0.11.18\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "quinn-proto",
+        "version": "0.11.14",
+        "title": "Unbounded growth of pending connection ID retirements in quinn-proto",
+        "date": "2026-08-17",
+        "id": "RUSTSEC-2026-0339",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0339",
+        "solution": "Upgrade to >=0.11.17",
+        "candidate_version": "0.11.19",
+        "owner_and_use": "Optional reqwest HTTP/3 graph through Tauri/updater and Translate; lock-only paths remain audited.",
+        "patched_constraints_toml": "[\">= 0.11.17\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "quinn-proto",
+        "version": "0.11.14",
+        "title": "Peer minimum ACK delay can panic quinn-proto when ACK_FREQUENCY transmission is enabled",
+        "date": "2026-09-14",
+        "id": "RUSTSEC-2026-0340",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0340",
+        "severity": "7.5 (high)",
+        "solution": "Upgrade to >=0.11.18",
+        "candidate_version": "0.11.19",
+        "owner_and_use": "Optional reqwest HTTP/3 graph through Tauri/updater and Translate; lock-only paths remain audited.",
+        "patched_constraints_toml": "[\">= 0.11.18\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "quinn-proto",
+        "version": "0.11.14",
+        "title": "Zero-length DATAGRAM frames bypass the receive buffer limit in quinn-proto",
+        "date": "2026-08-17",
+        "id": "RUSTSEC-2026-0342",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0342",
+        "solution": "Upgrade to >=0.11.17",
+        "candidate_version": "0.11.19",
+        "owner_and_use": "Optional reqwest HTTP/3 graph through Tauri/updater and Translate; lock-only paths remain audited.",
+        "patched_constraints_toml": "[\">= 0.11.17\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "rustls",
+        "version": "0.23.43",
+        "title": "TLS 1.3 handshake messages incorrectly accepted across encryption level boundaries",
+        "date": "2026-09-14",
+        "id": "RUSTSEC-2026-0285",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0285",
+        "severity": "5.3 (medium)",
+        "solution": "Upgrade to >=0.23.45",
+        "candidate_version": "0.23.46",
+        "owner_and_use": "reqwest HTTPS, hyper-rustls/tokio-rustls, Tauri/updater and Translate asset delivery.",
+        "patched_constraints_toml": "[\">= 0.23.45\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "rustls",
+        "version": "0.23.43",
+        "title": "`Debug` impls for client session values expose TLS secrets",
+        "date": "2026-10-14",
+        "id": "RUSTSEC-2026-0346",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0346",
+        "severity": "4 (medium)",
+        "solution": "Upgrade to >=0.23.46",
+        "candidate_version": "0.23.46",
+        "owner_and_use": "reqwest HTTPS, hyper-rustls/tokio-rustls, Tauri/updater and Translate asset delivery.",
+        "patched_constraints_toml": "[\">= 0.23.46\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "rustls",
+        "version": "0.23.43",
+        "title": "Brotli certificate decompression can allocate up to 1 GiB before authentication",
+        "date": "2026-10-14",
+        "id": "RUSTSEC-2026-0348",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0348",
+        "severity": "3.7 (low)",
+        "solution": "Upgrade to >=0.23.46",
+        "candidate_version": "0.23.46",
+        "owner_and_use": "reqwest HTTPS, hyper-rustls/tokio-rustls, Tauri/updater and Translate asset delivery.",
+        "patched_constraints_toml": "[\">= 0.23.46\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "rustls",
+        "version": "0.23.43",
+        "title": "Unauthenticated ServerHello can downgrade later connections to classical key exchange",
+        "date": "2026-10-14",
+        "id": "RUSTSEC-2026-0349",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0349",
+        "severity": "3.7 (low)",
+        "solution": "Upgrade to >=0.23.46",
+        "candidate_version": "0.23.46",
+        "owner_and_use": "reqwest HTTPS, hyper-rustls/tokio-rustls, Tauri/updater and Translate asset delivery.",
+        "patched_constraints_toml": "[\">= 0.23.46\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "rustls-webpki",
+        "version": "0.103.13",
+        "title": "Certificate verification may accept distrusted intermediates",
+        "date": "2026-10-20",
+        "id": "RUSTSEC-2026-0382",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0382",
+        "solution": "Upgrade to >=0.103.16, <0.104.0-alpha.1 OR >=0.104.0-alpha.8",
+        "candidate_version": "0.103.16",
+        "owner_and_use": "rustls certificate validation and rustls-platform-verifier paths.",
+        "patched_constraints_toml": "[\">= 0.103.16, < 0.104.0-alpha.1\", \">= 0.104.0-alpha.8\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "webpki-root-certs",
+        "version": "1.0.9",
+        "title": "Bundled root certificates allow trust in distrusted emSign intermediates",
+        "date": "2026-10-19",
+        "id": "RUSTSEC-2026-0383",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0383",
+        "solution": "Upgrade to >=1.0.10",
+        "candidate_version": "1.0.10",
+        "owner_and_use": "rustls-platform-verifier through reqwest, including platform-specific trust paths.",
+        "patched_constraints_toml": "[\">= 1.0.10\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "zip",
+        "version": "4.6.1",
+        "title": "Insecure Preservation of SUID/SGID Bits during ZIP Extraction Leading to Potential Privilege Escalation",
+        "date": "2026-10-09",
+        "id": "RUSTSEC-2026-0367",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0367",
+        "severity": "7.3 (high)",
+        "solution": "Upgrade to >=9.0.0",
+        "candidate_version": "9.1.2",
+        "owner_and_use": "Translate runtime package installation; previous optional updater Tauri v1 compressed-bundle graph.",
+        "patched_constraints_toml": "[\">= 9.0.0\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "zip",
+        "version": "4.6.1",
+        "title": "zip: `ZipArchive::extract` creates symbolic links whose attacker-controlled targets are outside the destination directory",
+        "date": "2026-10-09",
+        "id": "RUSTSEC-2026-0368",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0368",
+        "solution": "Upgrade to >=9.0.0",
+        "candidate_version": "9.1.2",
+        "owner_and_use": "Translate runtime package installation; previous optional updater Tauri v1 compressed-bundle graph.",
+        "patched_constraints_toml": "[\">= 9.0.0\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      },
+      {
+        "crate": "zip",
+        "version": "4.6.1",
+        "title": "ZipStreamReader::extract() and ZipArchive::extract() apply Unix permissions through symlinks without confining the target",
+        "date": "2026-10-10",
+        "id": "RUSTSEC-2026-0369",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0369",
+        "severity": "9.1 (critical)",
+        "solution": "Upgrade to >=9.0.0",
+        "candidate_version": "9.1.2",
+        "owner_and_use": "Translate runtime package installation; previous optional updater Tauri v1 compressed-bundle graph.",
+        "patched_constraints_toml": "[\">= 9.0.0\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      }
+    ],
+    "denied_unsoundness": [
+      {
+        "crate": "tokio",
+        "version": "1.53.1",
+        "warning": "unsound",
+        "title": "`AsyncFd::new` and related constructors violate I/O safety",
+        "date": "2026-10-13",
+        "id": "RUSTSEC-2026-0386",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2026-0386",
+        "candidate_version": "1.53.3",
+        "owner_and_use": "Workspace runtime, job/process ownership and Translate HTTP cancellation.",
+        "patched_constraints_toml": "[\">= 1.51.6, < 1.52.0\", \">= 1.53.3\"]",
+        "candidate_disposition": "absent in fresh final full-lock audit"
+      }
+    ],
+    "allowed_maintenance_notices": [
+      {
+        "crate": "proc-macro-error",
+        "version": "1.0.4",
+        "warning": "unmaintained",
+        "title": "proc-macro-error is unmaintained",
+        "date": "2024-09-01",
+        "id": "RUSTSEC-2024-0370",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2024-0370",
+        "candidate_version": "1.0.4",
+        "owner_and_use": "glib-macros -> patched glib -> GTK/Tauri and GLib regression tool.",
+        "patched_constraints_toml": "[]",
+        "candidate_disposition": "unchanged transitive maintenance notice, allowed by existing workspace policy"
+      },
+      {
+        "crate": "unic-char-property",
+        "version": "0.9.0",
+        "warning": "unmaintained",
+        "title": "`unic-char-property` is unmaintained",
+        "date": "2025-10-18",
+        "id": "RUSTSEC-2025-0081",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2025-0081",
+        "candidate_version": "0.9.0",
+        "owner_and_use": "unic-ucd-ident -> urlpattern -> tauri-utils -> Tauri.",
+        "patched_constraints_toml": "[]",
+        "candidate_disposition": "unchanged transitive maintenance notice, allowed by existing workspace policy"
+      },
+      {
+        "crate": "unic-char-range",
+        "version": "0.9.0",
+        "warning": "unmaintained",
+        "title": "`unic-char-range` is unmaintained",
+        "date": "2025-10-18",
+        "id": "RUSTSEC-2025-0075",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2025-0075",
+        "candidate_version": "0.9.0",
+        "owner_and_use": "unic-char-property -> unic-ucd-ident -> urlpattern -> tauri-utils -> Tauri.",
+        "patched_constraints_toml": "[]",
+        "candidate_disposition": "unchanged transitive maintenance notice, allowed by existing workspace policy"
+      },
+      {
+        "crate": "unic-common",
+        "version": "0.9.0",
+        "warning": "unmaintained",
+        "title": "`unic-common` is unmaintained",
+        "date": "2025-10-18",
+        "id": "RUSTSEC-2025-0080",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2025-0080",
+        "candidate_version": "0.9.0",
+        "owner_and_use": "unic-ucd-version -> unic-ucd-ident -> urlpattern -> tauri-utils -> Tauri.",
+        "patched_constraints_toml": "[]",
+        "candidate_disposition": "unchanged transitive maintenance notice, allowed by existing workspace policy"
+      },
+      {
+        "crate": "unic-ucd-ident",
+        "version": "0.9.0",
+        "warning": "unmaintained",
+        "title": "`unic-ucd-ident` is unmaintained",
+        "date": "2025-10-18",
+        "id": "RUSTSEC-2025-0100",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2025-0100",
+        "candidate_version": "0.9.0",
+        "owner_and_use": "urlpattern -> tauri-utils -> Tauri.",
+        "patched_constraints_toml": "[]",
+        "candidate_disposition": "unchanged transitive maintenance notice, allowed by existing workspace policy"
+      },
+      {
+        "crate": "unic-ucd-version",
+        "version": "0.9.0",
+        "warning": "unmaintained",
+        "title": "`unic-ucd-version` is unmaintained",
+        "date": "2025-10-18",
+        "id": "RUSTSEC-2025-0098",
+        "url": "https://rustsec.org/advisories/RUSTSEC-2025-0098",
+        "candidate_version": "0.9.0",
+        "owner_and_use": "unic-ucd-ident -> urlpattern -> tauri-utils -> Tauri.",
+        "patched_constraints_toml": "[]",
+        "candidate_disposition": "unchanged transitive maintenance notice, allowed by existing workspace policy"
+      }
+    ],
+    "baseline_dependency_trees": [
+      {
+        "package": "quinn-proto",
+        "command": "task rs:tree -- --invert quinn-proto --target all",
+        "exit_code": 0,
+        "workspace_path_annotations_omitted": true,
+        "reverse_dependency_tree": [
+          "task: [rs:tree] cargo tree --locked --invert quinn-proto --target all",
+          "    Blocking waiting for file lock on package cache",
+          "warning: nothing to print.",
+          "",
+          "To find dependencies that require specific target platforms, try to use option `--target all` first, and then narrow your search scope accordingly."
+        ]
+      },
+      {
+        "package": "rustls",
+        "command": "task rs:tree -- --invert rustls --target all",
+        "exit_code": 0,
+        "workspace_path_annotations_omitted": true,
+        "reverse_dependency_tree": [
+          "task: [rs:tree] cargo tree --locked --invert rustls --target all",
+          "rustls v0.23.43",
+          "├── hyper-rustls v0.27.9",
+          "│   └── reqwest v0.13.4",
+          "│       ├── auralis-translation-llamacpp v0.1.0",
+          "│       │   └── adapters-translate v0.1.0",
+          "│       │       └── auralis-app v0.1.0",
+          "│       │       [dev-dependencies]",
+          "│       │       └── application v0.1.0",
+          "│       │           ├── adapters-tauri v0.1.0",
+          "│       │           │   └── auralis-app v0.1.0",
+          "│       │           └── auralis-app v0.1.0",
+          "│       ├── tauri v2.11.5",
+          "│       │   ├── adapters-tauri v0.1.0 (*)",
+          "│       │   ├── auralis-app v0.1.0",
+          "│       │   ├── tauri-plugin-dialog v2.7.3",
+          "│       │   │   └── auralis-app v0.1.0",
+          "│       │   ├── tauri-plugin-fs v2.5.2",
+          "│       │   │   └── tauri-plugin-dialog v2.7.3 (*)",
+          "│       │   ├── tauri-plugin-process v2.3.1",
+          "│       │   │   └── auralis-app v0.1.0",
+          "│       │   ├── tauri-plugin-shell v2.3.5",
+          "│       │   │   ├── adapters-tauri v0.1.0 (*)",
+          "│       │   │   └── auralis-app v0.1.0",
+          "│       │   └── tauri-plugin-updater v2.11.0",
+          "│       │       └── auralis-app v0.1.0",
+          "│       └── tauri-plugin-updater v2.11.0 (*)",
+          "│       [dev-dependencies]",
+          "│       └── adapters-translate v0.1.0 (*)",
+          "├── reqwest v0.13.4 (*)",
+          "├── rustls-platform-verifier v0.7.0",
+          "│   └── reqwest v0.13.4 (*)",
+          "├── tauri-plugin-updater v2.11.0 (*)",
+          "└── tokio-rustls v0.26.5",
+          "    ├── hyper-rustls v0.27.9 (*)",
+          "    └── reqwest v0.13.4 (*)"
+        ]
+      },
+      {
+        "package": "rustls-webpki",
+        "command": "task rs:tree -- --invert rustls-webpki --target all",
+        "exit_code": 0,
+        "workspace_path_annotations_omitted": true,
+        "reverse_dependency_tree": [
+          "task: [rs:tree] cargo tree --locked --invert rustls-webpki --target all",
+          "rustls-webpki v0.103.13",
+          "├── rustls v0.23.43",
+          "│   ├── hyper-rustls v0.27.9",
+          "│   │   └── reqwest v0.13.4",
+          "│   │       ├── auralis-translation-llamacpp v0.1.0",
+          "│   │       │   └── adapters-translate v0.1.0",
+          "│   │       │       └── auralis-app v0.1.0",
+          "│   │       │       [dev-dependencies]",
+          "│   │       │       └── application v0.1.0",
+          "│   │       │           ├── adapters-tauri v0.1.0",
+          "│   │       │           │   └── auralis-app v0.1.0",
+          "│   │       │           └── auralis-app v0.1.0",
+          "│   │       ├── tauri v2.11.5",
+          "│   │       │   ├── adapters-tauri v0.1.0 (*)",
+          "│   │       │   ├── auralis-app v0.1.0",
+          "│   │       │   ├── tauri-plugin-dialog v2.7.3",
+          "│   │       │   │   └── auralis-app v0.1.0",
+          "│   │       │   ├── tauri-plugin-fs v2.5.2",
+          "│   │       │   │   └── tauri-plugin-dialog v2.7.3 (*)",
+          "│   │       │   ├── tauri-plugin-process v2.3.1",
+          "│   │       │   │   └── auralis-app v0.1.0",
+          "│   │       │   ├── tauri-plugin-shell v2.3.5",
+          "│   │       │   │   ├── adapters-tauri v0.1.0 (*)",
+          "│   │       │   │   └── auralis-app v0.1.0",
+          "│   │       │   └── tauri-plugin-updater v2.11.0",
+          "│   │       │       └── auralis-app v0.1.0",
+          "│   │       └── tauri-plugin-updater v2.11.0 (*)",
+          "│   │       [dev-dependencies]",
+          "│   │       └── adapters-translate v0.1.0 (*)",
+          "│   ├── reqwest v0.13.4 (*)",
+          "│   ├── rustls-platform-verifier v0.7.0",
+          "│   │   └── reqwest v0.13.4 (*)",
+          "│   ├── tauri-plugin-updater v2.11.0 (*)",
+          "│   └── tokio-rustls v0.26.5",
+          "│       ├── hyper-rustls v0.27.9 (*)",
+          "│       └── reqwest v0.13.4 (*)",
+          "└── rustls-platform-verifier v0.7.0 (*)"
+        ]
+      },
+      {
+        "package": "webpki-root-certs",
+        "command": "task rs:tree -- --invert webpki-root-certs --target all",
+        "exit_code": 0,
+        "workspace_path_annotations_omitted": true,
+        "reverse_dependency_tree": [
+          "task: [rs:tree] cargo tree --locked --invert webpki-root-certs --target all",
+          "webpki-root-certs v1.0.9",
+          "└── rustls-platform-verifier v0.7.0",
+          "    └── reqwest v0.13.4",
+          "        ├── auralis-translation-llamacpp v0.1.0",
+          "        │   └── adapters-translate v0.1.0",
+          "        │       └── auralis-app v0.1.0",
+          "        │       [dev-dependencies]",
+          "        │       └── application v0.1.0",
+          "        │           ├── adapters-tauri v0.1.0",
+          "        │           │   └── auralis-app v0.1.0",
+          "        │           └── auralis-app v0.1.0",
+          "        ├── tauri v2.11.5",
+          "        │   ├── adapters-tauri v0.1.0 (*)",
+          "        │   ├── auralis-app v0.1.0",
+          "        │   ├── tauri-plugin-dialog v2.7.3",
+          "        │   │   └── auralis-app v0.1.0",
+          "        │   ├── tauri-plugin-fs v2.5.2",
+          "        │   │   └── tauri-plugin-dialog v2.7.3 (*)",
+          "        │   ├── tauri-plugin-process v2.3.1",
+          "        │   │   └── auralis-app v0.1.0",
+          "        │   ├── tauri-plugin-shell v2.3.5",
+          "        │   │   ├── adapters-tauri v0.1.0 (*)",
+          "        │   │   └── auralis-app v0.1.0",
+          "        │   └── tauri-plugin-updater v2.11.0",
+          "        │       └── auralis-app v0.1.0",
+          "        └── tauri-plugin-updater v2.11.0 (*)",
+          "        [dev-dependencies]",
+          "        └── adapters-translate v0.1.0 (*)"
+        ]
+      },
+      {
+        "package": "zip",
+        "command": "task rs:tree -- --invert zip --target all",
+        "exit_code": 0,
+        "workspace_path_annotations_omitted": true,
+        "reverse_dependency_tree": [
+          "task: [rs:tree] cargo tree --locked --invert zip --target all",
+          "zip v4.6.1",
+          "├── auralis-translation-llamacpp v0.1.0",
+          "│   └── adapters-translate v0.1.0",
+          "│       └── auralis-app v0.1.0",
+          "│       [dev-dependencies]",
+          "│       └── application v0.1.0",
+          "│           ├── adapters-tauri v0.1.0",
+          "│           │   └── auralis-app v0.1.0",
+          "│           └── auralis-app v0.1.0",
+          "└── tauri-plugin-updater v2.11.0",
+          "    └── auralis-app v0.1.0"
+        ]
+      },
+      {
+        "package": "tokio",
+        "command": "task rs:tree -- --invert tokio --target all",
+        "exit_code": 0,
+        "workspace_path_annotations_omitted": true,
+        "reverse_dependency_tree": [
+          "task: [rs:tree] cargo tree --locked --invert tokio --target all",
+          "tokio v1.53.1",
+          "├── adapters-caster v0.1.0",
+          "│   └── auralis-app v0.1.0",
+          "│   [dev-dependencies]",
+          "│   └── application v0.1.0",
+          "│       ├── adapters-tauri v0.1.0",
+          "│       │   └── auralis-app v0.1.0",
+          "│       └── auralis-app v0.1.0",
+          "├── adapters-contract v0.1.0",
+          "├── adapters-ffmpeg v0.1.0",
+          "│   └── auralis-app v0.1.0",
+          "│   [dev-dependencies]",
+          "│   └── application v0.1.0 (*)",
+          "├── adapters-storage v0.1.0",
+          "│   └── auralis-app v0.1.0",
+          "│   [dev-dependencies]",
+          "│   ├── adapters-tauri v0.1.0 (*)",
+          "│   └── application v0.1.0 (*)",
+          "├── adapters-tauri v0.1.0 (*)",
+          "├── adapters-translate v0.1.0",
+          "│   └── auralis-app v0.1.0",
+          "│   [dev-dependencies]",
+          "│   └── application v0.1.0 (*)",
+          "├── adapters-tts v0.1.0",
+          "│   └── auralis-app v0.1.0",
+          "├── adapters-ytdlp v0.1.0",
+          "│   └── auralis-app v0.1.0",
+          "│   [dev-dependencies]",
+          "│   └── application v0.1.0 (*)",
+          "├── application v0.1.0 (*)",
+          "├── auralis-app v0.1.0",
+          "├── auralis-translation-llamacpp v0.1.0",
+          "│   └── adapters-translate v0.1.0 (*)",
+          "├── common v0.1.0",
+          "│   ├── adapters-contract v0.1.0",
+          "│   ├── adapters-ffmpeg v0.1.0 (*)",
+          "│   ├── adapters-storage v0.1.0 (*)",
+          "│   ├── adapters-tauri v0.1.0 (*)",
+          "│   ├── adapters-translate v0.1.0 (*)",
+          "│   ├── adapters-tts v0.1.0 (*)",
+          "│   ├── application v0.1.0 (*)",
+          "│   ├── auralis-app v0.1.0",
+          "│   └── jobs v0.1.0",
+          "│       └── auralis-app v0.1.0",
+          "│       [dev-dependencies]",
+          "│       └── application v0.1.0 (*)",
+          "├── hyper v1.10.1",
+          "│   ├── hyper-rustls v0.27.9",
+          "│   │   └── reqwest v0.13.4",
+          "│   │       ├── auralis-translation-llamacpp v0.1.0 (*)",
+          "│   │       ├── tauri v2.11.5",
+          "│   │       │   ├── adapters-tauri v0.1.0 (*)",
+          "│   │       │   ├── auralis-app v0.1.0",
+          "│   │       │   ├── tauri-plugin-dialog v2.7.3",
+          "│   │       │   │   └── auralis-app v0.1.0",
+          "│   │       │   ├── tauri-plugin-fs v2.5.2",
+          "│   │       │   │   └── tauri-plugin-dialog v2.7.3 (*)",
+          "│   │       │   ├── tauri-plugin-process v2.3.1",
+          "│   │       │   │   └── auralis-app v0.1.0",
+          "│   │       │   ├── tauri-plugin-shell v2.3.5",
+          "│   │       │   │   ├── adapters-tauri v0.1.0 (*)",
+          "│   │       │   │   └── auralis-app v0.1.0",
+          "│   │       │   └── tauri-plugin-updater v2.11.0",
+          "│   │       │       └── auralis-app v0.1.0",
+          "│   │       └── tauri-plugin-updater v2.11.0 (*)",
+          "│   │       [dev-dependencies]",
+          "│   │       └── adapters-translate v0.1.0 (*)",
+          "│   ├── hyper-util v0.1.20",
+          "│   │   ├── hyper-rustls v0.27.9 (*)",
+          "│   │   └── reqwest v0.13.4 (*)",
+          "│   └── reqwest v0.13.4 (*)",
+          "├── hyper-rustls v0.27.9 (*)",
+          "├── hyper-util v0.1.20 (*)",
+          "├── jobs v0.1.0 (*)",
+          "├── ports v0.1.0",
+          "│   ├── adapters-caster v0.1.0 (*)",
+          "│   ├── adapters-contract v0.1.0",
+          "│   ├── adapters-ffmpeg v0.1.0 (*)",
+          "│   ├── adapters-model v0.1.0",
+          "│   │   └── auralis-app v0.1.0",
+          "│   │   [dev-dependencies]",
+          "│   │   └── application v0.1.0 (*)",
+          "│   ├── adapters-storage v0.1.0 (*)",
+          "│   ├── adapters-tauri v0.1.0 (*)",
+          "│   ├── adapters-translate v0.1.0 (*)",
+          "│   ├── adapters-tts v0.1.0 (*)",
+          "│   ├── adapters-ytdlp v0.1.0 (*)",
+          "│   ├── application v0.1.0 (*)",
+          "│   ├── auralis-app v0.1.0",
+          "│   └── jobs v0.1.0 (*)",
+          "├── process-wrap v10.0.0",
+          "│   ├── adapters-translate v0.1.0 (*)",
+          "│   ├── adapters-tts v0.1.0 (*)",
+          "│   ├── adapters-ytdlp v0.1.0 (*)",
+          "│   └── common v0.1.0 (*)",
+          "├── reqwest v0.13.4 (*)",
+          "├── sqlx-core v0.9.0",
+          "│   ├── sqlx v0.9.0",
+          "│   │   └── adapters-storage v0.1.0 (*)",
+          "│   │   [dev-dependencies]",
+          "│   │   ├── adapters-tauri v0.1.0 (*)",
+          "│   │   └── application v0.1.0 (*)",
+          "│   └── sqlx-sqlite v0.9.0",
+          "│       ├── adapters-storage v0.1.0 (*)",
+          "│       └── sqlx v0.9.0 (*)",
+          "├── tauri v2.11.5 (*)",
+          "├── tauri-plugin-shell v2.3.5 (*)",
+          "├── tauri-plugin-updater v2.11.0 (*)",
+          "├── tokio-rustls v0.26.5",
+          "│   ├── hyper-rustls v0.27.9 (*)",
+          "│   └── reqwest v0.13.4 (*)",
+          "├── tokio-stream v0.1.18",
+          "│   ├── sqlx-core v0.9.0",
+          "│   │   ├── sqlx-macros v0.9.0 (proc-macro)",
+          "│   │   │   └── sqlx v0.9.0 (*)",
+          "│   │   ├── sqlx-macros-core v0.9.0",
+          "│   │   │   └── sqlx-macros v0.9.0 (proc-macro) (*)",
+          "│   │   └── sqlx-sqlite v0.9.0",
+          "│   │       └── sqlx-macros-core v0.9.0 (*)",
+          "│   └── sqlx-core v0.9.0 (*)",
+          "├── tokio-util v0.7.18",
+          "│   ├── application v0.1.0 (*)",
+          "│   ├── ports v0.1.0 (*)",
+          "│   └── reqwest v0.13.4 (*)",
+          "└── tower v0.5.3",
+          "    ├── reqwest v0.13.4 (*)",
+          "    └── tower-http v0.6.11",
+          "        └── reqwest v0.13.4 (*)",
+          "[dev-dependencies]",
+          "├── adapters-contract v0.1.0",
+          "├── adapters-storage v0.1.0 (*)",
+          "├── adapters-tauri v0.1.0 (*)",
+          "├── adapters-translate v0.1.0 (*)",
+          "├── application v0.1.0 (*)",
+          "├── auralis-app v0.1.0",
+          "├── common v0.1.0 (*)",
+          "├── jobs v0.1.0 (*)",
+          "└── ports v0.1.0 (*)",
+          "",
+          "tokio v1.53.1",
+          "├── sqlx-core v0.9.0 (*)",
+          "└── sqlx-macros-core v0.9.0 (*)"
+        ]
+      }
+    ],
+    "path_count": "Reverse trees contain shared-subtree markers and lock-only packages; no fabricated complete path count.",
+    "retained_repaired_scan": {
+      "source_commit": "c0a8bdc5077a0cc09efcac1d89e923fe885a053a",
+      "command": "task sec:audit:rust",
+      "task_exit": 0,
+      "scanner_exit": 0,
+      "dependencies": 570,
+      "vulnerabilities": 0,
+      "denied_unsoundness": 0,
+      "allowed_maintenance_notices": 6,
+      "rustsec_database": "40f5be6fb12ed93fc591bf4ab23b7d793b3f2239",
+      "advisories_loaded": 1381,
+      "scope": "Retained repaired Rust graph, not a fresh final integrated scan."
+    }
+  },
+  "fixed_graph": {
+    "snapshot_commit": "aefa5c00c683696b71d46d2805020c27a54f048c",
+    "pnpm": {
+      "file": "pnpm-lock.yaml",
+      "sha256": "1ca704a29279ccaa17e7d999af01fc6b74def76bf08eaaf2b1ec8934e13de094",
+      "git_blob": "f5220d5cfe0e7ff60b47f14e659ab6c450e7370c",
+      "resolved_versions": {
+        "@storybook/addon-vitest": [
+          "10.6.2"
+        ],
+        "@vitest/mocker": [
+          "4.1.12"
+        ],
+        "brace-expansion": [
+          "5.0.12"
+        ],
+        "handlebars": [
+          "4.7.10"
+        ],
+        "js-yaml": [
+          "5.4.3"
+        ],
+        "katex": [
+          "0.18.2"
+        ],
+        "markdown-it": [
+          "15.0.3"
+        ],
+        "smol-toml": [
+          "1.9.1"
+        ],
+        "source-map-js": [
+          "1.2.2"
+        ],
+        "storybook": [
+          "10.6.2"
+        ],
+        "undici": [
+          "7.30.1"
+        ],
+        "vite": [
+          "8.2.4"
+        ]
+      }
+    },
+    "cargo": {
+      "file": "Cargo.lock",
+      "checkout_sha256": "bf4954f6144d9beed2ebf2d9f8b4d1028fdf98c455ab2f7501ece6e9082ef94b",
+      "lf_sha256": "d7d9d8f413b8b9a6b19a9d4cac76f60ee7cfdf49d7aa86252679a237e6ce1a62",
+      "git_blob": "16cc5d8fdfa1f1e06c9e245b675f845a0c2ab4e0",
+      "same_git_blob_as_retained_repaired_scan": true,
+      "resolved_versions": {
+        "proc-macro-error": [
+          "1.0.4"
+        ],
+        "quinn-proto": [
+          "0.11.19"
+        ],
+        "rustls": [
+          "0.23.46"
+        ],
+        "rustls-webpki": [
+          "0.103.16"
+        ],
+        "tokio": [
+          "1.53.3"
+        ],
+        "unic-char-property": [
+          "0.9.0"
+        ],
+        "unic-char-range": [
+          "0.9.0"
+        ],
+        "unic-common": [
+          "0.9.0"
+        ],
+        "unic-ucd-ident": [
+          "0.9.0"
+        ],
+        "unic-ucd-version": [
+          "0.9.0"
+        ],
+        "webpki-root-certs": [
+          "1.0.10"
+        ],
+        "zip": [
+          "9.1.2"
+        ]
+      }
+    }
+  }
+}
