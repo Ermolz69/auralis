@@ -1,5 +1,5 @@
 import { describeCommandError } from '@/shared/api/contracts/error';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLibrary } from '@/entities/library';
 import { renameProject } from '@/entities/project';
 import type { LibraryBrowser } from '@/shared/api/contracts/library';
@@ -18,9 +18,25 @@ export function LibraryProjectActions({
   const [name, setName] = useState('');
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
   if (!project) return null;
-  const rename = async () => {
+  const run = async (work: () => Promise<void>) => {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError('');
     try {
+      await work();
+    } catch (e) {
+      setError(describeCommandError(e));
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  };
+  const rename = () =>
+    run(async () => {
       if (folder)
         await mutate((draft) => {
           draft.folders.find((f) => f.id === folder.id)!.name = name.trim();
@@ -30,12 +46,9 @@ export function LibraryProjectActions({
         await refresh();
       }
       setEditing(false);
-    } catch (e) {
-      setError(describeCommandError(e));
-    }
-  };
-  const remove = async () => {
-    try {
+    });
+  const remove = () =>
+    run(async () => {
       await mutate((draft) => {
         if (folder) {
           for (const f of draft.folders) if (f.parentId === folder.id) f.parentId = folder.parentId;
@@ -53,14 +66,12 @@ export function LibraryProjectActions({
       navigate(
         folder ? { folderId: folder.parentId } : { scope: 'all', projectId: null, folderId: null },
       );
-    } catch (e) {
-      setError(describeCommandError(e));
-    }
-  };
+    });
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
       <button
         className={button}
+        disabled={busy}
         onClick={() => {
           setName(folder?.name ?? project.title);
           setEditing(true);
@@ -68,7 +79,7 @@ export function LibraryProjectActions({
       >
         Переименовать {folder ? 'папку' : 'проект'}
       </button>
-      <button className={button} onClick={() => setConfirm(true)}>
+      <button className={button} disabled={busy} onClick={() => setConfirm(true)}>
         Удалить {folder ? 'папку' : 'проект'}…
       </button>
       {editing && (
@@ -83,12 +94,20 @@ export function LibraryProjectActions({
             aria-label="Новое название"
             className={field}
             value={name}
+            disabled={busy}
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={200}
           />
-          <button className={button}>Сохранить</button>
-          <button type="button" className={button} onClick={() => setEditing(false)}>
+          <button className={button} disabled={busy}>
+            Сохранить
+          </button>
+          <button
+            type="button"
+            className={button}
+            disabled={busy}
+            onClick={() => setEditing(false)}
+          >
             Отмена
           </button>
         </form>
@@ -100,10 +119,10 @@ export function LibraryProjectActions({
           className="w-full border border-border p-3"
         >
           <p>Материалы останутся в библиотеке. Содержимое папки перейдёт в родительскую.</p>
-          <button className={button} onClick={() => void remove()}>
+          <button className={button} disabled={busy} onClick={() => void remove()}>
             Подтвердить удаление раздела
           </button>
-          <button className={button} onClick={() => setConfirm(false)}>
+          <button className={button} disabled={busy} onClick={() => setConfirm(false)}>
             Отмена
           </button>
         </div>
