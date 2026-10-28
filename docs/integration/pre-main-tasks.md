@@ -4,11 +4,15 @@ Close frontend coverage and dependency-security failures, then rebuild and
 verify one ordinary Windows candidate. This backlog implements the remaining
 pre-main gates in the [verification record](pre-main-verification.md).
 
-Baseline: `4ca12b6`, checked on 2026-10-27. The existing candidate's successful
-tests remain historical evidence; dependency changes require fresh checks.
-All 18 tasks initially have status `pending`. Track execution in the index.
-Completing this planning document does not
-complete their implementation or authorize a merge to main.
+Historical planning baseline: `4ca12b6`, checked on 2026-10-27. PM-001 reproduced
+the implementation baseline at `b29719b`; the scoped inventories retain its
+commands, tools and failures. Earlier candidate tests remain historical evidence;
+dependency changes require fresh checks.
+All 18 tasks initially had status `pending`. The execution index below records
+verification on final implementation `5a5ca53`, dated 2026-10-28. The complete
+local PR gate and ordinary Windows build passed; native metadata acceptance
+failed and process cleanup remains unconfirmed. See the linked verification record for exact commands, failures,
+hashes and scope. This record does not authorize a merge to main.
 
 ## Baseline and completion rules
 
@@ -44,26 +48,26 @@ relevant evidence. Record failures and their causes alongside the final result.
 
 ## Task index
 
-| ID                                                                      | Status  | Task                                          | Owner role            | Dependencies          |
-| ----------------------------------------------------------------------- | ------- | --------------------------------------------- | --------------------- | --------------------- |
-| [PM-001](#pm-001-record-the-current-gate-baseline)                      | pending | Record coverage and advisory inventories      | Developer             | None                  |
-| [PM-002](#pm-002-test-studio-commands-and-dialog-control)               | pending | Studio commands and dialog control            | Frontend Developer    | PM-001                |
-| [PM-003](#pm-003-test-library-operations-and-persistence)               | pending | Library operations and persistence            | Frontend Developer    | PM-001                |
-| [PM-004](#pm-004-test-library-browser-and-asset-actions)                | pending | Library browser and asset actions             | Frontend Developer    | PM-001                |
-| [PM-005](#pm-005-test-source-translation-speech-and-results-tools)      | pending | Source, translation, speech and results tools | Frontend Developer    | PM-001                |
-| [PM-006](#pm-006-test-workspaces-drafts-and-window-lifecycle)           | pending | Workspaces, drafts and window lifecycle       | Frontend Developer    | PM-001                |
-| [PM-007](#pm-007-close-all-instrumented-coverage-gates)                 | pending | Close all four coverage gates                 | Frontend Developer    | PM-002–PM-006, PM-008 |
-| [PM-008](#pm-008-remediate-npm-dependencies)                            | pending | Remediate npm dependencies                    | Dependency Developer  | PM-001                |
-| [PM-009](#pm-009-remediate-rust-networking-and-trust-dependencies)      | pending | Rust networking and certificate trust         | Rust Developer        | PM-001                |
-| [PM-010](#pm-010-remediate-tokio-unsoundness)                           | pending | Tokio unsoundness and runtime behavior        | Rust Developer        | PM-009                |
-| [PM-011](#pm-011-remediate-archive-extraction-dependencies)             | pending | ZIP dependencies and safe extraction          | Rust Developer        | PM-010                |
-| [PM-012](#pm-012-resolve-remaining-advisory-and-source-policy-findings) | pending | Remaining advisory and source-policy findings | Dependency Developer  | PM-008, PM-011        |
-| [PM-013](#pm-013-pass-the-complete-security-gate)                       | pending | Complete security gate                        | Security Reviewer     | PM-012                |
-| [PM-014](#pm-014-verify-the-integrated-pr-gates)                        | pending | Integrated PR gates                           | Integration Developer | PM-007, PM-013        |
-| [PM-015](#pm-015-verify-visuals-accessibility-and-fixture-workflows)    | pending | Visuals, accessibility and fixture workflows  | Frontend Developer    | PM-014                |
-| [PM-016](#pm-016-build-and-pin-the-final-windows-candidate)             | pending | Build and pin the Windows candidate           | Release Developer     | PM-015                |
-| [PM-017](#pm-017-verify-the-final-candidate-through-native-ui)          | pending | Native UI verification of that candidate      | Release Developer     | PM-016                |
-| [PM-018](#pm-018-complete-the-pre-main-acceptance-record)               | pending | Final evidence and readiness decision         | Maintainer            | PM-017                |
+| ID                                                                      | Status   | Task                                          | Owner role            | Dependencies          |
+| ----------------------------------------------------------------------- | -------- | --------------------------------------------- | --------------------- | --------------------- |
+| [PM-001](#pm-001-record-the-current-gate-baseline)                      | verified | Record coverage and advisory inventories      | Developer             | None                  |
+| [PM-002](#pm-002-test-studio-commands-and-dialog-control)               | verified | Studio commands and dialog control            | Frontend Developer    | PM-001                |
+| [PM-003](#pm-003-test-library-operations-and-persistence)               | verified | Library operations and persistence            | Frontend Developer    | PM-001                |
+| [PM-004](#pm-004-test-library-browser-and-asset-actions)                | verified | Library browser and asset actions             | Frontend Developer    | PM-001                |
+| [PM-005](#pm-005-test-source-translation-speech-and-results-tools)      | verified | Source, translation, speech and results tools | Frontend Developer    | PM-001                |
+| [PM-006](#pm-006-test-workspaces-drafts-and-window-lifecycle)           | verified | Workspaces, drafts and window lifecycle       | Frontend Developer    | PM-001                |
+| [PM-007](#pm-007-close-all-instrumented-coverage-gates)                 | verified | Close all four coverage gates                 | Frontend Developer    | PM-002–PM-006, PM-008 |
+| [PM-008](#pm-008-remediate-npm-dependencies)                            | verified | Remediate npm dependencies                    | Dependency Developer  | PM-001                |
+| [PM-009](#pm-009-remediate-rust-networking-and-trust-dependencies)      | verified | Rust networking and certificate trust         | Rust Developer        | PM-001                |
+| [PM-010](#pm-010-remediate-tokio-unsoundness)                           | verified | Tokio unsoundness and runtime behavior        | Rust Developer        | PM-009                |
+| [PM-011](#pm-011-remediate-archive-extraction-dependencies)             | verified | ZIP dependencies and safe extraction          | Rust Developer        | PM-010                |
+| [PM-012](#pm-012-resolve-remaining-advisory-and-source-policy-findings) | verified | Remaining advisory and source-policy findings | Dependency Developer  | PM-008, PM-011        |
+| [PM-013](#pm-013-pass-the-complete-security-gate)                       | verified | Complete security gate                        | Security Reviewer     | PM-012                |
+| [PM-014](#pm-014-verify-the-integrated-pr-gates)                        | verified | Integrated PR gates                           | Integration Developer | PM-007, PM-013        |
+| [PM-015](#pm-015-verify-visuals-accessibility-and-fixture-workflows)    | verified | Visuals, accessibility and fixture workflows  | Frontend Developer    | PM-014                |
+| [PM-016](#pm-016-build-and-pin-the-final-windows-candidate)             | verified | Build and pin the Windows candidate           | Release Developer     | PM-015                |
+| [PM-017](#pm-017-verify-the-final-candidate-through-native-ui)          | failed   | Native UI verification of that candidate      | Release Developer     | PM-016                |
+| [PM-018](#pm-018-complete-the-pre-main-acceptance-record)               | blocked  | Final evidence and readiness decision         | Maintainer            | PM-017                |
 
 Coverage tasks may progress independently in their respective areas. npm and
 Rust remediation may progress independently. PM-009–PM-011 intentionally run
