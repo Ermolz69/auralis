@@ -19,11 +19,13 @@ export function WorkspaceTabs({
     }).catch(() => {});
   return (
     <div className="flex min-h-16 shrink-0 items-center gap-2 px-3">
-      <div
-        role="tablist"
-        aria-label="Вкладки рабочего пространства"
-        className="flex min-w-0 gap-2 overflow-x-auto py-3"
-      >
+      <div className="flex min-w-0 gap-2 overflow-x-auto py-3">
+        <div
+          role="tablist"
+          className="contents"
+          aria-label="Вкладки рабочего пространства"
+          aria-owns={workspace.tabs.map((tab) => `tab-${tab.id}`).join(' ') || undefined}
+        />
         {workspace.tabs.map((tab) => (
           <div
             key={tab.id}
