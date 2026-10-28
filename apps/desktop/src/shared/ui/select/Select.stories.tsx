@@ -1,6 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Select } from './Select';
 
+import { ControlledChoice, SelectionForm } from './Select.storyFixtures';
+import {
+  playDisabled,
+  playErrorState,
+  playGroupedOptions,
+  playControlledSelection,
+  playValidationAndReset,
+} from './Select.interactions.storyFixtures';
+
 const meta = {
   title: 'Design System/Components/Select',
   component: Select,
@@ -60,6 +69,7 @@ export const Disabled: Story = {
     options: defaultOptions,
     disabled: true,
   },
+  play: playDisabled,
 };
 
 // Error
@@ -72,6 +82,7 @@ export const ErrorState: Story = {
     helperText: 'This value controls the next import step.',
     errorText: 'Select a source type to continue.',
   },
+  play: playErrorState,
 };
 
 // Many Options
@@ -101,4 +112,15 @@ export const GroupedOptions: Story = {
       },
     ],
   },
+  play: playGroupedOptions,
+};
+
+export const ControlledSelection: Story = {
+  render: () => <ControlledChoice />,
+  play: playControlledSelection,
+};
+
+export const ValidationAndReset: Story = {
+  render: () => <SelectionForm />,
+  play: playValidationAndReset,
 };

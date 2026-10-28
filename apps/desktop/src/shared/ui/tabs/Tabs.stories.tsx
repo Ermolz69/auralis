@@ -1,6 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
+
+import { ControlledTabs, PersistentPanels, VerticalPanels } from './Tabs.storyFixtures';
+import {
+  playDefaultTabs,
+  playDisabledTab,
+  playControlledSelection,
+  playRetainedPanelState,
+  playVerticalKeyboard,
+} from './Tabs.interactions.storyFixtures';
 
 const meta = {
   title: 'Design System/Components/Tabs',
@@ -33,22 +41,8 @@ export const DefaultTabs: Story = {
       <TabsContent value="jobs">Operation history</TabsContent>
     </Tabs>
   ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const transcriptTab = canvas.getByRole('tab', { name: 'Transcript' });
-    const mediaTab = canvas.getByRole('tab', { name: 'Media' });
-    const transcriptPanel = canvas.getByRole('tabpanel', { name: 'Transcript' });
 
-    await expect(transcriptTab).toHaveAttribute('aria-controls', transcriptPanel.id);
-    await transcriptTab.focus();
-    await userEvent.keyboard('{ArrowRight}');
-    const mediaPanel = canvas.getByRole('tabpanel', { name: 'Media' });
-
-    await expect(mediaTab).toHaveFocus();
-    await expect(mediaTab).toHaveAttribute('aria-selected', 'true');
-    await expect(mediaPanel).toBeVisible();
-    await expect(mediaPanel).toHaveAttribute('aria-labelledby', mediaTab.id);
-  },
+  play: playDefaultTabs,
 };
 
 export const CompactTabs: Story = {
@@ -96,13 +90,8 @@ export const DisabledTab: Story = {
       <TabsContent value="export">Export is not available in this version.</TabsContent>
     </Tabs>
   ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const disabledTab = canvas.getByRole('tab', { name: 'Export unavailable' });
 
-    await expect(disabledTab).toBeDisabled();
-    await expect(disabledTab).toHaveAttribute('aria-selected', 'false');
-  },
+  play: playDisabledTab,
 };
 
 export const TabsWithContent: Story = {
@@ -128,4 +117,19 @@ export const TabsWithContent: Story = {
       </TabsContent>
     </Tabs>
   ),
+};
+
+export const ControlledSelection: Story = {
+  render: () => <ControlledTabs />,
+  play: playControlledSelection,
+};
+
+export const RetainedPanelState: Story = {
+  render: () => <PersistentPanels />,
+  play: playRetainedPanelState,
+};
+
+export const VerticalKeyboard: Story = {
+  render: () => <VerticalPanels />,
+  play: playVerticalKeyboard,
 };

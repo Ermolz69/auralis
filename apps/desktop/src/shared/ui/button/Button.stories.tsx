@@ -3,6 +3,15 @@ import React from 'react';
 import { Button } from './Button';
 import { Icon } from '../icon';
 
+import { ButtonActions } from './Button.storyFixtures';
+import {
+  playAllVariants,
+  playDisabled,
+  playLoading,
+  playKeyboardAndFormActions,
+  playBusyAction,
+} from './Button.interactions.storyFixtures';
+
 const meta = {
   title: 'Design System/Components/Button',
   component: Button,
@@ -47,6 +56,7 @@ export const AllVariants: Story = {
       <Button variant="danger">Danger</Button>
     </div>
   ),
+  play: playAllVariants,
 };
 
 // All Sizes
@@ -63,11 +73,13 @@ export const AllSizes: Story = {
 // Disabled
 export const Disabled: Story = {
   args: { disabled: true, children: 'Disabled Action' },
+  play: playDisabled,
 };
 
 // Loading
 export const Loading: Story = {
   args: { loading: true, children: 'Submitting...' },
+  play: playLoading,
 };
 
 // With Icon
@@ -106,4 +118,14 @@ export const FullWidth: Story = {
       <Button fullWidth>Full Width Button</Button>
     </div>
   ),
+};
+
+export const KeyboardAndFormActions: Story = {
+  render: () => <ButtonActions />,
+  play: playKeyboardAndFormActions,
+};
+
+export const BusyAction: Story = {
+  render: () => <ButtonActions pending />,
+  play: playBusyAction,
 };

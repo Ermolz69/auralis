@@ -3,6 +3,16 @@ import React from 'react';
 import { Input } from './Input';
 import { Icon } from '../icon';
 
+import { EmailValidation, InputAvailability } from './Input.storyFixtures';
+import {
+  playWithLabel,
+  playWithHelperText,
+  playErrorState,
+  playDisabled,
+  playNativeValidationAndRecovery,
+  playDisabledAndReadOnly,
+} from './Input.interactions.storyFixtures';
+
 const meta = {
   title: 'Design System/Components/Input',
   component: Input,
@@ -39,6 +49,7 @@ export const Default: Story = {
 // With Label
 export const WithLabel: Story = {
   args: { label: 'Username', placeholder: 'Enter your username' },
+  play: playWithLabel,
 };
 
 // With Helper Text
@@ -48,6 +59,7 @@ export const WithHelperText: Story = {
     placeholder: 'john@example.com',
     helperText: "We'll never share your email.",
   },
+  play: playWithHelperText,
 };
 
 // Error
@@ -59,6 +71,7 @@ export const ErrorState: Story = {
     helperText: 'Use at least 8 characters.',
     errorText: 'Password is required.',
   },
+  play: playErrorState,
 };
 
 // Disabled
@@ -69,6 +82,7 @@ export const Disabled: Story = {
     disabled: true,
     defaultValue: 'sk-1234567890',
   },
+  play: playDisabled,
 };
 
 // With Icon
@@ -98,4 +112,14 @@ export const LongLabelsAndDescriptions: Story = {
       />
     </div>
   ),
+};
+
+export const NativeValidationAndRecovery: Story = {
+  render: () => <EmailValidation />,
+  play: playNativeValidationAndRecovery,
+};
+
+export const DisabledAndReadOnly: Story = {
+  render: () => <InputAvailability />,
+  play: playDisabledAndReadOnly,
 };
