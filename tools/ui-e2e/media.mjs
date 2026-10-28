@@ -6,8 +6,11 @@ import { hash, owned, json } from './core.mjs';
 import { inspectWav } from './wav.mjs';
 import { createHash } from 'node:crypto';
 import { verifySpeechEvidence } from './speech-evidence.mjs';
+import { sourceCues, timingDigest, verifyCueCoverage } from './cues.mjs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
-export async function verifySources(profile, spec) {
+export async function verifySources(profile, spec, {candidate, remaining = () => 30000} = {}) {
   const db = new DatabaseSync(path.join(profile, 'auralis.sqlite'), { readOnly: true });
   let artifacts;
   try {
@@ -22,14 +25,28 @@ export async function verifySources(profile, spec) {
   const facts = [];
   const managed = path.join(profile, 'projects');
   for (const artifact of selected) {
+    remaining();
     assert.equal(artifact.location_kind, 'StorageKey');
     const file = owned(managed, path.join(managed, artifact.location_value));
     assert.equal(await fsp.realpath(file), file);
     const bytes = (await fsp.stat(file)).size;
     assert.ok(bytes > 0 && bytes <= 1073741824, 'Acquired source exceeds its frozen byte budget');
-    const sha256 = await hash(file);
-    if (/subtitle/i.test(artifact.kind))
+    const sha256 = await hash(file, remaining);
+    if (/subtitle/i.test(artifact.kind)) {
       assert.equal(sha256, spec.source_subtitle_sha256, 'Chinese subtitle source changed');
+      const cues = sourceCues(await fsp.readFile(file, 'utf8'));
+      if (spec.expected_cue_count !== undefined)
+        assert.equal(cues.length, spec.expected_cue_count, 'Original cue count differs');
+      if (spec.source_timing_sha256)
+        assert.equal(timingDigest(cues), spec.source_timing_sha256, 'Original cue timing differs');
+    }
+    if (/video/i.test(artifact.kind) && spec.source_duration_ms) {
+      assert.ok(candidate, 'Pinned media tool is required to measure source video');
+      const {stdout} = await promisify(execFile)(path.join(candidate.directory,'binaries/ffprobe-x86_64-pc-windows-msvc.exe'), ['-v','error','-show_entries','format=duration','-of','json',file], {windowsHide:true,timeout:Math.min(30000,remaining()),maxBuffer:65536});
+      const duration = Math.round(Number(JSON.parse(stdout).format.duration) * 1000);
+      assert.ok(Number.isSafeInteger(duration) && Math.abs(duration-spec.source_duration_ms) <= spec.source_duration_tolerance_ms, 'Source video duration differs from the frozen case');
+      facts.push({ source_video_duration_ms:duration, tolerance_ms:spec.source_duration_tolerance_ms });
+    }
     facts.push({ artifact_id: artifact.id, kind: artifact.kind, sha256, size_bytes: bytes });
   }
   return { files: facts };
@@ -61,7 +78,13 @@ export async function playback(page, label) {
     video_height: element.videoHeight ?? null,
   }));
 }
-export async function verifyAssembly(profile, selections, expectVideo = false) {
+export async function verifyAssembly(
+  profile,
+  selections,
+  expectVideo = false,
+  spec = {},
+  remaining = () => Infinity,
+) {
   const db = new DatabaseSync(path.join(profile, 'auralis.sqlite'), { readOnly: true });
   let publications;
   try {
@@ -71,9 +94,31 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
       )
       .all();
     assert.ok(publications.length > 0, 'No ready assembly publication');
+    let original;
+    if (spec.expected_cue_count) {
+      const artifact = db
+        .prepare("SELECT * FROM artifacts WHERE state='ready'")
+        .all()
+        .find((item) => /original_?subtitle/i.test(item.kind));
+      assert.equal(artifact?.location_kind, 'StorageKey');
+      const sourceFile = owned(path.join(profile,'projects'), path.join(profile,'projects',artifact.location_value));
+      assert.equal(await hash(sourceFile, remaining), spec.source_subtitle_sha256, 'Original source changed after acquisition');
+      original = sourceCues(
+        await fsp.readFile(
+          owned(
+            path.join(profile, 'projects'),
+            path.join(profile, 'projects', artifact.location_value),
+          ),
+          'utf8',
+        ),
+      );
+      assert.equal(original.length, spec.expected_cue_count);
+    }
     const facts = [];
     const videoEngines = new Set();
+    const wavEngines = new Set();
     for (const row of publications) {
+      remaining();
       const publication = JSON.parse(row.publication_json);
       const plan = JSON.parse(row.plan_json);
       const raw = db
@@ -91,6 +136,9 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
       assert.ok(reviewed, 'Speech has no saved approval snapshot');
       const review = JSON.parse(reviewed.snapshot_json);
       verifySpeechEvidence(speech, review, selections);
+      if (original && spec.case_scope !== 'diagnostic')
+        verifyCueCoverage(review.source.cues, original);
+      if (spec.case_scope === 'diagnostic') { assert.equal(review.source.kind,'text'); assert.equal(review.source.text,spec.diagnostic_text); assert.equal(speech.utterances.length,1); }
       if (review.source.kind === 'translation') {
         const decision = db
           .prepare(
@@ -120,6 +168,8 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
       );
       assert.equal(publication.full_scale_samples, 0);
       assert.ok(publication.peak_sample_abs < 32768);
+      assert.ok(publication.peak_sample_abs > 0, 'Published speech is entirely silent');
+      wavEngines.add(speech.profile.engine_id);
       for (const file of [
         ...publication.files,
         plan.raw_wav,
@@ -127,6 +177,7 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
         plan.layout,
         ...(plan.video ? [plan.video.artifact] : []),
       ]) {
+        remaining();
         const artifact = db
           .prepare('SELECT * FROM artifacts WHERE id=? AND state=?')
           .get(file.artifact_id, 'ready');
@@ -136,9 +187,9 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
         const target = owned(managed, path.join(managed, artifact.location_value));
         assert.equal(await fsp.realpath(target), target);
         assert.equal((await fsp.stat(target)).size, file.size_bytes);
-        assert.equal(await hash(target), file.sha256);
+        assert.equal(await hash(target, remaining), file.sha256);
         if (file.kind === 'wav') {
-          const measured = await inspectWav(target);
+          const measured = await inspectWav(target, remaining);
           for (const [key, value] of Object.entries(measured))
             assert.equal(value, publication[key], `Published WAV ${key} differs`);
         }
@@ -172,6 +223,11 @@ export async function verifyAssembly(profile, selections, expectVideo = false) {
           videoEngines.has(selection.engine_id),
           `Missing ready video for ${selection.engine_id}`,
         );
+    for (const selection of selections)
+      assert.ok(
+        wavEngines.has(selection.engine_id),
+        `Missing ready WAV for ${selection.engine_id}`,
+      );
     return {
       ready_assemblies: publications.length,
       video_engines: [...videoEngines],

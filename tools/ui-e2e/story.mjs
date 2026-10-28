@@ -26,7 +26,9 @@ export const storySteps = [
 ];
 export const videoSteps = ['voxcpm2-video', 'espeech-video'];
 export function workflowSteps(spec) {
-  return storySteps.flatMap((id) => [
+  const steps = spec.case_scope === 'diagnostic' ? storySteps.filter(id => !['translation-setup','translation-ready','translate-edit-approve'].includes(id)) : storySteps;
+  if (spec.case_scope === 'diagnostic') steps.splice(steps.indexOf('source-identities')+1,0,'diagnostic-permission');
+  return steps.flatMap((id) => [
     id,
     ...(spec.exercise_cancellation && id.endsWith('-start')
       ? [id.replace(/-start$/, '-cancel-resume')]
@@ -49,6 +51,12 @@ export async function story(
   };
   if (!(await download(page, report, spec, remaining, admit))) return false;
   if (!(await step('source-identities', sourceCheck))) return false;
+  if (spec.case_scope === 'diagnostic') {
+    if (!(await step('diagnostic-permission', async () => {
+      if (spec.allow_inference !== true) throw new Blocked('This diagnostic draft forbids model inference');
+      return { source_cues:spec.expected_cue_count, tts_utterances:1, translation:'not_run',video:'not_run' };
+    }))) return false;
+  } else {
   if (!(await step('translation-setup', () => setupTranslation(page, spec, remaining))))
     return false;
   if (
@@ -102,6 +110,7 @@ export async function story(
     }))
   )
     return false;
+  }
   const panel = page.getByRole('region', { name: 'Голоса синтеза речи', exact: true });
   const assembly = page.getByRole('region', { name: 'Сборка итогового аудио', exact: true });
   for (const selection of spec.engines) {
@@ -138,6 +147,12 @@ export async function story(
           );
         await reference.selectOption(selection.reference_id);
         await panel.getByRole('button', { name: 'Сохранить голос проекта', exact: true }).click();
+        if (spec.case_scope === 'diagnostic') {
+          await panel.getByRole('button', {name:'Текст',exact:true}).click();
+          await panel.getByRole('textbox',{name:'Русский текст для озвучки',exact:true}).fill(spec.diagnostic_text);
+          await panel.getByRole('button',{name:'Текст проверен',exact:true}).click();
+          await panel.getByText('Снимок проверенного текста сохранён.',{exact:true}).waitFor();
+        } else {
         await panel.getByRole('button', { name: 'Субтитры', exact: true }).click();
         await panel.getByRole('button', { name: 'Обновить источники', exact: true }).click();
         const source = panel.getByLabel('Источник субтитров', { exact: true });
@@ -158,6 +173,7 @@ export async function story(
         await panel
           .getByRole('button', { name: 'Использовать одобренный перевод', exact: true })
           .click();
+        }
         await panel.getByRole('button', { name: 'Подготовить озвучку', exact: true }).click();
         await panel.getByRole('button', { name: 'Озвучить', exact: true }).waitFor();
         const runId = await panel.getByLabel('Сохранённые запуски', { exact: true }).inputValue();

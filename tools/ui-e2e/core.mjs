@@ -27,11 +27,11 @@ export async function json(file, maxBytes = 8 * 1024 * 1024) {
     throw new Error('Expected a bounded regular JSON file');
   return JSON.parse(await fsp.readFile(file, 'utf8'));
 }
-export async function hash(file) {
+export async function hash(file, check = () => {}, signal) {
   const stat = await fsp.lstat(file);
   if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Expected a regular file');
   const digest = crypto.createHash('sha256');
-  for await (const block of fs.createReadStream(file)) digest.update(block);
+  for await (const block of fs.createReadStream(file, { signal })) { check(); digest.update(block); }
   return digest.digest('hex');
 }
 export async function uniqueRun(layer) {
@@ -79,9 +79,25 @@ export function validateSpec(spec) {
   if (
     !Number.isInteger(spec.max_wall_seconds) ||
     spec.max_wall_seconds < 60 ||
-    spec.max_wall_seconds > 28800
+    spec.max_wall_seconds > 604800
   )
     throw new Error('Invalid finite case deadline');
+  if (spec.exercise_cancellation !== undefined && typeof spec.exercise_cancellation !== 'boolean') throw new Error('Invalid cancellation policy');
+  if (spec.allow_inference === true) {
+    if (!['diagnostic', 'full-source'].includes(spec.case_scope)) throw new Error('Pin inference case_scope');
+    if (!Number.isSafeInteger(spec.expected_cue_count) || spec.expected_cue_count < 1 || spec.expected_cue_count > 100000) throw new Error('Pin expected_cue_count');
+    if (spec.case_scope === 'full-source' && (spec.expected_cue_count !== 4004 || spec.export_video !== true || spec.exercise_cancellation === true)) throw new Error('Full source requires all 4004 cues, video and one start per engine');
+    if (!/^[a-f0-9]{64}$/.test(spec.source_timing_sha256 ?? '')) throw new Error('Pin source_timing_sha256');
+    for (const key of ['source_duration_ms','source_duration_tolerance_ms']) if (!Number.isSafeInteger(spec[key]) || spec[key] <= 0) throw new Error(`Pin ${key}`);
+    if (spec.source_duration_tolerance_ms > 2000) throw new Error('Source video tolerance exceeds 2 seconds');
+    const b = spec.resource_budget;
+    if (!b || b.sample_interval_ms !== 1000) throw new Error('Pin 1000 ms resource sampling');
+    if (b.disk_audit_interval_ms !== 30000) throw new Error('Pin 30000 ms full profile disk auditing');
+    const maximums = { max_rss_bytes:24*1024**3, max_vram_bytes:7680*1024**2, baseline_vram_bytes:2048*1024**2, max_profile_bytes:64*1024**3 };
+    for (const [key, limit] of Object.entries(maximums)) if (!Number.isSafeInteger(b[key]) || b[key] <= 0 || b[key] > limit) throw new Error(`Invalid resource ${key}`);
+    if (!Number.isSafeInteger(b.min_free_disk_bytes) || b.min_free_disk_bytes < 64*1024**3) throw new Error('Reserve at least 64 GiB free disk');
+    if (spec.case_scope === 'diagnostic' && (typeof spec.diagnostic_text !== 'string' || !spec.diagnostic_text.trim() || spec.diagnostic_text.length > 1000 || spec.export_video === true || spec.exercise_cancellation === true)) throw new Error('Pin bounded diagnostic text without video or cancellation');
+  }
   if (
     !Array.isArray(spec.engines) ||
     spec.engines.length !== 2 ||

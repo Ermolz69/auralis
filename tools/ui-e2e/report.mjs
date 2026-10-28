@@ -46,6 +46,7 @@ export class Report {
       step.status = 'passed';
       if (evidence !== undefined) step.evidence = evidence;
     } catch (error) {
+      if (this.abortReason && id !== 'cleanup') error = this.abortReason;
       if (error instanceof UnconfirmedCleanup) this.data.cleanup_unconfirmed = true;
       step.status = error instanceof Blocked ? 'blocked' : 'failed';
       step.error = String(error.message).slice(0, 8000);

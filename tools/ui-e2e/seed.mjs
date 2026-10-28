@@ -3,6 +3,8 @@ import path from 'node:path';
 import { root, storage, owned, hash, Blocked } from './core.mjs';
 import { relocateTts } from './relocate.mjs';
 import { installComponents } from './components.mjs';
+import fs from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 
 export function validateSeedPath(value) {
   if (typeof value !== 'string' || path.isAbsolute(value))
@@ -37,7 +39,7 @@ export function validateSeedPath(value) {
     throw new Error('Seed application databases, jobs, projects and WebView2 state are prohibited');
 }
 
-export async function seedProfile(spec, run) {
+export async function seedProfile(spec, run, remaining = () => 300000, signal) {
   if (!spec.runtime_seed) return { seeded: false };
   const seed = spec.runtime_seed;
   const directory = owned(path.join(storage, 'seeds'), path.resolve(root, seed.directory));
@@ -49,6 +51,7 @@ export async function seedProfile(spec, run) {
   let bytes = 0;
   const seen = new Set();
   for (const item of seed.files) {
+    remaining();
     validateSeedPath(item.path);
     if (seen.has(item.path) || !Number.isSafeInteger(item.size_bytes) || item.size_bytes < 0)
       throw new Error('Invalid or duplicated seed file');
@@ -58,11 +61,12 @@ export async function seedProfile(spec, run) {
     const source = owned(directory, path.join(directory, item.path));
     if ((await fsp.realpath(source)) !== source)
       throw new Error('Seed file must not be redirected');
-    if ((await fsp.stat(source)).size !== item.size_bytes || (await hash(source)) !== item.sha256)
+    if ((await fsp.stat(source)).size !== item.size_bytes || (await hash(source, remaining, signal)) !== item.sha256)
       throw new Blocked(`Seed changed: ${item.path}`);
     const target = owned(destination, path.join(destination, item.path));
     await fsp.mkdir(path.dirname(target), { recursive: true });
-    await fsp.copyFile(source, target, (await import('node:fs')).constants.COPYFILE_EXCL);
+    await pipeline(fs.createReadStream(source), fs.createWriteStream(target, { flags: 'wx' }), { signal });
+    remaining();
   }
   const remap = (value) => {
     if (Array.isArray(value)) return value.map(remap);
@@ -89,7 +93,7 @@ export async function seedProfile(spec, run) {
   }
   const relocated = seen.has('tts-runtime.json') ? await relocateTts(destination, directory) : null;
   const components = spec.component_wheels
-    ? await installComponents(destination, spec.component_wheels)
+    ? await installComponents(destination, spec.component_wheels, remaining)
     : null;
   return {
     seeded: true,

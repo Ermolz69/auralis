@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 
-export async function inspectWav(file) {
+export async function inspectWav(file, remaining = () => Infinity) {
   const handle = await fsp.open(file, 'r');
   let data, format;
   try {
@@ -48,6 +48,7 @@ export async function inspectWav(file) {
     end: data.offset + data.bytes - 1,
     highWaterMark: 65536,
   })) {
+    remaining();
     digest.update(block);
     for (let i = 0; i < block.length; i += 2) {
       const sample = block.readInt16LE(i);
@@ -55,6 +56,7 @@ export async function inspectWav(file) {
       if (sample === 32767 || sample === -32768) full++;
     }
   }
+  assert.ok(peak > 0, 'Speech WAV contains only digital silence');
   return {
     ...format,
     frames: data.bytes / (2 * format.channels),

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { root, storage, owned, json, hash, UnconfirmedCleanup } from './core.mjs';
 
-export async function installComponents(profile, wheels) {
+export async function installComponents(profile, wheels, remaining = () => 300000) {
   if (!Array.isArray(wheels) || wheels.length !== 2) throw new Error('Pin both component wheels');
   const names = new Set([
     'puza_tts-0.3.0-py3-none-any.whl',
@@ -11,12 +11,13 @@ export async function installComponents(profile, wheels) {
   ]);
   const inputs = [];
   for (const item of wheels) {
+    remaining();
     const file = owned(path.join(storage, 'wheels'), path.resolve(root, item.path));
     if (
       !names.delete(path.basename(file)) ||
       (await fsp.realpath(file)) !== file ||
       (await fsp.stat(file)).size !== item.size_bytes ||
-      (await hash(file)) !== item.sha256
+      (await hash(file, remaining)) !== item.sha256
     )
       throw new Error('Pinned component wheel differs');
     inputs.push(file);
@@ -73,7 +74,7 @@ export async function installComponents(profile, wheels) {
           () => reject(new UnconfirmedCleanup('Offline component installer exit is unconfirmed')),
           8000,
         );
-      }, 300000);
+      }, Math.min(300000, remaining()));
       child.on('error', (error) => {
         clearTimeout(timer);
         clearTimeout(releaseTimer);
@@ -95,6 +96,7 @@ export async function installComponents(profile, wheels) {
   const files = [];
   async function scan(current) {
     for (const entry of await fsp.readdir(current, { withFileTypes: true })) {
+      remaining();
       if (entry.name === '__pycache__' || entry.name.endsWith('.pyc')) continue;
       const file = path.join(current, entry.name);
       if (entry.isSymbolicLink()) throw new Error('Component package contains redirected files');

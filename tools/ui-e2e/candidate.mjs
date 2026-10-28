@@ -2,6 +2,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { root, storage, hash, json } from './core.mjs';
+import { buildIdentity } from './build-identity.mjs';
 
 if (process.platform !== 'win32' || process.arch !== 'x64')
   throw new Error('The initial native candidate supports Windows x64');
@@ -12,37 +13,8 @@ const source = path.resolve(
   'auralis-app.exe',
 );
 const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
-const files = execFileSync(
-  'git',
-  [
-    'ls-files',
-    '-z',
-    '--cached',
-    '--others',
-    '--exclude-standard',
-    '--',
-    'src-tauri/src',
-    'src-tauri/Cargo.toml',
-    'src-tauri/tauri.conf.json',
-    'apps/desktop/src',
-    'apps/desktop/package.json',
-    'apps/desktop/vite.config.ts',
-    'crates',
-    'Cargo.toml',
-    'Cargo.lock',
-  ],
-  { cwd: root, encoding: 'utf8' },
-)
-  .split('\0')
-  .filter(Boolean)
-  .sort();
-const sources = [];
-for (const file of files) sources.push({ path: file, sha256: await hash(path.join(root, file)) });
-const input = {
-  sources,
-  commit: git(['rev-parse', 'HEAD']),
-  translate_commit: git(['-C', 'modules/auralis-translate', 'rev-parse', 'HEAD']),
-};
+const input = await buildIdentity();
+const { sources } = input;
 const inputFile = path.join(storage, 'build-input.json');
 if (process.argv[2] === 'begin') {
   await fsp.mkdir(storage, { recursive: true });
@@ -65,7 +37,7 @@ const existing = await fsp
 if (existing) {
   const receipt = await json(path.join(directory, 'candidate.json'));
   if (
-    receipt.version !== 2 ||
+    receipt.version !== 3 ||
     JSON.stringify(receipt.sources) !== JSON.stringify(sources) ||
     (await hash(path.join(directory, 'auralis-app.exe'))) !== sha256
   )
@@ -91,7 +63,8 @@ for (const name of (await fsp.readdir(path.join(directory, 'binaries'))).sort())
     resources.push({ path: `binaries/${name}`, sha256: await hash(file) });
 }
 const candidate = {
-  version: 2,
+  version: 3,
+  build_inputs: input,
   sources,
   sha256,
   commit: git(['rev-parse', 'HEAD']),

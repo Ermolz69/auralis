@@ -4,8 +4,9 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { setTimeout as delay } from 'node:timers/promises';
 import net from 'node:net';
-import { root, storage, hash, json, owned } from './core.mjs';
-import { stopOwned } from './processes.mjs';
+import { root, storage, hash, json, owned, UnconfirmedCleanup } from './core.mjs';
+import { stopOwned, inventory } from './processes.mjs';
+import { OwnedTree } from './lineage.mjs';
 import { profileFacts } from './readiness.mjs';
 
 const { chromium } = createRequire(path.join(root, 'apps/desktop/package.json'))('playwright');
@@ -30,7 +31,7 @@ export async function candidateIdentity(base = storage) {
       !receipt.resources.some((item) => item.path === `binaries/${tool}-x86_64-pc-windows-msvc.exe`)
     )
       throw new Error(`Missing packaged ${tool}`);
-  if (receipt.version !== 2)
+  if (![2,3].includes(receipt.version))
     throw new Error('Rebuild the candidate with source identity verification');
   const executable = path.join(directory, 'auralis-app.exe');
   if (receipt.sha256 !== pointer.sha256 || (await hash(executable)) !== receipt.sha256)
@@ -74,6 +75,10 @@ export class DesktopSession {
   async start(budget = () => 120000) {
     const deadline = Date.now() + Math.min(120000, budget());
     this.launchNumber = (this.launchNumber ?? 0) + 1;
+    this.spawnError = null;
+    this.ownershipError = null;
+    this.closed = null;
+    this.log = '';
     const profile = path.join(this.run.directory, 'profile');
     await fsp.mkdir(profile, { recursive: true });
     const cdpPort = await port();
@@ -101,6 +106,14 @@ export class DesktopSession {
     this.child.on('error', (error) => {
       this.spawnError = error;
     });
+    this.tree = new OwnedTree(this.child.pid);
+    await this.processes();
+    this.ownershipTimer = setInterval(() => {
+      if (!this.ownershipRead) this.ownershipRead = this.processes().catch(error => {
+        this.ownershipError = error;
+        void this.page?.close().catch(() => {});
+      }).finally(() => { this.ownershipRead = null; });
+    }, 1000);
     while (Date.now() < deadline) {
       if (this.spawnError) throw this.spawnError;
       if (this.child.exitCode !== null)
@@ -142,7 +155,8 @@ export class DesktopSession {
     this.page.on('pageerror', (error) => this.errors.push(error.message));
     await this.page
       .context()
-      .tracing.start({ screenshots: false, snapshots: true, sources: false });
+      .tracing.start({ screenshots: true, snapshots: true, sources: false });
+    this.tracing = true;
     await this.page.getByRole('button', { name: 'Settings', exact: true }).waitFor();
     await fsp.access(path.join(profile, 'auralis.sqlite'));
     await fsp.access(path.join(profile, 'webview2', 'main'));
@@ -156,18 +170,29 @@ export class DesktopSession {
       profile: facts,
     };
   }
+  async processes() {
+    return this.tree.observe(await inventory());
+  }
   async close() {
-    if (this.page)
+    if (this.closed) return this.closed;
+    clearInterval(this.ownershipTimer);
+    await this.ownershipRead;
+    let traceError;
+    if (this.page && this.tracing)
       await this.page
         .context()
         .tracing.stop({ path: path.join(this.run.directory, `trace-${this.launchNumber}.zip`) })
-        .catch(() => {});
-    const released = await stopOwned(this.child);
+        .catch(error => { traceError = error; });
+    this.tracing = false;
+    const released = await stopOwned(this.child, this.tree);
     if (this.browser) await this.browser.close().catch(() => {});
     await fsp.writeFile(
       path.join(this.run.directory, `desktop-${this.launchNumber}.log`),
       this.log,
     );
+    this.closed = released;
+    if (this.ownershipError) throw new UnconfirmedCleanup(`Process observer failed: ${this.ownershipError.message}`);
+    if (traceError) throw new Error(`Diagnostic trace was not retained: ${traceError.message}`);
     return released;
   }
 }
