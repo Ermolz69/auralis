@@ -41,6 +41,8 @@ selected objective; do not launch all goals merely by opening this directory.
 Documentation and prompts are in English to follow repository conventions.
 The active [TTS execution record](tts-execution.md) tracks implementation
 evidence and open acceptance gates.
+The [fresh Windows TTS runtime procedure](tts-runtime-install.md) documents the
+separate root install Task, reviewed wheel inputs and local success receipt.
 The [ordinary UI automation](ui-automation.md) commands retain separate fixture,
 native smoke and real component outcomes with isolated profiles.
 The [pre-main verification record](pre-main-verification.md) tracks the combined

@@ -75,6 +75,9 @@ def installed_python(source: Path, destination_root: Path) -> Path:
             staged = Path(temporary) / runtime_id
             shutil.copytree(base, staged / "base", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
             shutil.copytree(source, staged / "venv", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            native_tools = source.parent / "bin"
+            if native_tools.is_dir():
+                shutil.copytree(native_tools, staged / "bin")
             (staged / "base/Lib/site-packages/auralis-native-venv.pth").write_text(
                 "../../../venv/Lib/site-packages\n", encoding="utf-8"
             )
@@ -118,6 +121,33 @@ def installed_python(source: Path, destination_root: Path) -> Path:
     return python
 
 
+def verified_fresh_runtime(source: Path) -> str | None:
+    """Bind a fresh wheel installation to the interpreter actually running setup."""
+    source = source.resolve(strict=True)
+    record = source.parent / "runtime-installation.json"
+    if not record.is_file():
+        return None  # Legacy already-prepared developer environment.
+    data = json.loads(record.read_text(encoding="utf-8"))
+    python = source / "Scripts/python.exe"
+    if (data.get("status") != "verified_local_runtime" or
+            set(data.get("windows_tools", {})) != {"ffmpeg", "ffprobe"} or
+            not isinstance(data.get("manifest_sha256"), str) or
+            len(data["manifest_sha256"]) != 64 or
+            (source.parent / ".installing").exists() or
+            Path(data.get("python_executable", "")).resolve() != python.resolve() or
+            Path(sys.executable).resolve() != python.resolve() or
+            data.get("python_sha256") != digest(python) or
+            data.get("compatibility", {}).get("torch") != "2.8.0+cu128" or
+            data.get("compatibility", {}).get("torchaudio") != "2.8.0+cu128" or
+            data.get("compatibility", {}).get("cuda_runtime") != "12.8"):
+        raise ValueError("Fresh Windows runtime receipt differs from the executing interpreter")
+    for pin in data.get("windows_tools", {}).values():
+        executable = source.parent / "bin" / pin["filename"]
+        if not executable.is_file() or executable.stat().st_size != pin["size_bytes"] or digest(executable) != pin["sha256"]:
+            raise ValueError("Fresh Windows media tool differs from its pinned receipt")
+    return digest(record)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     workspace = Path(__file__).resolve().parents[3]
@@ -130,6 +160,7 @@ def main() -> None:
     args = parser.parse_args()
     if sys.version_info[:2] != (3, 12):
         raise ValueError("The local GPU runtime requires Python 3.12")
+    fresh_runtime_sha256 = verified_fresh_runtime(args.runtime_source)
     root = args.data_root.resolve()
     pin = hashlib.sha256((TTS_COMMIT + CONTRACT_COMMIT + CASTER_COMMIT).encode()).hexdigest()[:16]
     wheels = root / "tts/wheels" / pin
@@ -164,6 +195,12 @@ def main() -> None:
     if not all(path.is_file() for path in wheel_files):
         raise ValueError("Pinned wheel set is incomplete")
     runtime_python = installed_python(args.runtime_source, root / "tts/runtime")
+    if fresh_runtime_sha256:
+        fresh = json.loads((args.runtime_source.resolve().parent / "runtime-installation.json").read_text(encoding="utf-8"))
+        for pin in fresh["windows_tools"].values():
+            copied = runtime_python.parent.parent / "bin" / pin["filename"]
+            if not copied.is_file() or copied.stat().st_size != pin["size_bytes"] or digest(copied) != pin["sha256"]:
+                raise ValueError("Installed Windows media tool differs from the fresh runtime receipt")
     identity = hashlib.sha256("".join(digest(path) for path in wheel_files).encode()).hexdigest()
     runtime_receipt = runtime_python.parent.parent / "auralis-components.json"
     wanted_components = {"version": 1, "wheels": {path.name: digest(path) for path in wheel_files}}
@@ -246,7 +283,7 @@ def main() -> None:
         "integrity_sha256": digest(integrity_path),
     }
     atomic_json(root / "tts-runtime.json", config)
-    atomic_json(root / "tts/receipt.json", {"version": 1, "tts_commit": TTS_COMMIT, "contract_commit": CONTRACT_COMMIT, "caster_commit": CASTER_COMMIT, "voice_ids": list(VOICE_IDS), "installation_id": identity, "wheels": {path.name: digest(path) for path in wheel_files}, "runtime": config})
+    atomic_json(root / "tts/receipt.json", {"version": 1, "tts_commit": TTS_COMMIT, "contract_commit": CONTRACT_COMMIT, "caster_commit": CASTER_COMMIT, "voice_ids": list(VOICE_IDS), "installation_id": identity, "wheels": {path.name: digest(path) for path in wheel_files}, "runtime": config, "fresh_runtime_receipt_sha256": fresh_runtime_sha256})
     print(f"Installed local TTS runtime: {root / 'tts-runtime.json'}")
     print("Voice copies retain their real qualification state. No model was loaded.")
 

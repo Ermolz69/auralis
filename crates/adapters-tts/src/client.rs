@@ -106,6 +106,23 @@ impl TtsWorkerClient {
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
+        #[cfg(windows)]
+        if let Some(runtime_root) = self
+            .runtime
+            .python_executable
+            .parent()
+            .and_then(|p| p.parent())
+        {
+            let media_tools = runtime_root.join("bin");
+            if media_tools.is_dir() {
+                let mut search_path = media_tools.into_os_string();
+                if let Some(existing) = std::env::var_os("PATH") {
+                    search_path.push(";");
+                    search_path.push(existing);
+                }
+                command.env("PATH", search_path);
+            }
+        }
         #[cfg(test)]
         crate::installed_full_plan_tests::configure_guard(&mut command, &self.runtime.managed_root);
         command

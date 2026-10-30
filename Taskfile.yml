@@ -350,12 +350,40 @@ tasks:
     cmds:
       - '"{{.PYTHON}}" tools/tts/component_pins.py --tts-root "{{.TTS_ROOT}}" --tts-revision "{{.TTS_REVISION}}" --tts-wheel "{{.TTS_WHEEL}}" --speech-root "{{.SPEECH_ROOT}}" --speech-revision "{{.SPEECH_REVISION}}" --speech-wheel "{{.SPEECH_WHEEL}}" --media-root "{{.MEDIA_ROOT}}" --media-revision "{{.MEDIA_REVISION}}" --media-wheel "{{.MEDIA_WHEEL}}" --caster-root "{{.CASTER_ROOT}}" --caster-revision "{{.CASTER_REVISION}}"'
 
+  setup:tts:runtime:check:
+    desc: Check pinned Windows wheel, media-tool and fail-closed receipt controls without installing or loading models
+    vars:
+      PYTHON: '{{default "python" .PYTHON}}'
+    cmds:
+      - '"{{.PYTHON}}" -B -m unittest discover -s tools/tts -p test_install_runtime.py -v'
+
+  setup:tts:runtime:manifest:
+    desc: Capture a reviewable local wheel and Windows media-tool candidate manifest without installing
+    requires:
+      vars: [PYTHON, WHEELHOUSE, WINDOWS_TOOLS, OUTPUT]
+    cmds:
+      - '"{{.PYTHON}}" -I -B tools/tts/install_runtime.py --capture --wheelhouse "{{.WHEELHOUSE}}" --windows-tools "{{.WINDOWS_TOOLS}}" --output "{{.OUTPUT}}"'
+
+  setup:tts:runtime:
+    desc: Install a fresh CPython 3.12 CUDA runtime from a reviewed local wheel manifest and Windows media tools
+    requires:
+      vars: [PYTHON, MANIFEST, WHEELHOUSE, WINDOWS_TOOLS, DATA_ROOT]
+    cmds:
+      - '"{{.PYTHON}}" -I -B tools/tts/install_runtime.py --manifest "{{.MANIFEST}}" --wheelhouse "{{.WHEELHOUSE}}" --windows-tools "{{.WINDOWS_TOOLS}}" --data-root "{{.DATA_ROOT}}"'
+
   setup:tts:local:
     desc: Install pinned local PUZA wheels, voice copies and runtime configuration without model loading
     vars:
       PYTHON: '{{default "../TTS/PUZA_TTS/.venv_gpu/Scripts/python.exe" .PYTHON}}'
     cmds:
       - '"{{.PYTHON}}" tools/tts/setup_local.py {{.CLI_ARGS}}'
+
+  setup:tts:local:fresh:
+    desc: Install Auralis speech assets from a verified fresh runtime receipt without loading models
+    requires:
+      vars: [RUNTIME_ROOT, DATA_ROOT]
+    cmds:
+      - '"{{.RUNTIME_ROOT}}/venv/Scripts/python.exe" -I -B tools/tts/setup_local.py --runtime-source "{{.RUNTIME_ROOT}}/venv" --data-root "{{.DATA_ROOT}}" {{.CLI_ARGS}}'
 
   tts:bundle:stage:
     desc: Stage a hashed standalone PUZA runtime, model, wheel, and voice bundle from the verified local installation

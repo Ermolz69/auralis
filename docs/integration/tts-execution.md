@@ -23,7 +23,25 @@ and separate evidence. Source cue windows are lineage, not automatic duration fi
 | INT-T04 | Verified cache reuse                                                 | Changed input identity and corruption matrix with unaffected cache entries retained         | Audio/metadata corruption covered; full matrix open                                                                                           |
 | INT-T05 | Real audio from both engines                                         | Short and longer cases, hashes, measured durations, actual listening                        | Four real legacy CLI probes passed technical verification; speech-plan cases and listening open                                               |
 | INT-T06 | Auralis desktop workflow                                             | React, Tauri, Rust, worker, managed publication, restart, cancel, resume and playback       | Rust worker transport compiles; host and desktop flow open                                                                                    |
-| INT-T07 | Installed offline Windows delivery                                   | Exact wheels/runtime/assets, interrupted acquisition recovery and clean install             | Local wheel import smoke only; clean install open                                                                                             |
+| INT-T07 | Installed offline Windows delivery                                   | Exact wheels/runtime/assets, interrupted acquisition recovery and clean install             | Fresh Windows wheelhouse installation passed locally on this host; application-profile, model assets, recovery and clean-install acceptance remain open |
+
+The [fresh Windows runtime install procedure](tts-runtime-install.md) now has a
+separate root Task. It verifies exact wheel bytes and RECORD entries, Windows
+media tools, CPython 3.12 x64, PyTorch/TorchAudio CUDA 12.8, local CUDA access
+and `pip check` before writing a success receipt. On 30 October 2026, the Task
+installed a new workspace-local runtime from 202 verified wheels, with seven
+retained source archives for locally built wheels. The local input manifest
+SHA-256 is `1099bc0ff13bde5f74ce2ec627f1e5b7da3b09f84f91953cc69af88d09fbdedb`;
+the success receipt SHA-256 is
+`b670d4fc1c1657eb3581260fb5b65fcb5889d8070817b199de25e5a9e9e13bb3`.
+The receipt is under `../env/auralis/runtime-profile/tts/runtime/1099bc0ff13bde5f/`.
+Its observed Python is 3.12.14, Torch/TorchAudio are 2.8.0+cu128, CUDA runtime
+is 12.8, and the GPU is an RTX 3050 Laptop. A separate `pip check` rerun passed.
+This is a fresh isolated runtime installation, not yet the ordinary Auralis
+application profile or a clean-machine release acceptance. No model was loaded.
+This GPU has 4 GiB VRAM, below the current 8 GiB real-audio experiment budget.
+The pinned CONTRACT wheel requires `portalocker==4.4.0`; TTS's older direct
+`requirements.lock` still says 4.3.0, so the fresh closure followed the wheel.
 
 The current new worker operations are `capabilities`, `catalog`, `compose`,
 `validate`, `execute` and `cancel`. Worker frames are limited to 1 MiB and
